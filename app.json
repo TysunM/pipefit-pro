@@ -1,0 +1,26 @@
+{
+  "expo": {
+    "name": "PipeFit Pro",
+    "slug": "pipefit-pro",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "pipefitpro",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "splash": {
+      "backgroundColor": "#FFFFFF",
+      "resizeMode": "contain"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.pipefitpro.app"
+    },
+    "android": {
+      "package": "com.pipefitpro.app",
+      "edgeToEdgeEnabled": true,
+      "adaptiveIcon": { "backgroundColor": "#2B4552" }
+    },
+    "web": { "bundler": "metro", "output": "single" },
+    "plugins": ["expo-font"]
+  }
+}
