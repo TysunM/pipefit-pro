@@ -1,8 +1,8 @@
 import React from 'react';
-import { G, Path } from 'react-native-svg';
+import { G } from 'react-native-svg';
 import { useTheme } from '../../theme/ThemeProvider';
 import { DIAGRAM_H, DIAGRAM_W, Frame } from './Frame';
-import { AngleMark, Dim, Guide, Pt, Wedge, beyond, fit, pipeShades } from './primitives';
+import { AngleMark, Dim, Guide, Pipe, Pt, Wedge, beyond, fit } from './primitives';
 
 export function BenderDiagram({
   angleDeg,
@@ -41,11 +41,7 @@ export function BenderDiagram({
   const E = p(end);
   const C = p(center);
   const rPix = Math.hypot(TI.x - C.x, TI.y - C.y);
-  const large = angleDeg > 180 ? 1 : 0;
 
-  const body = `M${S.x},${S.y} L${TI.x},${TI.y} A${rPix},${rPix} 0 ${large} 0 ${TO.x},${TO.y} L${E.x},${E.y}`;
-  const arc = `M${TI.x},${TI.y} A${rPix},${rPix} 0 ${large} 0 ${TO.x},${TO.y}`;
-  const sh = pipeShades(t);
 
   return (
     <Frame>
@@ -53,13 +49,7 @@ export function BenderDiagram({
         <Guide from={TI} to={PI_} t={t} />
         <Guide from={PI_} to={TO} t={t} />
 
-        <Path d={body} fill="none" stroke={sh.steel.edge} strokeWidth={15} strokeLinecap="butt" />
-        <Path d={body} fill="none" stroke={sh.steel.mid} strokeWidth={15 * 0.74} strokeLinecap="butt" />
-        <Path d={body} fill="none" stroke={sh.steel.light} strokeWidth={15 * 0.26} strokeLinecap="butt" />
-
-        <Path d={arc} fill="none" stroke={sh.elbow.edge} strokeWidth={15} strokeLinecap="butt" />
-        <Path d={arc} fill="none" stroke={sh.elbow.mid} strokeWidth={15 * 0.74} strokeLinecap="butt" />
-        <Path d={arc} fill="none" stroke={sh.elbow.light} strokeWidth={15 * 0.26} strokeLinecap="butt" />
+        <Pipe points={[S, PI_, E]} t={t} od={16} elbowRadius={rPix} />
 
         <Wedge vertex={PI_} a={beyond(PI_, TI)} b={TO} t={t} radius={28} />
         <AngleMark vertex={PI_} a={beyond(PI_, TI)} b={TO} label={angleLabel} t={t} radius={28} />

@@ -1,5 +1,5 @@
-import React from 'react';
-import { G, Line, Polygon, Text as SvgText } from 'react-native-svg';
+import React, { useId } from 'react';
+import { Defs, G, Line, LinearGradient, Polygon, Stop, Text as SvgText } from 'react-native-svg';
 import { useTheme } from '../../theme/ThemeProvider';
 import { DIAGRAM_H, DIAGRAM_W, Frame } from './Frame';
 import { Dim, Pt, fit, pipeShades } from './primitives';
@@ -43,19 +43,41 @@ export function MiterDiagram({
   const p = fit(all, DIAGRAM_W, DIAGRAM_H, 56);
   const proj = faces.map((f) => ({ inner: p(f.inner), outer: p(f.outer) }));
   const sh = pipeShades(t);
+  const uid = useId().replace(/[^a-zA-Z0-9]/g, '');
 
   return (
     <Frame>
       <G>
+        <Defs>
+          {proj.slice(0, -1).map((f, i) => {
+            const n = proj[i + 1]!;
+            return (
+              <LinearGradient
+                key={`g${i}`}
+                id={`${uid}m${i}`}
+                gradientUnits="userSpaceOnUse"
+                x1={(f.inner.x + n.inner.x) / 2}
+                y1={(f.inner.y + n.inner.y) / 2}
+                x2={(f.outer.x + n.outer.x) / 2}
+                y2={(f.outer.y + n.outer.y) / 2}
+              >
+                <Stop offset="0" stopColor={sh.steel.edge} />
+                <Stop offset="0.35" stopColor={sh.steel.light} />
+                <Stop offset="0.72" stopColor={sh.steel.mid} />
+                <Stop offset="1" stopColor={sh.steel.deep} />
+              </LinearGradient>
+            );
+          })}
+        </Defs>
         {proj.slice(0, -1).map((f, i) => {
           const n = proj[i + 1]!;
           return (
             <Polygon
               key={i}
               points={`${f.inner.x},${f.inner.y} ${f.outer.x},${f.outer.y} ${n.outer.x},${n.outer.y} ${n.inner.x},${n.inner.y}`}
-              fill={i % 2 === 0 ? sh.steel.mid : sh.steel.light}
-              stroke={sh.steel.edge}
-              strokeWidth={1}
+              fill={`url(#${uid}m${i})`}
+              stroke={sh.rim}
+              strokeWidth={0.9}
             />
           );
         })}
