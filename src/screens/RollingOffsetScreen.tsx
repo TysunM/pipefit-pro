@@ -13,6 +13,7 @@ import { usePipeConfig } from '../hooks/usePipeConfig';
 import { useSettings } from '../state/settings';
 import { FITTING_ANGLES } from '../calc/pipe';
 import { solveRolling } from '../calc/rolling';
+import { parseNumber } from '../calc/format';
 
 export function RollingOffsetScreen() {
   const u = useUnits();
@@ -23,9 +24,11 @@ export function RollingOffsetScreen() {
   const [roll, setRoll] = useState('');
   const [run, setRun] = useState('');
   const [gap, setGap] = useState('');
-  const [fittingAngle, setFittingAngle] = useState<number>(45);
+  const [angleText, setAngleText] = useState('45');
   const [useFittingAngle, setUseFittingAngle] = useState(false);
   const [mode, setMode] = useState<'pipe' | 'elbow'>('pipe');
+
+  const fittingAngle = parseNumber(angleText);
 
   const gapInches = Number.isFinite(u.parse(gap)) ? u.parse(gap) : settings.defaultGap;
 
@@ -53,7 +56,7 @@ export function RollingOffsetScreen() {
     setRun('');
     setGap('');
     setUseFittingAngle(false);
-    setFittingAngle(45);
+    setAngleText('45');
   };
 
   const banner =
@@ -119,13 +122,28 @@ export function RollingOffsetScreen() {
         />
       </FieldRow>
 
+      <FieldRow>
+        <DimensionInput
+          label="Elbow angle"
+          value={angleText}
+          onChangeText={(v) => {
+            setUseFittingAngle(true);
+            setAngleText(v);
+          }}
+          suffix="°"
+          placeholder="45"
+          readout={useFittingAngle ? undefined : 'Solved from the run'}
+        />
+        <DerivedField label="Cut angle" value={result.valid ? u.angle(result.cutAngle, 2) : '—'} />
+      </FieldRow>
+
       <ChipRow
-        label="Elbow"
+        label="Preset"
         options={FITTING_ANGLES.map((a) => ({ value: a, label: `${a}°` }))}
         selected={useFittingAngle ? fittingAngle : null}
         onSelect={(a) => {
           setUseFittingAngle(true);
-          setFittingAngle(a);
+          setAngleText(String(a));
         }}
       />
 

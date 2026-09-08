@@ -2,7 +2,7 @@ import React from 'react';
 import { G, Path } from 'react-native-svg';
 import { useTheme } from '../../theme/ThemeProvider';
 import { DIAGRAM_H, DIAGRAM_W, Frame } from './Frame';
-import { AngleMark, Dim, Guide, Pt, beyond, fit } from './primitives';
+import { AngleMark, Dim, Guide, Pt, Wedge, beyond, fit, pipeShades } from './primitives';
 
 export function BenderDiagram({
   angleDeg,
@@ -44,6 +44,8 @@ export function BenderDiagram({
   const large = angleDeg > 180 ? 1 : 0;
 
   const body = `M${S.x},${S.y} L${TI.x},${TI.y} A${rPix},${rPix} 0 ${large} 0 ${TO.x},${TO.y} L${E.x},${E.y}`;
+  const arc = `M${TI.x},${TI.y} A${rPix},${rPix} 0 ${large} 0 ${TO.x},${TO.y}`;
+  const sh = pipeShades(t);
 
   return (
     <Frame>
@@ -51,22 +53,16 @@ export function BenderDiagram({
         <Guide from={TI} to={PI_} t={t} />
         <Guide from={PI_} to={TO} t={t} />
 
-        <Path d={body} fill="none" stroke={t.colors.borderStrong} strokeWidth={13} strokeLinecap="butt" />
-        <Path
-          d={body}
-          fill="none"
-          stroke={t.mode === 'dark' ? '#5C7A8C' : '#B7C4CC'}
-          strokeWidth={10}
-          strokeLinecap="butt"
-        />
-        <Path
-          d={`M${TI.x},${TI.y} A${rPix},${rPix} 0 ${large} 0 ${TO.x},${TO.y}`}
-          fill="none"
-          stroke={t.colors.data}
-          strokeWidth={2.4}
-        />
+        <Path d={body} fill="none" stroke={sh.steel.edge} strokeWidth={15} strokeLinecap="butt" />
+        <Path d={body} fill="none" stroke={sh.steel.mid} strokeWidth={15 * 0.74} strokeLinecap="butt" />
+        <Path d={body} fill="none" stroke={sh.steel.light} strokeWidth={15 * 0.26} strokeLinecap="butt" />
 
-        <AngleMark vertex={PI_} a={beyond(PI_, TI)} b={TO} label={angleLabel} t={t} radius={24} />
+        <Path d={arc} fill="none" stroke={sh.elbow.edge} strokeWidth={15} strokeLinecap="butt" />
+        <Path d={arc} fill="none" stroke={sh.elbow.mid} strokeWidth={15 * 0.74} strokeLinecap="butt" />
+        <Path d={arc} fill="none" stroke={sh.elbow.light} strokeWidth={15 * 0.26} strokeLinecap="butt" />
+
+        <Wedge vertex={PI_} a={beyond(PI_, TI)} b={TO} t={t} radius={28} />
+        <AngleMark vertex={PI_} a={beyond(PI_, TI)} b={TO} label={angleLabel} t={t} radius={28} />
         <Dim from={TI} to={PI_} label={`Setback ${setbackLabel}`} t={t} offset={30} />
         <Dim from={TI} to={TO} label={`Arc ${arcLabel}`} t={t} color={t.colors.data} offset={-34} />
       </G>

@@ -122,7 +122,7 @@ export function SaddleDiagram({
         </SvgText>
 
         <Guide from={{ x: drawn[0]!.x, y: base }} to={{ x: drawn[drawn.length - 1]!.x, y: base }} t={t} />
-        <Pipe points={drawn} t={t} od={11} />
+        <Pipe points={drawn} t={t} od={13} />
 
         {truncated ? (
           <Path

@@ -2,7 +2,7 @@ import React from 'react';
 import { G, Polyline } from 'react-native-svg';
 import { useTheme } from '../../theme/ThemeProvider';
 import { DIAGRAM_H, DIAGRAM_W, Frame } from './Frame';
-import { AngleMark, Dim, Elbow, Pipe, Pt, beyond, fit } from './primitives';
+import { AngleMark, Dim, Pipe, Pt, Wedge, beyond, fit } from './primitives';
 
 const ISO = Math.PI / 6;
 
@@ -76,10 +76,9 @@ export function RollingDiagram({
         {box([XZ!, XZY!], false)}
         {box([Z1!, Z1Y!], true)}
 
-        <Pipe points={[IN!, O!, XZY!, OUT!]} t={t} />
-        <Elbow at={O!} t={t} />
-        <Elbow at={XZY!} t={t} />
+        <Pipe points={[IN!, O!, XZY!, OUT!]} t={t} od={15} />
 
+        <Wedge vertex={O!} a={beyond(O!, IN!)} b={XZY!} t={t} radius={30} />
         <AngleMark vertex={O!} a={beyond(O!, IN!)} b={XZY!} label={angleLabel} t={t} radius={30} />
 
         <Dim from={O!} to={XZY!} label={`Cut ${cutLabel}`} t={t} color={t.colors.data} offset={-26} />

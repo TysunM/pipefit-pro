@@ -2,7 +2,7 @@ import React from 'react';
 import { G, Line, Polygon, Text as SvgText } from 'react-native-svg';
 import { useTheme } from '../../theme/ThemeProvider';
 import { DIAGRAM_H, DIAGRAM_W, Frame } from './Frame';
-import { Dim, Pt, fit } from './primitives';
+import { Dim, Pt, fit, pipeShades } from './primitives';
 
 export function MiterDiagram({
   totalAngle,
@@ -42,6 +42,7 @@ export function MiterDiagram({
   const all = faces.flatMap((f) => [f.inner, f.outer]);
   const p = fit(all, DIAGRAM_W, DIAGRAM_H, 56);
   const proj = faces.map((f) => ({ inner: p(f.inner), outer: p(f.outer) }));
+  const sh = pipeShades(t);
 
   return (
     <Frame>
@@ -52,10 +53,9 @@ export function MiterDiagram({
             <Polygon
               key={i}
               points={`${f.inner.x},${f.inner.y} ${f.outer.x},${f.outer.y} ${n.outer.x},${n.outer.y} ${n.inner.x},${n.inner.y}`}
-              fill={i % 2 === 0 ? t.colors.borderStrong : (t.mode === 'dark' ? '#5C7A8C' : '#B7C4CC')}
-              stroke={t.colors.text}
+              fill={i % 2 === 0 ? sh.steel.mid : sh.steel.light}
+              stroke={sh.steel.edge}
               strokeWidth={1}
-              opacity={0.95}
             />
           );
         })}

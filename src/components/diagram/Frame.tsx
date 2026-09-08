@@ -4,7 +4,7 @@ import Svg, { Defs, Pattern, Path, Rect } from 'react-native-svg';
 import { useTheme } from '../../theme/ThemeProvider';
 
 export const DIAGRAM_W = 340;
-export const DIAGRAM_H = 240;
+export const DIAGRAM_H = 258;
 
 export function Frame({ children, height = DIAGRAM_H }: { children: React.ReactNode; height?: number }) {
   const t = useTheme();

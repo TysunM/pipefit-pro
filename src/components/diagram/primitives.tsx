@@ -1,5 +1,5 @@
 import React from 'react';
-import { Circle, G, Line, Path, Polyline, Rect, Text as SvgText } from 'react-native-svg';
+import { Circle, Ellipse, G, Line, Path, Rect, Text as SvgText } from 'react-native-svg';
 import { Theme } from '../../theme/ThemeProvider';
 
 export type Pt = { x: number; y: number };
@@ -21,41 +21,91 @@ export function fit(points: Pt[], width: number, height: number, pad: number) {
   return (p: Pt): Pt => ({ x: p.x * scale + offX, y: p.y * scale + offY });
 }
 
-export function Pipe({ points, t, od = 13 }: { points: Pt[]; t: Theme; od?: number }) {
-  const d = points.map((p) => `${p.x},${p.y}`).join(' ');
+export type PipeShade = { edge: string; mid: string; light: string };
+
+export function pipeShades(t: Theme): { steel: PipeShade; elbow: PipeShade; bore: string } {
+  return t.mode === 'dark'
+    ? {
+        steel: { edge: '#2F4552', mid: '#4E6B7C', light: '#83A2B4' },
+        elbow: { edge: '#16405F', mid: '#2E6E9E', light: '#6FAEDA' },
+        bore: '#0A1015',
+      }
+    : {
+        steel: { edge: '#8FA0AB', mid: '#C3CED5', light: '#EDF2F5' },
+        elbow: { edge: '#1B5E96', mid: '#3E8FD0', light: '#9ECBF0' },
+        bore: '#3A4A54',
+      };
+}
+
+const norm = (a: Pt, b: Pt): Pt => {
+  const d = Math.hypot(b.x - a.x, b.y - a.y) || 1;
+  return { x: (b.x - a.x) / d, y: (b.y - a.y) / d };
+};
+
+type Straight = { a: Pt; b: Pt };
+type Fillet = { a: Pt; b: Pt; r: number; sweep: number };
+
+export function buildRun(points: Pt[], radius: number): { straights: Straight[]; fillets: Fillet[] } {
+  const straights: Straight[] = [];
+  const fillets: Fillet[] = [];
+  let cursor = points[0]!;
+
+  for (let i = 1; i < points.length - 1; i += 1) {
+    const prev = points[i - 1]!;
+    const v = points[i]!;
+    const next = points[i + 1]!;
+    const u1 = norm(prev, v);
+    const u2 = norm(v, next);
+    const cross = u1.x * u2.y - u1.y * u2.x;
+    const dot = Math.max(-1, Math.min(1, u1.x * u2.x + u1.y * u2.y));
+    const theta = Math.acos(dot);
+
+    if (theta < 0.02) continue;
+
+    const maxT = Math.min(Math.hypot(v.x - prev.x, v.y - prev.y), Math.hypot(next.x - v.x, next.y - v.y)) * 0.46;
+    const T = Math.min(radius * Math.tan(theta / 2), maxT);
+    const r = T / Math.tan(theta / 2);
+
+    const a = { x: v.x - u1.x * T, y: v.y - u1.y * T };
+    const b = { x: v.x + u2.x * T, y: v.y + u2.y * T };
+
+    straights.push({ a: cursor, b: a });
+    fillets.push({ a, b, r, sweep: cross > 0 ? 1 : 0 });
+    cursor = b;
+  }
+
+  straights.push({ a: cursor, b: points[points.length - 1]! });
+  return { straights, fillets };
+}
+
+function Strand({ d, shade, od }: { d: string; shade: PipeShade; od: number }) {
   return (
     <G>
-      <Polyline
-        points={d}
-        fill="none"
-        stroke={t.colors.borderStrong}
-        strokeWidth={od}
-        strokeLinejoin="round"
-        strokeLinecap="butt"
-      />
-      <Polyline
-        points={d}
-        fill="none"
-        stroke={t.mode === 'dark' ? '#5C7A8C' : '#B7C4CC'}
-        strokeWidth={od - 3}
-        strokeLinejoin="round"
-        strokeLinecap="butt"
-      />
-      <Polyline
-        points={d}
-        fill="none"
-        stroke={t.colors.textFaint}
-        strokeWidth={0.8}
-        strokeLinejoin="round"
-        strokeDasharray="4 4"
-        opacity={0.55}
-      />
+      <Path d={d} fill="none" stroke={shade.edge} strokeWidth={od} strokeLinecap="butt" />
+      <Path d={d} fill="none" stroke={shade.mid} strokeWidth={od * 0.74} strokeLinecap="butt" />
+      <Path d={d} fill="none" stroke={shade.light} strokeWidth={od * 0.26} strokeLinecap="butt" />
     </G>
   );
 }
 
-export function Elbow({ at, t, od = 13 }: { at: Pt; t: Theme; od?: number }) {
-  return <Circle cx={at.x} cy={at.y} r={od / 2} fill={t.colors.data} opacity={0.9} />;
+export function Bore({ at, towards, od, t }: { at: Pt; towards: Pt; od: number; t: Theme }) {
+  const sh = pipeShades(t);
+  const ang = (Math.atan2(towards.y - at.y, towards.x - at.x) * 180) / Math.PI;
+  return (
+    <G transform={`rotate(${ang} ${at.x} ${at.y})`}>
+      <Ellipse cx={at.x} cy={at.y} rx={od * 0.2} ry={od / 2} fill={sh.steel.edge} />
+      <Ellipse cx={at.x} cy={at.y} rx={od * 0.2 * 0.62} ry={(od / 2) * 0.62} fill={sh.bore} />
+    </G>
+  );
+}
+
+export function WeldRing({ at, along, od, t }: { at: Pt; along: Pt; od: number; t: Theme }) {
+  const ang = (Math.atan2(along.y - at.y, along.x - at.x) * 180) / Math.PI;
+  return (
+    <G transform={`rotate(${ang} ${at.x} ${at.y})`}>
+      <Ellipse cx={at.x} cy={at.y} rx={od * 0.12} ry={od / 2} fill="none" stroke={t.colors.accent} strokeWidth={1.3} />
+    </G>
+  );
 }
 
 function arrowHead(from: Pt, to: Pt, color: string, key: string) {
@@ -130,8 +180,70 @@ export function Dim({
   );
 }
 
+export function Pipe({
+  points,
+  t,
+  od = 15,
+  elbowRadius,
+  openEnds = true,
+}: {
+  points: Pt[];
+  t: Theme;
+  od?: number;
+  elbowRadius?: number;
+  openEnds?: boolean;
+}) {
+  const sh = pipeShades(t);
+  const r = elbowRadius ?? od * 1.5;
+  const { straights, fillets } = buildRun(points, r);
+  const straightD = straights.map((s) => `M${s.a.x},${s.a.y} L${s.b.x},${s.b.y}`).join(' ');
+
+  return (
+    <G>
+      <Strand d={straightD} shade={sh.steel} od={od} />
+      {fillets.map((f, i) => (
+        <Strand
+          key={i}
+          d={`M${f.a.x},${f.a.y} A${f.r},${f.r} 0 0 ${f.sweep} ${f.b.x},${f.b.y}`}
+          shade={sh.elbow}
+          od={od}
+        />
+      ))}
+      {fillets.map((f, i) => (
+        <G key={`w${i}`}>
+          <WeldRing at={f.a} along={f.b} od={od} t={t} />
+          <WeldRing at={f.b} along={f.a} od={od} t={t} />
+        </G>
+      ))}
+      {openEnds && points.length > 1 ? (
+        <>
+          <Bore at={points[0]!} towards={points[1]!} od={od} t={t} />
+          <Bore at={points[points.length - 1]!} towards={points[points.length - 2]!} od={od} t={t} />
+        </>
+      ) : null}
+    </G>
+  );
+}
+
 export function beyond(vertex: Pt, from: Pt): Pt {
   return { x: 2 * vertex.x - from.x, y: 2 * vertex.y - from.y };
+}
+
+export function Wedge({ vertex, a, b, t, radius }: { vertex: Pt; a: Pt; b: Pt; t: Theme; radius: number }) {
+  const a1 = Math.atan2(a.y - vertex.y, a.x - vertex.x);
+  const a2 = Math.atan2(b.y - vertex.y, b.x - vertex.x);
+  let delta = a2 - a1;
+  while (delta <= -Math.PI) delta += Math.PI * 2;
+  while (delta > Math.PI) delta -= Math.PI * 2;
+  const p1 = { x: vertex.x + radius * Math.cos(a1), y: vertex.y + radius * Math.sin(a1) };
+  const p2 = { x: vertex.x + radius * Math.cos(a2), y: vertex.y + radius * Math.sin(a2) };
+  return (
+    <Path
+      d={`M${vertex.x},${vertex.y} L${p1.x},${p1.y} A${radius},${radius} 0 0 ${delta > 0 ? 1 : 0} ${p2.x},${p2.y} Z`}
+      fill={t.colors.accent}
+      opacity={0.17}
+    />
+  );
 }
 
 export function AngleMark({

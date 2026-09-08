@@ -11,6 +11,7 @@ import { useTheme } from '../theme/ThemeProvider';
 import { useUnits } from '../hooks/useUnits';
 import { SaddleDiagram } from '../components/diagram/SaddleDiagram';
 import { SaddleType, solveSaddle } from '../calc/saddle';
+import { parseNumber } from '../calc/format';
 
 export function SaddleBendScreen() {
   const t = useTheme();
@@ -20,7 +21,9 @@ export function SaddleBendScreen() {
   const [depth, setDepth] = useState('');
   const [width, setWidth] = useState('');
   const [distance, setDistance] = useState('');
-  const [centerAngle, setCenterAngle] = useState(45);
+  const [angleText, setAngleText] = useState('45');
+
+  const centerAngle = parseNumber(angleText);
 
   const result = useMemo(
     () =>
@@ -80,15 +83,22 @@ export function SaddleBendScreen() {
         ) : null}
       </FieldRow>
 
+      <FieldRow>
+        <DimensionInput
+          label={type === 'three' ? 'Centre bend' : 'Offset angle'}
+          value={angleText}
+          onChangeText={setAngleText}
+          suffix="°"
+          placeholder="45"
+          readout={type === 'three' && Number.isFinite(centerAngle) ? `Side bends ${(centerAngle / 2).toFixed(2)}°` : undefined}
+        />
+      </FieldRow>
+
       <ChipRow
-        label={type === 'three' ? 'Centre bend' : 'Offset angle'}
-        options={[
-          { value: 45, label: '45°' },
-          { value: 30, label: '30°' },
-          { value: 22.5, label: '22.5°' },
-        ]}
+        label="Preset"
+        options={[10, 22.5, 30, 45, 60].map((a) => ({ value: a, label: `${a}°` }))}
         selected={centerAngle}
-        onSelect={setCenterAngle}
+        onSelect={(a) => setAngleText(String(a))}
       />
 
       <ControlRow>
@@ -99,7 +109,7 @@ export function SaddleBendScreen() {
             setDepth('');
             setWidth('');
             setDistance('');
-            setCenterAngle(45);
+            setAngleText('45');
           }}
           style={{ flex: 1 }}
         />

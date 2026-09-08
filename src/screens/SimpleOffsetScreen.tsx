@@ -13,6 +13,7 @@ import { usePipeConfig } from '../hooks/usePipeConfig';
 import { useSettings } from '../state/settings';
 import { FITTING_ANGLES } from '../calc/pipe';
 import { solveOffset } from '../calc/offset';
+import { parseNumber } from '../calc/format';
 
 export function SimpleOffsetScreen() {
   const u = useUnits();
@@ -22,9 +23,11 @@ export function SimpleOffsetScreen() {
   const [offset, setOffset] = useState('');
   const [runOverride, setRunOverride] = useState('');
   const [gap, setGap] = useState('');
-  const [fittingAngle, setFittingAngle] = useState<number>(45);
+  const [angleText, setAngleText] = useState('45');
   const [lockRun, setLockRun] = useState(false);
   const [mode, setMode] = useState<'pipe' | 'elbow'>('pipe');
+
+  const fittingAngle = parseNumber(angleText);
 
   const result = useMemo(
     () =>
@@ -49,7 +52,7 @@ export function SimpleOffsetScreen() {
     setRunOverride('');
     setGap('');
     setLockRun(false);
-    setFittingAngle(45);
+    setAngleText('45');
   };
 
   const banner =
@@ -91,6 +94,21 @@ export function SimpleOffsetScreen() {
           placeholder="0"
           readout={u.frac(u.parse(offset))}
         />
+      </FieldRow>
+
+      <FieldRow>
+        <DimensionInput
+          label="Fitting angle"
+          value={angleText}
+          onChangeText={(v) => {
+            setLockRun(false);
+            setAngleText(v);
+          }}
+          suffix="°"
+          placeholder="45"
+          editable={!lockRun}
+          readout={lockRun ? 'Solved from the run' : undefined}
+        />
         <DimensionInput
           label="Gap/joint"
           value={gap}
@@ -101,12 +119,12 @@ export function SimpleOffsetScreen() {
       </FieldRow>
 
       <ChipRow
-        label="Fitting"
+        label="Preset"
         options={FITTING_ANGLES.map((a) => ({ value: a, label: `${a}°` }))}
         selected={lockRun ? null : fittingAngle}
         onSelect={(a) => {
           setLockRun(false);
-          setFittingAngle(a);
+          setAngleText(String(a));
         }}
       />
 

@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { Screen } from '../components/Screen';
 import { HintRow } from '../components/HintRow';
 import { SectionHeader } from '../components/SectionHeader';
-import { DimensionInput, FieldRow } from '../components/DimensionInput';
+import { DerivedField, DimensionInput, FieldRow } from '../components/DimensionInput';
 import { ChipRow } from '../components/ChipRow';
 import { ControlRow, GhostButton, SelectorButton } from '../components/Buttons';
 import { FooterNote, MetaBar, ResultBanner, StatGrid, WarningBanner } from '../components/Results';
@@ -12,15 +12,17 @@ import { useUnits } from '../hooks/useUnits';
 import { usePipeConfig } from '../hooks/usePipeConfig';
 import { bendRadius, findSize } from '../calc/pipe';
 import { solveMiter } from '../calc/miter';
+import { parseNumber } from '../calc/format';
 
 export function MiterBendScreen() {
   const u = useUnits();
   const pipe = usePipeConfig();
 
-  const [totalAngle, setTotalAngle] = useState(90);
+  const [angleText, setAngleText] = useState('90');
   const [segments, setSegments] = useState(3);
   const [radiusOverride, setRadiusOverride] = useState('');
 
+  const totalAngle = parseNumber(angleText);
   const defaultRadius = bendRadius(pipe.nps, pipe.kind);
   const centerlineRadius = Number.isFinite(u.parse(radiusOverride)) ? u.parse(radiusOverride) : defaultRadius;
 
@@ -34,17 +36,22 @@ export function MiterBendScreen() {
       <HintRow text="Fabricate an elbow from straight pipe. Enter the total turn and how many segments you want; get the cut angle and the throat and back lengths for each segment." />
       <SectionHeader title="Bend" meta="Centreline geometry" />
 
+      <FieldRow>
+        <DimensionInput
+          label="Total turn"
+          value={angleText}
+          onChangeText={setAngleText}
+          suffix="°"
+          placeholder="90"
+        />
+        <DerivedField label="Cut angle" value={result.valid ? u.angle(result.cutAngle, 2) : '—'} />
+      </FieldRow>
+
       <ChipRow
-        label="Turn"
-        options={[
-          { value: 90, label: '90°' },
-          { value: 60, label: '60°' },
-          { value: 45, label: '45°' },
-          { value: 30, label: '30°' },
-          { value: 22.5, label: '22.5°' },
-        ]}
+        label="Preset"
+        options={[90, 60, 45, 30, 22.5, 11.25].map((a) => ({ value: a, label: `${a}°` }))}
         selected={totalAngle}
-        onSelect={setTotalAngle}
+        onSelect={(a) => setAngleText(String(a))}
       />
 
       <ChipRow
@@ -71,7 +78,7 @@ export function MiterBendScreen() {
           label="Clear all"
           icon="refresh-outline"
           onPress={() => {
-            setTotalAngle(90);
+            setAngleText('90');
             setSegments(3);
             setRadiusOverride('');
           }}
