@@ -9,6 +9,7 @@ import { ControlRow, GhostButton } from '../components/Buttons';
 import { FooterNote, MetaBar, ResultBanner, StatGrid } from '../components/Results';
 import { useTheme } from '../theme/ThemeProvider';
 import { useUnits } from '../hooks/useUnits';
+import { SaddleDiagram } from '../components/diagram/SaddleDiagram';
 import { SaddleType, solveSaddle } from '../calc/saddle';
 
 export function SaddleBendScreen() {
@@ -103,6 +104,18 @@ export function SaddleBendScreen() {
           style={{ flex: 1 }}
         />
       </ControlRow>
+
+      {result.valid ? (
+        <SaddleDiagram
+          marks={result.marks.map((m) => m.position)}
+          depth={u.parse(depth)}
+          width={u.parse(width)}
+          distance={u.parse(distance)}
+          angleDeg={result.sideAngle}
+          type={type}
+          depthLabel={`Depth ${u.num(u.parse(depth))}`}
+        />
+      ) : null}
 
       <ResultBanner
         label="First mark"

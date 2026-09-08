@@ -7,6 +7,7 @@ import { ChipRow } from '../components/ChipRow';
 import { ControlRow, GhostButton } from '../components/Buttons';
 import { FooterNote, MetaBar, ResultBanner, StatGrid } from '../components/Results';
 import { useUnits } from '../hooks/useUnits';
+import { BenderDiagram } from '../components/diagram/BenderDiagram';
 import { BENDER_PRESETS, solveBender } from '../calc/bender';
 import { parseNumber } from '../calc/format';
 
@@ -93,6 +94,16 @@ export function HandBenderScreen() {
           style={{ flex: 1 }}
         />
       </ControlRow>
+
+      {result.valid ? (
+        <BenderDiagram
+          angleDeg={angleValue}
+          radius={radius}
+          setbackLabel={u.num(result.setback)}
+          arcLabel={u.num(result.arcLength)}
+          angleLabel={u.angle(angleValue)}
+        />
+      ) : null}
 
       <ResultBanner
         label={result.error ? 'Cannot solve' : Number.isFinite(result.stubMark) ? 'Stub mark' : 'Setback'}

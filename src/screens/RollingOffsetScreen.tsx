@@ -7,6 +7,7 @@ import { ChipRow } from '../components/ChipRow';
 import { AccentButton, ControlRow, GhostButton, SelectorButton } from '../components/Buttons';
 import { FooterNote, MetaBar, ResultBanner, SpoolBar, StatGrid, SummaryRow, WarningBanner } from '../components/Results';
 import { PipeSheet } from '../components/PipeSheet';
+import { RollingDiagram } from '../components/diagram/RollingDiagram';
 import { useUnits } from '../hooks/useUnits';
 import { usePipeConfig } from '../hooks/usePipeConfig';
 import { useSettings } from '../state/settings';
@@ -147,6 +148,19 @@ export function RollingOffsetScreen() {
           style={{ flex: 1 }}
         />
       </ControlRow>
+
+      {result.valid ? (
+        <RollingDiagram
+          run={result.run}
+          roll={Math.abs(u.parse(roll))}
+          rise={Math.abs(u.parse(rise))}
+          angleLabel={u.angle(result.cutAngle)}
+          runLabel={u.num(result.run)}
+          riseLabel={`Rise ${u.num(Math.abs(u.parse(rise)))}`}
+          rollLabel={`Roll ${u.num(Math.abs(u.parse(roll)))}`}
+          cutLabel={u.num(result.pipeCut)}
+        />
+      ) : null}
 
       <ResultBanner
         label={pristine ? banner.label : result.error ? 'Cannot solve' : banner.label}

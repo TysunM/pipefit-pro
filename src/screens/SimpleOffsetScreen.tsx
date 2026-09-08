@@ -7,6 +7,7 @@ import { ChipRow } from '../components/ChipRow';
 import { AccentButton, ControlRow, GhostButton, SelectorButton } from '../components/Buttons';
 import { FooterNote, MetaBar, ResultBanner, SpoolBar, StatGrid, WarningBanner } from '../components/Results';
 import { PipeSheet } from '../components/PipeSheet';
+import { OffsetDiagram } from '../components/diagram/OffsetDiagram';
 import { useUnits } from '../hooks/useUnits';
 import { usePipeConfig } from '../hooks/usePipeConfig';
 import { useSettings } from '../state/settings';
@@ -133,6 +134,18 @@ export function SimpleOffsetScreen() {
           style={{ flex: 1 }}
         />
       </ControlRow>
+
+      {result.valid ? (
+        <OffsetDiagram
+          run={result.run}
+          offset={result.offset}
+          angleLabel={u.angle(result.cutAngle)}
+          offsetLabel={`Offset ${u.num(result.offset)}`}
+          runLabel={u.num(result.run)}
+          travelLabel={u.num(result.travel)}
+          cutLabel={u.num(result.pipeCut)}
+        />
+      ) : null}
 
       <ResultBanner
         label={pristine ? banner.label : result.error ? 'Cannot solve' : banner.label}

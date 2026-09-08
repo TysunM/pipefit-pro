@@ -38,6 +38,12 @@ Pipe OD and wall thickness follow ASME B36.10M. Tee and flange takeouts follow A
 
 Fitting weights are geometric estimates, not vendor catalogue figures. They are labelled as estimates in the UI.
 
+## Diagrams
+
+Five calculators draw a live 2D schematic from the values already computed — simple offset, rolling offset (isometric), saddle bend, miter bend and hand bender. They are flat `react-native-svg` primitives with no geometry engine, no 3D and no external assets: a pipe polyline, dimension lines with arrowheads and rotated labels, a deflection-angle arc and numbered bend marks, all fitted to the viewport and drawn from theme tokens so they follow light and dark.
+
+The drawing is a schematic, not a scale model. The saddle view truncates the straight lead-in (marked with a break symbol) so the bend stays legible when the obstruction is far from the conduit end. Numbers on the diagram are the same values shown in the result banner and stat grid.
+
 ## Data provenance
 
 Every number the app deducts comes from one of three places. Know which before you cut.

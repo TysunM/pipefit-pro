@@ -7,9 +7,10 @@ import { ChipRow } from '../components/ChipRow';
 import { ControlRow, GhostButton, SelectorButton } from '../components/Buttons';
 import { FooterNote, MetaBar, ResultBanner, StatGrid, WarningBanner } from '../components/Results';
 import { PipeSheet } from '../components/PipeSheet';
+import { MiterDiagram } from '../components/diagram/MiterDiagram';
 import { useUnits } from '../hooks/useUnits';
 import { usePipeConfig } from '../hooks/usePipeConfig';
-import { bendRadius } from '../calc/pipe';
+import { bendRadius, findSize } from '../calc/pipe';
 import { solveMiter } from '../calc/miter';
 
 export function MiterBendScreen() {
@@ -77,6 +78,18 @@ export function MiterBendScreen() {
           style={{ flex: 1 }}
         />
       </ControlRow>
+
+      {result.valid ? (
+        <MiterDiagram
+          totalAngle={totalAngle}
+          segments={segments}
+          radius={centerlineRadius}
+          od={findSize(pipe.nps).od}
+          cutLabel={u.angle(result.cutAngle, 2)}
+          throatLabel={u.num(result.throatLength)}
+          backLabel={u.num(result.backLength)}
+        />
+      ) : null}
 
       <ResultBanner
         label={result.error ? 'Cannot solve' : 'Cut angle'}
