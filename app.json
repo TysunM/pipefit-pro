@@ -16,7 +16,6 @@
     "android": {
       "package": "com.pipefitpro.app",
       "versionCode": 1,
-      "edgeToEdgeEnabled": true,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#FFFFFF"
@@ -36,7 +35,9 @@
           "imageWidth": 220,
           "resizeMode": "contain",
           "backgroundColor": "#FFFFFF",
-          "dark": { "backgroundColor": "#121A1F" }
+          "dark": {
+            "backgroundColor": "#121A1F"
+          }
         }
       ]
     ]
