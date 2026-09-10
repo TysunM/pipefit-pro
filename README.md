@@ -108,6 +108,28 @@ Imperial and metric. Imperial adds an optional fractional readout at 1/8, 1/16, 
 
 Fraction *entry* (`11 5/8`) is parsed by `parseNumber`. On iOS the numeric keyboard includes `/` and space. On Android the decimal pad does not, so fraction entry there requires switching `keyboardType` in `src/components/DimensionInput.tsx`.
 
+## Installing it on a phone
+
+The app runs from a laptop with `npx expo start` and Expo Go, but that needs the
+laptop. To carry it onto a job on its own, build a standalone APK with EAS:
+
+```
+npm install --global eas-cli
+eas login
+eas build --platform android --profile preview
+```
+
+The `preview` profile in `eas.json` produces a plain **APK** rather than an AAB,
+so it installs straight from a download link with no Play Store involved. When
+the build finishes EAS prints a URL and a QR code — open it on the phone,
+download, allow installs from that source once, and it lands on the home screen
+like any other app. Nothing is uploaded to a store and nothing is public.
+
+Send that same link to anyone else who wants it.
+
+Bump `android.versionCode` in `app.json` before each rebuild so Android treats
+it as an upgrade rather than refusing to install over the old one.
+
 ## Continuous integration
 
 `.github/workflows/ci.yml` runs typecheck, the full test suite and a web bundle on every pull request and on pushes to `main`, with a concurrency group so a new push supersedes an in-flight run.
