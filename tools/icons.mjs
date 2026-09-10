@@ -18,11 +18,11 @@ async function render(svg, size, file, transparent) {
   console.log(`${file.padEnd(22)} ${size}x${size}  ${(bytes/1024).toFixed(1)} KB`);
 }
 
-const SQUARE_BG = `<rect width="1024" height="1024" fill="url(#ground)"/>`;
+const SQUARE_BG = `<rect width="1024" height="1024" fill="#FFFFFF"/>`;
 // android masks the adaptive foreground to ~66% of the canvas — keep the art inside it
-await render(MARK(SQUARE_BG, 0.94), 1024, 'icon.png', false);
+await render(MARK(SQUARE_BG, 1.0), 1024, 'icon.png', false);
 await render(MARK('', 0.62), 1024, 'adaptive-icon.png', true);
-await render(MARK('', 0.78), 1024, 'splash-icon.png', true);
-await render(MARK(SQUARE_BG, 0.94), 64, 'favicon.png', false);
+await render(MARK('', 0.86), 1024, 'splash-icon.png', true);
+await render(MARK(SQUARE_BG, 1.0), 64, 'favicon.png', false);
 
 await browser.close();
