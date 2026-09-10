@@ -1,12 +1,15 @@
 import {
-  CARDINALS,
-  Cardinal,
-  SpoolSegment,
+  BEND_PRESETS,
+  MAX_LEGS,
+  START_FRAME,
+  SpoolLeg,
+  advanceFrame,
   cross,
   dot,
   len,
-  makeSegment,
-  segmentDirection,
+  makeLeg,
+  rollLabel,
+  rotateAbout,
   solveSpool,
   sub,
   unit,
@@ -19,300 +22,243 @@ const near = (a: number, b: number, tol = 1e-6) => {
   expect(Math.abs(a - b)).toBeLessThanOrEqual(tol);
 };
 const base = { nps: 2, kind: 'LR' as const, schedule: '40' as const, gap: 0 };
-const seg = (c: Cardinal, l: number, i = Math.random().toString(36).slice(2)) => makeSegment(i, c, l);
+let n = 0;
+const leg = (length: number, bend = 0, roll = 0): SpoolLeg => makeLeg(`l${(n += 1)}`, length, bend, roll);
 
-describe('direction vectors', () => {
-  test('every cardinal is a unit vector', () => {
-    for (const c of CARDINALS) near(len(segmentDirection(seg(c.id, 1))), 1);
+describe('rotateAbout', () => {
+  test('rotating about an axis preserves length', () => {
+    const v = { x: 3, y: -4, z: 5 };
+    for (const a of [0.1, 1, 2.5, 4]) near(len(rotateAbout(v, { x: 0, y: 1, z: 0 }, a)), len(v), 1e-9);
   });
-
-  test('cardinals map to the right axes', () => {
-    near(segmentDirection(seg('N', 1)).z, 1);
-    near(segmentDirection(seg('S', 1)).z, -1);
-    near(segmentDirection(seg('E', 1)).x, 1);
-    near(segmentDirection(seg('W', 1)).x, -1);
-    near(segmentDirection(seg('U', 1)).y, 1);
-    near(segmentDirection(seg('D', 1)).y, -1);
+  test('rotating a vector about itself changes nothing', () => {
+    const v = unit({ x: 1, y: 2, z: 3 });
+    const r = rotateAbout(v, v, 1.2);
+    near(len(sub(r, v)), 0, 1e-9);
   });
-
-  test('opposite cardinals negate', () => {
-    for (const [a, b] of [['N', 'S'], ['E', 'W'], ['U', 'D']] as [Cardinal, Cardinal][]) {
-      near(dot(segmentDirection(seg(a, 1)), segmentDirection(seg(b, 1))), -1);
-    }
+  test('quarter turn of X about Y gives Z', () => {
+    const r = rotateAbout({ x: 1, y: 0, z: 0 }, { x: 0, y: 1, z: 0 }, Math.PI / 2);
+    near(r.x, 0, 1e-9);
+    near(r.z, -1, 1e-9);
   });
-
-  test('polar azimuth 0 points north and 90 points east', () => {
-    const n: SpoolSegment = { id: 'a', mode: 'polar', cardinal: 'N', azimuth: 0, elevation: 0, length: 1 };
-    const e: SpoolSegment = { id: 'b', mode: 'polar', cardinal: 'N', azimuth: 90, elevation: 0, length: 1 };
-    near(segmentDirection(n).z, 1);
-    near(segmentDirection(e).x, 1, 1e-9);
-  });
-
-  test('polar elevation 90 points straight up', () => {
-    const up: SpoolSegment = { id: 'c', mode: 'polar', cardinal: 'N', azimuth: 0, elevation: 90, length: 1 };
-    near(segmentDirection(up).y, 1);
-  });
-
-  test('polar directions stay unit length across a sweep', () => {
-    for (let az = 0; az < 360; az += 17)
-      for (let el = -80; el <= 80; el += 23) {
-        const s: SpoolSegment = { id: 'x', mode: 'polar', cardinal: 'N', azimuth: az, elevation: el, length: 1 };
-        near(len(segmentDirection(s)), 1, 1e-9);
-      }
+  test('a full turn returns the original', () => {
+    const v = { x: 1, y: 2, z: -3 };
+    const r = rotateAbout(v, { x: 1, y: 1, z: 0 }, Math.PI * 2);
+    near(len(sub(r, v)), 0, 1e-9);
   });
 });
 
-describe('geometry of a simple two-run spool', () => {
-  const r = solveSpool({ ...base, segments: [seg('N', 24, 'a'), seg('U', 18, 'b')] });
+describe('frame advance', () => {
+  test('the start frame is orthonormal', () => {
+    near(len(START_FRAME.d), 1);
+    near(len(START_FRAME.n), 1);
+    near(dot(START_FRAME.d, START_FRAME.n), 0);
+  });
+
+  test('a zero bend leaves the frame alone', () => {
+    const f = advanceFrame(START_FRAME, 0, 137);
+    near(len(sub(f.d, START_FRAME.d)), 0);
+    near(len(sub(f.n, START_FRAME.n)), 0);
+  });
+
+  test('the frame stays orthonormal through any bend and roll', () => {
+    let f = START_FRAME;
+    for (const [b, r] of [[45, 0], [22.5, 90], [60, 217], [11.25, 300], [90, 45]] as [number, number][]) {
+      f = advanceFrame(f, b, r);
+      near(len(f.d), 1, 1e-9);
+      near(len(f.n), 1, 1e-9);
+      near(dot(f.d, f.n), 0, 1e-9);
+    }
+  });
+
+  test('the bend angle really is the deflection', () => {
+    for (const b of [11.25, 22.5, 30, 45, 60, 90, 120]) {
+      for (const r of [0, 37, 90, 180, 271]) {
+        const f = advanceFrame(START_FRAME, b, r);
+        const d = Math.max(-1, Math.min(1, dot(START_FRAME.d, f.d)));
+        near((Math.acos(d) * 180) / Math.PI, b, 1e-6);
+      }
+    }
+  });
+
+  test('roll 0 bends toward the frame normal, which is up', () => {
+    const f = advanceFrame(START_FRAME, 45, 0);
+    expect(f.d.y).toBeGreaterThan(0.7);
+    near(f.d.x, 0, 1e-9);
+  });
+
+  test('roll 180 bends the opposite way', () => {
+    const up = advanceFrame(START_FRAME, 45, 0);
+    const down = advanceFrame(START_FRAME, 45, 180);
+    near(up.d.y, -down.d.y, 1e-9);
+    near(up.d.z, down.d.z, 1e-9);
+  });
+
+  test('roll 90 and 270 are mirror images', () => {
+    const a = advanceFrame(START_FRAME, 45, 90);
+    const b = advanceFrame(START_FRAME, 45, 270);
+    near(a.d.x, -b.d.x, 1e-9);
+    near(a.d.y, b.d.y, 1e-9);
+  });
+
+  test('roll wraps around 360', () => {
+    const a = advanceFrame(START_FRAME, 45, 30);
+    const b = advanceFrame(START_FRAME, 45, 390);
+    near(len(sub(a.d, b.d)), 0, 1e-9);
+  });
+});
+
+describe('a two leg 90 spool', () => {
+  const r = solveSpool({ ...base, legs: [leg(36), leg(24, 90, 0)] });
 
   test('solves', () => expect(r.valid).toBe(true));
-  test('walks the points', () => {
-    near(r.points[0]!.z, 0);
-    near(r.points[1]!.z, 24);
-    near(r.points[2]!.z, 24);
-    near(r.points[2]!.y, 18);
+  test('the first leg runs along the start direction', () => {
+    near(r.points[1]!.z, 36);
+    near(r.points[1]!.y, 0);
   });
-  test('one elbow at the corner', () => expect(r.elbows).toHaveLength(1));
-  test('the elbow is 90 degrees', () => near(r.elbows[0]!.angle, 90, 1e-9));
-  test('takeoff matches the shared elbow table', () => near(r.elbows[0]!.takeoff, takeoff(2, 'LR', 90)));
-  test('each run loses one takeoff', () => {
-    near(r.runs[0]!.cutLength, 24 - takeoff(2, 'LR', 90));
-    near(r.runs[1]!.cutLength, 18 - takeoff(2, 'LR', 90));
+  test('the second leg turns up', () => {
+    near(r.points[2]!.z, 36, 1e-9);
+    near(r.points[2]!.y, 24, 1e-9);
   });
-  test('free ends deduct nothing', () => {
-    near(r.runs[0]!.takeoffStart, 0);
-    near(r.runs[1]!.takeoffEnd, 0);
+  test('one elbow, 90 degrees', () => {
+    expect(r.elbows).toHaveLength(1);
+    near(r.elbows[0]!.angle, 90);
   });
-  test('total cut is the sum of the runs', () => near(r.totalCut, r.runs[0]!.cutLength + r.runs[1]!.cutLength));
-  test('bounds cover the spool', () => {
-    near(r.bounds.size.z, 24);
-    near(r.bounds.size.y, 18);
-    near(r.bounds.size.x, 0);
+  test('each leg loses one takeoff', () => {
+    near(r.runs[0]!.cutLength, 36 - takeoff(2, 'LR', 90));
+    near(r.runs[1]!.cutLength, 24 - takeoff(2, 'LR', 90));
   });
 });
 
-describe('elbow angles for every cardinal turn', () => {
-  test('perpendicular turns are 90 degrees', () => {
-    const pairs: [Cardinal, Cardinal][] = [
-      ['N', 'U'], ['N', 'E'], ['N', 'D'], ['N', 'W'],
-      ['E', 'U'], ['E', 'D'], ['U', 'N'], ['D', 'W'],
-    ];
-    for (const [a, b] of pairs) {
-      const r = solveSpool({ ...base, segments: [seg(a, 20), seg(b, 20)] });
-      expect(r.valid).toBe(true);
-      near(r.elbows[0]!.angle, 90, 1e-9);
-    }
-  });
-
-  test('a straight continuation makes no elbow', () => {
-    const r = solveSpool({ ...base, segments: [seg('N', 10), seg('N', 10)] });
+describe('bend and roll drive the shape', () => {
+  test('a straight joint makes no elbow', () => {
+    const r = solveSpool({ ...base, legs: [leg(20), leg(20, 0, 0)] });
     expect(r.elbows).toHaveLength(0);
-    near(r.runs[0]!.cutLength, 10);
+    near(r.runs[0]!.cutLength, 20);
+    near(r.points[2]!.z, 40);
   });
 
-  test('doubling back is rejected', () => {
-    const r = solveSpool({ ...base, segments: [seg('N', 10), seg('S', 10)] });
-    expect(r.valid).toBe(false);
-    expect(r.error).toMatch(/doubles/i);
-  });
-
-  test('a 45 degree turn matches the offset solver takeoff', () => {
-    const r = solveSpool({
-      ...base,
-      segments: [
-        seg('N', 30),
-        { id: 'x', mode: 'polar', cardinal: 'N', azimuth: 45, elevation: 0, length: 30 },
-      ],
-    });
-    near(r.elbows[0]!.angle, 45, 1e-9);
-    near(r.elbows[0]!.takeoff, takeoff(2, 'LR', 45));
-  });
-});
-
-describe('a rolling offset expressed as a spool', () => {
-  const rise = 12;
-  const roll = 5;
-  const run = 36;
-  const trueOffset = Math.hypot(rise, roll);
-  const travel = Math.hypot(run, trueOffset);
-  const azimuth = 0;
-
-  const diag: SpoolSegment = {
-    id: 'd',
-    mode: 'polar',
-    cardinal: 'N',
-    azimuth: (Math.atan2(roll, run) * 180) / Math.PI,
-    elevation: (Math.asin(rise / travel) * 180) / Math.PI,
-    length: travel,
-  };
-
-  const r = solveSpool({ ...base, segments: [seg('N', 20, 'in'), diag, seg('N', 20, 'out')] });
-
-  test('solves with two elbows', () => {
-    expect(r.valid).toBe(true);
-    expect(r.elbows).toHaveLength(2);
-  });
-
-  test('the diagonal rises by the rise and rolls by the roll', () => {
-    const d = sub(r.points[2]!, r.points[1]!);
-    near(d.y, rise, 1e-6);
-    near(d.x, roll, 1e-6);
-    near(d.z, run, 1e-6);
-  });
-
-  test('both elbows share the same deflection', () => near(r.elbows[0]!.angle, r.elbows[1]!.angle, 1e-9));
-
-  test('the deflection matches atan(trueOffset / run)', () =>
-    near(r.elbows[0]!.angle, (Math.atan(trueOffset / run) * 180) / Math.PI, 1e-6));
-
-  test('the middle run loses a takeoff at both ends', () => {
-    const t = takeoff(2, 'LR', r.elbows[0]!.angle);
-    near(r.runs[1]!.cutLength, travel - 2 * t);
-  });
-
-  test('that middle cut equals the rolling offset screen result', () => {
-    near(r.runs[1]!.cutLength, 37.2249, 0.001);
-  });
-
-  test('azimuth is unused for a pure cardinal run', () => near(azimuth, 0));
-});
-
-describe('bend-plane change between successive elbows', () => {
-  test('an up-and-over keeps both elbows in one plane, so no roll', () => {
-    const r = solveSpool({ ...base, segments: [seg('N', 20), seg('U', 20), seg('N', 20)] });
-    expect(r.elbows).toHaveLength(2);
-    near(Math.abs(r.elbows[1]!.planeChangeFromPrevious), 0, 1e-6);
-  });
-
-  test('a reversing turn in the same plane still reports no roll', () => {
-    const r = solveSpool({ ...base, segments: [seg('N', 20), seg('D', 20), seg('N', 20)] });
-    near(Math.abs(r.elbows[1]!.planeChangeFromPrevious), 0, 1e-6);
-  });
-
-  test('plane change never exceeds 90 degrees, because a plane has no front', () => {
-    const dirs: Cardinal[] = ['N', 'E', 'S', 'W', 'U', 'D'];
-    for (const a of dirs)
-      for (const b of dirs)
-        for (const c of dirs) {
-          const r = solveSpool({ ...base, segments: [seg(a, 20), seg(b, 20), seg(c, 20)] });
-          if (!r.valid || r.elbows.length < 2) continue;
-          const v = r.elbows[1]!.planeChangeFromPrevious;
-          if (!Number.isFinite(v)) continue;
-          expect(v).toBeGreaterThanOrEqual(-1e-9);
-          expect(v).toBeLessThanOrEqual(90 + 1e-9);
-        }
-  });
-
-  test('two elbows in perpendicular planes roll 90 degrees', () => {
-    const r = solveSpool({ ...base, segments: [seg('N', 20), seg('U', 20), seg('E', 20)] });
-    near(Math.abs(r.elbows[1]!.planeChangeFromPrevious), 90, 1e-6);
-  });
-
-  test('the first elbow has no previous to roll from', () => {
-    const r = solveSpool({ ...base, segments: [seg('N', 20), seg('U', 20)] });
-    expect(Number.isFinite(r.elbows[0]!.planeChangeFromPrevious)).toBe(false);
-  });
-
-  test('roll normals are unit length and perpendicular to both runs', () => {
-    const r = solveSpool({ ...base, segments: [seg('N', 20), seg('U', 20), seg('E', 20)] });
-    for (let i = 0; i < r.runs.length - 1; i += 1) {
-      const n = unit(cross(r.runs[i]!.direction, r.runs[i + 1]!.direction));
-      near(len(n), 1, 1e-9);
-      near(dot(n, r.runs[i]!.direction), 0, 1e-9);
-      near(dot(n, r.runs[i + 1]!.direction), 0, 1e-9);
+  test('any bend angle is accepted, not just the presets', () => {
+    for (const b of [3.5, 17.25, 38, 52.75, 87.5, 118]) {
+      const r = solveSpool({ ...base, legs: [leg(40), leg(40, b, 0)] });
+      expect(r.valid).toBe(true);
+      near(r.elbows[0]!.angle, b);
+      near(r.elbows[0]!.takeoff, takeoff(2, 'LR', b));
     }
   });
-});
 
-describe('weld gaps and guards', () => {
-  test('a gap comes off once per welded end', () => {
-    const g = solveSpool({ ...base, gap: 0.125, segments: [seg('N', 24), seg('U', 18), seg('E', 24)] });
-    const t = takeoff(2, 'LR', 90);
-    near(g.runs[0]!.cutLength, 24 - t - 0.125);
-    near(g.runs[1]!.cutLength, 18 - 2 * t - 0.25);
-    near(g.runs[2]!.cutLength, 24 - t - 0.125);
+  test('rolling a joint keeps the same bend and cut, only the direction moves', () => {
+    const a = solveSpool({ ...base, legs: [leg(30), leg(30, 45, 0)] });
+    const b = solveSpool({ ...base, legs: [leg(30), leg(30, 45, 137)] });
+    near(a.runs[1]!.cutLength, b.runs[1]!.cutLength);
+    near(a.elbows[0]!.angle, b.elbows[0]!.angle);
+    expect(len(sub(a.points[2]!, b.points[2]!))).toBeGreaterThan(1);
   });
 
-  test('rejects an empty spool', () => expect(solveSpool({ ...base, segments: [] }).valid).toBe(false));
-  test('rejects a zero length run', () =>
-    expect(solveSpool({ ...base, segments: [seg('N', 0)] }).valid).toBe(false));
-  test('rejects a NaN length', () =>
-    expect(solveSpool({ ...base, segments: [seg('N', NaN)] }).valid).toBe(false));
-  test('rejects a run too short for its fittings', () => {
-    const r = solveSpool({ ...base, nps: 12, segments: [seg('N', 30), seg('U', 2), seg('E', 30)] });
+  test('two 45s rolled 180 apart return to the original direction', () => {
+    const r = solveSpool({ ...base, legs: [leg(20), leg(20, 45, 0), leg(20, 45, 180)] });
+    near(len(sub(unit(r.runs[2]!.direction), unit(r.runs[0]!.direction))), 0, 1e-9);
+  });
+
+  test('two 45s rolled the same way make a 90 total turn', () => {
+    const r = solveSpool({ ...base, legs: [leg(20), leg(20, 45, 0), leg(20, 45, 0)] });
+    const d = dot(unit(r.runs[0]!.direction), unit(r.runs[2]!.direction));
+    near((Math.acos(Math.max(-1, Math.min(1, d))) * 180) / Math.PI, 90, 1e-6);
+  });
+
+  test('a classic offset returns to the original line', () => {
+    const r = solveSpool({ ...base, legs: [leg(24), leg(14.1421, 45, 0), leg(24, 45, 180)] });
+    near(unit(r.runs[2]!.direction).y, 0, 1e-9);
+    near(r.points[3]!.y, 10, 1e-4);
+  });
+});
+
+describe('leg limits and guards', () => {
+  test(`accepts ${MAX_LEGS} legs`, () => {
+    const legs = Array.from({ length: MAX_LEGS }, (_, i) => leg(20, i === 0 ? 0 : 45, i * 30));
+    expect(solveSpool({ ...base, legs }).valid).toBe(true);
+  });
+  test(`rejects more than ${MAX_LEGS}`, () => {
+    const legs = Array.from({ length: MAX_LEGS + 1 }, (_, i) => leg(20, i === 0 ? 0 : 45, 0));
+    const r = solveSpool({ ...base, legs });
+    expect(r.valid).toBe(false);
+    expect(r.error).toMatch(/limited/i);
+  });
+  test('rejects an empty spool', () => expect(solveSpool({ ...base, legs: [] }).valid).toBe(false));
+  test('rejects a zero length leg', () => expect(solveSpool({ ...base, legs: [leg(0)] }).valid).toBe(false));
+  test('rejects a NaN length', () => expect(solveSpool({ ...base, legs: [leg(NaN)] }).valid).toBe(false));
+  test('rejects a 180 degree bend', () =>
+    expect(solveSpool({ ...base, legs: [leg(20), leg(20, 180, 0)] }).valid).toBe(false));
+  test('rejects a negative bend', () =>
+    expect(solveSpool({ ...base, legs: [leg(20), leg(20, -10, 0)] }).valid).toBe(false));
+  test('rejects a NaN roll', () =>
+    expect(solveSpool({ ...base, legs: [leg(20), leg(20, 45, NaN)] }).valid).toBe(false));
+  test('rejects a leg too short for its fittings', () => {
+    const r = solveSpool({ ...base, nps: 12, legs: [leg(40), leg(2, 90, 0), leg(40, 90, 0)] });
     expect(r.valid).toBe(false);
     expect(r.error).toMatch(/too short/i);
   });
-  test('rejects a polar run with no azimuth', () => {
-    const bad: SpoolSegment = { id: 'z', mode: 'polar', cardinal: 'N', azimuth: NaN, elevation: 0, length: 10 };
-    expect(solveSpool({ ...base, segments: [bad] }).valid).toBe(false);
+  test('the first leg ignores bend and roll', () => {
+    const a = solveSpool({ ...base, legs: [leg(30, 0, 0), leg(30, 45, 0)] });
+    const b = solveSpool({ ...base, legs: [leg(30, 137, 271), leg(30, 45, 0)] });
+    near(a.totalCut, b.totalCut);
+    expect(a.elbows).toHaveLength(1);
+    expect(b.elbows).toHaveLength(1);
   });
 });
 
-describe('single run spool', () => {
-  const r = solveSpool({ ...base, segments: [seg('E', 96)] });
-  test('is valid with no elbows', () => {
-    expect(r.valid).toBe(true);
-    expect(r.elbows).toHaveLength(0);
-  });
-  test('cuts the full length', () => near(r.runs[0]!.cutLength, 96));
-  test('weight matches the pipe table', () => {
-    const s = findSize(2);
-    near(r.weight, (96 / 12) * 10.6802 * s.wall['40'] * (s.od - s.wall['40']), 0.01);
-  });
-});
-
-describe('closed box walk returns to the origin', () => {
-  const r = solveSpool({
-    ...base,
-    segments: [seg('N', 24, '1'), seg('E', 24, '2'), seg('S', 24, '3'), seg('W', 24, '4')],
-  });
-  test('solves with three elbows', () => {
-    expect(r.valid).toBe(true);
-    expect(r.elbows).toHaveLength(3);
-  });
-  test('the last point lands back on the first', () => {
-    const last = r.points[r.points.length - 1]!;
-    near(len(sub(last, r.points[0]!)), 0, 1e-9);
-  });
-  test('every elbow is 90 degrees', () => {
-    for (const e of r.elbows) near(e.angle, 90, 1e-9);
-  });
-  test('all four turns lie in the horizontal plane, so no roll', () => {
-    for (const e of r.elbows.slice(1)) near(Math.abs(e.planeChangeFromPrevious), 0, 1e-6);
-  });
-});
-
-describe('scaling and units', () => {
-  test('doubling every length doubles the centre-to-centre total', () => {
-    const a = solveSpool({ ...base, segments: [seg('N', 10), seg('U', 20), seg('E', 30)] });
-    const b = solveSpool({ ...base, segments: [seg('N', 20), seg('U', 40), seg('E', 60)] });
-    near(b.totalCenterToCenter, a.totalCenterToCenter * 2);
+describe('cut list arithmetic', () => {
+  test('a weld gap comes off once per welded end', () => {
+    const g = solveSpool({ ...base, gap: 0.125, legs: [leg(36), leg(24, 90, 0), leg(30, 90, 90)] });
+    const t = takeoff(2, 'LR', 90);
+    near(g.runs[0]!.cutLength, 36 - t - 0.125);
+    near(g.runs[1]!.cutLength, 24 - 2 * t - 0.25);
+    near(g.runs[2]!.cutLength, 30 - t - 0.125);
   });
 
-  test('takeoffs do not scale with run length, so cuts are not simply doubled', () => {
-    const a = solveSpool({ ...base, segments: [seg('N', 10), seg('U', 20)] });
-    const b = solveSpool({ ...base, segments: [seg('N', 20), seg('U', 40)] });
-    expect(b.totalCut).toBeGreaterThan(a.totalCut);
-    expect(b.totalCut).not.toBeCloseTo(a.totalCut * 2, 5);
+  test('free ends deduct nothing', () => {
+    const r = solveSpool({ ...base, legs: [leg(36), leg(24, 90, 0)] });
+    near(r.runs[0]!.takeoffStart, 0);
+    near(r.runs[1]!.takeoffEnd, 0);
   });
 
-  test('a larger pipe removes more from the same spool', () => {
-    const small = solveSpool({ ...base, nps: 2, segments: [seg('N', 40), seg('U', 40)] });
-    const large = solveSpool({ ...base, nps: 8, segments: [seg('N', 40), seg('U', 40)] });
+  test('total cut is the sum of the legs', () => {
+    const r = solveSpool({ ...base, legs: [leg(36), leg(24, 90, 0), leg(30, 45, 90)] });
+    near(r.totalCut, r.runs.reduce((a, x) => a + x.cutLength, 0));
+  });
+
+  test('centre to centre is the raw sum of lengths', () => {
+    const r = solveSpool({ ...base, legs: [leg(36), leg(24, 90, 0), leg(30, 45, 90)] });
+    near(r.totalCenterToCenter, 90);
+  });
+
+  test('a larger pipe removes more', () => {
+    const small = solveSpool({ ...base, nps: 2, legs: [leg(40), leg(40, 90, 0)] });
+    const large = solveSpool({ ...base, nps: 8, legs: [leg(40), leg(40, 90, 0)] });
     expect(large.totalCut).toBeLessThan(small.totalCut);
   });
 
   test('short radius removes less than long radius', () => {
-    const lr = solveSpool({ ...base, kind: 'LR', segments: [seg('N', 40), seg('U', 40)] });
-    const sr = solveSpool({ ...base, kind: 'SR', segments: [seg('N', 40), seg('U', 40)] });
+    const lr = solveSpool({ ...base, kind: 'LR', legs: [leg(40), leg(40, 90, 0)] });
+    const sr = solveSpool({ ...base, kind: 'SR', legs: [leg(40), leg(40, 90, 0)] });
     expect(sr.totalCut).toBeGreaterThan(lr.totalCut);
+  });
+
+  test('a rolling offset reproduces the rolling offset screen cut', () => {
+    const rise = 12;
+    const roll = 5;
+    const run = 36;
+    const trueOffset = Math.hypot(rise, roll);
+    const travel = Math.hypot(run, trueOffset);
+    const bend = (Math.atan(trueOffset / run) * 180) / Math.PI;
+    const r = solveSpool({ ...base, legs: [leg(20), leg(travel, bend, 0), leg(20, bend, 180)] });
+    near(r.runs[1]!.cutLength, 37.2249, 0.001);
+    near(r.elbows[0]!.angle, 19.8558, 0.001);
   });
 });
 
-describe('elbow arc figures agree with the shared pipe module', () => {
-  test('every elbow reports the same arcs the calculators do', () => {
-    const r = solveSpool({ ...base, nps: 6, segments: [seg('N', 60), seg('U', 60), seg('E', 60)] });
+describe('elbow figures agree with the shared pipe module', () => {
+  test('arcs match for every elbow', () => {
+    const r = solveSpool({ ...base, nps: 6, legs: [leg(60), leg(60, 90, 0), leg(60, 45, 90)] });
     const od = findSize(6).od;
     for (const e of r.elbows) {
       near(e.centerlineArc, 1.5 * 6 * rad(e.angle), 1e-9);
@@ -320,5 +266,55 @@ describe('elbow arc figures agree with the shared pipe module', () => {
       near(e.backArc, (1.5 * 6 + od / 2) * rad(e.angle), 1e-9);
       near((e.throatArc + e.backArc) / 2, e.centerlineArc, 1e-9);
     }
+  });
+
+  test('elbow roll is normalised into 0 to 360', () => {
+    const r = solveSpool({ ...base, legs: [leg(20), leg(20, 45, -90), leg(20, 45, 450)] });
+    near(r.elbows[0]!.roll, 270);
+    near(r.elbows[1]!.roll, 90);
+  });
+
+  test('every bend preset resolves', () => {
+    for (const b of BEND_PRESETS) {
+      const r = solveSpool({ ...base, legs: [leg(40), leg(40, b, 0)] });
+      expect(r.valid).toBe(true);
+      near(r.elbows[0]!.angle, b);
+    }
+  });
+});
+
+describe('bounds and labels', () => {
+  test('bounds cover the walk', () => {
+    const r = solveSpool({ ...base, legs: [leg(36), leg(24, 90, 0)] });
+    near(r.bounds.size.z, 36);
+    near(r.bounds.size.y, 24);
+  });
+
+  test('roll labels read in plain words at the quarters', () => {
+    expect(rollLabel(0)).toBe('up');
+    expect(rollLabel(90)).toBe('right');
+    expect(rollLabel(180)).toBe('down');
+    expect(rollLabel(270)).toBe('left');
+    expect(rollLabel(360)).toBe('up');
+    expect(rollLabel(33)).toBe('33°');
+  });
+
+  test('a single leg spool is valid with no elbows', () => {
+    const r = solveSpool({ ...base, legs: [leg(96)] });
+    expect(r.valid).toBe(true);
+    expect(r.elbows).toHaveLength(0);
+    near(r.runs[0]!.cutLength, 96);
+  });
+
+  test('run directions stay unit length', () => {
+    const r = solveSpool({ ...base, legs: [leg(20), leg(20, 37, 63), leg(20, 52, 199), leg(20, 12, 300)] });
+    for (const run of r.runs) near(len(run.direction), 1, 1e-9);
+  });
+
+  test('consecutive run directions are perpendicular to their bend axis', () => {
+    const r = solveSpool({ ...base, legs: [leg(20), leg(20, 45, 63)] });
+    const axis = unit(cross(r.runs[0]!.direction, r.runs[1]!.direction));
+    near(dot(axis, r.runs[0]!.direction), 0, 1e-9);
+    near(dot(axis, r.runs[1]!.direction), 0, 1e-9);
   });
 });

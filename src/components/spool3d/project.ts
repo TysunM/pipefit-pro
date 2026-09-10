@@ -24,14 +24,10 @@ export function project(p: Vec3, cam: Camera): Projected {
   return { x: r.x, y: -r.y, depth: r.z };
 }
 
-export function fitSphere(
-  points: Vec3[],
-  cam: Camera,
-  width: number,
-  height: number,
-  pad: number
-): (p: Vec3) => Projected {
-  if (!points.length) return () => ({ x: width / 2, y: height / 2, depth: 0 });
+export type Fitted = { map: (p: Vec3) => Projected; scale: number };
+
+export function fitSphere(points: Vec3[], cam: Camera, width: number, height: number, pad: number): Fitted {
+  if (!points.length) return { map: () => ({ x: width / 2, y: height / 2, depth: 0 }), scale: 1 };
   const c: Vec3 = {
     x: (Math.min(...points.map((p) => p.x)) + Math.max(...points.map((p) => p.x))) / 2,
     y: (Math.min(...points.map((p) => p.y)) + Math.max(...points.map((p) => p.y))) / 2,
@@ -43,14 +39,27 @@ export function fitSphere(
   );
   const scale = Math.min(width - pad * 2, height - pad * 2) / 2 / radius;
   const pc = project(c, cam);
-  return (p: Vec3) => {
-    const pr = project(p, cam);
-    return {
-      x: (pr.x - pc.x) * scale + width / 2,
-      y: (pr.y - pc.y) * scale + height / 2,
-      depth: (pr.depth - pc.depth) * scale,
-    };
+  return {
+    scale,
+    map: (p: Vec3) => {
+      const pr = project(p, cam);
+      return {
+        x: (pr.x - pc.x) * scale + width / 2,
+        y: (pr.y - pc.y) * scale + height / 2,
+        depth: (pr.depth - pc.depth) * scale,
+      };
+    },
   };
+}
+
+export function distanceToSegment(px: number, py: number, ax: number, ay: number, bx: number, by: number): number {
+  const dx = bx - ax;
+  const dy = by - ay;
+  const l2 = dx * dx + dy * dy;
+  if (l2 < 1e-9) return Math.hypot(px - ax, py - ay);
+  let t = ((px - ax) * dx + (py - ay) * dy) / l2;
+  t = Math.max(0, Math.min(1, t));
+  return Math.hypot(px - (ax + t * dx), py - (ay + t * dy));
 }
 
 export function fitProjection(

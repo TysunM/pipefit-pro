@@ -1,10 +1,11 @@
 import React, { useMemo, useRef, useState } from 'react';
 import { PanResponder, StyleSheet, Text, View } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import Svg, { Circle, Defs, G, Line, LinearGradient, Path, RadialGradient, Stop, Text as SvgText } from 'react-native-svg';
 import { SpoolResult, Vec3 } from '../../calc/spool';
 import { useTheme } from '../../theme/ThemeProvider';
 import { pipeShades } from '../diagram/primitives';
-import { Camera, ISO_VIEW, Projected, clampPitch, fitProjection, fitSphere, project } from './project';
+import { Camera, ISO_VIEW, Projected, clampPitch, distanceToSegment, fitProjection, fitSphere, project } from './project';
 
 const W = 340;
 const H = 340;
@@ -23,19 +24,27 @@ function mix(a: string, b: string, k: number): string {
 }
 
 type Piece =
-  | { kind: 'run'; depth: number; a: Projected; b: Projected; index: number; label: string }
+  | { kind: 'run'; depth: number; a: Projected; b: Projected; index: number }
   | { kind: 'elbow'; depth: number; at: Projected; index: number };
+
+const GRAB_MS = 260;
+const GRAB_SLOP = 10;
+const HIT_PAD = 22;
 
 export function SpoolView({
   spool,
   showLabels,
   onPickRun,
   selectedRun,
+  onResizeLeg,
+  lengthLabel,
 }: {
   spool: SpoolResult;
   showLabels: boolean;
   onPickRun?: (index: number) => void;
   selectedRun?: number | null;
+  onResizeLeg?: (index: number, nextLength: number) => void;
+  lengthLabel?: (inches: number) => string;
 }) {
   const t = useTheme();
   const sh = pipeShades(t);
@@ -45,37 +54,123 @@ export function SpoolView({
   const camRef = useRef<Camera>(ISO_VIEW);
   camRef.current = cam;
 
+  const [grabbed, setGrabbed] = useState<number | null>(null);
+  const box = useRef({ w: W, h: H });
+
+  const viewScale = () => Math.min(box.current.w / W, box.current.h / H) || 1;
+  const toViewBox = (x: number, y: number) => {
+    const s = viewScale();
+    return { x: (x - (box.current.w - W * s) / 2) / s, y: (y - (box.current.h - H * s) / 2) / s };
+  };
+  const geom = useRef<{ pts: Projected[]; scale: number }>({ pts: [], scale: 1 });
+  const grab = useRef<{
+    leg: number | null;
+    timer: ReturnType<typeof setTimeout> | null;
+    startLength: number;
+    ux: number;
+    uy: number;
+    moved: boolean;
+  }>({ leg: null, timer: null, startLength: 0, ux: 1, uy: 0, moved: false });
+  const spoolRef = useRef(spool);
+  spoolRef.current = spool;
+  const resizeRef = useRef(onResizeLeg);
+  resizeRef.current = onResizeLeg;
+
+  const hitTest = (x: number, y: number): number | null => {
+    const { pts } = geom.current;
+    let best: number | null = null;
+    let bestD = HIT_PAD;
+    for (let i = 0; i < pts.length - 1; i += 1) {
+      const d = distanceToSegment(x, y, pts[i]!.x, pts[i]!.y, pts[i + 1]!.x, pts[i + 1]!.y);
+      if (d < bestD) {
+        bestD = d;
+        best = i;
+      }
+    }
+    return best;
+  };
+
+  const clearGrab = () => {
+    if (grab.current.timer) clearTimeout(grab.current.timer);
+    grab.current.timer = null;
+    grab.current.leg = null;
+    setGrabbed(null);
+  };
+
   const pan = useMemo(
     () =>
       PanResponder.create({
         onStartShouldSetPanResponder: () => true,
         onMoveShouldSetPanResponder: (_e, g) => Math.abs(g.dx) > 2 || Math.abs(g.dy) > 2,
-        onPanResponderGrant: () => {
+        onPanResponderGrant: (e) => {
           start.current = camRef.current;
+          grab.current.moved = false;
+          grab.current.leg = null;
+
+          const local = toViewBox(e.nativeEvent.locationX, e.nativeEvent.locationY);
+          const hit = hitTest(local.x, local.y);
+          if (hit !== null && resizeRef.current) {
+            grab.current.timer = setTimeout(() => {
+              if (grab.current.moved) return;
+              const pts = geom.current.pts;
+              const a = pts[hit]!;
+              const b = pts[hit + 1]!;
+              const l = Math.hypot(b.x - a.x, b.y - a.y) || 1;
+              grab.current.leg = hit;
+              grab.current.ux = (b.x - a.x) / l;
+              grab.current.uy = (b.y - a.y) / l;
+              grab.current.startLength = spoolRef.current.runs[hit]?.centerToCenter ?? 0;
+              setGrabbed(hit);
+              onPickRun?.(hit);
+              void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            }, GRAB_MS);
+          }
           setDragging(true);
         },
         onPanResponderMove: (_e, g) => {
+          if (Math.abs(g.dx) > GRAB_SLOP || Math.abs(g.dy) > GRAB_SLOP) grab.current.moved = true;
+
+          if (grab.current.leg !== null) {
+            const s = viewScale();
+            const along = ((g.dx / s) * grab.current.ux + (g.dy / s) * grab.current.uy);
+            const next = grab.current.startLength + along / (geom.current.scale || 1);
+            resizeRef.current?.(grab.current.leg, Math.max(0.5, next));
+            return;
+          }
+
+          if (grab.current.timer && !grab.current.moved) return;
+          if (grab.current.timer) {
+            clearTimeout(grab.current.timer);
+            grab.current.timer = null;
+          }
           setCam({
             yaw: start.current.yaw + g.dx * 0.011,
             pitch: clampPitch(start.current.pitch - g.dy * 0.011),
           });
         },
-        onPanResponderRelease: () => setDragging(false),
-        onPanResponderTerminate: () => setDragging(false),
+        onPanResponderRelease: () => {
+          clearGrab();
+          setDragging(false);
+        },
+        onPanResponderTerminate: () => {
+          clearGrab();
+          setDragging(false);
+        },
       }),
     []
   );
 
   const pieces = useMemo<Piece[]>(() => {
     if (!spool.valid || spool.points.length < 2) return [];
-    const map = fitSphere(spool.points, cam, W, H, 18);
-    const pts = spool.points.map(map);
+    const fitted = fitSphere(spool.points, cam, W, H, 18);
+    const pts = spool.points.map(fitted.map);
+    geom.current = { pts, scale: fitted.scale };
 
     const out: Piece[] = [];
-    spool.runs.forEach((r, i) => {
+    spool.runs.forEach((_r, i) => {
       const a = pts[i]!;
       const b = pts[i + 1]!;
-      out.push({ kind: 'run', depth: (a.depth + b.depth) / 2, a, b, index: i, label: r.label });
+      out.push({ kind: 'run', depth: (a.depth + b.depth) / 2, a, b, index: i });
     });
     spool.elbows.forEach((e, i) => {
       const at = pts[e.index]!;
@@ -106,7 +201,7 @@ export function SpoolView({
     return { O: O!, X: X!, Y: Y!, Z: Z! };
   }, [cam]);
 
-  const od = dragging ? 9 : 16;
+  const od = dragging && grabbed === null ? 9 : 16;
 
   const perpOf = (p: Extract<Piece, { kind: 'run' }>) => {
     const dx = p.b.x - p.a.x;
@@ -124,7 +219,12 @@ export function SpoolView({
         borderColor: t.colors.border,
       }}
     >
-      <View style={{ position: 'relative' }}>
+      <View
+        style={{ position: 'relative' }}
+        onLayout={(e) => {
+          box.current = { w: e.nativeEvent.layout.width, h: e.nativeEvent.layout.height };
+        }}
+      >
         <Svg width="100%" height={H} viewBox={`0 0 ${W} ${H}`}>
           <Defs>
             {pieces.map((p, i) =>
@@ -161,7 +261,7 @@ export function SpoolView({
               const l = Math.hypot(dx, dy) || 1;
               const nx = (-dy / l) * (od / 2);
               const ny = (dx / l) * (od / 2);
-              const selected = selectedRun === p.index;
+              const selected = selectedRun === p.index || grabbed === p.index;
               return (
                 <G key={i}>
                   <Path
@@ -218,7 +318,11 @@ export function SpoolView({
           paddingBottom: t.space.md,
         }}
       >
-        <Text style={[t.type.caption, { color: t.colors.textFaint }]}>Drag to rotate</Text>
+        <Text style={[t.type.caption, { color: grabbed !== null ? t.colors.accent : t.colors.textFaint }]}>
+          {grabbed !== null
+            ? `Leg ${grabbed + 1} — ${lengthLabel?.(spool.runs[grabbed]?.centerToCenter ?? 0) ?? ''}`
+            : 'Drag to rotate · hold a leg to resize'}
+        </Text>
         <Text
           style={[t.type.captionStrong, { color: t.colors.data }]}
           onPress={() => setCam(ISO_VIEW)}
