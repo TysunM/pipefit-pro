@@ -111,12 +111,12 @@ Fraction *entry* (`11 5/8`) is parsed by `parseNumber`. On iOS the numeric keybo
 ## Installing it on a phone
 
 The app runs from a laptop with `npx expo start` and Expo Go, but that needs the
-laptop. To carry it onto a job on its own, build a standalone APK with EAS:
+laptop. To carry it onto a job on its own, build a standalone APK:
 
 ```
-npm install --global eas-cli
-eas login
-eas build --platform android --profile preview
+npm ci
+npm run eas -- login
+npm run build:apk
 ```
 
 The `preview` profile in `eas.json` produces a plain **APK** rather than an AAB,
@@ -125,10 +125,13 @@ the build finishes EAS prints a URL and a QR code — open it on the phone,
 download, allow installs from that source once, and it lands on the home screen
 like any other app. Nothing is uploaded to a store and nothing is public.
 
-Send that same link to anyone else who wants it.
-
 Bump `android.versionCode` in `app.json` before each rebuild so Android treats
 it as an upgrade rather than refusing to install over the old one.
+
+**[docs/RELEASE.md](docs/RELEASE.md) is the full runbook** — signing, keystore
+backup and recovery, version rules, the config invariants that only break in a
+standalone build, and fixes for every install failure seen so far. Read it
+before the second release, and before sharing a build with anyone else.
 
 ## Continuous integration
 
