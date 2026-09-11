@@ -130,8 +130,28 @@ lets anyone ship a signed impostor of your app.
 npm run eas -- credentials
 ```
 
-The summary prints the SHA-256 fingerprint. If it ever changes unexpectedly,
-stop and investigate before distributing the build.
+Choose **Keystore → Go back** to read the summary without changing anything.
+The signing key in use as of `1.0.0` is:
+
+```
+Key alias  929650bf4f67aa37d64e7b8cdc84b162
+SHA-1      91:FF:77:12:9E:FC:40:69:4C:E2:1B:70:1A:C4:72:2F:D1:D6:B5:F6
+```
+
+A fingerprint is a public identifier — it is what Android reports to anyone
+who inspects the APK — so it is safe to keep here. The keystore file and its
+three passwords are not, and live only in a password manager.
+
+If the fingerprint ever differs from the value above, a new keystore was
+issued. **Stop.** Builds signed with it cannot update any installed copy.
+Restore the original with **Keystore → Set up a new keystore → upload** using
+the backed-up `.jks` and passwords before distributing anything.
+
+### Do not press Enter on the keystore menu
+
+`Set up a new keystore` is the first option and is highlighted by default.
+Selecting it replaces the signing key and permanently orphans every installed
+copy of the app. To back up, arrow down to **Download existing keystore**.
 
 ---
 
