@@ -10,9 +10,10 @@
     "web": "expo start --web",
     "test": "jest",
     "typecheck": "tsc --noEmit",
-    "build:apk": "eas build --platform android --profile preview",
-    "build:release": "eas build --platform android --profile production",
-    "prebuild:check": "expo prebuild --platform android --no-install --clean"
+    "build:apk": "npx --yes eas-cli@latest build --platform android --profile preview",
+    "build:release": "npx --yes eas-cli@latest build --platform android --profile production",
+    "prebuild:check": "expo prebuild --platform android --no-install --clean",
+    "eas": "npx --yes eas-cli@latest"
   },
   "dependencies": {
     "@expo-google-fonts/bitter": "^0.4.2",
