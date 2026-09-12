@@ -8,40 +8,55 @@ import { ControlRow, GhostButton } from '../components/Buttons';
 import { FooterNote, MetaBar, ResultBanner, StatGrid } from '../components/Results';
 import { useUnits } from '../hooks/useUnits';
 import { BenderDiagram } from '../components/diagram/BenderDiagram';
-import { BENDER_PRESETS, solveBender } from '../calc/bender';
+import { RADIUS_RULES, radiusFromRule, solveBender } from '../calc/bender';
+import { PIPE_SIZES, findSize } from '../calc/pipe';
 import { parseNumber } from '../calc/format';
 
 export function HandBenderScreen() {
   const u = useUnits();
-  const [presetId, setPresetId] = useState(BENDER_PRESETS[0]!.id);
+  const [nps, setNps] = useState(2);
+  const [ruleId, setRuleId] = useState(RADIUS_RULES[1]!.id);
   const [angleText, setAngleText] = useState('90');
   const [radiusOverride, setRadiusOverride] = useState('');
-  const [takeUpOverride, setTakeUpOverride] = useState('');
-  const [stub, setStub] = useState('');
+  const [springbackText, setSpringbackText] = useState('');
+  const [leg, setLeg] = useState('');
 
-  const preset = BENDER_PRESETS.find((p) => p.id === presetId) ?? BENDER_PRESETS[0]!;
-  const radius = Number.isFinite(u.parse(radiusOverride)) ? u.parse(radiusOverride) : preset.radius;
-  const takeUp = Number.isFinite(u.parse(takeUpOverride)) ? u.parse(takeUpOverride) : preset.takeUp;
+  const rule = RADIUS_RULES.find((r) => r.id === ruleId) ?? RADIUS_RULES[1]!;
+  const ruleRadius = radiusFromRule(nps, rule.multiple);
+  const radius = Number.isFinite(u.parse(radiusOverride)) ? u.parse(radiusOverride) : ruleRadius;
   const angleValue = parseNumber(angleText);
+  const springback = parseNumber(springbackText);
 
   const result = useMemo(
-    () => solveBender({ angle: angleValue, radius, takeUp, stubHeight: u.parse(stub) }),
-    [angleValue, radius, takeUp, stub, u]
+    () => solveBender({ angle: angleValue, radius, springback, legLength: u.parse(leg) }),
+    [angleValue, radius, springback, leg, u]
   );
+
+  const size = findSize(nps);
+  const marked = Number.isFinite(result.markFromEnd);
 
   return (
     <Screen>
-      <HintRow text="Any angle, any tool. Enter the bend angle and radius; get setback, arc length and gain so your marks land where you want them." />
+      <HintRow text="Any angle, any radius. Enter the bend and get setback, arc length and gain so your marks land where you want them." />
       <SectionHeader title="Bend" meta="Free angle" />
 
       <ChipRow
-        label="Tool"
-        options={BENDER_PRESETS.map((p) => ({ value: p.id, label: p.label }))}
-        selected={presetId}
-        onSelect={(id) => {
-          setPresetId(id);
+        label="Size"
+        options={PIPE_SIZES.map((s) => ({ value: s.nps, label: s.label }))}
+        selected={nps}
+        onSelect={(v) => {
+          setNps(v);
           setRadiusOverride('');
-          setTakeUpOverride('');
+        }}
+      />
+
+      <ChipRow
+        label="Radius"
+        options={RADIUS_RULES.map((r) => ({ value: r.id, label: r.label }))}
+        selected={ruleId}
+        onSelect={(id) => {
+          setRuleId(id);
+          setRadiusOverride('');
         }}
       />
 
@@ -52,14 +67,14 @@ export function HandBenderScreen() {
           value={radiusOverride}
           onChangeText={setRadiusOverride}
           suffix={u.suffix}
-          placeholder={u.num(preset.radius)}
+          placeholder={u.num(ruleRadius)}
         />
         <DimensionInput
-          label="Take-up"
-          value={takeUpOverride}
-          onChangeText={setTakeUpOverride}
-          suffix={u.suffix}
-          placeholder={u.num(preset.takeUp)}
+          label="Springback"
+          value={springbackText}
+          onChangeText={setSpringbackText}
+          suffix="°"
+          placeholder="0"
         />
       </FieldRow>
 
@@ -72,12 +87,12 @@ export function HandBenderScreen() {
 
       <FieldRow>
         <DimensionInput
-          label="Stub height"
-          value={stub}
-          onChangeText={setStub}
+          label="Leg length"
+          value={leg}
+          onChangeText={setLeg}
           suffix={u.suffix}
           placeholder="0"
-          readout={u.frac(u.parse(stub))}
+          readout={u.frac(u.parse(leg))}
         />
       </FieldRow>
 
@@ -88,8 +103,8 @@ export function HandBenderScreen() {
           onPress={() => {
             setAngleText('90');
             setRadiusOverride('');
-            setTakeUpOverride('');
-            setStub('');
+            setSpringbackText('');
+            setLeg('');
           }}
           style={{ flex: 1 }}
         />
@@ -106,25 +121,33 @@ export function HandBenderScreen() {
       ) : null}
 
       <ResultBanner
-        label={result.error ? 'Cannot solve' : Number.isFinite(result.stubMark) ? 'Stub mark' : 'Setback'}
+        label={result.error ?? result.legError ? 'Cannot solve' : marked ? 'Mark from end' : 'Setback'}
         value={
           result.error
             ? result.error
-            : Number.isFinite(result.stubMark)
-              ? `${u.num(result.stubMark)} ${u.unitName}`
-              : `${u.num(result.setback)} ${u.unitName}`
+            : result.legError
+              ? result.legError
+              : marked
+                ? `${u.num(result.markFromEnd)} ${u.unitName}`
+                : `${u.num(result.setback)} ${u.unitName}`
         }
         hint={
-          result.valid
-            ? Number.isFinite(result.stubMark)
-              ? `Stub height minus take-up ${u.num(takeUp)} ${u.unitName} · Setback ${u.num(result.setback)} ${u.unitName}`
+          result.error || result.legError
+            ? undefined
+            : marked
+              ? `Leg minus setback ${u.num(result.setback)} ${u.unitName} · Arc ${u.num(result.arcLength)} ${u.unitName}`
               : `Measure back from the point of intersection · Arc ${u.num(result.arcLength)} ${u.unitName}`
-            : undefined
         }
-        tone={result.error ? 'error' : 'default'}
+        tone={result.error || result.legError ? 'error' : 'default'}
       />
 
-      <MetaBar text={`${preset.label} · ${preset.note} · R ${u.num(radius)} ${u.unitName}`} />
+      <MetaBar
+        text={`${size.label} · ${rule.label} ${rule.note} · R ${u.num(radius)} ${u.unitName}${
+          Number.isFinite(result.overbendAngle) && result.overbendAngle !== angleValue
+            ? ` · bend to ${u.angle(result.overbendAngle)}`
+            : ''
+        }`}
+      />
 
       <StatGrid
         stats={[
@@ -135,7 +158,7 @@ export function HandBenderScreen() {
         ]}
       />
 
-      <FooterNote text="Setback is R·tan(θ/2); arc length is R·θ. Take-up values are tool-specific — confirm against the marks stamped on your bender." />
+      <FooterNote text="Setback is R·tan(θ/2); arc length is R·θ. Radius rules are multiples of nominal size — confirm the die you are using and the minimum radius the line spec allows. Springback varies with material, wall and temperature; enter what your own test bend gave you." />
     </Screen>
   );
 }

@@ -67,7 +67,7 @@ export function RootNavigator() {
         <Stack.Screen name="SaddleBend" component={SaddleBendScreen} options={{ title: 'Saddle bend' }} />
         <Stack.Screen name="MiterBend" component={MiterBendScreen} options={{ title: 'Miter bend' }} />
         <Stack.Screen name="ThreadEngagement" component={ThreadEngagementScreen} options={{ title: 'Thread engagement' }} />
-        <Stack.Screen name="HandBender" component={HandBenderScreen} options={{ title: 'Hand bender' }} />
+        <Stack.Screen name="HandBender" component={HandBenderScreen} options={{ title: 'Pipe bend' }} />
         <Stack.Screen name="SpoolBuilder" component={SpoolBuilderScreen} options={{ title: '3D spool' }} />
         <Stack.Screen name="Settings" component={SettingsScreen} options={{ title: 'Settings' }} />
       </Stack.Navigator>

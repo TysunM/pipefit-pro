@@ -24,7 +24,7 @@ const CALCULATORS: {
   { route: 'SaddleBend', title: 'Saddle bend', subtitle: 'Three and four point conduit saddles', icon: 'trending-up-outline' },
   { route: 'MiterBend', title: 'Miter bend', subtitle: 'Segmented elbow cuts, code checked', icon: 'triangle-outline' },
   { route: 'ThreadEngagement', title: 'Thread engagement', subtitle: 'NPT makeup, takeout and tap drill', icon: 'options-outline' },
-  { route: 'HandBender', title: 'Hand bender', subtitle: 'Setback, arc length and gain', icon: 'analytics-outline' },
+  { route: 'HandBender', title: 'Pipe bend', subtitle: 'Setback, arc length and gain', icon: 'analytics-outline' },
 ];
 
 export function HomeScreen({ navigation }: Props) {
