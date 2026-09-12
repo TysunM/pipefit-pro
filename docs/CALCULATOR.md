@@ -26,6 +26,7 @@ left unimplemented rather than filled with plausible numbers.
 | Angle/Slope, Offset, Run, Travel | `calc/triangle.ts` | Any two of four solve the rest |
 | Documented defaults | `calc/defaults.ts` | Appendix B and C |
 | Full keypad map | `calc/keys.ts` | 40 keys, every shift bound |
+| Keypad screen | `screens/CalculatorScreen.tsx` | LCD with unit word and annunciators, Conv shift layer |
 | Pipe dimensions, steel and stainless | `calc/pipeData.ts` | Sch 40, 80, 120, Std, XS, 40S, 80S; bore area, weight, filled weight, capacity |
 | Framing square layout | `calc/square.ts` | Pitch, rise on a twelve inch run, angle, travel multiplier |
 
@@ -33,7 +34,6 @@ left unimplemented rather than filled with plausible numbers.
 
 | Function | Guide | Blocker |
 |---|---|---|
-| Keypad UI | — | Next piece of work |
 | Pipe Size key | p22, App. A | Data now present for steel schedules 40, 80, 120, Std and XS, and stainless 40S and 80S. Copper and plastic still need their tables. |
 | Pipe Material and Pipe Type keys | p21, p23 | Menus are encoded; selecting one needs the data above |
 | Elbow Type | p23 | Long radius butt weld is the default; short radius and threaded need take-out values |

@@ -17,6 +17,7 @@ const CALCULATORS: {
   subtitle: string;
   icon: keyof typeof Ionicons.glyphMap;
 }[] = [
+  { route: 'Calculator', title: 'Calculator', subtitle: 'Feet, inches and fractions with pipe keys', icon: 'calculator-outline' },
   { route: 'SpoolBuilder', title: '3D spool', subtitle: 'Build a run and spin it in 3D', icon: 'cube-outline' },
   { route: 'SimpleOffset', title: 'Simple offset', subtitle: 'Travel, run and shrink in one plane', icon: 'git-branch-outline' },
   { route: 'RollingOffset', title: 'Rolling offset', subtitle: 'True offset and roll angle in two planes', icon: 'sync-outline' },

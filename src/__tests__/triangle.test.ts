@@ -199,3 +199,39 @@ describe('keypad map', () => {
     for (const k of provisionalKeys()) expect(k.note!.length).toBeGreaterThan(20);
   });
 });
+
+describe('the handbook worked examples', () => {
+  // The handbook names the hypotenuse a and the legs b and c, with angle B
+  // opposite b. That maps onto travel, offset and run, with the angle taken
+  // from the offset over the run.
+
+  test('hypotenuse 22 at 41 degrees', () => {
+    const s = solveTriangle({ field: 'travel', value: 22 }, { field: 'angle', value: 49 });
+    near(s.run, 14.4333, 1e-4);
+    // The book prints this leg as 16.50. It is 22 cos 41, which is 16.6036,
+    // and the book's own cosine table gives 0.75471 for 41 degrees.
+    near(s.offset, 16.6036, 1e-4);
+    near(90 - s.angle, 41, 1e-9);
+  });
+
+  test('leg 12 at 65 degrees', () => {
+    // The book's angle C sits opposite the leg c, so the angle taken from the
+    // offset over the run is its complement.
+    const s = solveTriangle({ field: 'run', value: 12 }, { field: 'angle', value: 25 });
+    near(s.travel, 13.2405, 1e-4);
+    near(s.offset, 5.5957, 1e-4);
+    near(90 - s.angle, 65, 1e-9);
+  });
+
+  test('legs 36 and 15', () => {
+    const s = solveTriangle({ field: 'offset', value: 36 }, { field: 'run', value: 15 });
+    near(s.travel, 39, 1e-12);
+    near(s.angle, 67.3801, 1e-4);
+  });
+
+  test('hypotenuse 25 and leg 20', () => {
+    const s = solveTriangle({ field: 'travel', value: 25 }, { field: 'run', value: 20 });
+    near(s.offset, 15, 1e-12);
+    near(s.angle, 36.8699, 1e-4);
+  });
+});
