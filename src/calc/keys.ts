@@ -11,6 +11,7 @@ export type KeyAction =
   | 'recall' | 'memoryClear' | 'gpm' | 'litrePerSecond' | 'celsius' | 'subtract' | 'sign'
   | 'memoryPlus' | 'memoryMinus' | 'dms' | 'equals' | 'add' | 'pi'
   | 'digit' | 'dot'
+  | 'backspace'
   | 'unassigned';
 
 export type Key = {
