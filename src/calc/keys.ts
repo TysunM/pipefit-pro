@@ -5,9 +5,9 @@ export type KeyAction =
   | 'tangent' | 'arcTangent' | 'pipeSize' | 'pipe'
   | 'openParen' | 'flow' | 'closeParen' | 'velocity' | 'circle' | 'pressure'
   | 'square' | 'force' | 'squareRoot' | 'area'
-  | 'mm' | 'metre' | 'feet' | 'inch' | 'slash' | 'kilo' | 'clear' | 'percent'
+  | 'mm' | 'metre' | 'feet' | 'inch' | 'slash' | 'kilogram' | 'clear' | 'percent'
   | 'conv' | 'pound' | 'gallon' | 'litre' | 'divide' | 'reciprocal'
-  | 'store' | 'prefs' | 'cubicFeet' | 'cubicYard' | 'fahrenheit' | 'multiply' | 'clearAll'
+  | 'store' | 'prefs' | 'cubicFeetPerMinute' | 'cubicFeetPerSecond' | 'fahrenheit' | 'multiply' | 'clearAll'
   | 'recall' | 'memoryClear' | 'gpm' | 'litrePerSecond' | 'celsius' | 'subtract' | 'sign'
   | 'memoryPlus' | 'memoryMinus' | 'dms' | 'equals' | 'add' | 'pi'
   | 'digit' | 'dot'
@@ -27,7 +27,10 @@ export type Key = {
 export const KEYPAD: Key[][] = [
   [
     { label: 'Angle/\nSlope', action: 'angleSlope', shiftLabel: 'T.O./Arc', shiftAction: 'takeoutArc', tone: 'trade' },
-    { label: 'Offset', action: 'offset', shiftLabel: "Welder's", shiftAction: 'welders', tone: 'trade' },
+    {
+      label: 'Offset', action: 'offset', shiftLabel: "Welder's", shiftAction: 'welders', tone: 'trade',
+      note: "Welder's Gap is a setting, not a computation: the gap subtracted from an end-to-end length. Default 1/8 inch; zero is valid.",
+    },
     { label: 'Run', action: 'run', shiftLabel: 'Cutback', shiftAction: 'cutback', tone: 'trade' },
     { label: 'Travel', action: 'travel', shiftLabel: 'Roll', shiftAction: 'roll', tone: 'trade' },
     { label: "Pipe\nMat'l", action: 'pipeMaterial', shiftLabel: 'Elbow', shiftAction: 'elbow', tone: 'trade' },
@@ -50,7 +53,7 @@ export const KEYPAD: Key[][] = [
     { label: 'mm', action: 'mm', shiftLabel: 'm', shiftAction: 'metre', tone: 'unit' },
     { label: 'Feet', action: 'feet', tone: 'unit' },
     { label: 'Inch', action: 'inch', tone: 'unit' },
-    { label: '/', action: 'slash', shiftLabel: 'k', shiftAction: 'kilo', tone: 'unit' },
+    { label: '/', action: 'slash', shiftLabel: 'kg', shiftAction: 'kilogram', tone: 'unit' },
     { label: 'Clear', action: 'clear', shiftLabel: '%', shiftAction: 'percent', tone: 'clear' },
   ],
   [
@@ -62,14 +65,8 @@ export const KEYPAD: Key[][] = [
   ],
   [
     { label: 'Store', action: 'store', shiftLabel: 'Prefs', shiftAction: 'prefs', tone: 'operator' },
-    {
-      label: '4', action: 'digit', arg: '4', shiftLabel: 'cu ft', shiftAction: 'cubicFeet', tone: 'digit',
-      note: 'the housing prints "cf" over both 4 and 5; confirm which is cubic feet and which is cubic yards',
-    },
-    {
-      label: '5', action: 'digit', arg: '5', shiftLabel: 'cu yd', shiftAction: 'cubicYard', tone: 'digit',
-      note: 'provisional — see the note on 4',
-    },
+    { label: '4', action: 'digit', arg: '4', shiftLabel: 'cfm', shiftAction: 'cubicFeetPerMinute', tone: 'digit' },
+    { label: '5', action: 'digit', arg: '5', shiftLabel: 'cfs', shiftAction: 'cubicFeetPerSecond', tone: 'digit' },
     { label: '6', action: 'digit', arg: '6', shiftLabel: '°F', shiftAction: 'fahrenheit', tone: 'digit' },
     { label: '×', action: 'multiply', shiftLabel: 'Clear all', shiftAction: 'clearAll', tone: 'operator' },
   ],

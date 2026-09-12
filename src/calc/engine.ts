@@ -1,12 +1,12 @@
 import {
   Dim, DimError, add, arcCosine, arcSine, arcTangent, cosine, dim, divide, fromBase,
   multiply, negate, power, reciprocal, sine, square, squareRoot, subtract, tangent,
-  toBase, findUnit, type UnitKind,
+  toBase, findUnit, kindLabel, type UnitKind,
 } from './dim';
 import {
-  Entry, emptyEntry, entryDisplay, entryHasDimension, entryValue, formatFeetInch,
-  isEntryEmpty, pressBackspace, pressDigit, pressDot, pressFeet, pressInch, pressSign,
-  pressSlash, type FracDen,
+  Entry, emptyEntry, entryDisplay, entryExponent, entryUnit, entryUnitWord, entryValue,
+  formatFeetInch, isEntryEmpty, pressBackspace, pressDigit, pressDot, pressFeet, pressInch,
+  pressMetre, pressMillimetre, pressSign, pressSlash, type FracDen,
 } from './ftin';
 import type { KeyAction } from './keys';
 
@@ -30,7 +30,8 @@ export type CalcState = {
   operators: BinaryOp[];
   frames: Frame[];
   memory: Dim;
-  store: Dim | null;
+  registers: Record<string, Dim>;
+  pending: 'store' | 'recall' | null;
   shift: boolean;
   error: string | null;
   displayUnit: Partial<Record<UnitKind, string>>;
@@ -45,7 +46,8 @@ export const initialState = (den: FracDen = 16): CalcState => ({
   operators: [],
   frames: [],
   memory: dim(0, 'scalar'),
-  store: null,
+  registers: {},
+  pending: null,
   shift: false,
   error: null,
   displayUnit: {},
@@ -55,17 +57,23 @@ export const initialState = (den: FracDen = 16): CalcState => ({
 
 const UNIT_KEY: Partial<Record<KeyAction, string>> = {
   pound: 'lb',
+  kilogram: 'kg',
   gallon: 'gal',
   litre: 'l',
-  cubicFeet: 'ft3',
-  cubicYard: 'yd3',
+  cubicFeetPerMinute: 'cfm',
+  cubicFeetPerSecond: 'cfs',
   fahrenheit: 'f',
   celsius: 'c',
   gpm: 'gpm',
   litrePerSecond: 'lps',
-  metre: 'm',
-  mm: 'mm',
 };
+
+const EXPONENT_KIND: Record<1 | 2 | 3, UnitKind> = { 1: 'linear', 2: 'area', 3: 'volume' };
+
+const LINEAR_KEY: Partial<Record<KeyAction, string>> = { feet: 'ft', inch: 'in', mm: 'mm', metre: 'm' };
+
+const AREA_OF: Record<string, string> = { in: 'in2', ft: 'ft2', mm: 'mm2', m: 'm2' };
+const VOLUME_OF: Record<string, string> = { in: 'in3', ft: 'ft3', mm: 'mm3', m: 'm3' };
 
 const UNARY: Partial<Record<KeyAction, (d: Dim) => Dim>> = {
   square,
@@ -83,7 +91,15 @@ function current(s: CalcState): Dim | null {
   if (!isEntryEmpty(s.entry)) {
     const v = entryValue(s.entry);
     if (!Number.isFinite(v)) return null;
-    return dim(v, entryHasDimension(s.entry) ? 'linear' : 'scalar');
+
+    const unit = entryUnit(s.entry);
+    if (!unit) return dim(v, 'scalar');
+
+    const exp = entryExponent(s.entry);
+    if (exp === 1) return toBase(v, unit);
+    const id = exp === 2 ? AREA_OF[unit] : VOLUME_OF[unit];
+    if (!id) return null;
+    return toBase(v, id);
   }
   return s.acc;
 }
@@ -108,15 +124,17 @@ function reduceWhile(operands: Dim[], operators: BinaryOp[], minPrecedence: numb
   }
 }
 
-const cleared = (s: CalcState): CalcState => ({
+const cleared = (s: CalcState, all = false): CalcState => ({
   ...s,
   entry: emptyEntry(),
   acc: null,
   operands: [],
   operators: [],
   frames: [],
+  pending: null,
   shift: false,
   error: null,
+  ...(all ? { memory: dim(0, 'scalar'), registers: {} } : {}),
 });
 
 function withValue(s: CalcState, value: Dim): CalcState {
@@ -138,8 +156,28 @@ export function press(state: CalcState, action: KeyAction, arg?: string): CalcSt
       case 'conv':
         return { ...s, shift: !s.shift, error: null };
 
-      case 'digit':
-        return { ...s, entry: pressDigit(s.entry, arg ?? '0'), acc: null, shift: false, error: null };
+      case 'digit': {
+        const d = arg ?? '0';
+        if (s.pending && d >= '1' && d <= '9') {
+          if (s.pending === 'store') {
+            const v = current(s);
+            if (!v) return fail(s, 'Enter a value first.');
+            return {
+              ...s,
+              registers: { ...s.registers, [d]: v },
+              pending: null,
+              entry: emptyEntry(),
+              acc: v,
+              shift: false,
+              error: null,
+            };
+          }
+          const held = s.registers[d];
+          if (!held) return { ...fail(s, `Memory register ${d} is empty.`), pending: null };
+          return { ...withValue(s, held), pending: null };
+        }
+        return { ...s, entry: pressDigit(s.entry, d), acc: null, pending: null, shift: false, error: null };
+      }
 
       case 'dot':
         return { ...s, entry: pressDot(s.entry), acc: null, shift: false, error: null };
@@ -148,10 +186,31 @@ export function press(state: CalcState, action: KeyAction, arg?: string): CalcSt
         return { ...s, entry: pressSlash(s.entry), shift: false, error: null };
 
       case 'feet':
-        return { ...s, entry: pressFeet(s.entry), shift: false, error: null };
-
       case 'inch':
-        return { ...s, entry: pressInch(s.entry), shift: false, error: null };
+      case 'mm':
+      case 'metre': {
+        const base = LINEAR_KEY[action]!;
+
+        // With nothing being typed, a dimension key restates the value on
+        // display in that unit rather than starting a new entry.
+        if (isEntryEmpty(s.entry) && s.acc) {
+          const kind = s.acc.kind;
+          const id =
+            kind === 'linear' ? base : kind === 'area' ? AREA_OF[base] : kind === 'volume' ? VOLUME_OF[base] : undefined;
+          if (!id) return fail(s, `Cannot read ${kindLabel(kind)} in ${findUnit(base).label}.`);
+          return { ...s, displayUnit: { ...s.displayUnit, [kind]: id }, shift: false, error: null };
+        }
+
+        const entry =
+          action === 'feet'
+            ? pressFeet(s.entry)
+            : action === 'inch'
+              ? pressInch(s.entry)
+              : action === 'mm'
+                ? pressMillimetre(s.entry)
+                : pressMetre(s.entry);
+        return { ...s, entry, shift: false, error: null };
+      }
 
       case 'sign': {
         if (!isEntryEmpty(s.entry)) return { ...s, entry: pressSign(s.entry), shift: false, error: null };
@@ -177,7 +236,7 @@ export function press(state: CalcState, action: KeyAction, arg?: string): CalcSt
         return cleared(s);
 
       case 'clearAll':
-        return cleared(s);
+        return cleared(s, true);
 
       case 'pi':
         return withValue(s, dim(Math.PI, 'scalar'));
@@ -248,27 +307,31 @@ export function press(state: CalcState, action: KeyAction, arg?: string): CalcSt
       case 'store': {
         const v = current(s);
         if (!v) return fail(s, 'Enter a value first.');
-        return { ...s, store: v, shift: false, error: null };
+        return { ...s, pending: 'store', shift: false, error: null };
       }
 
       case 'recall':
-        if (!s.store) return fail(s, 'Nothing stored.');
-        return withValue(s, s.store);
+        if (shifted) return { ...s, memory: dim(0, 'scalar'), pending: null, shift: false, error: null };
+        if (s.pending === 'recall') {
+          return { ...s, memory: dim(0, 'scalar'), pending: null, shift: false, error: null };
+        }
+        return { ...s, pending: 'recall', shift: false, error: null };
 
       case 'memoryPlus': {
+        if (s.pending === 'recall') return { ...withValue(s, s.memory), pending: null };
         const v = current(s);
         if (!v) return fail(s, 'Enter a value first.');
-        return { ...s, memory: add(s.memory, v), shift: false, error: null };
+        return { ...s, memory: add(s.memory, v), pending: null, shift: false, error: null };
       }
 
       case 'memoryMinus': {
         const v = current(s);
         if (!v) return fail(s, 'Enter a value first.');
-        return { ...s, memory: subtract(s.memory, v), shift: false, error: null };
+        return { ...s, memory: subtract(s.memory, v), pending: null, shift: false, error: null };
       }
 
       case 'memoryClear':
-        return { ...s, memory: dim(0, 'scalar'), shift: false, error: null };
+        return { ...s, memory: dim(0, 'scalar'), pending: null, shift: false, error: null };
 
       case 'dms':
         return { ...s, dmsMode: !s.dmsMode, shift: false, error: null };
@@ -339,8 +402,10 @@ export function formatDim(d: Dim, state: CalcState): string {
     return state.dmsMode ? formatDms(d.value) : `${d.value.toFixed(4).replace(/0+$/, '').replace(/\.$/, '')}°`;
   }
 
+  // The device carries seven decimal places and trims trailing zeros, which
+  // is why its manual prints pi as 3.1415927 rather than 3.141592654.
   if (d.kind === 'scalar') {
-    return `${Number(d.value.toFixed(9))}`;
+    return `${Number(d.value.toFixed(7))}`;
   }
 
   const unitId = state.displayUnit[d.kind];

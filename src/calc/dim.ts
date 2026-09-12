@@ -45,6 +45,7 @@ export const UNITS: UnitDef[] = [
   { id: 'yd3', kind: 'volume', label: 'cu yard', perBase: 46656 },
   { id: 'gal', kind: 'volume', label: 'gallon', perBase: IN3_PER_GALLON },
   { id: 'l', kind: 'volume', label: 'litre', perBase: IN3_PER_LITRE },
+  { id: 'mm3', kind: 'volume', label: 'cu mm', perBase: 1 / MM3_PER_IN3 },
   { id: 'm3', kind: 'volume', label: 'cu m', perBase: IN_PER_METRE ** 3 },
   { id: 'bbl', kind: 'volume', label: 'barrel', perBase: IN3_PER_GALLON * 42 },
 
