@@ -688,7 +688,7 @@ describe('thread engagement', () => {
 });
 
 describe('pipe bend', () => {
-  const r = solveBender({ angle: 90, radius: 4, springback: 0, legLength: 12 });
+  const r = solveBender({ angle: 90, radius: 4, springback: 0, legLength: 12, legLengthB: NaN, stockLength: NaN });
 
   test('setback at 90 equals the radius', () => near(r.setback, 4, 1e-9));
   test('arc length is R theta', () => near(r.arcLength, 4 * rad(90), 1e-9));
@@ -697,7 +697,7 @@ describe('pipe bend', () => {
 
   test('gain is positive at every practical angle', () => {
     for (const a of [5, 10, 22.5, 30, 45, 60, 90, 120, 170]) {
-      const b = solveBender({ angle: a, radius: 6, springback: 0, legLength: NaN });
+      const b = solveBender({ angle: a, radius: 6, springback: 0, legLength: NaN, legLengthB: NaN, stockLength: NaN });
       expect(b.gain).toBeGreaterThan(0);
     }
   });
@@ -706,7 +706,7 @@ describe('pipe bend', () => {
     let lastSetback = 0;
     let lastArc = 0;
     for (const a of [10, 22.5, 30, 45, 60, 90]) {
-      const b = solveBender({ angle: a, radius: 5, springback: 0, legLength: NaN });
+      const b = solveBender({ angle: a, radius: 5, springback: 0, legLength: NaN, legLengthB: NaN, stockLength: NaN });
       expect(b.setback).toBeGreaterThan(lastSetback);
       expect(b.arcLength).toBeGreaterThan(lastArc);
       lastSetback = b.setback;
@@ -717,14 +717,14 @@ describe('pipe bend', () => {
   test('setback matches the elbow takeoff formula', () => {
     for (const s of PIPE_SIZES.slice(0, 8))
       for (const a of ANGLES) {
-        const b = solveBender({ angle: a, radius: bendRadius(s.nps, 'LR'), springback: 0, legLength: NaN });
+        const b = solveBender({ angle: a, radius: bendRadius(s.nps, 'LR'), springback: 0, legLength: NaN, legLengthB: NaN, stockLength: NaN });
         near(b.setback, takeoff(s.nps, 'LR', a), 1e-9);
       }
   });
 
   test('doubling the radius doubles setback, arc and gain', () => {
-    const a = solveBender({ angle: 45, radius: 4, springback: 0, legLength: NaN });
-    const b = solveBender({ angle: 45, radius: 8, springback: 0, legLength: NaN });
+    const a = solveBender({ angle: 45, radius: 4, springback: 0, legLength: NaN, legLengthB: NaN, stockLength: NaN });
+    const b = solveBender({ angle: 45, radius: 8, springback: 0, legLength: NaN, legLengthB: NaN, stockLength: NaN });
     near(b.setback, a.setback * 2, 1e-9);
     near(b.arcLength, a.arcLength * 2, 1e-9);
     near(b.gain, a.gain * 2, 1e-9);
@@ -735,7 +735,7 @@ describe('pipe bend', () => {
       for (const s of PIPE_SIZES) {
         const R = radiusFromRule(s.nps, rule.multiple);
         near(R, s.nps * rule.multiple, 1e-12);
-        expect(solveBender({ angle: 90, radius: R, springback: 0, legLength: NaN }).valid).toBe(true);
+        expect(solveBender({ angle: 90, radius: R, springback: 0, legLength: NaN, legLengthB: NaN, stockLength: NaN }).valid).toBe(true);
       }
   });
 
@@ -744,48 +744,48 @@ describe('pipe bend', () => {
   });
 
   test('springback is added to the bend angle, never subtracted', () => {
-    near(solveBender({ angle: 90, radius: 4, springback: 2.5, legLength: NaN }).overbendAngle, 92.5, 1e-9);
-    near(solveBender({ angle: 45, radius: 4, springback: 0, legLength: NaN }).overbendAngle, 45, 1e-9);
+    near(solveBender({ angle: 90, radius: 4, springback: 2.5, legLength: NaN, legLengthB: NaN, stockLength: NaN }).overbendAngle, 92.5, 1e-9);
+    near(solveBender({ angle: 45, radius: 4, springback: 0, legLength: NaN, legLengthB: NaN, stockLength: NaN }).overbendAngle, 45, 1e-9);
   });
 
   test('a blank springback is treated as none, not as an error', () => {
-    const b = solveBender({ angle: 90, radius: 4, springback: NaN, legLength: NaN });
+    const b = solveBender({ angle: 90, radius: 4, springback: NaN, legLength: NaN, legLengthB: NaN, stockLength: NaN });
     expect(b.valid).toBe(true);
     near(b.overbendAngle, 90, 1e-9);
   });
 
   test('a negative springback gives no overbend target', () =>
-    expect(Number.isFinite(solveBender({ angle: 90, radius: 4, springback: -3, legLength: NaN }).overbendAngle)).toBe(false));
+    expect(Number.isFinite(solveBender({ angle: 90, radius: 4, springback: -3, legLength: NaN, legLengthB: NaN, stockLength: NaN }).overbendAngle)).toBe(false));
 
   test('mark is absent when no leg length is given', () => {
-    const b = solveBender({ angle: 90, radius: 4, springback: 0, legLength: NaN });
+    const b = solveBender({ angle: 90, radius: 4, springback: 0, legLength: NaN, legLengthB: NaN, stockLength: NaN });
     expect(Number.isFinite(b.markFromEnd)).toBe(false);
     expect(b.legError).toBeUndefined();
   });
 
   test('a leg shorter than the setback is refused, never silently marked', () => {
-    const b = solveBender({ angle: 90, radius: 6, springback: 0, legLength: 4 });
+    const b = solveBender({ angle: 90, radius: 6, springback: 0, legLength: 4, legLengthB: NaN, stockLength: NaN });
     expect(b.legError).toMatch(/shorter/i);
     expect(Number.isFinite(b.markFromEnd)).toBe(false);
   });
 
   test('a zero or negative leg is refused', () => {
     for (const bad of [0, -5]) {
-      const b = solveBender({ angle: 90, radius: 4, springback: 0, legLength: bad });
+      const b = solveBender({ angle: 90, radius: 4, springback: 0, legLength: bad, legLengthB: NaN, stockLength: NaN });
       expect(b.legError).toMatch(/greater than zero/i);
       expect(Number.isFinite(b.markFromEnd)).toBe(false);
     }
   });
 
   test('a leg exactly equal to the setback marks at zero', () => {
-    const b = solveBender({ angle: 90, radius: 4, springback: 0, legLength: 4 });
+    const b = solveBender({ angle: 90, radius: 4, springback: 0, legLength: 4, legLengthB: NaN, stockLength: NaN });
     near(b.markFromEnd, 0, 1e-9);
     expect(b.legError).toBeUndefined();
   });
 
-  test('rejects a zero radius', () => expect(solveBender({ angle: 90, radius: 0, springback: 0, legLength: 12 }).valid).toBe(false));
-  test('rejects a zero angle', () => expect(solveBender({ angle: 0, radius: 4, springback: 0, legLength: 12 }).valid).toBe(false));
-  test('rejects 180 degrees', () => expect(solveBender({ angle: 180, radius: 4, springback: 0, legLength: 12 }).valid).toBe(false));
+  test('rejects a zero radius', () => expect(solveBender({ angle: 90, radius: 0, springback: 0, legLength: 12, legLengthB: NaN, stockLength: NaN }).valid).toBe(false));
+  test('rejects a zero angle', () => expect(solveBender({ angle: 0, radius: 4, springback: 0, legLength: 12, legLengthB: NaN, stockLength: NaN }).valid).toBe(false));
+  test('rejects 180 degrees', () => expect(solveBender({ angle: 180, radius: 4, springback: 0, legLength: 12, legLengthB: NaN, stockLength: NaN }).valid).toBe(false));
 });
 
 describe('unit conversion', () => {
@@ -884,7 +884,7 @@ describe('cross-solver consistency', () => {
 
   test('a bender at the elbow radius reproduces the elbow setback', () => {
     const offset = solveOffset({ offset: 10, fittingAngle: 45, gap: 0, nps: 2, kind: 'LR', schedule: '40', lockRun: false });
-    const bend = solveBender({ angle: 45, radius: bendRadius(2, 'LR'), springback: 0, legLength: NaN });
+    const bend = solveBender({ angle: 45, radius: bendRadius(2, 'LR'), springback: 0, legLength: NaN, legLengthB: NaN, stockLength: NaN });
     near(bend.setback, offset.setback, 1e-9);
     near(bend.arcLength, offset.centerlineArc, 1e-9);
   });

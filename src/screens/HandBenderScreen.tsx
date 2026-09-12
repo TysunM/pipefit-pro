@@ -20,6 +20,8 @@ export function HandBenderScreen() {
   const [radiusOverride, setRadiusOverride] = useState('');
   const [springbackText, setSpringbackText] = useState('');
   const [leg, setLeg] = useState('');
+  const [legB, setLegB] = useState('');
+  const [stock, setStock] = useState('');
 
   const rule = RADIUS_RULES.find((r) => r.id === ruleId) ?? RADIUS_RULES[1]!;
   const ruleRadius = radiusFromRule(nps, rule.multiple);
@@ -28,8 +30,16 @@ export function HandBenderScreen() {
   const springback = parseNumber(springbackText);
 
   const result = useMemo(
-    () => solveBender({ angle: angleValue, radius, springback, legLength: u.parse(leg) }),
-    [angleValue, radius, springback, leg, u]
+    () =>
+      solveBender({
+        angle: angleValue,
+        radius,
+        springback,
+        legLength: u.parse(leg),
+        legLengthB: u.parse(legB),
+        stockLength: u.parse(stock),
+      }),
+    [angleValue, radius, springback, leg, legB, stock, u]
   );
 
   const size = findSize(nps);
@@ -85,14 +95,32 @@ export function HandBenderScreen() {
         onSelect={(a) => setAngleText(String(a))}
       />
 
+      <SectionHeader title="Piece" meta="Legs to the point of intersection" />
+
       <FieldRow>
         <DimensionInput
-          label="Leg length"
+          label="Leg A"
           value={leg}
           onChangeText={setLeg}
           suffix={u.suffix}
           placeholder="0"
           readout={u.frac(u.parse(leg))}
+        />
+        <DimensionInput
+          label="Leg B"
+          value={legB}
+          onChangeText={setLegB}
+          suffix={u.suffix}
+          placeholder="same as A"
+          readout={u.frac(u.parse(legB))}
+        />
+        <DimensionInput
+          label="Stock"
+          value={stock}
+          onChangeText={setStock}
+          suffix={u.suffix}
+          placeholder="0"
+          readout={u.frac(u.parse(stock))}
         />
       </FieldRow>
 
@@ -105,6 +133,8 @@ export function HandBenderScreen() {
             setRadiusOverride('');
             setSpringbackText('');
             setLeg('');
+            setLegB('');
+            setStock('');
           }}
           style={{ flex: 1 }}
         />
@@ -121,24 +151,26 @@ export function HandBenderScreen() {
       ) : null}
 
       <ResultBanner
-        label={result.error ?? result.legError ? 'Cannot solve' : marked ? 'Mark from end' : 'Setback'}
+        label={result.error || result.legError || result.stockError ? 'Cannot solve' : marked ? 'Mark from end' : 'Setback'}
         value={
           result.error
             ? result.error
             : result.legError
               ? result.legError
+              : result.stockError
+                ? result.stockError
               : marked
                 ? `${u.num(result.markFromEnd)} ${u.unitName}`
                 : `${u.num(result.setback)} ${u.unitName}`
         }
         hint={
-          result.error || result.legError
+          result.error || result.legError || result.stockError
             ? undefined
             : marked
               ? `Leg minus setback ${u.num(result.setback)} ${u.unitName} · Arc ${u.num(result.arcLength)} ${u.unitName}`
               : `Measure back from the point of intersection · Arc ${u.num(result.arcLength)} ${u.unitName}`
         }
-        tone={result.error || result.legError ? 'error' : 'default'}
+        tone={result.error || result.legError || result.stockError ? 'error' : 'default'}
       />
 
       <MetaBar
@@ -155,6 +187,21 @@ export function HandBenderScreen() {
           { label: 'Arc length', note: 'Material in the bend', value: result.valid ? u.dual(result.arcLength) : '—' },
           { label: 'Gain', note: 'Tangents minus arc', value: result.valid ? u.dual(result.gain) : '—' },
           { label: 'Tangent total', value: result.valid ? u.dual(result.tangentTotal) : '—' },
+          {
+            label: 'Piece length',
+            note: 'Both legs plus the bend',
+            value: Number.isFinite(result.pieceLength) ? u.dual(result.pieceLength) : '—',
+          },
+          {
+            label: 'Bend ends at',
+            note: 'From the same end',
+            value: Number.isFinite(result.markEndOfBend) ? u.dual(result.markEndOfBend) : '—',
+          },
+          {
+            label: 'Leg from stock',
+            note: 'Equal legs',
+            value: Number.isFinite(result.legFromStock) ? u.dual(result.legFromStock) : '—',
+          },
         ]}
       />
 

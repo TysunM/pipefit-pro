@@ -29,6 +29,10 @@ left unimplemented rather than filled with plausible numbers.
 | Keypad screen | `screens/CalculatorScreen.tsx` | LCD with unit word and annunciators, Conv shift layer |
 | Pipe dimensions, steel and stainless | `calc/pipeData.ts` | Sch 40, 80, 120, Std, XS, 40S, 80S; bore area, weight, filled weight, capacity |
 | Framing square layout | `calc/square.ts` | Pitch, rise on a twelve inch run, angle, travel multiplier |
+| Bend setback, arc and gain, any angle | `calc/bender.ts` | Checked against the printed multipliers from a quarter degree to 179 |
+| Piece length from two legs, and the inverse from stock | `calc/bender.ts` | Every printed single-bend worked example passes |
+| Offset bend layout | `calc/offsetBend.ts` | Full mark list for a two-bend offset in bent pipe |
+| Two or more pipes at equal spread | `calc/offsetBend.ts` | The advance C, spread times the tangent of half the angle |
 
 ## Remaining
 

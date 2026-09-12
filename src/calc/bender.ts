@@ -18,6 +18,8 @@ export type BenderInput = {
   radius: number;
   springback: number;
   legLength: number;
+  legLengthB: number;
+  stockLength: number;
 };
 
 export type BenderResult = {
@@ -29,7 +31,12 @@ export type BenderResult = {
   tangentTotal: number;
   overbendAngle: number;
   markFromEnd: number;
+  markFromEndB: number;
+  markEndOfBend: number;
+  pieceLength: number;
+  legFromStock: number;
   legError?: string;
+  stockError?: string;
 };
 
 const EMPTY: BenderResult = {
@@ -40,6 +47,10 @@ const EMPTY: BenderResult = {
   tangentTotal: NaN,
   overbendAngle: NaN,
   markFromEnd: NaN,
+  markFromEndB: NaN,
+  markEndOfBend: NaN,
+  pieceLength: NaN,
+  legFromStock: NaN,
 };
 
 export function solveBender(input: BenderInput): BenderResult {
@@ -56,17 +67,42 @@ export function solveBender(input: BenderInput): BenderResult {
   const springback = Number.isFinite(input.springback) ? input.springback : 0;
   const overbendAngle = springback < 0 ? NaN : angle + springback;
 
-  const leg = input.legLength;
-  let markFromEnd = NaN;
+  // A leg is measured to the point of intersection, so the mark where the
+  // bend starts sits one setback back from it.
   let legError: string | undefined;
 
-  if (Number.isFinite(leg)) {
+  const markOf = (leg: number): number => {
+    if (!Number.isFinite(leg)) return NaN;
     if (leg <= 0) {
-      legError = 'Leg length must be greater than zero.';
-    } else if (leg < setback) {
-      legError = `Leg is shorter than the ${setback.toFixed(2)} setback — the bend will not fit in it.`;
+      legError = legError ?? 'Leg length must be greater than zero.';
+      return NaN;
+    }
+    if (leg < setback) {
+      legError =
+        legError ?? `Leg is shorter than the ${setback.toFixed(2)} setback — the bend will not fit in it.`;
+      return NaN;
+    }
+    return leg - setback;
+  };
+
+  const markFromEnd = markOf(input.legLength);
+  const markFromEndB = markOf(input.legLengthB);
+
+  // The piece is both straight portions plus the material in the bend. With
+  // only one leg given, the other is taken to match it.
+  const a = Number.isFinite(markFromEnd) ? markFromEnd : NaN;
+  const b = Number.isFinite(markFromEndB) ? markFromEndB : Number.isFinite(a) ? a : NaN;
+  const pieceLength = Number.isFinite(a) && Number.isFinite(b) ? a + b + arcLength : NaN;
+
+  // Working the other way: a piece of stock, bent once, with equal legs.
+  let legFromStock = NaN;
+  let stockError: string | undefined;
+  const stock = input.stockLength;
+  if (Number.isFinite(stock)) {
+    if (stock <= arcLength) {
+      stockError = `Stock must be longer than the ${arcLength.toFixed(2)} of material the bend uses.`;
     } else {
-      markFromEnd = leg - setback;
+      legFromStock = (stock - arcLength) / 2;
     }
   }
 
@@ -78,6 +114,11 @@ export function solveBender(input: BenderInput): BenderResult {
     tangentTotal,
     overbendAngle,
     markFromEnd,
+    markFromEndB,
+    markEndOfBend: Number.isFinite(markFromEnd) ? markFromEnd + arcLength : NaN,
+    pieceLength,
+    legFromStock,
     legError,
+    stockError,
   };
 }
