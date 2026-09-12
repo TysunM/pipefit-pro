@@ -191,10 +191,8 @@ describe('keypad map', () => {
     expect(new Set(bound).size).toBe(bound.length);
   });
 
-  test('exactly the two unreadable shifts are left unassigned, and each says why', () => {
-    const open = unassignedKeys();
-    expect(open.map((k) => k.label).sort()).toEqual(['0', '=']);
-    for (const k of open) expect(k.note).toMatch(/guessed/i);
+  test('every shift is bound; nothing is left unassigned', () => {
+    expect(unassignedKeys()).toEqual([]);
   });
 
   test('every provisional key carries a note explaining what to confirm', () => {

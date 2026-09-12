@@ -11,7 +11,7 @@ export type KeyAction =
   | 'recall' | 'memoryClear' | 'gpm' | 'litrePerSecond' | 'celsius' | 'subtract' | 'sign'
   | 'memoryPlus' | 'memoryMinus' | 'dms' | 'equals' | 'add' | 'pi'
   | 'digit' | 'dot'
-  | 'backspace'
+  | 'backspace' | 'cost' | 'tape'
   | 'unassigned';
 
 export type Key = {
@@ -79,15 +79,9 @@ export const KEYPAD: Key[][] = [
   ],
   [
     { label: 'M+', action: 'memoryPlus', shiftLabel: 'M−', shiftAction: 'memoryMinus', tone: 'operator' },
-    {
-      label: '0', action: 'digit', arg: '0', shiftLabel: '?', shiftAction: 'unassigned', tone: 'digit',
-      note: 'the housing prints something over 0 that reads as "Cos", which cannot be right — Cos already has its own key. Left unassigned rather than guessed.',
-    },
+    { label: '0', action: 'digit', arg: '0', shiftLabel: 'Cost', shiftAction: 'cost', tone: 'digit' },
     { label: '•', action: 'dot', shiftLabel: 'dms◀▶', shiftAction: 'dms', tone: 'digit' },
-    {
-      label: '=', action: 'equals', shiftLabel: '?', shiftAction: 'unassigned', tone: 'operator',
-      note: 'the housing prints something over = that reads as "Tap". Left unassigned rather than guessed.',
-    },
+    { label: '=', action: 'equals', shiftLabel: 'Tape', shiftAction: 'tape', tone: 'operator' },
     { label: '+', action: 'add', shiftLabel: 'π', shiftAction: 'pi', tone: 'operator' },
   ],
 ];

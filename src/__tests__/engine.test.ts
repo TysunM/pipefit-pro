@@ -1,6 +1,9 @@
 import { displayText, formatDms, initialState, press, pressMany, type CalcState } from '../calc/engine';
 import { entryUnitWord, entryValue } from '../calc/ftin';
-import type { KeyAction } from '../calc/keys';
+import { ALL_KEYS, unassignedKeys, type KeyAction } from '../calc/keys';
+import {
+  CLEAR_ALL_DEFAULTS, DEFAULT_PREFS, FRACTION_CHOICES, PIPE_MATERIALS, PIPE_TYPES,
+} from '../calc/defaults';
 
 type Step = [KeyAction, string?];
 
@@ -468,5 +471,108 @@ describe('conformance with the documented keystrokes', () => {
 
   test('pi is 3.1415927 to the digits the manual prints', () => {
     expect(show([['conv'], ['pi']]).startsWith('3.1415927')).toBe(true);
+  });
+});
+
+describe('cost, the three worked examples from the guide', () => {
+  // 120 feet of pipe in 10 foot lengths at $3.21 per length.
+  test('store a unit cost, then twelve lengths total $38.52', () => {
+    let s = run([...D('3'), ['dot'], ...D('21'), ['store'], ['cost']]);
+    expect(s.unitCost).toBeCloseTo(3.21, 10);
+    s = run([['clear'], ...D('12'), ['cost']], s);
+    expect(displayText(s)).toBe('38.52');
+    expect(s.costTotal).toBeCloseTo(38.52, 10);
+  });
+
+  test('the stored cost is reusable: seventeen lengths total $54.57', () => {
+    let s = run([...D('3'), ['dot'], ...D('21'), ['store'], ['cost']]);
+    s = run([['clear'], ...D('17'), ['cost']], s);
+    expect(displayText(s)).toBe('54.57');
+  });
+
+  test('an inline cost totals without overwriting the stored one', () => {
+    let s = run([...D('3'), ['dot'], ...D('21'), ['store'], ['cost']]);
+    s = run([['clear'], ...D('17'), ['multiply'], ...D('2'), ['dot'], ...D('89'), ['cost']], s);
+    expect(displayText(s)).toBe('49.13');
+    expect(s.unitCost).toBeCloseTo(3.21, 10);
+  });
+
+  test('costing with nothing stored is refused rather than returning zero', () => {
+    expect(show([...D('12'), ['cost']])).toMatch(/store a unit cost/i);
+  });
+
+  test('Clear All forgets the unit cost, as the guide says it does', () => {
+    let s = run([...D('3'), ['dot'], ...D('21'), ['store'], ['cost']]);
+    s = press(s, 'clearAll');
+    expect(s.unitCost).toBe(0);
+  });
+});
+
+describe('paperless tape', () => {
+  test('it records completed results', () => {
+    let s = run([...D('2'), ['add'], ...D('3'), ['equals']]);
+    s = run([...D('10'), ['multiply'], ...D('4'), ['equals']], s);
+    expect(s.tape).toEqual(['5', '40']);
+  });
+
+  test('it keeps the last thirty and no more', () => {
+    let s = initialState();
+    for (let i = 0; i < 40; i++) s = run([...D(String(i)), ['add'], ...D('1'), ['equals']], s);
+    expect(s.tape.length).toBe(30);
+    expect(s.tape[29]).toBe('40');
+  });
+
+  test('Clear All empties it, as the guide says it does', () => {
+    const s = press(run([...D('2'), ['add'], ...D('3'), ['equals']]), 'clearAll');
+    expect(s.tape).toEqual([]);
+  });
+});
+
+describe('the documented defaults', () => {
+  test('Clear All returns the stored values the guide lists', () => {
+    expect(CLEAR_ALL_DEFAULTS.material).toBe('steel');
+    expect(CLEAR_ALL_DEFAULTS.pipeType).toBe('Std');
+    expect(CLEAR_ALL_DEFAULTS.elbowType).toBe('lrButtWeld');
+    expect(CLEAR_ALL_DEFAULTS.weightPerCubicFoot).toBeCloseTo(62.42796, 10);
+    expect(CLEAR_ALL_DEFAULTS.weldersGap).toBe(0.125);
+  });
+
+  test('a full reset returns the preferences the guide lists', () => {
+    expect(DEFAULT_PREFS.fractionalResolution).toBe(16);
+    expect(DEFAULT_PREFS.areaDisplay).toBe('standard');
+    expect(DEFAULT_PREFS.volumeDisplay).toBe('standard');
+    expect(DEFAULT_PREFS.metreDecimals).toBe(3);
+    expect(DEFAULT_PREFS.mathMode).toBe('orderOfOperations');
+  });
+
+  test('all seven pipe materials are present', () => {
+    expect(PIPE_MATERIALS.length).toBe(7);
+    for (const m of PIPE_MATERIALS) expect(PIPE_TYPES[m.id].length).toBeGreaterThan(0);
+  });
+
+  test('the four wrought materials share one schedule list', () => {
+    const steel = PIPE_TYPES.steel;
+    for (const m of ['brass', 'aluminium', 'castIron'] as const) expect(PIPE_TYPES[m]).toEqual(steel);
+    expect(steel).toContain('Std');
+    expect(steel).toContain('XXS'.replace('XXS', 'XSS'));
+  });
+
+  test('stainless, plastic and copper each carry their own list', () => {
+    expect(PIPE_TYPES.stainless).toEqual(['40-S', '80-S', '160', '5-S', '10-S']);
+    expect(PIPE_TYPES.plastic).toContain('SDR 32.5');
+    expect(PIPE_TYPES.copper).toContain('Type K');
+    expect(PIPE_TYPES.copper.length).toBe(8);
+  });
+
+  test('every fraction choice the device offers is a real denominator', () => {
+    expect(FRACTION_CHOICES).toEqual([16, 32, 64, 2, 4, 8]);
+  });
+});
+
+describe('no keypad shift is left unassigned now', () => {
+  test('Cost and Tape fill the last two', () => {
+    expect(unassignedKeys()).toEqual([]);
+    expect(ALL_KEYS.find((k) => k.label === '0')!.shiftAction).toBe('cost');
+    expect(ALL_KEYS.find((k) => k.label === '=')!.shiftAction).toBe('tape');
   });
 });

@@ -9,6 +9,7 @@ import {
   pressMetre, pressMillimetre, pressSign, pressSlash, type FracDen,
 } from './ftin';
 import type { KeyAction } from './keys';
+import { CLEAR_ALL_DEFAULTS } from './defaults';
 
 export type BinaryOp = 'add' | 'subtract' | 'multiply' | 'divide' | 'power' | 'nthRoot';
 
@@ -37,6 +38,9 @@ export type CalcState = {
   displayUnit: Partial<Record<UnitKind, string>>;
   dmsMode: boolean;
   den: FracDen;
+  unitCost: number;
+  tape: string[];
+  costTotal: number | null;
 };
 
 export const initialState = (den: FracDen = 16): CalcState => ({
@@ -53,6 +57,9 @@ export const initialState = (den: FracDen = 16): CalcState => ({
   displayUnit: {},
   dmsMode: false,
   den,
+  unitCost: CLEAR_ALL_DEFAULTS.unitCost,
+  tape: [],
+  costTotal: null,
 });
 
 const UNIT_KEY: Partial<Record<KeyAction, string>> = {
@@ -134,7 +141,15 @@ const cleared = (s: CalcState, all = false): CalcState => ({
   pending: null,
   shift: false,
   error: null,
-  ...(all ? { memory: dim(0, 'scalar'), registers: {} } : {}),
+  ...(all
+    ? {
+        memory: dim(0, 'scalar'),
+        registers: {},
+        unitCost: CLEAR_ALL_DEFAULTS.unitCost,
+        tape: [],
+        costTotal: null,
+      }
+    : {}),
 });
 
 function withValue(s: CalcState, value: Dim): CalcState {
@@ -266,7 +281,10 @@ export function press(state: CalcState, action: KeyAction, arg?: string): CalcSt
         reduceWhile(operands, operators, 0);
         const result = operands.pop();
         if (!result) return fail(s, 'Incomplete expression.');
-        return { ...s, entry: emptyEntry(), acc: result, operands: [], operators: [], shift: false, error: null };
+        const next: CalcState = {
+          ...s, entry: emptyEntry(), acc: result, operands: [], operators: [], shift: false, error: null,
+        };
+        return { ...next, tape: [...s.tape, formatDim(result, next)].slice(-30) };
       }
 
       case 'openParen':
@@ -309,6 +327,31 @@ export function press(state: CalcState, action: KeyAction, arg?: string): CalcSt
         if (!v) return fail(s, 'Enter a value first.');
         return { ...s, pending: 'store', shift: false, error: null };
       }
+
+      case 'cost': {
+        const v = current(s);
+        if (!v) return fail(s, 'Enter a value first.');
+
+        // Store, rather than spend, when Store armed the keypress.
+        if (s.pending === 'store') {
+          return { ...s, unitCost: v.value, pending: null, entry: emptyEntry(), acc: v, shift: false, error: null };
+        }
+
+        // A pending multiply means a cost was keyed inline; settle that
+        // instead of reaching for the stored one.
+        if (s.operators.length) {
+          const settled = press({ ...s, shift: false }, 'equals');
+          if (settled.error) return settled;
+          return { ...settled, costTotal: settled.acc ? settled.acc.value : null };
+        }
+
+        if (!(s.unitCost > 0)) return fail(s, 'Store a unit cost first.');
+        const total = v.value * s.unitCost;
+        return { ...withValue(s, dim(total, 'scalar')), costTotal: total };
+      }
+
+      case 'tape':
+        return { ...s, shift: false, error: null };
 
       case 'recall':
         if (shifted) return { ...s, memory: dim(0, 'scalar'), pending: null, shift: false, error: null };
