@@ -26,13 +26,15 @@ left unimplemented rather than filled with plausible numbers.
 | Angle/Slope, Offset, Run, Travel | `calc/triangle.ts` | Any two of four solve the rest |
 | Documented defaults | `calc/defaults.ts` | Appendix B and C |
 | Full keypad map | `calc/keys.ts` | 40 keys, every shift bound |
+| Pipe dimensions, steel and stainless | `calc/pipeData.ts` | Sch 40, 80, 120, Std, XS, 40S, 80S; bore area, weight, filled weight, capacity |
+| Framing square layout | `calc/square.ts` | Pitch, rise on a twelve inch run, angle, travel multiplier |
 
 ## Remaining
 
 | Function | Guide | Blocker |
 |---|---|---|
 | Keypad UI | — | Next piece of work |
-| Pipe Size key, per-type data | p22, App. A | **data needed** — OD, ID, wall, weight per foot, filled weight, internal area, for 7 materials |
+| Pipe Size key | p22, App. A | Data now present for steel schedules 40, 80, 120, Std and XS, and stainless 40S and 80S. Copper and plastic still need their tables. |
 | Pipe Material and Pipe Type keys | p21, p23 | Menus are encoded; selecting one needs the data above |
 | Elbow Type | p23 | Long radius butt weld is the default; short radius and threaded need take-out values |
 | Take-out and butt weld elbow cut marks | p32 | Partly covered by `calc/cutLength.ts` |
@@ -44,13 +46,13 @@ left unimplemented rather than filled with plausible numbers.
 | Combination rolling offset | p34 | |
 | Horizontal to horizontal | p36 | |
 | Drop | p37 | |
-| Flow rate | p37 | Needs internal area, so waits on pipe data |
-| Velocity | p39 | Same |
+| Flow rate | p37 | Unblocked — bore area is available |
+| Velocity | p39 | Unblocked |
 | Pressure loss | p40 | Needs surface roughness per material |
 | Pressure and force | p42 | |
 | Area key | p42 | |
-| Pipe capacity | p43 | Needs internal area |
-| Weight of filled pipe | p43 | Needs weight per foot; water default 62.42796 lb/cu ft is encoded |
+| Pipe capacity | p43 | Built into `pipeDims` as gallons per foot |
+| Weight of filled pipe | p43 | Built into `pipeDims` |
 | Circle area and circumference | p45 | |
 | Welder's Gap setting | p6 | Default 1/8 inch encoded; not yet applied to cut lengths |
 | Preference settings | p9, App. C | Types encoded; no UI |
@@ -60,10 +62,10 @@ left unimplemented rather than filled with plausible numbers.
 Pipe dimension tables cannot be recalled accurately and will not be guessed.
 Each of these has a published source:
 
-- **Steel, brass, aluminium, cast iron** — ASME B36.10M. Partly present in
-  `calc/pipe.ts` for schedules 10, 40 and 80; Std, 60, XS, 100, 120, 140, 160,
-  XXS, 20 and 30 are missing.
-- **Stainless steel** — ASME B36.19M, for 5S, 10S, 40S and 80S.
+- **Steel, brass, aluminium, cast iron** — schedules 40, 80, 120, Std and XS
+  are now in `calc/pipeData.ts`. Schedules 60, 100, 140, 160, XXS, 20 and 30
+  are still missing.
+- **Stainless steel** — 40S and 80S are present. 5S, 10S and 160 are missing.
 - **Copper** — ASTM B88 for types K, L and M; B306 for DWV; B819 for medical;
   B280 for ACR.
 - **Plastic** — ASTM D1785 for schedules 40, 80 and 120; D2241 for the SDR
