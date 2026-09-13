@@ -52,6 +52,9 @@ left unimplemented rather than filled with plausible numbers.
 | Drilling templates and bolt-up | `calc/boltUp.ts` | 125 and 250 lb cast iron: bolt circle, count, size, length, gasket, hole layout |
 | Welding neck flange length | `calc/weldingNeck.ts` | All seven classes, length through the hub |
 | Butt welding elbows, tees, reducers, returns, caps | `calc/weldFitting.ts` | Held as rules where the pages are rules, so they answer past 24 inch |
+| Butt welding reducing tees, crosses and reducing elbows | `calc/weldFitting.ts` | Run and elbow figures follow the plain fitting; only the outlet is held |
+| Pipe support spacing | `calc/support.ts` | Water and gas or steam, by temperature and grade, with the grade capped by temperature |
+| U-bolts for pipe hangers | `calc/uBolt.ts` | Fourteen sizes, seven bolt diameters |
 | Framing square layout | `calc/square.ts` | Pitch, rise on a twelve inch run, angle, travel multiplier |
 | Bend setback, arc and gain, any angle | `calc/bender.ts` | Checked against the printed multipliers from a quarter degree to 179 |
 | Piece length from two legs, and the inverse from stock | `calc/bender.ts` | Every printed single-bend worked example passes |
@@ -158,7 +161,10 @@ checked against a property the data has to hold, never against itself.
 | 2-42, 2-43 | Butt welding elbows and straight tees |
 | 2-48, 2-50 | Butt welding reducers |
 | 2-51 | Butt welding 180 degree returns |
+| 2-44 to 2-47 | Butt welding reducing outlet tees and reducing elbows |
 | 2-53 | Butt welding caps |
+| 2-66 | U-bolts for pipe hangers |
+| 2-67, 2-68 | Spacing of pipe supports, water and gas or steam |
 
 ### Still to transcribe
 
@@ -169,8 +175,9 @@ cast iron, welding neck flanges), 4-76, 4-82, 4-86, 4-87, 4-90, 4-93, 4-96
 (the flange tables themselves and the remaining lateral pages), and 4-99 to
 4-109 and 4-110, the remaining globe valve pages.
 
-Part 2: 2-44 to 2-47 (reducing outlet tees and reducing elbows), 2-52 (lap
-joint stub ends), 2-54 to 2-62, 2-66 U-bolts, 2-67 support spacing. Part 3: solder joint fittings, plastic pipe. Part 5:
+Part 2: 2-52 (lap joint stub ends), 2-54 to 2-57 (crosses), 2-58 to 2-63
+(butt weld valve laying lengths), 2-64, 2-65 (bull nose and dead end cap
+templates). Part 3: solder joint fittings, plastic pipe. Part 5:
 copper tube, the rest of the steel schedules, pipe expansion.
 
 ### Rules found behind the printed tables
@@ -191,6 +198,9 @@ and answers combinations the book never printed.
 | Butt welding 45 elbow | five eighths of the nominal size, from four inch up |
 | Butt welding reducer | the length depends only on the larger size |
 | Butt welding 180 return | spacing is twice the bend radius; height is that radius plus half the outside diameter |
+| Butt welding reducing tee and cross | the run keeps the plain tee's centre to end; only the outlet changes |
+| Butt welding reducing elbow | the long radius rule on the larger of the two sizes |
+| Sloping support spacing | never longer than the figure for the temperature, which is the rule printed under both tables |
 | Flanged ring joint, every class | the raised face figure, plus an allowance for each flange face in the dimension |
 | Ring joint gate valves | the raised face figure plus twice that allowance, a valve carrying it at both ends |
 | Heavy class valves | gate, globe and swing check share one face to face table in 900, 1500 and 2500 lb |
