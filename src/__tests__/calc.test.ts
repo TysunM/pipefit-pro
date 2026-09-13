@@ -4,6 +4,7 @@ import { END_FITTINGS, endTakeoff, solveCutLength } from '../calc/cutLength';
 import { offsetMultiplier, offsetShrinkPerUnit, solveSaddle } from '../calc/saddle';
 import { solveMiter } from '../calc/miter';
 import { NPT_TABLE, findThread, solveThread } from '../calc/thread';
+import { screwedFitting } from '../calc/screwedFitting';
 import { RADIUS_RULES, radiusFromRule, solveBender } from '../calc/bender';
 import {
   PIPE_SIZES,
@@ -666,18 +667,20 @@ describe('thread engagement', () => {
     }
   });
 
-  test('above six inch there is no threaded elbow, and none is invented', () => {
-    // ASME B16.3 stops at 6 inch. The larger sizes carry thread data but no
-    // fitting dimension, so a cut cannot be worked out from the size alone.
-    for (const nps of [8, 10, 12]) {
-      const t = NPT_TABLE.find((x) => x.nps === nps)!;
-      expect(Number.isFinite(t.elbowCenterToFace)).toBe(false);
-      expect(t.engagementWhenTight).toBeGreaterThan(0);
-      const s = solveThread({ nps, turnsPastHandTight: 3, centerToCenter: NaN, centerToFace: NaN });
-      expect(Number.isFinite(s.deductionPerEnd)).toBe(false);
-      // Given the dimension explicitly, it solves.
-      const given = solveThread({ nps, turnsPastHandTight: 3, centerToCenter: 24, centerToFace: 4 });
-      expect(given.deductionPerEnd).toBeGreaterThan(0);
+  test('screwed elbows run to twelve inch, so every size carries one', () => {
+    // 125 lb cast iron goes to 12 inch. An earlier version of this test
+    // assumed the range stopped at 6; the printed table says otherwise.
+    for (const t of NPT_TABLE) {
+      expect(Number.isFinite(t.elbowCenterToFace)).toBe(true);
+      expect(t.elbowCenterToFace).toBeGreaterThan(0);
+    }
+  });
+
+  test('the thread table and the fitting table agree on centre to end', () => {
+    for (const t of NPT_TABLE) {
+      const f = screwedFitting(t.nps);
+      if (!f) continue;
+      expect(t.elbowCenterToFace).toBeCloseTo(f.centerToEnd, 10);
     }
   });
 

@@ -7,7 +7,7 @@ export type ThreadSize = {
   totalThread: number;
   tapDrill: string;
   wrenchTurns: number;
-  /** Centre to face of a threaded elbow. Absent above 6 inch, where ASME B16.3 stops. */
+  /** Centre to end of a screwed 90 degree elbow. */
   elbowCenterToFace: number;
   /** Engagement when made up tight, from the handbook's own column. */
   engagementWhenTight: number;
@@ -30,10 +30,10 @@ export const NPT_TABLE: ThreadSize[] = [
   { nps: 3.5, label: '3-1/2"', tpi: 8, handTight: 0.821, effective: 1.25, totalThread: 1.6837, tapDrill: '3 3/4"', wrenchTurns: 3, elbowCenterToFace: 3.42, engagementWhenTight: 1.0625, boreSize: '3-13/16"' },
   { nps: 4, label: '4"', tpi: 8, handTight: 0.844, effective: 1.3, totalThread: 1.7337, tapDrill: '4 1/4"', wrenchTurns: 3, elbowCenterToFace: 3.79, engagementWhenTight: 1.125, boreSize: '4-5/16"' },
   { nps: 5, label: '5"', tpi: 8, handTight: 0.937, effective: 1.406, totalThread: 1.8397, tapDrill: '5 5/16"', wrenchTurns: 3, elbowCenterToFace: 4.5, engagementWhenTight: 1.25, boreSize: '5-3/8"' },
-  { nps: 6, label: '6"', tpi: 8, handTight: 0.958, effective: 1.5125, totalThread: 1.9462, tapDrill: '6 5/16"', wrenchTurns: 3, elbowCenterToFace: 5.3, engagementWhenTight: 1.3125, boreSize: '6-7/16"' },
-  { nps: 8, label: '8"', tpi: 8, handTight: 1.063, effective: 1.7125, totalThread: 2.1462, tapDrill: '8 5/16"', wrenchTurns: 3, elbowCenterToFace: NaN, engagementWhenTight: 1.4375, boreSize: '8-7/16"' },
-  { nps: 10, label: '10"', tpi: 8, handTight: 1.21, effective: 1.925, totalThread: 2.3587, tapDrill: '10 3/8"', wrenchTurns: 3, elbowCenterToFace: NaN, engagementWhenTight: 1.625, boreSize: '10-9/16"' },
-  { nps: 12, label: '12"', tpi: 8, handTight: 1.36, effective: 2.125, totalThread: 2.5587, tapDrill: '12 3/8"', wrenchTurns: 3, elbowCenterToFace: NaN, engagementWhenTight: 1.75, boreSize: '12-9/16"' },
+  { nps: 6, label: '6"', tpi: 8, handTight: 0.958, effective: 1.5125, totalThread: 1.9462, tapDrill: '6 5/16"', wrenchTurns: 3, elbowCenterToFace: 5.13, engagementWhenTight: 1.3125, boreSize: '6-7/16"' },
+  { nps: 8, label: '8"', tpi: 8, handTight: 1.063, effective: 1.7125, totalThread: 2.1462, tapDrill: '8 5/16"', wrenchTurns: 3, elbowCenterToFace: 6.56, engagementWhenTight: 1.4375, boreSize: '8-7/16"' },
+  { nps: 10, label: '10"', tpi: 8, handTight: 1.21, effective: 1.925, totalThread: 2.3587, tapDrill: '10 3/8"', wrenchTurns: 3, elbowCenterToFace: 8.08, engagementWhenTight: 1.625, boreSize: '10-9/16"' },
+  { nps: 12, label: '12"', tpi: 8, handTight: 1.36, effective: 2.125, totalThread: 2.5587, tapDrill: '12 3/8"', wrenchTurns: 3, elbowCenterToFace: 9.5, engagementWhenTight: 1.75, boreSize: '12-9/16"' },
 ];
 
 export function findThread(nps: number): ThreadSize {
