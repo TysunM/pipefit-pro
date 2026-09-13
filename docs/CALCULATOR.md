@@ -28,6 +28,12 @@ left unimplemented rather than filled with plausible numbers.
 | Full keypad map | `calc/keys.ts` | 40 keys, every shift bound |
 | Keypad screen | `screens/CalculatorScreen.tsx` | LCD with unit word and annunciators, Conv shift layer |
 | Pipe dimensions, steel and stainless | `calc/pipeData.ts` | Sch 40, 80, 120, Std, XS, 40S, 80S; bore area, weight, filled weight, capacity |
+| Standard threads and engagement | `calc/thread.ts` | 18 sizes; thread, hand-tight and tight engagement, bore size |
+| Screwed fitting dimensions | `calc/screwedFitting.ts` | Both classes, 17 sizes, centre to end and band diameter |
+| Screwed reducing fittings | `calc/reducingFitting.ts` | 65 combinations across elbow, cross and tee; heavy class separate |
+| Reducing couplings | `calc/coupling.ts` | Length depends only on the larger size |
+| Pipe nipples | `calc/nipple.ts` | Long, short and close; stocked lengths generated |
+| Flanged fitting laying lengths | `calc/flangedFitting.ts` | 150 lb steel, 18 sizes |
 | Framing square layout | `calc/square.ts` | Pitch, rise on a twelve inch run, angle, travel multiplier |
 | Bend setback, arc and gain, any angle | `calc/bender.ts` | Checked against the printed multipliers from a quarter degree to 179 |
 | Piece length from two legs, and the inverse from stock | `calc/bender.ts` | Every printed single-bend worked example passes |
@@ -42,7 +48,7 @@ left unimplemented rather than filled with plausible numbers.
 
 | Function | Guide | Blocker |
 |---|---|---|
-| Pipe Size key | p22, App. A | Data now present for steel schedules 40, 80, 120, Std and XS, and stainless 40S and 80S. Copper and plastic still need their tables. |
+| Pipe Size key | p22, App. A | Steel and stainless present. Copper and plastic still need their tables. |
 | Pipe Material and Pipe Type keys | p21, p23 | Menus are encoded; selecting one needs the data above |
 | Elbow Type | p23 | Long radius butt weld is the default; short radius and threaded need take-out values |
 | Take-out and butt weld elbow cut marks | p32 | Partly covered by `calc/cutLength.ts` |
@@ -81,3 +87,60 @@ Each of these has a published source:
 - **Surface roughness per material**, for pressure loss.
 
 Supplying any one of these unblocks the functions listed against it.
+
+## Reading the scanned handbooks
+
+`tools/scan.py` decodes the JBIG2 ink layer out of the scans. See
+`tools/README.md`. Everything below was transcribed from those pages and
+checked against a property the data has to hold, never against itself.
+
+### Handbook pages transcribed
+
+| Page | Content |
+|---|---|
+| 4-13 | Standard threads for steel pipe |
+| 4-14 | Length of engagement |
+| 4-15 | Overall dimensions, 125 lb cast iron and 150 lb malleable |
+| 4-16 | Overall dimensions, 250 lb cast iron and 300 lb malleable |
+| 4-17, 4-18 | Reducing elbows, cast iron |
+| 4-19, 4-20 | Reducing crosses, cast iron |
+| 4-21 to 4-23 | Reducing outlet tees, cast iron |
+| 4-24 | Reducing elbows, 150 lb malleable |
+| 4-26 | Reducing outlet tees, 150 lb malleable |
+| 4-29 | Reducing couplings, 300 lb malleable |
+| 4-30 | Reducing outlet tees, 300 lb malleable |
+| 4-31 | Pipe nipple lengths |
+| 4-71 | Laying lengths, 150 lb steel flanged fittings |
+
+### Still to transcribe
+
+Screwed: 4-25, 4-27, 4-28 (remaining reducing tables), 4-32 to 4-36
+(clearances), 4-37 to 4-46 (laying lengths).
+
+Flanged: 4-62 to 4-112, the 250, 300, 400, 600, 900, 1500 and 2500 lb
+classes and the valve laying lengths.
+
+Part 2: 2-42 to 2-62 welded fitting laying lengths, 2-66 U-bolts, 2-67
+support spacing. Part 3: solder joint fittings, plastic pipe. Part 5:
+copper tube, the rest of the steel schedules, pipe expansion.
+
+### Disagreements found in the printed book
+
+Each is kept as printed where the print is the only source, or corrected
+where the book contradicts itself. All are pinned by tests.
+
+| Where | Printed | Should be |
+|---|---|---|
+| Steel square, 17-1/2° | 1.0457 | that is sec 17°; sec 17-1/2° is 1.0485, per the book's own trig table |
+| Steel square, 37-1/2° | 1.2521 | that is sec 37° |
+| Worked example 1, leg b | 16.50 | 22 cos 41° is 16.6036 |
+| Double offset, 75° centre bend setback | .763 | .7673, per the book's own universal table |
+| Reducing elbow 1/2 x 3/8 | X 1-1/16, Z 1 | inverted against all 35 other rows; printed the same way twice |
+| Reducing tee 3-1/2 x 3-1/2 x 2 | outlet 2-1/8 | 3-1/8, per the cross table and the run of outlets either side |
+
+### Corrections made to this project's own data
+
+| What | Was | Now |
+|---|---|---|
+| 6 inch screwed elbow centre to end | 5.30 | 5.13 |
+| Screwed elbow range | stopped at 6 inch | runs to 12 |
