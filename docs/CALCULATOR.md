@@ -56,6 +56,7 @@ left unimplemented rather than filled with plausible numbers.
 | Pipe support spacing | `calc/support.ts` | Water and gas or steam, by temperature and grade, with the grade capped by temperature |
 | U-bolts for pipe hangers | `calc/uBolt.ts` | Fourteen sizes, seven bolt diameters |
 | Plastic pipe dimensions and pressure limits | `calc/plasticPipe.ts` | PVC schedules A, 40, 80 and 120 in both types; polyethylene in three series |
+| Copper tube | `calc/copperTube.ts` | Types K, L, M and DWV; bore held, everything else worked |
 | Framing square layout | `calc/square.ts` | Pitch, rise on a twelve inch run, angle, travel multiplier |
 | Bend setback, arc and gain, any angle | `calc/bender.ts` | Checked against the printed multipliers from a quarter degree to 179 |
 | Piece length from two legs, and the inverse from stock | `calc/bender.ts` | Every printed single-bend worked example passes |
@@ -102,8 +103,8 @@ Each of these has a published source:
   are now in `calc/pipeData.ts`. Schedules 60, 100, 140, 160, XXS, 20 and 30
   are still missing.
 - **Stainless steel** — 40S and 80S are present. 5S, 10S and 160 are missing.
-- **Copper** — ASTM B88 for types K, L and M; B306 for DWV; B819 for medical;
-  B280 for ACR.
+- **Copper** — types K, L, M and DWV are now in `calc/copperTube.ts`. Medical
+  gas and ACR tube are still missing.
 - **Plastic** — PVC schedules A, 40, 80 and 120 and Type I polyethylene are
   now in `calc/plasticPipe.ts`, with the pressure limits. The SDR series is
   still missing.
@@ -169,6 +170,7 @@ checked against a property the data has to hold, never against itself.
 | 2-67, 2-68 | Spacing of pipe supports, water and gas or steam |
 | 3-26, 3-27 | Polyvinyl chloride pipe, dimensions and pressure limits |
 | 3-29, 3-30 | Type I polyethylene pipe, dimensions and pressure limits |
+| 5-13 to 5-16 | Copper tube, types K, L, M and DWV |
 
 ### Still to transcribe
 
@@ -207,6 +209,8 @@ and answers combinations the book never printed.
 | Sloping support spacing | never longer than the figure for the temperature, which is the rule printed under both tables |
 | Plastic pipe outside diameter | the iron pipe size, so only the bore is held |
 | Threaded plastic pipe | about 55 per cent of the plain end pressure |
+| Copper tube outside diameter | the nominal size plus an eighth, on every type |
+| Copper tube weight | the wall and copper's density, which lands on the printed figure on all four pages |
 | Flanged ring joint, every class | the raised face figure, plus an allowance for each flange face in the dimension |
 | Ring joint gate valves | the raised face figure plus twice that allowance, a valve carrying it at both ends |
 | Heavy class valves | gate, globe and swing check share one face to face table in 900, 1500 and 2500 lb |
@@ -239,6 +243,7 @@ where the book contradicts itself. All are pinned by tests.
 | Malleable reducer coupling 6 x 4 | 1-15/16 | unknown; that is the cast iron figure, and it would make the six inch casting shallower than the five. Refused rather than served |
 | 1500 lb ring joint 5 inch 45 elbow | 3-13/16 | 8-13/16: shorter as printed than both the four and the six inch, and the allowance every other row on the page obeys gives 8-13/16 |
 | 180 degree return, 1/2 inch | O 3, K 1-7/8 | O 1-1/2, K 1-3/16 per the geometry every other row obeys; the printed O is the one inch figure and the printed K is taller than the 3/4 inch below it |
+| Type L copper tube, 2-1/2 inch bore | 1.465 | 2.465: as printed it is smaller than the two inch above it, and the printed weight works back to a wall of eighty thousandths |
 
 ### Corrections made to this project's own data
 
