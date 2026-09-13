@@ -57,6 +57,7 @@ left unimplemented rather than filled with plausible numbers.
 | U-bolts for pipe hangers | `calc/uBolt.ts` | Fourteen sizes, seven bolt diameters |
 | Plastic pipe dimensions and pressure limits | `calc/plasticPipe.ts` | PVC schedules A, 40, 80 and 120 in both types; polyethylene in three series |
 | Copper tube | `calc/copperTube.ts` | Types K, L, M and DWV; bore held, everything else worked |
+| Expansion of pipe | `calc/expansion.ts` | Steel, wrought iron and copper, nought to 1200 degrees |
 | Framing square layout | `calc/square.ts` | Pitch, rise on a twelve inch run, angle, travel multiplier |
 | Bend setback, arc and gain, any angle | `calc/bender.ts` | Checked against the printed multipliers from a quarter degree to 179 |
 | Piece length from two legs, and the inverse from stock | `calc/bender.ts` | Every printed single-bend worked example passes |
@@ -171,6 +172,7 @@ checked against a property the data has to hold, never against itself.
 | 3-26, 3-27 | Polyvinyl chloride pipe, dimensions and pressure limits |
 | 3-29, 3-30 | Type I polyethylene pipe, dimensions and pressure limits |
 | 5-13 to 5-16 | Copper tube, types K, L, M and DWV |
+| 5-25 | Expansion of pipe per 100 feet |
 
 ### Still to transcribe
 
@@ -244,6 +246,7 @@ where the book contradicts itself. All are pinned by tests.
 | 1500 lb ring joint 5 inch 45 elbow | 3-13/16 | 8-13/16: shorter as printed than both the four and the six inch, and the allowance every other row on the page obeys gives 8-13/16 |
 | 180 degree return, 1/2 inch | O 3, K 1-7/8 | O 1-1/2, K 1-3/16 per the geometry every other row obeys; the printed O is the one inch figure and the printed K is taller than the 3/4 inch below it |
 | Type L copper tube, 2-1/2 inch bore | 1.465 | 2.465: as printed it is smaller than the two inch above it, and the printed weight works back to a wall of eighty thousandths |
+| Steel expansion at 1100 degrees | 10.042 | 10.402: the two digits after the point are swapped, which puts a step of 0.767 next to one of 1.556 in a column whose other hundred degree steps all run between one and one and a quarter |
 
 ### Corrections made to this project's own data
 
