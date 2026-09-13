@@ -55,6 +55,7 @@ left unimplemented rather than filled with plausible numbers.
 | Butt welding reducing tees, crosses and reducing elbows | `calc/weldFitting.ts` | Run and elbow figures follow the plain fitting; only the outlet is held |
 | Pipe support spacing | `calc/support.ts` | Water and gas or steam, by temperature and grade, with the grade capped by temperature |
 | U-bolts for pipe hangers | `calc/uBolt.ts` | Fourteen sizes, seven bolt diameters |
+| Plastic pipe dimensions and pressure limits | `calc/plasticPipe.ts` | PVC schedules A, 40, 80 and 120 in both types; polyethylene in three series |
 | Framing square layout | `calc/square.ts` | Pitch, rise on a twelve inch run, angle, travel multiplier |
 | Bend setback, arc and gain, any angle | `calc/bender.ts` | Checked against the printed multipliers from a quarter degree to 179 |
 | Piece length from two legs, and the inverse from stock | `calc/bender.ts` | Every printed single-bend worked example passes |
@@ -103,8 +104,9 @@ Each of these has a published source:
 - **Stainless steel** — 40S and 80S are present. 5S, 10S and 160 are missing.
 - **Copper** — ASTM B88 for types K, L and M; B306 for DWV; B819 for medical;
   B280 for ACR.
-- **Plastic** — ASTM D1785 for schedules 40, 80 and 120; D2241 for the SDR
-  series.
+- **Plastic** — PVC schedules A, 40, 80 and 120 and Type I polyethylene are
+  now in `calc/plasticPipe.ts`, with the pressure limits. The SDR series is
+  still missing.
 - **Surface roughness per material**, for pressure loss.
 
 Supplying any one of these unblocks the functions listed against it.
@@ -165,6 +167,8 @@ checked against a property the data has to hold, never against itself.
 | 2-53 | Butt welding caps |
 | 2-66 | U-bolts for pipe hangers |
 | 2-67, 2-68 | Spacing of pipe supports, water and gas or steam |
+| 3-26, 3-27 | Polyvinyl chloride pipe, dimensions and pressure limits |
+| 3-29, 3-30 | Type I polyethylene pipe, dimensions and pressure limits |
 
 ### Still to transcribe
 
@@ -177,7 +181,7 @@ cast iron, welding neck flanges), 4-76, 4-82, 4-86, 4-87, 4-90, 4-93, 4-96
 
 Part 2: 2-52 (lap joint stub ends), 2-54 to 2-57 (crosses), 2-58 to 2-63
 (butt weld valve laying lengths), 2-64, 2-65 (bull nose and dead end cap
-templates). Part 3: solder joint fittings, plastic pipe. Part 5:
+templates). Part 3: 3-9 to 3-21, the cast brass solder joint fittings. Part 5:
 copper tube, the rest of the steel schedules, pipe expansion.
 
 ### Rules found behind the printed tables
@@ -201,6 +205,8 @@ and answers combinations the book never printed.
 | Butt welding reducing tee and cross | the run keeps the plain tee's centre to end; only the outlet changes |
 | Butt welding reducing elbow | the long radius rule on the larger of the two sizes |
 | Sloping support spacing | never longer than the figure for the temperature, which is the rule printed under both tables |
+| Plastic pipe outside diameter | the iron pipe size, so only the bore is held |
+| Threaded plastic pipe | about 55 per cent of the plain end pressure |
 | Flanged ring joint, every class | the raised face figure, plus an allowance for each flange face in the dimension |
 | Ring joint gate valves | the raised face figure plus twice that allowance, a valve carrying it at both ends |
 | Heavy class valves | gate, globe and swing check share one face to face table in 900, 1500 and 2500 lb |
