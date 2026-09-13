@@ -5,6 +5,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { RootStackParamList } from './types';
 import { useTheme } from '../theme/ThemeProvider';
+import { referenceTable } from '../calc/reference';
 import { HomeScreen } from '../screens/HomeScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
 import { SimpleOffsetScreen } from '../screens/SimpleOffsetScreen';
@@ -16,6 +17,8 @@ import { ThreadEngagementScreen } from '../screens/ThreadEngagementScreen';
 import { HandBenderScreen } from '../screens/HandBenderScreen';
 import { SpoolBuilderScreen } from '../screens/SpoolBuilderScreen';
 import { CalculatorScreen } from '../screens/CalculatorScreen';
+import { ReferenceScreen } from '../screens/ReferenceScreen';
+import { ReferenceTableScreen } from '../screens/ReferenceTableScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -71,6 +74,12 @@ export function RootNavigator() {
         <Stack.Screen name="HandBender" component={HandBenderScreen} options={{ title: 'Pipe bend' }} />
         <Stack.Screen name="Calculator" component={CalculatorScreen} options={{ title: 'Calculator' }} />
         <Stack.Screen name="SpoolBuilder" component={SpoolBuilderScreen} options={{ title: '3D spool' }} />
+        <Stack.Screen name="Reference" component={ReferenceScreen} options={{ title: 'Handbook' }} />
+        <Stack.Screen
+          name="ReferenceTable"
+          component={ReferenceTableScreen}
+          options={({ route }) => ({ title: referenceTable(route.params.id)?.title ?? 'Table' })}
+        />
         <Stack.Screen name="Settings" component={SettingsScreen} options={{ title: 'Settings' }} />
       </Stack.Navigator>
     </NavigationContainer>

@@ -27,6 +27,7 @@ left unimplemented rather than filled with plausible numbers.
 | Documented defaults | `calc/defaults.ts` | Appendix B and C |
 | Full keypad map | `calc/keys.ts` | 40 keys, every shift bound |
 | Keypad screen | `screens/CalculatorScreen.tsx` | LCD with unit word and annunciators, Conv shift layer |
+| Handbook browser | `screens/ReferenceScreen.tsx`, `calc/reference.ts` | Every table in the app, grouped, searchable by name or page |
 | Pipe dimensions, steel and stainless | `calc/pipeData.ts` | Sch 40, 80, 120, Std, XS, 40S, 80S; bore area, weight, filled weight, capacity |
 | Standard threads and engagement | `calc/thread.ts` | 18 sizes; thread, hand-tight and tight engagement, bore size |
 | Screwed fitting dimensions | `calc/screwedFitting.ts` | Both classes, 17 sizes, centre to end and band diameter |
