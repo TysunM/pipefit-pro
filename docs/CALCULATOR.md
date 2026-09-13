@@ -32,6 +32,7 @@ left unimplemented rather than filled with plausible numbers.
 | Bend setback, arc and gain, any angle | `calc/bender.ts` | Checked against the printed multipliers from a quarter degree to 179 |
 | Piece length from two legs, and the inverse from stock | `calc/bender.ts` | Every printed single-bend worked example passes |
 | Offset bend layout | `calc/offsetBend.ts` | Full mark list for a two-bend offset in bent pipe |
+| Double offset bend layout | `calc/offsetBend.ts` | Four bends, nine marks, parallel section between |
 | Two or more pipes at equal spread | `calc/offsetBend.ts` | The advance C, spread times the tangent of half the angle |
 
 ## Remaining

@@ -1,5 +1,5 @@
 import { solveBender } from '../calc/bender';
-import { equalSpreadAdvance, solveOffsetBend } from '../calc/offsetBend';
+import { crossoverCentreAngle, equalSpreadAdvance, solveDoubleOffset, solveOffsetBend } from '../calc/offsetBend';
 
 const near = (a: number, b: number, tol: number) => expect(Math.abs(a - b)).toBeLessThan(tol);
 const bend = (angle: number, radius: number, legLength = NaN, legLengthB = NaN, stockLength = NaN) =>
@@ -191,5 +191,88 @@ describe('two or more pipes at an equal spread', () => {
     expect(Number.isFinite(equalSpreadAdvance(-1, 45))).toBe(false);
     expect(Number.isFinite(equalSpreadAdvance(6, 0))).toBe(false);
     expect(Number.isFinite(equalSpreadAdvance(6, 180))).toBe(false);
+  });
+});
+
+describe('double offset bends', () => {
+  // The handbook's 60 degree double offset: 5 inch radii, a 10 inch first
+  // offset and an 8 inch return, end legs of 12 and 10 to the points of
+  // intersection, and 14 inches along the parallel section between them.
+  const d = solveDoubleOffset({
+    angle: 60, radius: 5, firstOffset: 10, returnOffset: 8, legA: 12, legB: 10, parallel: 14,
+  });
+
+  test('it solves', () => expect(d.valid).toBe(true));
+  test('setback, printed as 2-7/8', () => near(d.setback, 2.8868, 1e-4));
+  test('length of each bend, printed as 5-1/4', () => near(d.arcLength, 5.236, 1e-3));
+
+  test('the printed 60 degree offset multipliers', () => {
+    near(d.firstRun, 10 * 0.5774, 1e-3);
+    near(d.firstTravel, 10 * 1.1547, 1e-3);
+    near(d.returnRun, 8 * 0.5774, 1e-3);
+    near(d.returnTravel, 8 * 1.1547, 1e-3);
+  });
+
+  test('the first mark, printed as 12 less the setback', () => near(d.straightA, 9.1132, 1e-4));
+  test('the straight between the first pair, printed as 5-3/4', () => near(d.betweenFirstPair, 5.7735, 1e-4));
+  test('the parallel straight, printed as 8-1/4', () => near(d.parallelStraight, 8.2265, 1e-4));
+  test('the straight between the second pair', () => near(d.betweenSecondPair, 3.4641, 1e-4));
+  test('the last straight', () => near(d.straightB, 7.1132, 1e-4));
+
+  test('nine marks in order', () => {
+    expect(d.marks.length).toBe(9);
+    for (let i = 1; i < d.marks.length; i++) {
+      expect(d.marks[i]!.position).toBeGreaterThan(d.marks[i - 1]!.position);
+    }
+    expect(d.marks[8]!.label).toBe('Cut end');
+    near(d.marks[8]!.position, d.totalLength, 1e-12);
+  });
+
+  test('the straights and the four bends add up to the total', () => {
+    const sum =
+      d.straightA + d.betweenFirstPair + d.parallelStraight + d.betweenSecondPair + d.straightB + 4 * d.arcLength;
+    near(sum, d.totalLength, 1e-9);
+  });
+
+  test('equal offsets give equal straights between each pair', () => {
+    const e = solveDoubleOffset({
+      angle: 45, radius: 6, firstOffset: 9, returnOffset: 9, legA: 20, legB: 20, parallel: 20,
+    });
+    near(e.betweenFirstPair, e.betweenSecondPair, 1e-12);
+    near(e.straightA, e.straightB, 1e-12);
+  });
+
+  test('a straight too short for its bends is refused', () => {
+    const e = solveDoubleOffset({
+      angle: 60, radius: 30, firstOffset: 10, returnOffset: 8, legA: 12, legB: 10, parallel: 14,
+    });
+    expect(e.valid).toBe(false);
+    expect(e.error).toMatch(/shorter than/i);
+  });
+
+  test('bad inputs are refused by name', () => {
+    const base = { angle: 60, radius: 5, firstOffset: 10, returnOffset: 8, legA: 12, legB: 10, parallel: 14 };
+    expect(solveDoubleOffset({ ...base, angle: 90 }).error).toMatch(/between/i);
+    expect(solveDoubleOffset({ ...base, radius: 0 }).error).toMatch(/radius/i);
+    expect(solveDoubleOffset({ ...base, returnOffset: 0 }).error).toMatch(/both offsets/i);
+    expect(solveDoubleOffset({ ...base, parallel: NaN }).error).toMatch(/parallel/i);
+  });
+
+  test('the centre bend of a crossover is the two offset angles added', () => {
+    near(crossoverCentreAngle(30, 45), 75, 1e-12);
+    near(crossoverCentreAngle(45, 30), 75, 1e-12);
+    // The length multiplier confirms the centre bend is 75 degrees: 1.309 is
+    // exactly 75 in radians. The setback belongs with it, and the handbook's
+    // own universal table lists 75 degrees as .7673, which is tan 37.5. The
+    // double offset page prints .763 instead, so the book disagrees with
+    // itself and the code keeps the correct value.
+    near(bend(75, 1).arcLength, 1.309, 1e-3);
+    near(bend(75, 1).setback, 0.7673, 1e-4);
+    expect(Math.abs(bend(75, 1).setback - 0.763)).toBeGreaterThan(0.004);
+  });
+
+  test('a crossover centre angle needs two real angles', () => {
+    expect(Number.isFinite(crossoverCentreAngle(0, 45))).toBe(false);
+    expect(Number.isFinite(crossoverCentreAngle(120, 90))).toBe(false);
   });
 });
