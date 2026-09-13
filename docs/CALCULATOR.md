@@ -49,6 +49,7 @@ left unimplemented rather than filled with plausible numbers.
 | Flanged gate valve laying lengths | `calc/valve.ts` | Cast iron 125/175/250, steel 150 to 2500, both facings |
 | Globe, angle and swing check valves | `calc/valve.ts` | Cast iron and steel; angle is half the globe figure |
 | Flange thickness and overall length | `calc/flange.ts` | All seven classes; screwed, slip-on, lapped and blind |
+| Drilling templates and bolt-up | `calc/boltUp.ts` | 125 and 250 lb cast iron: bolt circle, count, size, length, gasket, hole layout |
 | Framing square layout | `calc/square.ts` | Pitch, rise on a twelve inch run, angle, travel multiplier |
 | Bend setback, arc and gain, any angle | `calc/bender.ts` | Checked against the printed multipliers from a quarter degree to 179 |
 | Piece length from two legs, and the inverse from stock | `calc/bender.ts` | Every printed single-bend worked example passes |
@@ -145,6 +146,7 @@ checked against a property the data has to hold, never against itself.
 | 4-94, 4-95 | 1500 lb steel |
 | 4-97, 4-98 | 2500 lb steel |
 | 4-99 to 4-104 | Gate valves, cast iron and steel, every class and both facings |
+| 4-51 to 4-54 | Drilling templates, 125 and 250 lb cast iron flanges |
 | 4-70, 4-76, 4-82, 4-87, 4-90, 4-93, 4-96 | Flange thickness and overall length, every class |
 | 4-105 to 4-108 | Globe and angle valves, cast iron and steel |
 | 4-111, 4-112 | Swing check valves, steel |
@@ -181,6 +183,8 @@ and answers combinations the book never printed.
 | Ring joint gate valves | the raised face figure plus twice that allowance, a valve carrying it at both ends |
 | Heavy class valves | gate, globe and swing check share one face to face table in 900, 1500 and 2500 lb |
 | Angle valve | half the globe valve's face to face, the same casting opened out |
+| Bolt hole layout | a multiple of four holes, straddling the centreline, so a fitting turns a quarter and still bolts up |
+| Cast iron flange thickness | the same as the matching steel class, once past the sizes where the steel raised face makes the difference |
 
 The reducer coupling shoulders work back to thread engagements for 4, 5, 6 and
 8 inch that match this project's thread table, which that page never prints.
