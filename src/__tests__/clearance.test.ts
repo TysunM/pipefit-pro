@@ -1,4 +1,6 @@
-import { WALL_CLEARANCES, fittingWillTurn, sweptRadius, wallClearance } from '../calc/clearance';
+import {
+  WALL_CLEARANCES, fittingWillTurn, parallelLineSpacing, sweptRadius, wallClearance,
+} from '../calc/clearance';
 import { screwedFitting } from '../calc/screwedFitting';
 import { findRow } from '../calc/pipeData';
 
@@ -65,5 +67,56 @@ describe('wall clearance for turning a fitting', () => {
 
   test('the swept radius refuses nonsense', () => {
     expect(Number.isFinite(sweptRadius(NaN, 2))).toBe(false);
+  });
+});
+
+describe('parallel line spacing', () => {
+  // The handbook prints these as pairs over four pages and states the rule
+  // behind them. Computing from the rule reproduces every printed pair, so the
+  // pages do not need transcribing and every pair is covered, not just the
+  // ones printed.
+  const PRINTED: [number, number, number][] = [
+    [5, 5, 9.3125], [5, 6, 10.1875], [5, 8, 12.0625], [5, 10, 13.875],
+    [6, 6, 10.75], [6, 8, 12.625], [6, 10, 14.5],
+    [8, 8, 13.8125], [8, 10, 15.6875], [10, 10, 16.9375],
+    [12, 5, 15.875], [12, 6, 16.4375], [12, 8, 17.625], [12, 10, 18.875], [12, 12, 20],
+  ];
+
+  test.each(PRINTED)('%s and %s line up at the printed spacing', (a, b, printed) => {
+    expect(Math.abs(parallelLineSpacing(a, b) - printed)).toBeLessThan(0.1);
+  });
+
+  test('the order of the pair does not matter', () => {
+    for (const [a, b] of PRINTED) {
+      expect(parallelLineSpacing(a, b)).toBeCloseTo(parallelLineSpacing(b, a), 12);
+    }
+  });
+
+  test('two of the same size need more room than one of them off a wall', () => {
+    for (const c of WALL_CLEARANCES) {
+      if (c.nps < 0.5) continue;
+      expect(parallelLineSpacing(c.nps, c.nps)).toBeGreaterThan(c.clearance);
+    }
+  });
+
+  test('a bigger neighbour always needs more room', () => {
+    const sizes = [0.5, 0.75, 1, 1.5, 2, 3, 4, 6, 8, 12];
+    for (let i = 1; i < sizes.length; i++) {
+      expect(parallelLineSpacing(2, sizes[i]!)).toBeGreaterThan(parallelLineSpacing(2, sizes[i - 1]!));
+    }
+  });
+
+  test('it always clears both pipes', () => {
+    for (const a of [0.5, 1, 2, 4, 8, 12])
+      for (const b of [0.5, 1, 2, 4, 8, 12]) {
+        const ra = findRow(a)!.od / 2;
+        const rb = findRow(b)!.od / 2;
+        expect(parallelLineSpacing(a, b)).toBeGreaterThan(ra + rb);
+      }
+  });
+
+  test('a size not listed gives nothing', () => {
+    expect(Number.isFinite(parallelLineSpacing(7, 2))).toBe(false);
+    expect(Number.isFinite(parallelLineSpacing(2, 0.125))).toBe(false);
   });
 });

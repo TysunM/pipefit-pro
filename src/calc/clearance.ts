@@ -1,3 +1,5 @@
+import { screwedFitting as screwedFittingFor } from './screwedFitting';
+
 // Minimum distance from a pipe centreline to a wall that still lets a standard
 // 125 lb cast iron fitting turn on the thread.
 
@@ -43,3 +45,24 @@ export const sweptRadius = (centerToEnd: number, bandDiameter: number): number =
   Number.isFinite(centerToEnd) && Number.isFinite(bandDiameter)
     ? Math.hypot(centerToEnd, bandDiameter / 2)
     : NaN;
+
+/**
+ * Minimum centre to centre spacing of two parallel lines that still lets the
+ * fittings turn, with fittings assumed to lie opposite each other.
+ *
+ * The handbook prints this as four pages of pairs, and states the rule behind
+ * them: the turning fitting sweeps the diagonal of a triangle whose legs are
+ * its centre to end and half its band. The larger fitting is the one that has
+ * to turn; the smaller one only has to be cleared, so it contributes half its
+ * band. Computing it covers every pair rather than the ones printed, and
+ * carries no rounding.
+ *
+ * Figures are for 125 lb cast iron. Malleable fittings are smaller, so these
+ * are safe for them too.
+ */
+export function parallelLineSpacing(npsA: number, npsB: number): number {
+  const big = screwedFittingFor(Math.max(npsA, npsB));
+  const small = screwedFittingFor(Math.min(npsA, npsB));
+  if (!big || !small) return NaN;
+  return sweptRadius(big.centerToEnd, big.bandCastIron) + small.bandCastIron / 2;
+}
