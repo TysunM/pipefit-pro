@@ -120,3 +120,37 @@ export function reducingOutletTee(run: number, outlet: number): { runC: number; 
   const f = reducingFitting(run, outlet, 'tee');
   return f ? { runC: f.x, outletM: f.z } : undefined;
 }
+
+// The heavy class carries its own reducing dimensions; the figures are not the
+// ones the standard class uses. These come from the 300 lb malleable reducing
+// outlet tee table.
+export const REDUCING_FITTINGS_HEAVY: ReducingFitting[] = [
+  { run: 1, branch: 0.75, label: '1" x 3/4"', x: 1.5, z: 1.5625, kinds: ['tee'] },
+  { run: 1, branch: 0.5, label: '1" x 1/2"', x: 1.4375, z: 1.5, kinds: ['tee'] },
+  { run: 1, branch: 0.375, label: '1" x 3/8"', x: 1.3125, z: 1.4375, kinds: ['tee'] },
+  { run: 1.25, branch: 1, label: '1-1/4" x 1"', x: 1.75, z: 1.8125, kinds: ['tee'] },
+  { run: 1.25, branch: 0.75, label: '1-1/4" x 3/4"', x: 1.625, z: 1.75, kinds: ['tee'] },
+  { run: 1.25, branch: 0.5, label: '1-1/4" x 1/2"', x: 1.5, z: 1.6875, kinds: ['tee'] },
+  { run: 1.5, branch: 1.25, label: '1-1/2" x 1-1/4"', x: 2.0, z: 2.0625, kinds: ['tee'] },
+  { run: 1.5, branch: 1, label: '1-1/2" x 1"', x: 1.8125, z: 2.0, kinds: ['tee'] },
+  { run: 1.5, branch: 0.75, label: '1-1/2" x 3/4"', x: 1.6875, z: 1.875, kinds: ['tee'] },
+  { run: 1.5, branch: 0.5, label: '1-1/2" x 1/2"', x: 1.625, z: 1.8125, kinds: ['tee'] },
+  { run: 2, branch: 1.5, label: '2" x 1-1/2"', x: 2.25, z: 2.375, kinds: ['tee'] },
+  { run: 2, branch: 1.25, label: '2" x 1-1/4"', x: 2.125, z: 2.3125, kinds: ['tee'] },
+  { run: 2, branch: 1, label: '2" x 1"', x: 2.0, z: 2.25, kinds: ['tee'] },
+  { run: 2, branch: 0.75, label: '2" x 3/4"', x: 1.8125, z: 2.125, kinds: ['tee'] },
+  { run: 2, branch: 0.5, label: '2" x 1/2"', x: 1.75, z: 2.0625, kinds: ['tee'] },
+  { run: 2.5, branch: 2, label: '2-1/2" x 2"', x: 2.6875, z: 2.75, kinds: ['tee'] },
+  { run: 2.5, branch: 1.5, label: '2-1/2" x 1-1/2"', x: 2.4375, z: 2.625, kinds: ['tee'] },
+  { run: 3, branch: 2.5, label: '3" x 2-1/2"', x: 3.0625, z: 3.3125, kinds: ['tee'] },
+  { run: 3, branch: 2, label: '3" x 2"', x: 2.8125, z: 3.125, kinds: ['tee'] },
+];
+
+export function reducingFittingHeavy(run: number, branch: number, kind?: ReducingKind): ReducingFitting | undefined {
+  const big = Math.max(run, branch);
+  const small = Math.min(run, branch);
+  const hit = REDUCING_FITTINGS_HEAVY.find((r) => r.run === big && r.branch === small);
+  if (!hit) return undefined;
+  if (kind && !hit.kinds.includes(kind)) return undefined;
+  return hit;
+}
