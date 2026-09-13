@@ -1,4 +1,6 @@
-import { SCREWED_FITTINGS, screwedCenterToEnd, screwedFitting, screwedSizes } from '../calc/screwedFitting';
+import {
+  SCREWED_FITTINGS, SCREWED_HEAVY, SCREWED_STANDARD, screwedCenterToEnd, screwedFitting, screwedSizes,
+} from '../calc/screwedFitting';
 import { NPT_TABLE } from '../calc/thread';
 import { findRow } from '../calc/pipeData';
 
@@ -71,4 +73,69 @@ describe('screwed fitting dimensions', () => {
   });
 
   test('the size list matches the table', () => expect(screwedSizes().length).toBe(17));
+});
+
+describe('the heavy class', () => {
+  test('all seventeen sizes, matching the standard class', () => {
+    expect(SCREWED_HEAVY.length).toBe(17);
+    expect(SCREWED_HEAVY.map((f) => f.nps)).toEqual(SCREWED_STANDARD.map((f) => f.nps));
+  });
+
+  test('rows read back as printed', () => {
+    expect(screwedFitting(0.5, 'heavy')).toMatchObject({ centerToEnd: 1.25, centerToEnd45: 1, bandCastIron: 1.59 });
+    expect(screwedFitting(2, 'heavy')).toMatchObject({ centerToEnd: 2.5, centerToEnd45: 2, bandCastIron: 3.74 });
+    expect(screwedFitting(12, 'heavy')).toMatchObject({ centerToEnd: 10, centerToEnd45: 6, bandCastIron: 16.84 });
+  });
+
+  test('a heavy fitting always reaches further and is always fatter', () => {
+    for (const h of SCREWED_HEAVY) {
+      const s = screwedFitting(h.nps)!;
+      expect(h.centerToEnd).toBeGreaterThan(s.centerToEnd);
+      expect(h.centerToEnd45).toBeGreaterThan(s.centerToEnd45);
+      expect(h.bandCastIron).toBeGreaterThan(s.bandCastIron);
+    }
+  });
+
+  // The two tables were read separately. The 300 lb malleable band is printed
+  // as the same figure as the 125 lb cast iron band on every row they share,
+  // which is a check that neither reading drifted.
+  test('300 lb malleable matches 125 lb cast iron on every shared row', () => {
+    let shared = 0;
+    for (const h of SCREWED_HEAVY) {
+      if (!Number.isFinite(h.bandMalleable)) continue;
+      expect(h.bandMalleable).toBeCloseTo(screwedFitting(h.nps)!.bandCastIron, 10);
+      shared++;
+    }
+    expect(shared).toBe(10);
+  });
+
+  test('300 lb malleable stops at three inch, as printed', () => {
+    for (const h of SCREWED_HEAVY) expect(Number.isFinite(h.bandMalleable)).toBe(h.nps <= 3);
+  });
+
+  test('a 45 always reaches less far than a 90', () => {
+    for (const h of SCREWED_HEAVY) expect(h.centerToEnd45).toBeLessThan(h.centerToEnd);
+  });
+
+  test('every dimension grows with the size', () => {
+    for (let i = 1; i < SCREWED_HEAVY.length; i++) {
+      const p = SCREWED_HEAVY[i - 1]!;
+      const q = SCREWED_HEAVY[i]!;
+      expect(q.centerToEnd).toBeGreaterThan(p.centerToEnd);
+      expect(q.centerToEnd45).toBeGreaterThan(p.centerToEnd45);
+      expect(q.bandCastIron).toBeGreaterThan(p.bandCastIron);
+    }
+  });
+
+  test('the class picks which table answers', () => {
+    expect(screwedCenterToEnd(2, 90, 'standard')).toBe(2.25);
+    expect(screwedCenterToEnd(2, 90, 'heavy')).toBe(2.5);
+    expect(screwedCenterToEnd(2, 45, 'heavy')).toBe(2);
+    expect(screwedSizes('heavy').length).toBe(17);
+  });
+
+  test('the default class is the standard one', () => {
+    expect(SCREWED_FITTINGS).toBe(SCREWED_STANDARD);
+    expect(screwedCenterToEnd(2, 90)).toBe(screwedCenterToEnd(2, 90, 'standard'));
+  });
 });
