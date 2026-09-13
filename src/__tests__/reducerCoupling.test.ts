@@ -177,3 +177,101 @@ describe('reducer couplings', () => {
     });
   });
 });
+
+import {
+  REDUCER_COUPLINGS_MALLEABLE,
+  SHOULDER_MALLEABLE,
+  malleableReducerCoupling,
+  malleableReducerGap,
+  malleableReducerGapFromRule,
+  malleableReducerIsSuspect,
+} from '../calc/reducerCoupling';
+
+describe('malleable reducer couplings', () => {
+  test('forty printed combinations', () => {
+    expect(REDUCER_COUPLINGS_MALLEABLE.length).toBe(40);
+  });
+
+  test('rows read back as printed', () => {
+    expect(malleableReducerCoupling(2, 1)!.j).toBe(1.375);
+    expect(malleableReducerCoupling(4, 3)!.j).toBe(2.25);
+    expect(malleableReducerCoupling(1.25, 1)!.j).toBe(0.6875);
+  });
+
+  test('the small end is always smaller than the large', () => {
+    for (const r of REDUCER_COUPLINGS_MALLEABLE) expect(r.small).toBeLessThan(r.large);
+  });
+
+  test('thirty eight of the forty fit the shoulder rule exactly', () => {
+    const off: string[] = [];
+    for (const r of REDUCER_COUPLINGS_MALLEABLE) {
+      const shoulder = SHOULDER_MALLEABLE.get(r.large);
+      if (shoulder === undefined || Math.abs(r.j + eng(r.small) - shoulder) > 1e-9) {
+        off.push(`${r.large}x${r.small}`);
+      }
+    }
+    expect(off).toEqual(['3x2.5', '6x4']);
+    expect(REDUCER_COUPLINGS_MALLEABLE.filter((r) => r.suspect).length).toBe(2);
+  });
+
+  // The half inch block prints its third row as 1/2 x 1/2, which is not a
+  // reducer at all. Held as 1/2 x 3/8, which is what the gap works back to and
+  // the one size otherwise missing from that block.
+  test('the half by half row is held as a half by three eighths', () => {
+    expect(malleableReducerCoupling(0.5, 0.5)).toBeUndefined();
+    expect(malleableReducerCoupling(0.5, 0.375)!.j).toBe(0.375);
+    expect(0.375 + eng(0.375)).toBeCloseTo(SHOULDER_MALLEABLE.get(0.5)!, 12);
+    expect(0.375 + eng(0.5)).not.toBeCloseTo(SHOULDER_MALLEABLE.get(0.5)!, 12);
+  });
+
+  // Both suspect rows print a figure that appears on the cast iron pages for
+  // the same pair, which is what reading across the wrong table looks like.
+  test('both suspect rows match the cast iron figure for the same pair', () => {
+    expect(malleableReducerCoupling(3, 2.5)!.j).toBe(reducerCoupling(3, 2.5)!.k);
+    expect(malleableReducerCoupling(6, 4)!.j).toBe(reducerCoupling(6, 4)!.j);
+    expect(malleableReducerIsSuspect(3, 2.5)).toBe(true);
+    expect(malleableReducerIsSuspect(6, 4)).toBe(true);
+    expect(malleableReducerIsSuspect(4, 3)).toBe(false);
+  });
+
+  test('a suspect row gives the rule where the rule can answer, and nothing where it cannot', () => {
+    expect(malleableReducerGap(3, 2.5)).toBeCloseTo(1.75, 12);
+    expect(malleableReducerGap(3, 2.5)).not.toBe(malleableReducerCoupling(3, 2.5)!.j);
+    expect(Number.isFinite(malleableReducerGap(6, 4))).toBe(false);
+    expect(malleableReducerCoupling(6, 4)!.j).toBe(1.9375);
+  });
+
+  test('the shoulder grows with the size and stops where it cannot be checked', () => {
+    const rows = [...SHOULDER_MALLEABLE].sort((a, b) => a[0] - b[0]);
+    for (let i = 1; i < rows.length; i++) {
+      expect(rows[i]![1]).toBeGreaterThanOrEqual(rows[i - 1]![1]);
+    }
+    expect(SHOULDER_MALLEABLE.has(6)).toBe(false);
+    expect(Number.isFinite(malleableReducerGapFromRule(6, 2))).toBe(false);
+  });
+
+  test('the rule fills in pairs the page never prints', () => {
+    expect(malleableReducerCoupling(4, 1)).toBeUndefined();
+    expect(malleableReducerGap(4, 1)).toBeCloseTo(3.25 - eng(1), 12);
+  });
+
+  test('every printed value lands on a clean sixteenth', () => {
+    for (const r of REDUCER_COUPLINGS_MALLEABLE) {
+      expect(Math.abs(r.j * 16 - Math.round(r.j * 16))).toBeLessThan(1e-9);
+      expect(r.j).toBeGreaterThan(0);
+    }
+  });
+
+  test('every size is a real pipe size', () => {
+    for (const r of REDUCER_COUPLINGS_MALLEABLE) {
+      expect(findRow(r.large)).toBeDefined();
+      expect(findRow(r.small)).toBeDefined();
+    }
+  });
+
+  test('nothing is invented outside the table', () => {
+    expect(Number.isFinite(malleableReducerGap(8, 6))).toBe(false);
+    expect(Number.isFinite(malleableReducerGap(1, 2))).toBe(false);
+    expect(Number.isFinite(malleableReducerGap(2, 2))).toBe(false);
+  });
+});
