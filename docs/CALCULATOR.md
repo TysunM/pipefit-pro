@@ -51,6 +51,7 @@ left unimplemented rather than filled with plausible numbers.
 | Flange thickness and overall length | `calc/flange.ts` | All seven classes; screwed, slip-on, lapped and blind |
 | Drilling templates and bolt-up | `calc/boltUp.ts` | 125 and 250 lb cast iron: bolt circle, count, size, length, gasket, hole layout |
 | Welding neck flange length | `calc/weldingNeck.ts` | All seven classes, length through the hub |
+| Butt welding elbows, tees, reducers, returns, caps | `calc/weldFitting.ts` | Held as rules where the pages are rules, so they answer past 24 inch |
 | Framing square layout | `calc/square.ts` | Pitch, rise on a twelve inch run, angle, travel multiplier |
 | Bend setback, arc and gain, any angle | `calc/bender.ts` | Checked against the printed multipliers from a quarter degree to 179 |
 | Piece length from two legs, and the inverse from stock | `calc/bender.ts` | Every printed single-bend worked example passes |
@@ -154,6 +155,11 @@ checked against a property the data has to hold, never against itself.
 | 4-111, 4-112 | Swing check valves, steel |
 | 1-106 | Minimum bending radius, standard weight pipe |
 
+| 2-42, 2-43 | Butt welding elbows and straight tees |
+| 2-48, 2-50 | Butt welding reducers |
+| 2-51 | Butt welding 180 degree returns |
+| 2-53 | Butt welding caps |
+
 ### Still to transcribe
 
 Screwed: done, 4-13 to 4-46.
@@ -163,8 +169,8 @@ cast iron, welding neck flanges), 4-76, 4-82, 4-86, 4-87, 4-90, 4-93, 4-96
 (the flange tables themselves and the remaining lateral pages), and 4-99 to
 4-109 and 4-110, the remaining globe valve pages.
 
-Part 2: 2-42 to 2-62 welded fitting laying lengths, 2-66 U-bolts, 2-67
-support spacing. Part 3: solder joint fittings, plastic pipe. Part 5:
+Part 2: 2-44 to 2-47 (reducing outlet tees and reducing elbows), 2-52 (lap
+joint stub ends), 2-54 to 2-62, 2-66 U-bolts, 2-67 support spacing. Part 3: solder joint fittings, plastic pipe. Part 5:
 copper tube, the rest of the steel schedules, pipe expansion.
 
 ### Rules found behind the printed tables
@@ -181,6 +187,10 @@ and answers combinations the book never printed.
 | Parallel line spacing | swept radius of the larger, plus half the smaller's band |
 | Street elbow, 90 degree | the ordinary elbow takeout, exactly |
 | Malleable coupling, union and close nipple | the length, less the two threads buried in it |
+| Butt welding 90 elbow | one and a half times the nominal size long radius, the size itself short radius |
+| Butt welding 45 elbow | five eighths of the nominal size, from four inch up |
+| Butt welding reducer | the length depends only on the larger size |
+| Butt welding 180 return | spacing is twice the bend radius; height is that radius plus half the outside diameter |
 | Flanged ring joint, every class | the raised face figure, plus an allowance for each flange face in the dimension |
 | Ring joint gate valves | the raised face figure plus twice that allowance, a valve carrying it at both ends |
 | Heavy class valves | gate, globe and swing check share one face to face table in 900, 1500 and 2500 lb |
@@ -212,6 +222,7 @@ where the book contradicts itself. All are pinned by tests.
 | Malleable reducer coupling 3 x 2-1/2 | 1 | 1-3/4 per the rule; 1 is the cast iron figure for the same pair |
 | Malleable reducer coupling 6 x 4 | 1-15/16 | unknown; that is the cast iron figure, and it would make the six inch casting shallower than the five. Refused rather than served |
 | 1500 lb ring joint 5 inch 45 elbow | 3-13/16 | 8-13/16: shorter as printed than both the four and the six inch, and the allowance every other row on the page obeys gives 8-13/16 |
+| 180 degree return, 1/2 inch | O 3, K 1-7/8 | O 1-1/2, K 1-3/16 per the geometry every other row obeys; the printed O is the one inch figure and the printed K is taller than the 3/4 inch below it |
 
 ### Corrections made to this project's own data
 
