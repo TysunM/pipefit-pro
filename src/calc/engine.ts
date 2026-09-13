@@ -10,6 +10,7 @@ import {
 } from './ftin';
 import type { KeyAction } from './keys';
 import { CLEAR_ALL_DEFAULTS } from './defaults';
+import { solveTriangle, type TriField } from './triangle';
 
 export type BinaryOp = 'add' | 'subtract' | 'multiply' | 'divide' | 'power' | 'nthRoot';
 
@@ -41,6 +42,9 @@ export type CalcState = {
   unitCost: number;
   tape: string[];
   costTotal: number | null;
+  tri: Partial<Record<TriField, number>>;
+  triOrder: TriField[];
+  accFromTrade: boolean;
 };
 
 export const initialState = (den: FracDen = 16): CalcState => ({
@@ -60,6 +64,9 @@ export const initialState = (den: FracDen = 16): CalcState => ({
   unitCost: CLEAR_ALL_DEFAULTS.unitCost,
   tape: [],
   costTotal: null,
+  tri: {},
+  triOrder: [],
+  accFromTrade: false,
 });
 
 const UNIT_KEY: Partial<Record<KeyAction, string>> = {
@@ -148,12 +155,15 @@ const cleared = (s: CalcState, all = false): CalcState => ({
         unitCost: CLEAR_ALL_DEFAULTS.unitCost,
         tape: [],
         costTotal: null,
+        tri: {},
+        triOrder: [],
+        accFromTrade: false,
       }
     : {}),
 });
 
 function withValue(s: CalcState, value: Dim): CalcState {
-  return { ...s, entry: emptyEntry(), acc: value, shift: false, error: null };
+  return { ...s, entry: emptyEntry(), acc: value, shift: false, error: null, accFromTrade: false };
 }
 
 function fail(s: CalcState, message: string): CalcState {
@@ -352,6 +362,53 @@ export function press(state: CalcState, action: KeyAction, arg?: string): CalcSt
 
       case 'tape':
         return { ...s, shift: false, error: null };
+
+      // The four keys along the top are registers, not functions. Enter a
+      // value and press one to hold it; press one with nothing entered and it
+      // solves from the two most recently held.
+      case 'angleSlope':
+      case 'offset':
+      case 'run':
+      case 'travel': {
+        const field: TriField = action === 'angleSlope' ? 'angle' : action;
+        const typed = !isEntryEmpty(s.entry) || (s.acc !== null && !s.accFromTrade);
+
+        if (typed) {
+          const v = current(s);
+          if (!v) return fail(s, 'Enter a value first.');
+          if (field === 'angle' && v.kind !== 'angle' && v.kind !== 'scalar') {
+            return fail(s, `${kindLabel(v.kind)} is not an angle.`);
+          }
+          const order = [...s.triOrder.filter((f) => f !== field), field].slice(-2);
+          return {
+            ...s,
+            tri: { ...s.tri, [field]: v.value },
+            triOrder: order,
+            entry: emptyEntry(),
+            acc: dim(v.value, field === 'angle' ? 'angle' : 'linear'),
+            accFromTrade: true,
+            shift: false,
+            error: null,
+          };
+        }
+
+        const held = s.tri[field];
+        if (held !== undefined) {
+          return { ...withValue(s, dim(held, field === 'angle' ? 'angle' : 'linear')), accFromTrade: true };
+        }
+
+        const [a, b] = s.triOrder;
+        if (!a || !b) return fail(s, 'Enter two of offset, run, travel or angle.');
+
+        const solved = solveTriangle({ field: a, value: s.tri[a]! }, { field: b, value: s.tri[b]! });
+        if (!solved.valid) return fail(s, solved.error ?? 'Cannot solve.');
+
+        return {
+          ...withValue(s, dim(solved[field], field === 'angle' ? 'angle' : 'linear')),
+          tri: { ...s.tri, [field]: solved[field] },
+          accFromTrade: true,
+        };
+      }
 
       case 'recall':
         if (shifted) return { ...s, memory: dim(0, 'scalar'), pending: null, shift: false, error: null };

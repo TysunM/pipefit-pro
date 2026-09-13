@@ -576,3 +576,82 @@ describe('no keypad shift is left unassigned now', () => {
     expect(ALL_KEYS.find((k) => k.label === '=')!.shiftAction).toBe('tape');
   });
 });
+
+describe('the trade registers', () => {
+  const near = (a: number, b: number, tol = 1e-9) => expect(Math.abs(a - b)).toBeLessThan(tol);
+
+  test('offset and run, then travel solves', () => {
+    const s = run([...D('15'), ['offset'], ...D('15'), ['run'], ['travel']]);
+    near(s.tri.travel!, 21.2132034, 1e-6);
+    // 21.2132 to the nearest sixteenth is 9-3/16 over the foot, not 9-1/4.
+    expect(displayText(s)).toBe(`1' 9-3/16"`);
+  });
+
+  test('and the angle falls out of the same pair', () => {
+    const s = run([...D('15'), ['offset'], ...D('15'), ['run'], ['angleSlope']]);
+    expect(displayText(s)).toBe('45°');
+  });
+
+  test('the three four five', () => {
+    const s = run([...D('3'), ['offset'], ...D('4'), ['run'], ['travel']]);
+    near(s.tri.travel!, 5, 1e-12);
+    expect(displayText(s)).toBe(`5"`);
+  });
+
+  test('angle and travel give back the offset', () => {
+    const s = run([...D('45'), ['angleSlope'], ...D('21'), ['dot'], ...D('2132034'), ['travel'], ['offset']]);
+    near(s.tri.offset!, 15, 1e-5);
+  });
+
+  test('a register pressed with nothing entered recalls what it holds', () => {
+    const s = run([...D('12'), ['offset'], ['clear'], ['clear'], ['offset']]);
+    expect(displayText(s)).toBe(`1'`);
+  });
+
+  test('a length is stored as a length and an angle as an angle', () => {
+    const s = run([...D('30'), ['angleSlope'], ...D('10'), ['offset']]);
+    expect(s.acc!.kind).toBe('linear');
+    expect(press(run([['clear'], ['clear']], s), 'angleSlope').acc!.kind).toBe('angle');
+  });
+
+  test('feet and inches go into a register as inches', () => {
+    const s = run([...D('2'), ['feet'], ['offset']]);
+    near(s.tri.offset!, 24, 1e-12);
+  });
+
+  test('only the two most recent are used, so a third entry supersedes', () => {
+    // Offset then run would give 45 degrees; replacing the run with 26 gives 30.
+    let s = run([...D('15'), ['offset'], ...D('15'), ['run']]);
+    s = run([...D('25'), ['dot'], ...D('98'), ['run'], ['angleSlope']], s);
+    near(s.tri.angle!, 30, 1e-2);
+  });
+
+  test('with fewer than two held it says what it needs', () => {
+    expect(show([...D('15'), ['offset'], ['clear'], ['clear'], ['travel']])).toMatch(/two of offset/i);
+  });
+
+  test('an impossible pair is refused by name', () => {
+    const s = run([...D('10'), ['offset'], ...D('4'), ['travel'], ['run']]);
+    expect(s.error).toMatch(/longer than the offset/i);
+  });
+
+  test('a weight is not an angle', () => {
+    expect(show([...D('5'), ['conv'], ['pound'], ['angleSlope']])).toMatch(/not an angle/i);
+  });
+
+  test('a computed result goes straight into a register', () => {
+    const s = run([...D('12'), ['add'], ...D('6'), ['equals'], ['offset']]);
+    near(s.tri.offset!, 18, 1e-12);
+  });
+
+  test('Clear All empties the registers', () => {
+    const s = press(run([...D('15'), ['offset'], ...D('15'), ['run']]), 'clearAll');
+    expect(s.tri).toEqual({});
+    expect(s.triOrder).toEqual([]);
+  });
+
+  test('the registers survive an ordinary clear', () => {
+    const s = run([...D('15'), ['offset'], ['clear'], ['clear']]);
+    near(s.tri.offset!, 15, 1e-12);
+  });
+});
