@@ -48,6 +48,7 @@ left unimplemented rather than filled with plausible numbers.
 | Flanged base elbows and tees | `calc/flangedFitting.ts` | 150 and 300 lb |
 | Flanged gate valve laying lengths | `calc/valve.ts` | Cast iron 125/175/250, steel 150 to 2500, both facings |
 | Globe, angle and swing check valves | `calc/valve.ts` | Cast iron and steel; angle is half the globe figure |
+| Flange thickness and overall length | `calc/flange.ts` | All seven classes; screwed, slip-on, lapped and blind |
 | Framing square layout | `calc/square.ts` | Pitch, rise on a twelve inch run, angle, travel multiplier |
 | Bend setback, arc and gain, any angle | `calc/bender.ts` | Checked against the printed multipliers from a quarter degree to 179 |
 | Piece length from two legs, and the inverse from stock | `calc/bender.ts` | Every printed single-bend worked example passes |
@@ -144,6 +145,7 @@ checked against a property the data has to hold, never against itself.
 | 4-94, 4-95 | 1500 lb steel |
 | 4-97, 4-98 | 2500 lb steel |
 | 4-99 to 4-104 | Gate valves, cast iron and steel, every class and both facings |
+| 4-70, 4-76, 4-82, 4-87, 4-90, 4-93, 4-96 | Flange thickness and overall length, every class |
 | 4-105 to 4-108 | Globe and angle valves, cast iron and steel |
 | 4-111, 4-112 | Swing check valves, steel |
 | 1-106 | Minimum bending radius, standard weight pipe |
