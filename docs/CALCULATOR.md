@@ -33,6 +33,9 @@ left unimplemented rather than filled with plausible numbers.
 | Piece length from two legs, and the inverse from stock | `calc/bender.ts` | Every printed single-bend worked example passes |
 | Offset bend layout | `calc/offsetBend.ts` | Full mark list for a two-bend offset in bent pipe |
 | Double offset bend layout | `calc/offsetBend.ts` | Four bends, nine marks, parallel section between |
+| Wrap-around miter template | `calc/template.ts` | Ordinates at any segment count, exact plane-cuts-cylinder |
+| Branch and hole templates | `calc/template.ts` | Tee and lateral, exact cylinder intersection |
+| Dividing the circumference | `calc/template.ts` | Segment length from actual outside diameter |
 | Two or more pipes at equal spread | `calc/offsetBend.ts` | The advance C, spread times the tangent of half the angle |
 
 ## Remaining
