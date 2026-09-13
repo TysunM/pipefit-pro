@@ -419,3 +419,27 @@ export const flangedSizes = (cls: FlangeClass = '150'): number[] =>
   (BY_CLASS[cls] ?? []).map((f) => f.nps);
 
 export const flangedClasses = (): FlangeClass[] => Object.keys(BY_CLASS) as FlangeClass[];
+
+// Cast iron flanged fittings carry the same laying lengths as the steel class
+// they sit alongside: 125 lb cast iron is the 150 lb steel table and 250 lb is
+// the 300 lb, in every size and every dimension both print, the reducer
+// included. Pages 4-59 and 4-66 against 4-71, 4-72, 4-77 and 4-78.
+
+export type CastIronClass = '125' | '250';
+
+const CAST_IRON_EQUIVALENT: Record<CastIronClass, FlangeClass> = { '125': '150', '250': '300' };
+
+/** The steel class a cast iron one lays out the same as. */
+export const castIronEquivalent = (cls: CastIronClass): FlangeClass => CAST_IRON_EQUIVALENT[cls];
+
+/** Laying lengths of a cast iron flanged elbow, tee or cross. */
+export const castIronFlangedFitting = (
+  nps: number,
+  cls: CastIronClass = '125'
+): FlangedFitting | undefined => flangedFitting(nps, CAST_IRON_EQUIVALENT[cls]);
+
+/** Laying lengths of a cast iron flanged lateral or reducer. */
+export const castIronFlangedLateral = (
+  nps: number,
+  cls: CastIronClass = '125'
+): FlangedLateral | undefined => flangedLateral(nps, CAST_IRON_EQUIVALENT[cls]);

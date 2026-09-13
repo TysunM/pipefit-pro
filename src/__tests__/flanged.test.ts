@@ -523,3 +523,62 @@ describe('the ring joint pages for the heavier classes', () => {
     expect(k).toBeLessThan(flangedFitting(6, '1500', 'ringJoint')!.c);
   });
 });
+
+import {
+  CastIronClass,
+  castIronEquivalent,
+  castIronFlangedFitting,
+  castIronFlangedLateral,
+} from '../calc/flangedFitting';
+
+describe('cast iron flanged fittings', () => {
+  // Read off page 4-59: size, A, B, C.
+  const CI_125: [number, number, number, number][] = [
+    [1, 3.5, 5, 1.75], [1.25, 3.75, 5.5, 2], [1.5, 4, 6, 2.25], [2, 4.5, 6.5, 2.5],
+    [2.5, 5, 7, 3], [3, 5.5, 7.75, 3], [3.5, 6, 8.5, 3.5], [4, 6.5, 9, 4],
+    [5, 7.5, 10.25, 4.5], [6, 8, 11.5, 5], [8, 9, 14, 5.5], [10, 11, 16.5, 6.5],
+    [12, 12, 19, 7.5], [14, 14, 21.5, 7.5], [16, 15, 24, 8], [18, 16.5, 26.5, 8.5],
+    [20, 18, 29, 9.5],
+  ];
+
+  // Read off page 4-66: size, A, B, C, G.
+  const CI_250: [number, number, number, number, number][] = [
+    [2, 5, 6.5, 3, 5], [2.5, 5.5, 7, 3.5, 5.5], [3, 6, 7.75, 3.5, 6],
+    [3.5, 6.5, 8.5, 4, 6.5], [4, 7, 9, 4.5, 7], [5, 8, 10.25, 5, 8],
+    [6, 8.5, 11.5, 5.5, 9], [8, 10, 14, 6, 11], [10, 11.5, 16.5, 7, 12],
+    [12, 13, 19, 8, 14], [14, 15, 21.5, 8.5, 16], [16, 16.5, 24, 9.5, 18],
+    [18, 18, 26.5, 10, 19], [20, 19.5, 29, 10.5, 20], [24, 22.5, 34, 12, 24],
+  ];
+
+  test('125 lb cast iron is the 150 lb steel table, 250 lb is the 300', () => {
+    expect(castIronEquivalent('125')).toBe('150');
+    expect(castIronEquivalent('250')).toBe('300');
+  });
+
+  test('every printed 125 lb figure is the 150 lb steel figure', () => {
+    expect(CI_125.length).toBe(17);
+    for (const [nps, a, b, c] of CI_125) {
+      expect(castIronFlangedFitting(nps, '125')).toMatchObject({ a, b, c });
+      expect(flangedFitting(nps, '150')).toMatchObject({ a, b, c });
+    }
+  });
+
+  test('every printed 250 lb figure is the 300 lb steel figure, reducer included', () => {
+    expect(CI_250.length).toBe(15);
+    for (const [nps, a, b, c, g] of CI_250) {
+      expect(castIronFlangedFitting(nps, '250')).toMatchObject({ a, b, c });
+      expect(castIronFlangedLateral(nps, '250')!.g).toBe(g);
+    }
+  });
+
+  // The cast iron pages stop short of the steel ones at the top.
+  test('the cast iron pages stop where they stop, and the steel ones carry on', () => {
+    expect(CI_125[CI_125.length - 1]![0]).toBe(20);
+    expect(flangedFitting(24, '150')).toBeDefined();
+  });
+
+  test('a class that is not a cast iron class is not offered', () => {
+    const classes: CastIronClass[] = ['125', '250'];
+    expect(classes.map(castIronEquivalent)).toEqual(['150', '300']);
+  });
+});

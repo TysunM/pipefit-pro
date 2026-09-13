@@ -45,6 +45,7 @@ left unimplemented rather than filled with plausible numbers.
 | Pipe nipples | `calc/nipple.ts` | Long, short and close; stocked lengths generated |
 | Flanged fitting laying lengths | `calc/flangedFitting.ts` | All seven steel classes, raised face and ring joint |
 | Flanged laterals and reducers | `calc/flangedFitting.ts` | 150, 300 and 400 lb |
+| Cast iron flanged fittings | `calc/flangedFitting.ts` | 125 and 250 lb, read from the steel class each lays out the same as |
 | Flanged base elbows and tees | `calc/flangedFitting.ts` | 150 and 300 lb |
 | Flanged gate valve laying lengths | `calc/valve.ts` | Cast iron 125/175/250, steel 150 to 2500, both facings |
 | Globe, angle and swing check valves | `calc/valve.ts` | Cast iron and steel; angle is half the globe figure |
@@ -158,6 +159,7 @@ checked against a property the data has to hold, never against itself.
 | 4-97, 4-98 | 2500 lb steel |
 | 4-99 to 4-104 | Gate valves, cast iron and steel, every class and both facings |
 | 4-51 to 4-54 | Drilling templates, 125 and 250 lb cast iron flanges |
+| 4-59, 4-66 | Cast iron flanged fittings, 125 and 250 lb |
 | 4-68, 4-69 | Welding neck flanges, every class |
 | 4-70, 4-76, 4-82, 4-87, 4-90, 4-93, 4-96 | Flange thickness and overall length, every class |
 | 4-105 to 4-108 | Globe and angle valves, cast iron and steel |
@@ -221,6 +223,7 @@ and answers combinations the book never printed.
 | Ring joint gate valves | the raised face figure plus twice that allowance, a valve carrying it at both ends |
 | Heavy class valves | gate, globe and swing check share one face to face table in 900, 1500 and 2500 lb, flanged and butt welding alike |
 | Butt welding valve, 400 and 600 lb | the flanged figure; only 150 and 300 lb are longer |
+| Cast iron flanged fitting | the steel table for the class alongside it: 125 lb is 150 lb steel, 250 lb is 300 lb |
 | Field made reducer | the arms and notches come to the larger pipe's circumference |
 | Angle valve | half the globe valve's face to face, the same casting opened out |
 | Bolt hole layout | a multiple of four holes, straddling the centreline, so a fitting turns a quarter and still bolts up |
