@@ -172,6 +172,7 @@ checked against a property the data has to hold, never against itself.
 | 3-26, 3-27 | Polyvinyl chloride pipe, dimensions and pressure limits |
 | 3-29, 3-30 | Type I polyethylene pipe, dimensions and pressure limits |
 | 5-13 to 5-16 | Copper tube, types K, L, M and DWV |
+| 5-19, 5-20 | Schedule 120 and stainless, read a second time as a check on the project's own table |
 | 5-25 | Expansion of pipe per 100 feet |
 
 ### Still to transcribe
