@@ -351,3 +351,112 @@ describe('butt welding caps', () => {
     expect(Number.isNaN(weldCap(30))).toBe(true);
   });
 });
+
+import {
+  REDUCING_WELD_TEES,
+  reducingElbow,
+  reducingElbowBranches,
+  reducingElbowLargeSizes,
+  reducingElbowMade,
+  reducingWeldTeeOutlet,
+  reducingWeldTeeOutlets,
+  reducingWeldTeeRun,
+  reducingWeldTeeRuns,
+} from '../calc/weldFitting';
+
+describe('butt welding reducing outlet tees', () => {
+  test('fifty nine combinations across the three pages', () => {
+    expect(REDUCING_WELD_TEES.length).toBe(59);
+    expect(reducingWeldTeeRuns().length).toBe(15);
+  });
+
+  // The run never changes: a reducing tee runs the same as a plain one.
+  test('the run keeps the straight tee figure', () => {
+    for (const t of REDUCING_WELD_TEES) {
+      if (t.run < 0.75) continue;
+      expect(reducingWeldTeeRun(t.run)).toBe(weldTee(t.run));
+    }
+    // The half inch run is on the reducing pages only.
+    expect(reducingWeldTeeRun(0.5)).toBe(1);
+    expect(Number.isNaN(weldTee(0.5))).toBe(true);
+  });
+
+  test('rows read back as printed', () => {
+    expect(reducingWeldTeeOutlet(2, 0.75)).toBe(1.75);
+    expect(reducingWeldTeeOutlet(6, 2.5)).toBe(4.75);
+    expect(reducingWeldTeeOutlet(12, 10)).toBe(9.5);
+  });
+
+  test('the outlet is always smaller than the run', () => {
+    for (const t of REDUCING_WELD_TEES) expect(t.outlet).toBeLessThan(t.run);
+  });
+
+  // Up to an inch and a half the outlet keeps the run's figure; from two inch
+  // up it comes back in, and further in the smaller the outlet.
+  test('the outlet matches the run to an inch and a half, then comes in', () => {
+    for (const t of REDUCING_WELD_TEES) {
+      if (t.run > 1.5) continue;
+      expect(t.m).toBe(reducingWeldTeeRun(t.run));
+    }
+    for (const t of REDUCING_WELD_TEES) {
+      if (t.run <= 1.5) continue;
+      expect(t.m).toBeLessThan(reducingWeldTeeRun(t.run));
+    }
+  });
+
+  test('a bigger outlet reaches further, within a run size', () => {
+    for (const run of reducingWeldTeeRuns()) {
+      const outlets = reducingWeldTeeOutlets(run);
+      for (let i = 1; i < outlets.length; i++) {
+        const a = reducingWeldTeeOutlet(run, outlets[i - 1]!);
+        const b = reducingWeldTeeOutlet(run, outlets[i]!);
+        expect(b).toBeGreaterThanOrEqual(a);
+      }
+    }
+  });
+
+  // Printed on both 2-45 and 2-46, and the two readings agree.
+  test('the six by two and a half is printed twice and reads the same', () => {
+    expect(reducingWeldTeeOutlet(6, 2.5)).toBe(4.75);
+    expect(REDUCING_WELD_TEES.filter((t) => t.run === 6 && t.outlet === 2.5).length).toBe(1);
+  });
+
+  test('a combination not printed gives nothing', () => {
+    expect(Number.isNaN(reducingWeldTeeOutlet(6, 1))).toBe(true);
+    expect(Number.isNaN(reducingWeldTeeOutlet(14, 8))).toBe(true);
+    expect(reducingWeldTeeOutlets(14)).toEqual([]);
+  });
+});
+
+describe('90 degree reducing elbows', () => {
+  test('seven large sizes, two inch to six', () => {
+    expect(reducingElbowLargeSizes()).toEqual([2, 2.5, 3, 3.5, 4, 5, 6]);
+  });
+
+  // Every printed figure is the long radius rule on the larger size.
+  test('it is one and a half times the larger size', () => {
+    const PRINTED: [number, number, number][] = [
+      [2, 1.5, 3], [2, 1, 3], [2.5, 2, 3.75], [2.5, 1.25, 3.75],
+      [3, 2.5, 4.5], [3, 2, 4.5], [3, 1.5, 4.5], [3.5, 3, 5.25], [3.5, 2, 5.25],
+      [4, 3.5, 6], [4, 3, 6], [4, 2, 6], [5, 4, 7.5], [5, 3.5, 7.5],
+      [5, 3, 7.5], [5, 2.5, 7.5], [6, 5, 9], [6, 4, 9], [6, 3.5, 9], [6, 3, 9],
+    ];
+    expect(PRINTED.length).toBe(20);
+    for (const [big, small, a] of PRINTED) {
+      expect(reducingElbow(big, small)).toBeCloseTo(a, 12);
+      expect(a).toBeCloseTo(longRadiusElbow(big), 12);
+      expect(reducingElbowMade(big, small)).toBe(true);
+    }
+  });
+
+  test('the pair can be given either way round', () => {
+    expect(reducingElbow(3, 2)).toBe(reducingElbow(2, 3));
+  });
+
+  test('a combination not printed is marked as not made', () => {
+    expect(reducingElbowMade(6, 2)).toBe(false);
+    expect(reducingElbowBranches(8)).toEqual([]);
+    expect(Number.isNaN(reducingElbow(8, 6))).toBe(true);
+    expect(Number.isNaN(reducingElbow(4, 4))).toBe(true);
+  });
+});

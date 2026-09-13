@@ -204,3 +204,142 @@ const CAP_BY_NPS = new Map(WELD_CAPS.map((c) => [c.nps, c.e]));
 export const weldCap = (nps: number): number => CAP_BY_NPS.get(nps) ?? NaN;
 
 export const weldCapSizes = (): number[] => WELD_CAPS.map((c) => c.nps);
+
+// Butt welding reducing outlet tees, pages 2-44 to 2-46.
+//
+// The run keeps the straight tee's centre to end in every combination: a
+// 6 x 6 x 2-1/2 runs the same 5-5/8 as a plain 6 inch tee. Only the outlet M
+// changes, and that is held here.
+//
+// Up to an inch and a half the outlet keeps the run figure too. From two inch
+// up it comes back in as the outlet gets smaller. The 6 x 6 x 2-1/2 is printed
+// on two pages and reads the same on both.
+
+export type ReducingWeldTee = { run: number; outlet: number; m: number };
+
+export const REDUCING_WELD_TEES: ReducingWeldTee[] = [
+  { run: 0.5, outlet: 0.25, m: 1 },
+  { run: 0.5, outlet: 0.375, m: 1 },
+  { run: 0.75, outlet: 0.375, m: 1.125 },
+  { run: 0.75, outlet: 0.5, m: 1.125 },
+  { run: 1, outlet: 0.375, m: 1.5 },
+  { run: 1, outlet: 0.5, m: 1.5 },
+  { run: 1, outlet: 0.75, m: 1.5 },
+  { run: 1.25, outlet: 0.5, m: 1.875 },
+  { run: 1.25, outlet: 0.75, m: 1.875 },
+  { run: 1.25, outlet: 1, m: 1.875 },
+  { run: 1.5, outlet: 0.5, m: 2.25 },
+  { run: 1.5, outlet: 0.75, m: 2.25 },
+  { run: 1.5, outlet: 1, m: 2.25 },
+  { run: 1.5, outlet: 1.25, m: 2.25 },
+  { run: 2, outlet: 0.75, m: 1.75 },
+  { run: 2, outlet: 1, m: 2 },
+  { run: 2, outlet: 1.25, m: 2.25 },
+  { run: 2, outlet: 1.5, m: 2.375 },
+  { run: 2.5, outlet: 1, m: 2.25 },
+  { run: 2.5, outlet: 1.25, m: 2.5 },
+  { run: 2.5, outlet: 1.5, m: 2.625 },
+  { run: 2.5, outlet: 2, m: 2.75 },
+  { run: 3, outlet: 1, m: 2.625 },
+  { run: 3, outlet: 1.25, m: 2.75 },
+  { run: 3, outlet: 1.5, m: 2.875 },
+  { run: 3, outlet: 2, m: 3 },
+  { run: 3, outlet: 2.5, m: 3.25 },
+  { run: 3.5, outlet: 1.5, m: 3.125 },
+  { run: 3.5, outlet: 2, m: 3.25 },
+  { run: 3.5, outlet: 2.5, m: 3.5 },
+  { run: 3.5, outlet: 3, m: 3.625 },
+  { run: 4, outlet: 1.5, m: 3.375 },
+  { run: 4, outlet: 2, m: 3.5 },
+  { run: 4, outlet: 2.5, m: 3.75 },
+  { run: 4, outlet: 3, m: 3.875 },
+  { run: 4, outlet: 3.5, m: 4 },
+  { run: 5, outlet: 2, m: 4.125 },
+  { run: 5, outlet: 2.5, m: 4.25 },
+  { run: 5, outlet: 3, m: 4.375 },
+  { run: 5, outlet: 3.5, m: 4.5 },
+  { run: 5, outlet: 4, m: 4.625 },
+  { run: 6, outlet: 2.5, m: 4.75 },
+  { run: 6, outlet: 3, m: 4.875 },
+  { run: 6, outlet: 3.5, m: 5 },
+  { run: 6, outlet: 4, m: 5.125 },
+  { run: 6, outlet: 5, m: 5.375 },
+  { run: 8, outlet: 3, m: 6 },
+  { run: 8, outlet: 3.5, m: 6 },
+  { run: 8, outlet: 4, m: 6.125 },
+  { run: 8, outlet: 5, m: 6.375 },
+  { run: 8, outlet: 6, m: 6.625 },
+  { run: 10, outlet: 4, m: 7.25 },
+  { run: 10, outlet: 5, m: 7.5 },
+  { run: 10, outlet: 6, m: 7.625 },
+  { run: 10, outlet: 8, m: 8 },
+  { run: 12, outlet: 5, m: 8.5 },
+  { run: 12, outlet: 6, m: 8.625 },
+  { run: 12, outlet: 8, m: 9 },
+  { run: 12, outlet: 10, m: 9.5 },
+];
+
+// The run's centre to end, including the half inch the straight tee page does
+// not carry.
+const REDUCING_RUN_C = new Map<number, number>([
+  [0.5, 1],
+  [0.75, 1.125],
+  [1, 1.5],
+  [1.25, 1.875],
+  [1.5, 2.25],
+  [2, 2.5],
+  [2.5, 3],
+  [3, 3.375],
+  [3.5, 3.75],
+  [4, 4.125],
+  [5, 4.875],
+  [6, 5.625],
+  [8, 7],
+  [10, 8.5],
+  [12, 10],
+]);
+
+const key = (run: number, outlet: number) => `${run}x${outlet}`;
+const BY_PAIR = new Map(REDUCING_WELD_TEES.map((t) => [key(t.run, t.outlet), t]));
+
+/** Centre to end on the run of a reducing outlet tee: the straight tee figure. */
+export const reducingWeldTeeRun = (run: number): number => REDUCING_RUN_C.get(run) ?? NaN;
+
+/** Centre to end on the outlet of a reducing outlet tee. */
+export const reducingWeldTeeOutlet = (run: number, outlet: number): number =>
+  BY_PAIR.get(key(run, outlet))?.m ?? NaN;
+
+export const reducingWeldTeeRuns = (): number[] => [...REDUCING_RUN_C.keys()];
+export const reducingWeldTeeOutlets = (run: number): number[] =>
+  REDUCING_WELD_TEES.filter((t) => t.run === run).map((t) => t.outlet);
+
+// 90 degree reducing elbows, page 2-47.
+//
+// Dimension A is the long radius rule on the larger of the two sizes: one and
+// a half times it, on every printed row. Only the combinations made are held.
+
+const REDUCING_ELBOW_BRANCHES = new Map<number, number[]>([
+  [2, [1, 1.5]],
+  [2.5, [1.25, 2]],
+  [3, [1.5, 2, 2.5]],
+  [3.5, [2, 3]],
+  [4, [2, 3, 3.5]],
+  [5, [2.5, 3, 3.5, 4]],
+  [6, [3, 3.5, 4, 5]],
+]);
+
+/** Centre to end of a 90 degree reducing elbow, both ends. */
+export function reducingElbow(a: number, b: number): number {
+  const big = Math.max(a, b);
+  const small = Math.min(a, b);
+  if (!(small < big) || !REDUCING_ELBOW_BRANCHES.has(big)) return NaN;
+  return longRadiusElbow(big);
+}
+
+/** Whether the page lists that combination as made. */
+export const reducingElbowMade = (a: number, b: number): boolean =>
+  (REDUCING_ELBOW_BRANCHES.get(Math.max(a, b)) ?? []).includes(Math.min(a, b));
+
+export const reducingElbowLargeSizes = (): number[] => [...REDUCING_ELBOW_BRANCHES.keys()];
+export const reducingElbowBranches = (large: number): number[] =>
+  REDUCING_ELBOW_BRANCHES.get(large) ?? [];
