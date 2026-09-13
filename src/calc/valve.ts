@@ -119,3 +119,106 @@ export function steelGate(
 
 export const gateSteelSizes = (): number[] => GATE_STEEL.map((r) => r.nps);
 export const gateCastIronSizes = (): number[] => GATE_CAST_IRON.map((r) => r.nps);
+
+// Cast iron flanged globe and angle valves, 125 and 250 lb. Page 4-105.
+// The book prints the globe valve as 2 x A and the angle valve as A: the same
+// casting opened out, so an angle valve reaches half as far along the run.
+export const GLOBE_CAST_IRON: ValveRow[] = [
+  { nps: 2, label: '2"', faceToFace: { '125': 8, '250': 10.5 } },
+  { nps: 2.5, label: '2-1/2"', faceToFace: { '125': 8.5, '250': 11.5 } },
+  { nps: 3, label: '3"', faceToFace: { '125': 9.5, '250': 12.5 } },
+  { nps: 3.5, label: '3-1/2"', faceToFace: { '125': 10.5, '250': 13.25 } },
+  { nps: 4, label: '4"', faceToFace: { '125': 11.5, '250': 14 } },
+  { nps: 5, label: '5"', faceToFace: { '125': 13, '250': 15.75 } },
+  { nps: 6, label: '6"', faceToFace: { '125': 14, '250': 17.5 } },
+  { nps: 8, label: '8"', faceToFace: { '125': 19.5, '250': 21 } },
+];
+
+// Steel flanged globe and angle valves, raised face, the light classes.
+// Page 4-106. The heavy classes are on page 4-107 and carry the same figures
+// as the gate valve, so they are read from GATE_STEEL rather than held twice.
+export const GLOBE_STEEL_LIGHT: ValveRow[] = [
+  { nps: 0.75, label: '3/4"', faceToFace: { '400': 7.5, '600': 7.5 } },
+  { nps: 1, label: '1"', faceToFace: { '400': 8.5, '600': 8.5 } },
+  { nps: 1.25, label: '1-1/4"', faceToFace: { '400': 9, '600': 9 } },
+  { nps: 1.5, label: '1-1/2"', faceToFace: { '400': 9.5, '600': 9.5 } },
+  { nps: 2, label: '2"', faceToFace: { '150': 8, '300': 10.5, '400': 11.5, '600': 11.5 } },
+  { nps: 2.5, label: '2-1/2"', faceToFace: { '150': 8.5, '300': 11.5, '400': 13, '600': 13 } },
+  { nps: 3, label: '3"', faceToFace: { '150': 9.5, '300': 12.5, '400': 14, '600': 14 } },
+  { nps: 3.5, label: '3-1/2"', faceToFace: { '150': 10.5, '300': 13.25 } },
+  { nps: 4, label: '4"', faceToFace: { '150': 11.5, '300': 14, '400': 16, '600': 17 } },
+  { nps: 5, label: '5"', faceToFace: { '150': 14, '300': 15.75, '400': 18, '600': 20 } },
+  { nps: 6, label: '6"', faceToFace: { '150': 16, '300': 17.5, '400': 19.5, '600': 22 } },
+  { nps: 8, label: '8"', faceToFace: { '150': 19.5, '300': 22, '400': 23.5, '600': 26 } },
+];
+
+// Steel flanged swing check valves, raised face, the light classes. Page 4-111.
+// The heavy classes, page 4-112, are again the gate valve figures.
+export const CHECK_STEEL_LIGHT: ValveRow[] = [
+  { nps: 2, label: '2"', faceToFace: { '150': 8, '300': 10.5, '400': 11.5, '600': 11.5 } },
+  { nps: 2.5, label: '2-1/2"', faceToFace: { '150': 8.5, '300': 11.5, '400': 13, '600': 13 } },
+  { nps: 3, label: '3"', faceToFace: { '150': 9.5, '300': 12.5, '400': 14, '600': 14 } },
+  { nps: 3.5, label: '3-1/2"', faceToFace: { '150': 10.5, '300': 13.25 } },
+  { nps: 4, label: '4"', faceToFace: { '150': 11.5, '300': 14, '400': 16, '600': 17 } },
+  { nps: 5, label: '5"', faceToFace: { '150': 13, '300': 15.75 } },
+  { nps: 6, label: '6"', faceToFace: { '150': 14, '300': 17.5, '400': 19.5, '600': 22 } },
+  { nps: 8, label: '8"', faceToFace: { '300': 21, '400': 23.5, '600': 26 } },
+  { nps: 10, label: '10"', faceToFace: { '300': 24.5, '400': 26.5, '600': 31 } },
+  { nps: 12, label: '12"', faceToFace: { '300': 28, '400': 30, '600': 33 } },
+];
+
+// The three quarter and half inch rows the heavy globe and check tables add
+// below where the gate table starts. Pages 4-107 and 4-112.
+const HEAVY_SMALL: Record<number, Partial<Record<ValveClass, number>>> = {
+  0.5: { '2500': 10.375 },
+  0.75: { '900': 9, '1500': 9, '2500': 10.75 },
+};
+
+/** Largest size the heavy class globe and check tables carry. */
+const HEAVY_GLOBE_TOP = 14;
+
+const HEAVY: ValveClass[] = ['900', '1500', '2500'];
+const GLOBE_CI_BY_NPS = new Map(GLOBE_CAST_IRON.map((r) => [r.nps, r]));
+const GLOBE_LIGHT_BY_NPS = new Map(GLOBE_STEEL_LIGHT.map((r) => [r.nps, r]));
+const CHECK_LIGHT_BY_NPS = new Map(CHECK_STEEL_LIGHT.map((r) => [r.nps, r]));
+
+/** Face to face of a cast iron flanged globe valve. */
+export const castIronGlobe = (nps: number, cls: '125' | '250'): number =>
+  GLOBE_CI_BY_NPS.get(nps)?.faceToFace[cls] ?? NaN;
+
+/** Face to centre of a cast iron flanged angle valve: half the globe figure. */
+export const castIronAngle = (nps: number, cls: '125' | '250'): number =>
+  castIronGlobe(nps, cls) / 2;
+
+function heavySteel(nps: number, cls: FlangeClass): number {
+  if (!HEAVY.includes(cls) || nps > HEAVY_GLOBE_TOP) return NaN;
+  const small = HEAVY_SMALL[nps]?.[cls];
+  if (small !== undefined) return small;
+  return STEEL_BY_NPS.get(nps)?.faceToFace[cls] ?? NaN;
+}
+
+/** Face to face of a steel flanged globe valve. */
+export function steelGlobe(nps: number, cls: FlangeClass): number {
+  const light = GLOBE_LIGHT_BY_NPS.get(nps)?.faceToFace[cls];
+  if (light !== undefined) return light;
+  return heavySteel(nps, cls);
+}
+
+/** Face to centre of a steel flanged angle valve: half the globe figure. */
+export const steelAngle = (nps: number, cls: FlangeClass): number => steelGlobe(nps, cls) / 2;
+
+/** Face to face of a steel flanged swing check valve. */
+export function steelCheck(nps: number, cls: FlangeClass): number {
+  const light = CHECK_LIGHT_BY_NPS.get(nps)?.faceToFace[cls];
+  if (light !== undefined) return light;
+  return heavySteel(nps, cls);
+}
+
+/**
+ * The check valve page carries a warning worth keeping with the numbers: the
+ * table does not cover a check valve whose seat sits at about 45 degrees to
+ * the run, or any other pattern needing a large clearance.
+ */
+export const CHECK_VALVE_CAVEAT =
+  'These lengths do not cover a swing check with the seat at about 45 degrees ' +
+  'to the run, or any pattern needing large clearances.';

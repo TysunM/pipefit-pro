@@ -47,6 +47,7 @@ left unimplemented rather than filled with plausible numbers.
 | Flanged laterals and reducers | `calc/flangedFitting.ts` | 150, 300 and 400 lb |
 | Flanged base elbows and tees | `calc/flangedFitting.ts` | 150 and 300 lb |
 | Flanged gate valve laying lengths | `calc/valve.ts` | Cast iron 125/175/250, steel 150 to 2500, both facings |
+| Globe, angle and swing check valves | `calc/valve.ts` | Cast iron and steel; angle is half the globe figure |
 | Framing square layout | `calc/square.ts` | Pitch, rise on a twelve inch run, angle, travel multiplier |
 | Bend setback, arc and gain, any angle | `calc/bender.ts` | Checked against the printed multipliers from a quarter degree to 179 |
 | Piece length from two legs, and the inverse from stock | `calc/bender.ts` | Every printed single-bend worked example passes |
@@ -143,6 +144,8 @@ checked against a property the data has to hold, never against itself.
 | 4-94, 4-95 | 1500 lb steel |
 | 4-97, 4-98 | 2500 lb steel |
 | 4-99 to 4-104 | Gate valves, cast iron and steel, every class and both facings |
+| 4-105 to 4-108 | Globe and angle valves, cast iron and steel |
+| 4-111, 4-112 | Swing check valves, steel |
 | 1-106 | Minimum bending radius, standard weight pipe |
 
 ### Still to transcribe
@@ -152,7 +155,7 @@ Screwed: done, 4-13 to 4-46.
 Flanged: 4-49 to 4-70 (drilling templates, 25 lb cast iron, 125 and 250 lb
 cast iron, welding neck flanges), 4-76, 4-82, 4-86, 4-87, 4-90, 4-93, 4-96
 (the flange tables themselves and the remaining lateral pages), and 4-99 to
-4-112: globe, angle and swing check valve laying lengths.
+4-109 and 4-110, the remaining globe valve pages.
 
 Part 2: 2-42 to 2-62 welded fitting laying lengths, 2-66 U-bolts, 2-67
 support spacing. Part 3: solder joint fittings, plastic pipe. Part 5:
@@ -174,6 +177,8 @@ and answers combinations the book never printed.
 | Malleable coupling, union and close nipple | the length, less the two threads buried in it |
 | Flanged ring joint, every class | the raised face figure, plus an allowance for each flange face in the dimension |
 | Ring joint gate valves | the raised face figure plus twice that allowance, a valve carrying it at both ends |
+| Heavy class valves | gate, globe and swing check share one face to face table in 900, 1500 and 2500 lb |
+| Angle valve | half the globe valve's face to face, the same casting opened out |
 
 The reducer coupling shoulders work back to thread engagements for 4, 5, 6 and
 8 inch that match this project's thread table, which that page never prints.

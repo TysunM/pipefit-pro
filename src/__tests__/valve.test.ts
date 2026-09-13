@@ -190,3 +190,137 @@ describe('steel flanged gate valves', () => {
     });
   });
 });
+
+import {
+  CHECK_STEEL_LIGHT,
+  CHECK_VALVE_CAVEAT,
+  GLOBE_CAST_IRON,
+  GLOBE_STEEL_LIGHT,
+  castIronAngle,
+  castIronGlobe,
+  steelAngle,
+  steelCheck,
+  steelGlobe,
+} from '../calc/valve';
+
+describe('globe and angle valves', () => {
+  test('cast iron rows read back as printed', () => {
+    expect(GLOBE_CAST_IRON.length).toBe(8);
+    expect(castIronGlobe(4, '125')).toBe(11.5);
+    expect(castIronGlobe(8, '250')).toBe(21);
+  });
+
+  // The book draws the globe as 2 x A and the angle as A: one casting opened
+  // out, so the angle valve reaches half as far along the run.
+  test('an angle valve is half the globe valve', () => {
+    for (const r of GLOBE_CAST_IRON) {
+      expect(castIronAngle(r.nps, '125')).toBe(r.faceToFace['125']! / 2);
+    }
+    expect(steelAngle(4, '150')).toBe(steelGlobe(4, '150') / 2);
+  });
+
+  test('steel light class rows read back as printed', () => {
+    expect(GLOBE_STEEL_LIGHT.length).toBe(12);
+    expect(steelGlobe(2, '150')).toBe(8);
+    expect(steelGlobe(6, '600')).toBe(22);
+    expect(steelGlobe(0.75, '400')).toBe(7.5);
+  });
+
+  // Nothing below two inch is made in the two lightest classes, and the
+  // light class table stops at eight inch.
+  test('what the light class table does not carry', () => {
+    for (const nps of [0.75, 1, 1.25, 1.5]) {
+      expect(Number.isNaN(steelGlobe(nps, '150'))).toBe(true);
+      expect(Number.isNaN(steelGlobe(nps, '300'))).toBe(true);
+    }
+    expect(Number.isNaN(steelGlobe(10, '150'))).toBe(true);
+    expect(Number.isNaN(steelGlobe(3.5, '400'))).toBe(true);
+  });
+
+  // In the heavy classes one table serves the gate, the globe and the check.
+  test('the heavy class globe valve is the gate valve figure', () => {
+    for (const cls of ['900', '1500', '2500'] as const) {
+      for (const nps of [1, 2, 3, 6, 12, 14]) {
+        const gate = steelGate(nps, cls);
+        if (!Number.isFinite(gate)) continue;
+        expect(steelGlobe(nps, cls)).toBe(gate);
+        expect(steelCheck(nps, cls)).toBe(gate);
+      }
+    }
+  });
+
+  test('the heavy globe and check tables add the small sizes and stop at fourteen', () => {
+    expect(steelGlobe(0.75, '900')).toBe(9);
+    expect(steelGlobe(0.5, '2500')).toBe(10.375);
+    expect(Number.isNaN(steelGate(0.75, '900'))).toBe(true);
+    expect(Number.isNaN(steelGlobe(16, '900'))).toBe(true);
+    expect(Number.isFinite(steelGate(16, '900'))).toBe(true);
+  });
+
+  test('the heavier class is always the longer valve', () => {
+    for (const r of GLOBE_CAST_IRON) {
+      expect(r.faceToFace['250']!).toBeGreaterThan(r.faceToFace['125']!);
+    }
+    for (const r of GLOBE_STEEL_LIGHT) {
+      const a = r.faceToFace['150'];
+      const b = r.faceToFace['300'];
+      if (a !== undefined && b !== undefined) expect(b).toBeGreaterThanOrEqual(a);
+    }
+  });
+
+  test('every column grows with the size', () => {
+    for (const cls of ['150', '300', '400', '600'] as const) {
+      let last = 0;
+      for (const r of GLOBE_STEEL_LIGHT) {
+        const v = r.faceToFace[cls];
+        if (v === undefined) continue;
+        expect(v).toBeGreaterThan(last);
+        last = v;
+      }
+    }
+  });
+});
+
+describe('swing check valves', () => {
+  test('ten printed sizes in the light classes', () => {
+    expect(CHECK_STEEL_LIGHT.length).toBe(10);
+    expect(steelCheck(2, '150')).toBe(8);
+    expect(steelCheck(12, '600')).toBe(33);
+  });
+
+  // A 150 lb check is made to six inch only; above that the page dashes it.
+  test('150 lb stops at six inch', () => {
+    expect(steelCheck(6, '150')).toBe(14);
+    for (const nps of [8, 10, 12]) expect(Number.isNaN(steelCheck(nps, '150'))).toBe(true);
+    expect(Number.isFinite(steelCheck(8, '300'))).toBe(true);
+  });
+
+  // Where both are made in the light classes, a check valve is the same body
+  // as the globe valve on all but three rows, and on those it is the shorter.
+  test('a light class check matches the globe valve but for three rows', () => {
+    const off: string[] = [];
+    for (const r of CHECK_STEEL_LIGHT) {
+      for (const cls of ['150', '300', '400', '600'] as const) {
+        const c = steelCheck(r.nps, cls);
+        const g = steelGlobe(r.nps, cls);
+        if (!Number.isFinite(c) || !Number.isFinite(g)) continue;
+        if (c !== g) off.push(`${r.nps}-${cls}`);
+      }
+    }
+    expect(off).toEqual(['5-150', '6-150', '8-300']);
+    expect(steelCheck(5, '150')).toBeLessThan(steelGlobe(5, '150'));
+    expect(steelCheck(6, '150')).toBeLessThan(steelGlobe(6, '150'));
+    expect(steelCheck(8, '300')).toBeLessThan(steelGlobe(8, '300'));
+  });
+
+  test('the warning that came with the table is kept with it', () => {
+    expect(CHECK_VALVE_CAVEAT).toContain('45 degrees');
+    expect(CHECK_VALVE_CAVEAT).toContain('large clearances');
+  });
+
+  test('a size or class not made gives nothing', () => {
+    expect(Number.isNaN(steelCheck(1, '150'))).toBe(true);
+    expect(Number.isNaN(steelCheck(24, '600'))).toBe(true);
+    expect(Number.isNaN(steelGlobe(24, '2500'))).toBe(true);
+  });
+});
