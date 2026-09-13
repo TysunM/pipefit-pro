@@ -43,7 +43,9 @@ left unimplemented rather than filled with plausible numbers.
 | Tee with a street elbow in it | `calc/union.ts` | Centre to centre with a 90 and a 45 |
 | Minimum bending radius | `calc/bendRadius.ts` | Steel and wrought iron, with the advised five times size |
 | Pipe nipples | `calc/nipple.ts` | Long, short and close; stocked lengths generated |
-| Flanged fitting laying lengths | `calc/flangedFitting.ts` | 150 lb steel, 18 sizes |
+| Flanged fitting laying lengths | `calc/flangedFitting.ts` | All seven steel classes, raised face and ring joint |
+| Flanged laterals and reducers | `calc/flangedFitting.ts` | 150, 300 and 400 lb |
+| Flanged base elbows and tees | `calc/flangedFitting.ts` | 150 and 300 lb |
 | Framing square layout | `calc/square.ts` | Pitch, rise on a twelve inch run, angle, travel multiplier |
 | Bend setback, arc and gain, any angle | `calc/bender.ts` | Checked against the printed multipliers from a quarter degree to 179 |
 | Piece length from two legs, and the inverse from stock | `calc/bender.ts` | Every printed single-bend worked example passes |
@@ -132,15 +134,23 @@ checked against a property the data has to hold, never against itself.
 | 4-44 | Reducer couplings, malleable |
 | 4-45 | Unions and union fittings, malleable |
 | 4-46 | Combined tees and street elbows, malleable |
-| 4-71 | Laying lengths, 150 lb steel flanged fittings |
+| 4-71 to 4-75 | 150 lb steel flanged fittings, laterals, reducers, ring joint and bases |
+| 4-77 to 4-81 | 300 lb steel, the same set |
+| 4-83 to 4-85 | 400 lb steel elbows, laterals and ring joint |
+| 4-88, 4-89 | 600 lb steel, raised face and ring joint |
+| 4-91, 4-92 | 900 lb steel |
+| 4-94, 4-95 | 1500 lb steel |
+| 4-97, 4-98 | 2500 lb steel |
 | 1-106 | Minimum bending radius, standard weight pipe |
 
 ### Still to transcribe
 
 Screwed: done, 4-13 to 4-46.
 
-Flanged: 4-62 to 4-112, the 250, 300, 400, 600, 900, 1500 and 2500 lb
-classes and the valve laying lengths.
+Flanged: 4-49 to 4-70 (drilling templates, 25 lb cast iron, 125 and 250 lb
+cast iron, welding neck flanges), 4-76, 4-82, 4-86, 4-87, 4-90, 4-93, 4-96
+(the flange tables themselves and the remaining lateral pages), and 4-99 to
+4-112, the valve laying lengths.
 
 Part 2: 2-42 to 2-62 welded fitting laying lengths, 2-66 U-bolts, 2-67
 support spacing. Part 3: solder joint fittings, plastic pipe. Part 5:
@@ -160,6 +170,7 @@ and answers combinations the book never printed.
 | Parallel line spacing | swept radius of the larger, plus half the smaller's band |
 | Street elbow, 90 degree | the ordinary elbow takeout, exactly |
 | Malleable coupling, union and close nipple | the length, less the two threads buried in it |
+| Flanged ring joint, every class | the raised face figure, plus an allowance for each flange face in the dimension |
 
 The reducer coupling shoulders work back to thread engagements for 4, 5, 6 and
 8 inch that match this project's thread table, which that page never prints.
@@ -183,6 +194,7 @@ where the book contradicts itself. All are pinned by tests.
 | Malleable reducer coupling 1/2 x 1/2 | not a reducer | 1/2 x 3/8: the gap works back to the 3/8 engagement, and 3/8 is the one size otherwise missing from that block |
 | Malleable reducer coupling 3 x 2-1/2 | 1 | 1-3/4 per the rule; 1 is the cast iron figure for the same pair |
 | Malleable reducer coupling 6 x 4 | 1-15/16 | unknown; that is the cast iron figure, and it would make the six inch casting shallower than the five. Refused rather than served |
+| 1500 lb ring joint 5 inch 45 elbow | 3-13/16 | 8-13/16: shorter as printed than both the four and the six inch, and the allowance every other row on the page obeys gives 8-13/16 |
 
 ### Corrections made to this project's own data
 

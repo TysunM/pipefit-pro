@@ -335,3 +335,191 @@ describe('the 300 lb ring joint pages', () => {
     }
   });
 });
+
+import {
+  FLANGED_400,
+  FLANGED_600,
+  FLANGED_900,
+  FLANGED_1500,
+  FLANGED_2500,
+  LATERALS_400,
+  flangedClasses,
+  hasLongRadius,
+} from '../calc/flangedFitting';
+
+describe('the heavier steel classes', () => {
+  test('all seven classes are carried', () => {
+    expect(flangedClasses().sort()).toEqual(
+      ['150', '300', '400', '600', '900', '1500', '2500'].sort()
+    );
+  });
+
+  test('sizes as printed', () => {
+    expect(FLANGED_400.length).toBe(20);
+    expect(FLANGED_600.length).toBe(20);
+    expect(FLANGED_900.length).toBe(19);
+    expect(FLANGED_1500.length).toBe(19);
+    expect(FLANGED_2500.length).toBe(14);
+    expect(FLANGED_2500[13]!.nps).toBe(12);
+  });
+
+  test('rows read back as printed', () => {
+    expect(flangedFitting(6, '600')).toMatchObject({ a: 11, c: 7.5 });
+    expect(flangedFitting(24, '900')).toMatchObject({ a: 30.5, c: 18 });
+    expect(flangedFitting(12, '1500')).toMatchObject({ a: 22.25, c: 13.25 });
+    expect(flangedFitting(12, '2500')).toMatchObject({ a: 28, c: 17.75 });
+  });
+
+  test('only the two lightest classes carry a long radius elbow', () => {
+    for (const cls of ['150', '300'] as const) expect(hasLongRadius(cls)).toBe(true);
+    for (const cls of ['400', '600', '900', '1500', '2500'] as const) {
+      expect(hasLongRadius(cls)).toBe(false);
+      expect(Number.isNaN(flangedFitting(4, cls)!.b)).toBe(true);
+    }
+  });
+
+  test('three and a half inch stops at 600 lb, and so does the lateral', () => {
+    expect(flangedFitting(3.5, '600')).toBeDefined();
+    expect(flangedFitting(3.5, '900')).toBeUndefined();
+    expect(flangedLateral(4, '400')).toBeDefined();
+    expect(flangedLateral(4, '600')).toBeUndefined();
+    expect(LATERALS_400.length).toBe(20);
+  });
+
+  test('no 45 degree elbow below one inch in 2500 lb', () => {
+    expect(Number.isNaN(flangedFitting(0.5, '2500')!.c)).toBe(true);
+    expect(Number.isNaN(flangedFitting(0.75, '2500')!.c)).toBe(true);
+    expect(flangedFitting(1, '2500')!.c).toBe(4);
+  });
+
+  // Heavier class, heavier casting, on the same centre lines.
+  test('each class reaches at least as far as the one below it', () => {
+    const order = ['400', '600', '900', '1500', '2500'] as const;
+    for (let i = 1; i < order.length; i++) {
+      for (const f of BY(order[i]!)) {
+        const lighter = flangedFitting(f.nps, order[i - 1]!);
+        if (!lighter) continue;
+        // The one real exception, explained on the 900 lb table.
+        if (order[i] === '900' && f.nps === 3) continue;
+        expect(f.a).toBeGreaterThanOrEqual(lighter.a);
+      }
+    }
+  });
+
+  // Below three inch, 900 lb is made to the 1500 lb dimensions.
+  test('900 and 1500 lb are the same casting below three inch', () => {
+    for (const nps of [0.5, 0.75, 1, 1.25, 1.5, 2, 2.5]) {
+      expect(flangedFitting(nps, '900')).toMatchObject({
+        a: flangedFitting(nps, '1500')!.a,
+        c: flangedFitting(nps, '1500')!.c,
+      });
+    }
+    expect(flangedFitting(3, '900')!.a).toBeLessThan(flangedFitting(3, '1500')!.a);
+    expect(flangedFitting(3, '900')!.a).toBeLessThan(flangedFitting(2.5, '900')!.a);
+  });
+});
+
+function BY(cls: Parameters<typeof flangedSizes>[0]) {
+  return flangedSizes(cls).map((n) => flangedFitting(n, cls)!);
+}
+
+describe('the ring joint pages for the heavier classes', () => {
+  // Each list is read off the printed ring joint page and checked against the
+  // raised face table plus the allowance, never against itself.
+  const PAGES: [Parameters<typeof flangedFitting>[1], [number, number, number][]][] = [
+    ['400', [
+      [0.5, 3 + 3 / 16, 1 + 15 / 16], [0.75, 3.75, 2.5], [1, 4.25, 2.5],
+      [1.25, 4.5, 2.75], [1.5, 4.75, 3], [2, 5 + 13 / 16, 4 + 5 / 16],
+      [2.5, 6 + 9 / 16, 4 + 9 / 16], [3, 7 + 1 / 16, 5 + 1 / 16],
+      [3.5, 7 + 9 / 16, 5 + 9 / 16], [4, 8 + 1 / 16, 5 + 9 / 16],
+      [5, 9 + 1 / 16, 6 + 1 / 16], [6, 9 + 13 / 16, 6 + 5 / 16],
+      [8, 11 + 13 / 16, 6 + 13 / 16], [10, 13 + 5 / 16, 7 + 13 / 16],
+      [12, 15 + 1 / 16, 8 + 13 / 16], [14, 16 + 5 / 16, 9 + 5 / 16],
+      [16, 17 + 13 / 16, 10 + 5 / 16], [18, 19 + 5 / 16, 10 + 13 / 16],
+      [20, 20.875, 11.375], [24, 24 + 7 / 16, 12 + 15 / 16],
+    ]],
+    ['600', [
+      [0.5, 3 + 3 / 16, 1 + 15 / 16], [0.75, 3 + 23 / 32, 2 + 15 / 32],
+      [1, 4 + 7 / 32, 2 + 15 / 32], [1.25, 4 + 15 / 32, 2 + 23 / 32],
+      [1.5, 4 + 23 / 32, 2 + 31 / 32], [2, 5 + 13 / 16, 4 + 5 / 16],
+      [2.5, 6 + 9 / 16, 4 + 9 / 16], [3, 7 + 1 / 16, 5 + 1 / 16],
+      [3.5, 7 + 9 / 16, 5 + 9 / 16], [4, 8 + 9 / 16, 6 + 1 / 16],
+      [5, 10 + 1 / 16, 7 + 1 / 16], [6, 11 + 1 / 16, 7 + 9 / 16],
+      [8, 13 + 1 / 16, 8 + 9 / 16], [10, 15 + 9 / 16, 9 + 9 / 16],
+      [12, 16 + 9 / 16, 10 + 1 / 16], [14, 17 + 9 / 16, 10 + 13 / 16],
+      [16, 19 + 9 / 16, 11 + 13 / 16], [18, 21 + 9 / 16, 12 + 5 / 16],
+      [20, 23.625, 13.125], [24, 27 + 11 / 16, 14 + 15 / 16],
+    ]],
+    ['900', [
+      [1, 4 + 31 / 32, 3 + 15 / 32], [1.25, 5 + 15 / 32, 3 + 31 / 32],
+      [1.5, 5 + 31 / 32, 4 + 7 / 32], [2, 7 + 5 / 16, 4 + 13 / 16],
+      [2.5, 8 + 5 / 16, 5 + 5 / 16], [3, 7 + 9 / 16, 5 + 9 / 16],
+      [4, 9 + 1 / 16, 6 + 9 / 16], [5, 11 + 1 / 16, 7 + 9 / 16],
+      [6, 12 + 1 / 16, 8 + 1 / 16], [8, 14 + 9 / 16, 9 + 1 / 16],
+      [10, 16 + 9 / 16, 10 + 1 / 16], [12, 19 + 1 / 16, 11 + 1 / 16],
+      [14, 20 + 7 / 16, 11 + 11 / 16], [16, 22 + 7 / 16, 12 + 11 / 16],
+      [18, 24.25, 13.5], [20, 26.25, 14.75], [24, 30.875, 18.375],
+    ]],
+    ['1500', [
+      [1, 4 + 31 / 32, 3 + 15 / 32], [1.25, 5 + 15 / 32, 3 + 31 / 32],
+      [1.5, 5 + 31 / 32, 4 + 7 / 32], [2, 7 + 5 / 16, 4 + 13 / 16],
+      [2.5, 8 + 5 / 16, 5 + 5 / 16], [3, 9 + 5 / 16, 5 + 13 / 16],
+      [4, 10 + 13 / 16, 7 + 5 / 16], [5, 13 + 5 / 16, 8 + 13 / 16],
+      [6, 14, 9.5], [8, 16 + 9 / 16, 11 + 1 / 16],
+      [10, 19 + 11 / 16, 12 + 3 / 16], [12, 22 + 9 / 16, 13 + 9 / 16],
+      [14, 25.125, 14.625], [16, 27 + 11 / 16, 16 + 11 / 16],
+      [18, 30 + 11 / 16, 18 + 3 / 16], [20, 33 + 3 / 16, 19 + 3 / 16],
+      [24, 38 + 13 / 16, 21 + 5 / 16],
+    ]],
+    ['2500', [
+      [0.5, 5 + 5 / 32, NaN], [0.75, 5 + 11 / 32, NaN], [1, 6 + 1 / 32, 3 + 31 / 32],
+      [1.25, 6 + 15 / 16, 4 + 5 / 16], [1.5, 7.625, 4 + 13 / 16],
+      [2, 8 + 15 / 16, 5 + 13 / 16], [2.5, 10.125, 6.375], [3, 11.5, 7.375],
+      [4, 13 + 7 / 16, 8 + 11 / 16], [5, 15.875, 10.25], [6, 18.25, 11.75],
+      [8, 20 + 7 / 16, 13 + 1 / 16], [10, 25 + 7 / 16, 16 + 7 / 16],
+      [12, 28 + 7 / 16, 18 + 3 / 16],
+    ]],
+  ];
+
+  for (const [cls, printed] of PAGES) {
+    test(`every printed ${cls} lb figure comes out of the rule`, () => {
+      expect(printed.length).toBeGreaterThan(13);
+      for (const [nps, h, k] of printed) {
+        const rj = flangedFitting(nps, cls, 'ringJoint');
+        expect(rj).toBeDefined();
+        expect(rj!.a).toBeCloseTo(h, 12);
+        if (Number.isFinite(k)) expect(rj!.c).toBeCloseTo(k, 12);
+        else expect(Number.isNaN(rj!.c)).toBe(true);
+      }
+    });
+  }
+
+  test('nothing below one inch is made with a ring joint face from 900 lb up', () => {
+    for (const cls of ['900', '1500'] as const) {
+      for (const nps of [0.5, 0.75]) {
+        expect(flangedFitting(nps, cls, 'ringJoint')).toBeUndefined();
+      }
+      expect(flangedFitting(1, cls, 'ringJoint')).toBeDefined();
+    }
+    expect(flangedFitting(0.5, '2500', 'ringJoint')).toBeDefined();
+  });
+
+  // Where the raised face is a quarter inch rather than a sixteenth, the ring
+  // groove face can come out shorter at the small end.
+  test('the allowance goes negative at the small end of the heavy classes', () => {
+    expect(ringJointAllowance(0.5, '400')).toBeLessThan(0);
+    expect(ringJointAllowance(1, '900')).toBeLessThan(0);
+    expect(ringJointAllowance(1, '150')).toBeGreaterThan(0);
+    expect(Number.isNaN(ringJointAllowance(0.5, '150'))).toBe(true);
+  });
+
+  // Page 4-95 prints the 5 inch 45 degree elbow as 3-13/16, which is shorter
+  // than the four inch above it and the six inch below it. The rule gives
+  // 8-13/16, which is what the digit that would sit in front of it makes.
+  test('the 1500 lb five inch forty five is 8-13/16, not the printed 3-13/16', () => {
+    const k = flangedFitting(5, '1500', 'ringJoint')!.c;
+    expect(k).toBeCloseTo(8 + 13 / 16, 12);
+    expect(k).toBeGreaterThan(flangedFitting(4, '1500', 'ringJoint')!.c);
+    expect(k).toBeLessThan(flangedFitting(6, '1500', 'ringJoint')!.c);
+  });
+});
