@@ -58,6 +58,8 @@ left unimplemented rather than filled with plausible numbers.
 | Plastic pipe dimensions and pressure limits | `calc/plasticPipe.ts` | PVC schedules A, 40, 80 and 120 in both types; polyethylene in three series |
 | Copper tube | `calc/copperTube.ts` | Types K, L, M and DWV; bore held, everything else worked |
 | Expansion of pipe | `calc/expansion.ts` | Steel, wrought iron and copper, nought to 1200 degrees |
+| Butt welding end valves | `calc/weldValve.ts` | Gate, globe, angle and check; heavy classes read from the flanged tables |
+| Field made concentric reducer | `calc/reducerTemplate.ts` | Arms, notches, bevel and push-in |
 | Framing square layout | `calc/square.ts` | Pitch, rise on a twelve inch run, angle, travel multiplier |
 | Bend setback, arc and gain, any angle | `calc/bender.ts` | Checked against the printed multipliers from a quarter degree to 179 |
 | Piece length from two legs, and the inverse from stock | `calc/bender.ts` | Every printed single-bend worked example passes |
@@ -167,6 +169,8 @@ checked against a property the data has to hold, never against itself.
 | 2-51 | Butt welding 180 degree returns |
 | 2-44 to 2-47 | Butt welding reducing outlet tees and reducing elbows |
 | 2-53 | Butt welding caps |
+| 2-57 to 2-62 | Valves with butt welding ends, gate, globe and swing check |
+| 2-63 | Making a concentric reducer out of pipe |
 | 2-66 | U-bolts for pipe hangers |
 | 2-67, 2-68 | Spacing of pipe supports, water and gas or steam |
 | 3-26, 3-27 | Polyvinyl chloride pipe, dimensions and pressure limits |
@@ -184,9 +188,8 @@ cast iron, welding neck flanges), 4-76, 4-82, 4-86, 4-87, 4-90, 4-93, 4-96
 (the flange tables themselves and the remaining lateral pages), and 4-99 to
 4-109 and 4-110, the remaining globe valve pages.
 
-Part 2: 2-52 (lap joint stub ends), 2-54 to 2-57 (crosses), 2-58 to 2-63
-(butt weld valve laying lengths), 2-64, 2-65 (bull nose and dead end cap
-templates). Part 3: 3-9 to 3-21, the cast brass solder joint fittings. Part 5:
+Part 2: 2-52 (lap joint stub ends), 2-54 to 2-56 (crosses), 2-64, 2-65 (bull
+nose and dead end cap templates). Part 3: 3-9 to 3-21, the cast brass solder joint fittings. Part 5:
 copper tube, the rest of the steel schedules, pipe expansion.
 
 ### Rules found behind the printed tables
@@ -216,7 +219,9 @@ and answers combinations the book never printed.
 | Copper tube weight | the wall and copper's density, which lands on the printed figure on all four pages |
 | Flanged ring joint, every class | the raised face figure, plus an allowance for each flange face in the dimension |
 | Ring joint gate valves | the raised face figure plus twice that allowance, a valve carrying it at both ends |
-| Heavy class valves | gate, globe and swing check share one face to face table in 900, 1500 and 2500 lb |
+| Heavy class valves | gate, globe and swing check share one face to face table in 900, 1500 and 2500 lb, flanged and butt welding alike |
+| Butt welding valve, 400 and 600 lb | the flanged figure; only 150 and 300 lb are longer |
+| Field made reducer | the arms and notches come to the larger pipe's circumference |
 | Angle valve | half the globe valve's face to face, the same casting opened out |
 | Bolt hole layout | a multiple of four holes, straddling the centreline, so a fitting turns a quarter and still bolts up |
 | Cast iron flange thickness | the same as the matching steel class, once past the sizes where the steel raised face makes the difference |
@@ -248,6 +253,7 @@ where the book contradicts itself. All are pinned by tests.
 | 180 degree return, 1/2 inch | O 3, K 1-7/8 | O 1-1/2, K 1-3/16 per the geometry every other row obeys; the printed O is the one inch figure and the printed K is taller than the 3/4 inch below it |
 | Type L copper tube, 2-1/2 inch bore | 1.465 | 2.465: as printed it is smaller than the two inch above it, and the printed weight works back to a wall of eighty thousandths |
 | Steel expansion at 1100 degrees | 10.042 | 10.402: the two digits after the point are swapped, which puts a step of 0.767 next to one of 1.556 in a column whose other hundred degree steps all run between one and one and a quarter |
+| Concentric reducer template, 8 x 6 arm | 3-15/16 | 3-7/16: six arms and notches at the printed figure come to thirty inches round an eight inch pipe, which is twenty seven |
 
 ### Corrections made to this project's own data
 
