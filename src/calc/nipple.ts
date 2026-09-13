@@ -1,3 +1,5 @@
+import { NPT_TABLE } from './thread';
+
 // Pipe nipple lengths, long, short and close.
 //
 // A close nipple is threaded end to end. A short nipple has a little bare pipe
@@ -55,6 +57,21 @@ export function longNippleLengths(nps: number): number[] {
   for (let v = 2; v <= 6; v += 0.5) if (v >= n.longestShortestLong) out.push(v);
   for (let v = 7; v <= LONGEST_LONG_NIPPLE; v += 1) if (v >= n.longestShortestLong) out.push(v);
   return out;
+}
+
+/**
+ * Gap a close nipple leaves between the faces of the two fittings on it.
+ *
+ * The book prints this rather than the nipple's length, and calls the fitting
+ * a short nipple on that page. It is a close nipple everywhere else: the
+ * lengths it works back to are the close nipple column above, on all fifteen
+ * sizes the page lists.
+ */
+export function closeNippleGap(nps: number): number {
+  const n = BY_NPS.get(nps);
+  const t = NPT_TABLE.find((x) => x.nps === nps);
+  if (!n || !t) return NaN;
+  return n.close - 2 * t.engagementWhenTight;
 }
 
 /** The shortest stocked nipple that reaches a wanted length, if one does. */
