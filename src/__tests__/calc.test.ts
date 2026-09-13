@@ -658,10 +658,48 @@ describe('thread engagement', () => {
     near(s.pipeCut, 48 - 2 * (4 - s.totalEngagement), 1e-9);
   });
 
-  test('every listed size has a positive deduction at default turns', () => {
+  test('every size with a threaded elbow has a positive deduction at default turns', () => {
     for (const t of NPT_TABLE) {
+      if (!Number.isFinite(t.elbowCenterToFace)) continue;
       const s = solveThread({ nps: t.nps, turnsPastHandTight: t.wrenchTurns, centerToCenter: NaN, centerToFace: NaN });
       expect(s.deductionPerEnd).toBeGreaterThan(0);
+    }
+  });
+
+  test('above six inch there is no threaded elbow, and none is invented', () => {
+    // ASME B16.3 stops at 6 inch. The larger sizes carry thread data but no
+    // fitting dimension, so a cut cannot be worked out from the size alone.
+    for (const nps of [8, 10, 12]) {
+      const t = NPT_TABLE.find((x) => x.nps === nps)!;
+      expect(Number.isFinite(t.elbowCenterToFace)).toBe(false);
+      expect(t.engagementWhenTight).toBeGreaterThan(0);
+      const s = solveThread({ nps, turnsPastHandTight: 3, centerToCenter: NaN, centerToFace: NaN });
+      expect(Number.isFinite(s.deductionPerEnd)).toBe(false);
+      // Given the dimension explicitly, it solves.
+      const given = solveThread({ nps, turnsPastHandTight: 3, centerToCenter: 24, centerToFace: 4 });
+      expect(given.deductionPerEnd).toBeGreaterThan(0);
+    }
+  });
+
+  test('engagement when tight always sits between hand tight and the full thread', () => {
+    for (const t of NPT_TABLE) {
+      expect(t.engagementWhenTight).toBeGreaterThan(t.handTight);
+      expect(t.engagementWhenTight).toBeLessThan(t.totalThread);
+    }
+  });
+
+  test('every size carries a bore size and threads per inch', () => {
+    for (const t of NPT_TABLE) {
+      expect(t.boreSize.length).toBeGreaterThan(2);
+      expect([27, 18, 14, 11.5, 8]).toContain(t.tpi);
+    }
+  });
+
+  test('the eighteen printed sizes are all present, in order', () => {
+    expect(NPT_TABLE.length).toBe(18);
+    for (let i = 1; i < NPT_TABLE.length; i++) {
+      expect(NPT_TABLE[i]!.nps).toBeGreaterThan(NPT_TABLE[i - 1]!.nps);
+      expect(NPT_TABLE[i]!.effective).toBeGreaterThan(NPT_TABLE[i - 1]!.effective);
     }
   });
 
