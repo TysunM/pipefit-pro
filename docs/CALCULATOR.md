@@ -32,6 +32,12 @@ left unimplemented rather than filled with plausible numbers.
 | Screwed fitting dimensions | `calc/screwedFitting.ts` | Both classes, 17 sizes, centre to end and band diameter |
 | Screwed reducing fittings | `calc/reducingFitting.ts` | 65 combinations across elbow, cross and tee; heavy class separate |
 | Reducing couplings | `calc/coupling.ts` | Length depends only on the larger size |
+| Reducer couplings, cast iron | `calc/reducerCoupling.ts` | Two patterns, forty two combinations, one shoulder rule fills the rest |
+| Malleable straight couplings | `calc/coupling.ts` | Held as the gap it leaves; the length works back from it |
+| Wall and parallel line clearances | `calc/clearance.ts` | Swept radius and spacing computed from the book's own rule |
+| Screwed elbow takeout, 90 and 45 | `calc/takeout.ts`, `calc/takeout45.ts` | Worked to 12 inch, past where the print stops |
+| Screwed wye laying lengths | `calc/takeout45.ts` | Cast iron and malleable; sizes not made held as no value |
+| Street elbows | `calc/streetElbow.ts` | 90 is the ordinary takeout; 45 is its own casting, to 2 inch |
 | Pipe nipples | `calc/nipple.ts` | Long, short and close; stocked lengths generated |
 | Flanged fitting laying lengths | `calc/flangedFitting.ts` | 150 lb steel, 18 sizes |
 | Framing square layout | `calc/square.ts` | Pitch, rise on a twelve inch run, angle, travel multiplier |
@@ -110,12 +116,18 @@ checked against a property the data has to hold, never against itself.
 | 4-29 | Reducing couplings, 300 lb malleable |
 | 4-30 | Reducing outlet tees, 300 lb malleable |
 | 4-31 | Pipe nipple lengths |
+| 4-32 to 4-36 | Wall and parallel line clearances |
+| 4-37, 4-38 | Takeout, 90 degree screwed elbows; screwed wyes |
+| 4-39 | Takeout, 45 degree screwed elbows |
+| 4-40, 4-41 | Reducer couplings, cast iron |
+| 4-42 | Couplings and close nipples, malleable |
+| 4-43 | Street elbows, 45 and 90, malleable |
 | 4-71 | Laying lengths, 150 lb steel flanged fittings |
 
 ### Still to transcribe
 
-Screwed: 4-25, 4-27, 4-28 (remaining reducing tables), 4-32 to 4-36
-(clearances), 4-37 to 4-46 (laying lengths).
+Screwed: 4-25, 4-27, 4-28 (remaining reducing tables), 4-44 to 4-46
+(remaining laying lengths: unions, caps, plugs, bushings).
 
 Flanged: 4-62 to 4-112, the 250, 300, 400, 600, 900, 1500 and 2500 lb
 classes and the valve laying lengths.
@@ -123,6 +135,26 @@ classes and the valve laying lengths.
 Part 2: 2-42 to 2-62 welded fitting laying lengths, 2-66 U-bolts, 2-67
 support spacing. Part 3: solder joint fittings, plastic pipe. Part 5:
 copper tube, the rest of the steel schedules, pipe expansion.
+
+### Rules found behind the printed tables
+
+Where a printed block turns out to follow one rule, the rule is held and the
+print is used to check it. That is smaller, cannot go internally inconsistent,
+and answers combinations the book never printed.
+
+| Table | Rule |
+|---|---|
+| Screwed elbow takeout, 90 and 45 | centre to end, less the engagement when tight |
+| Reducer couplings, both patterns | the casting's shoulder depth, less the small end's engagement |
+| Reducing couplings | the length depends only on the larger size |
+| Parallel line spacing | swept radius of the larger, plus half the smaller's band |
+| Street elbow, 90 degree | the ordinary elbow takeout, exactly |
+| Malleable coupling and close nipple | the length, less the two threads buried in it |
+
+The reducer coupling shoulders work back to thread engagements for 4, 5, 6 and
+8 inch that match this project's thread table, which that page never prints.
+The close nipple gaps work back to the close nipple column on all fifteen
+sizes. Neither was fitted to; both fell out.
 
 ### Disagreements found in the printed book
 
@@ -137,6 +169,7 @@ where the book contradicts itself. All are pinned by tests.
 | Double offset, 75° centre bend setback | .763 | .7673, per the book's own universal table |
 | Reducing elbow 1/2 x 3/8 | X 1-1/16, Z 1 | inverted against all 35 other rows; printed the same way twice |
 | Reducing tee 3-1/2 x 3-1/2 x 2 | outlet 2-1/8 | 3-1/8, per the cross table and the run of outlets either side |
+| Reducer coupling 1 x 1/2, dimension J | 1/2 | 11/16, per the shoulder every other row on both pages obeys |
 
 ### Corrections made to this project's own data
 
