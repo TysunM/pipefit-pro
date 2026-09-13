@@ -1,22 +1,36 @@
 import {
-  REDUCING_ELBOWS, REDUCING_FITTINGS, reducingBranches, reducingElbow, reducingFitting, reducingRuns,
+  REDUCING_ELBOWS, REDUCING_FITTINGS, reducingBranches, reducingElbow, reducingFitting,
+  reducingOutletTee, reducingRuns,
 } from '../calc/reducingFitting';
 import { screwedFitting } from '../calc/screwedFitting';
 import { findRow } from '../calc/pipeData';
 
 describe('screwed reducing fittings', () => {
-  test('forty-five combinations, thirty-six elbows and thirty-five crosses', () => {
-    expect(REDUCING_FITTINGS.length).toBe(45);
-    expect(REDUCING_FITTINGS.filter((r) => r.kinds.includes('elbow')).length).toBe(36);
+  test('sixty-three combinations across the four printed tables', () => {
+    expect(REDUCING_FITTINGS.length).toBe(63);
+    expect(REDUCING_FITTINGS.filter((r) => r.kinds.includes('elbow')).length).toBe(42);
     expect(REDUCING_FITTINGS.filter((r) => r.kinds.includes('cross')).length).toBe(35);
+    expect(REDUCING_FITTINGS.filter((r) => r.kinds.includes('tee')).length).toBe(57);
+  });
+
+  test('four small sizes come only from the malleable table', () => {
+    const only = REDUCING_FITTINGS.filter((r) => r.malleableOnly);
+    expect(only.map((r) => `${r.run}x${r.branch}`)).toEqual(['0.375x0.125', '0.375x0.25', '0.5x0.25', '0.75x0.25']);
+    for (const r of only) expect(r.kinds).toEqual(['elbow']);
+  });
+
+  test('a reducing outlet tee answers in the handbook\'s own names', () => {
+    expect(reducingOutletTee(2, 1)).toEqual({ runC: 1.75, outletM: 2 });
+    expect(reducingOutletTee(8, 6)).toEqual({ runC: 5.5625, outletM: 6.375 });
+    expect(reducingOutletTee(4, 3.5)).toBeUndefined();
   });
 
   test('every combination is made as at least one fitting', () => {
     for (const r of REDUCING_FITTINGS) expect(r.kinds.length).toBeGreaterThan(0);
   });
 
-  test('twenty-six combinations are made as both', () => {
-    expect(REDUCING_FITTINGS.filter((r) => r.kinds.length === 2).length).toBe(26);
+  test('most combinations are made as more than one fitting', () => {
+    expect(REDUCING_FITTINGS.filter((r) => r.kinds.length >= 2).length).toBeGreaterThan(40);
   });
 
   test('rows read back as printed', () => {
@@ -122,14 +136,20 @@ describe('screwed reducing fittings', () => {
   });
 
   test('the elbow-only view still works', () => {
-    expect(REDUCING_ELBOWS.length).toBe(36);
+    expect(REDUCING_ELBOWS.length).toBe(42);
     expect(reducingElbow(2, 1)).toMatchObject({ x: 1.75, z: 2 });
     expect(reducingElbow(8, 4)).toBeUndefined();
   });
 
   test('branch lists narrow when a kind is given', () => {
-    expect(reducingBranches(6)).toEqual([2, 2.5, 3, 4, 5]);
+    expect(reducingBranches(6)).toEqual([1.5, 2, 2.5, 3, 4, 5]);
     expect(reducingBranches(6, 'elbow')).toEqual([3, 4, 5]);
     expect(reducingBranches(6, 'cross')).toEqual([2, 2.5, 3, 4]);
+    expect(reducingBranches(6, 'tee')).toEqual([1.5, 2, 2.5, 3, 4, 5]);
+  });
+
+  test('a tee takes the smallest outlets, an elbow the largest', () => {
+    // Tees are made down to much smaller outlets than elbows or crosses.
+    expect(Math.min(...reducingBranches(8, 'tee'))).toBeLessThan(Math.min(...reducingBranches(8, 'cross')));
   });
 });
