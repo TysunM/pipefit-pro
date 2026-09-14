@@ -5,7 +5,18 @@ import Svg, { Circle, Defs, G, Line, LinearGradient, Path, RadialGradient, Stop,
 import { SpoolResult, Vec3 } from '../../calc/spool';
 import { useTheme } from '../../theme/ThemeProvider';
 import { pipeShades } from '../diagram/primitives';
-import { Camera, ISO_VIEW, Projected, clampPitch, distanceToSegment, fitProjection, fitSphere, project } from './project';
+import {
+  Camera,
+  ISO_VIEW,
+  Projected,
+  avoidEdgeOn,
+  clampPitch,
+  distanceToSegment,
+  fitProjection,
+  fitSphere,
+  project,
+  spoolPlane,
+} from './project';
 
 const W = 340;
 const H = 340;
@@ -73,6 +84,12 @@ export function SpoolView({
   }>({ leg: null, timer: null, startLength: 0, ux: 1, uy: 0, moved: false });
   const spoolRef = useRef(spool);
   spoolRef.current = spool;
+
+  // The plane a flat spool lies in, so the camera can be steered out of it.
+  const plane = useMemo(() => spoolPlane(spool.points), [spool.points]);
+  const planeRef = useRef(plane);
+  planeRef.current = plane;
+  const settle = (c: Camera) => avoidEdgeOn({ yaw: c.yaw, pitch: clampPitch(c.pitch) }, planeRef.current);
   const resizeRef = useRef(onResizeLeg);
   resizeRef.current = onResizeLeg;
 
@@ -143,10 +160,12 @@ export function SpoolView({
             clearTimeout(grab.current.timer);
             grab.current.timer = null;
           }
-          setCam({
-            yaw: start.current.yaw + g.dx * 0.011,
-            pitch: clampPitch(start.current.pitch - g.dy * 0.011),
-          });
+          setCam(
+            settle({
+              yaw: start.current.yaw + g.dx * 0.011,
+              pitch: start.current.pitch - g.dy * 0.011,
+            })
+          );
         },
         onPanResponderRelease: () => {
           clearGrab();
@@ -262,14 +281,42 @@ export function SpoolView({
               const nx = (-dy / l) * (od / 2);
               const ny = (dx / l) * (od / 2);
               const selected = selectedRun === p.index || grabbed === p.index;
+              // The body is a round ended stroke rather than a rectangle, so a
+              // leg turned end on to the camera draws as a disc of the full
+              // pipe diameter — what looking down a bore actually looks like —
+              // instead of collapsing to nothing. The outline follows: a ring
+              // when it is end on, the two sides of the tube when it is not.
+              const endOn = l < od * 0.9;
+              const rim = selected ? t.colors.accent : fade(sh.rim, p.depth);
+              const rimW = selected ? 2.2 : 1;
               return (
                 <G key={i}>
-                  <Path
-                    d={`M${p.a.x + nx},${p.a.y + ny} L${p.b.x + nx},${p.b.y + ny} L${p.b.x - nx},${p.b.y - ny} L${p.a.x - nx},${p.a.y - ny} Z`}
-                    fill={`url(#r${i})`}
-                    stroke={selected ? t.colors.accent : fade(sh.rim, p.depth)}
-                    strokeWidth={selected ? 2.2 : 1}
+                  <Line
+                    x1={p.a.x}
+                    y1={p.a.y}
+                    x2={p.b.x}
+                    y2={p.b.y}
+                    stroke={`url(#r${i})`}
+                    strokeWidth={od}
+                    strokeLinecap="round"
                   />
+                  {endOn ? (
+                    <Circle
+                      cx={(p.a.x + p.b.x) / 2}
+                      cy={(p.a.y + p.b.y) / 2}
+                      r={od / 2}
+                      fill="none"
+                      stroke={rim}
+                      strokeWidth={rimW}
+                    />
+                  ) : (
+                    <Path
+                      d={`M${p.a.x + nx},${p.a.y + ny} L${p.b.x + nx},${p.b.y + ny} M${p.b.x - nx},${p.b.y - ny} L${p.a.x - nx},${p.a.y - ny}`}
+                      fill="none"
+                      stroke={rim}
+                      strokeWidth={rimW}
+                    />
+                  )}
                   {showLabels && !dragging ? (
                     <SvgText
                       x={(p.a.x + p.b.x) / 2}
@@ -290,7 +337,7 @@ export function SpoolView({
                 key={i}
                 cx={p.at.x}
                 cy={p.at.y}
-                r={od * 0.6}
+                r={od * 0.5}
                 fill={`url(#e${i})`}
                 stroke={fade(sh.rim, p.depth)}
                 strokeWidth={1}
@@ -325,7 +372,7 @@ export function SpoolView({
         </Text>
         <Text
           style={[t.type.captionStrong, { color: t.colors.data }]}
-          onPress={() => setCam(ISO_VIEW)}
+          onPress={() => setCam(settle(ISO_VIEW))}
           accessibilityRole="button"
         >
           Reset view
