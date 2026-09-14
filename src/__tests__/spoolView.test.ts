@@ -13,8 +13,12 @@ import {
   legDirections,
   projectedFraction,
   project,
+  allowedYaw,
   fitSphere,
   polylineCrossings,
+  snapYaw,
+  sweepOf,
+  yawAt,
   settleCamera,
   spoolPlane,
   viewAxis,
@@ -96,10 +100,12 @@ describe('the camera never looks straight along a leg', () => {
     expect(clampPitch(0)).toBeCloseTo(MIN_PITCH, 12);
     expect(clampPitch(-3)).toBeCloseTo(MIN_PITCH, 12);
     expect(clampPitch(Math.PI / 2)).toBeCloseTo(MAX_PITCH, 12);
-    expect(MIN_PITCH).toBeCloseTo((15 * Math.PI) / 180, 12);
-    expect(MAX_PITCH).toBeLessThan(Math.PI / 2);
-    // The band is symmetric, so the floor is the same at both ends of it.
-    expect(Math.sin(MIN_PITCH)).toBeCloseTo(Math.cos(MAX_PITCH), 12);
+    expect(MIN_PITCH).toBeCloseTo((20 * Math.PI) / 180, 12);
+    expect(MAX_PITCH).toBeCloseTo((55 * Math.PI) / 180, 12);
+    // The band is not symmetric, and it should not be. The flat end is set by
+    // horizontal legs collapsing; the steep end by the yaw running out of room
+    // to clear a vertical plane, which bites a long way before straight down.
+    expect(Math.sin(MIN_PLANE_ANGLE)).toBeLessThan(Math.cos(MAX_PITCH));
     expect(ISO_VIEW.pitch).toBeGreaterThanOrEqual(MIN_PITCH);
     expect(ISO_VIEW.pitch).toBeLessThanOrEqual(MAX_PITCH);
   });
@@ -116,7 +122,10 @@ describe('the camera never looks straight along a leg', () => {
         }
       }
     }
-    expect(worst).toBeGreaterThan(0.25);
+    // The flat end of the band is the floor: a level leg seen along it keeps
+    // the cosine of the tilt, and the tilt never goes below twenty degrees.
+    expect(worst).toBeGreaterThan(Math.sin(MIN_PITCH) - 1e-9);
+    expect(worst).toBeGreaterThan(0.34);
   });
 
   test('a flatter or steeper camera is what would lose them', () => {
@@ -597,5 +606,122 @@ describe('breaking the line behind at a crossing', () => {
     // A zig zag cut twice by one straight.
     const zig = [{ x: 0, y: 0 }, { x: 4, y: 8 }, { x: 8, y: 0 }];
     expect(polylineCrossings(H(4), zig)).toHaveLength(2);
+  });
+});
+
+
+describe('rotation is a sweep, not a circle', () => {
+  const deg = (r: number) => (r * 180) / Math.PI;
+  const flatSpool = flat([36, 24, 30, 18], [0, 90, 90, 45]);
+  const flatPlane = spoolPlane(flatSpool.points);
+  const flatDirs = legDirections(flatSpool.points);
+
+  // The whole point. Not "steered away from" and not "recovered from" — there
+  // is no distance along the sweep that lands on a view where the spool is
+  // edge on, so the drag cannot reach one.
+  test('no distance along the sweep is ever an edge on view', () => {
+    for (const pitch of [MIN_PITCH, 0.45, ISO_PITCH, 0.8, MAX_PITCH]) {
+      const range = allowedYaw(pitch, flatPlane, flatDirs);
+      for (let along = 0; along <= range.total; along += range.total / 2000) {
+        const yaw = yawAt(range, along);
+        expect(cameraMargin({ yaw, pitch }, flatPlane, flatDirs)).toBeGreaterThanOrEqual(-1e-9);
+      }
+    }
+  });
+
+  test('every leg keeps a third of its length, and the spool never flattens', () => {
+    const range = allowedYaw(ISO_PITCH, flatPlane, flatDirs);
+    const size = spread(flatSpool.points);
+    let thinnestLeg = 1;
+    let thinnestSpool = Infinity;
+    for (let along = 0; along <= range.total; along += range.total / 720) {
+      const cam: Camera = { yaw: yawAt(range, along), pitch: ISO_PITCH };
+      for (const u of flatDirs) thinnestLeg = Math.min(thinnestLeg, projectedFraction(u, cam));
+      thinnestSpool = Math.min(thinnestSpool, drawnWidth(flatSpool.points, cam) / size);
+    }
+    // Twenty degrees of clearance is the sine of twenty, a third of a leg.
+    expect(thinnestLeg).toBeGreaterThan(Math.sin(MIN_LEG_ANGLE) - 1e-9);
+    expect(thinnestLeg).toBeGreaterThan(0.34);
+    // And the drawing keeps real width from every reachable angle.
+    expect(thinnestSpool).toBeGreaterThan(0.2);
+  });
+
+  test('the sweep is the two hundred and sixty odd degrees the clearance leaves', () => {
+    const at = (p: number) => deg(allowedYaw(p, flatPlane, flatDirs).total);
+    expect(at(MIN_PITCH)).toBeGreaterThan(265);
+    expect(at(ISO_PITCH)).toBeGreaterThan(255);
+    expect(at(ISO_PITCH)).toBeLessThan(270);
+    // Steeper costs more, because looking down at a vertical plane is already
+    // close to looking along it. It still leaves most of a turn.
+    expect(at(MAX_PITCH)).toBeGreaterThan(200);
+    // Never the whole circle for a flat spool: the dead bands are real.
+    for (const p of [MIN_PITCH, ISO_PITCH, MAX_PITCH]) expect(at(p)).toBeLessThan(359);
+  });
+
+  // A rolled spool has no plane to avoid, so it might look as though it should
+  // keep the whole turn. It does not: each leg costs its own clearance, and a
+  // spool with three bearings in it spends about as much that way as a flat one
+  // spends on its plane. The sweep lands in the same place either way.
+  test('a rolled spool pays in legs what a flat one pays in its plane', () => {
+    const rolled = solveSpool({
+      ...BASE,
+      legs: [makeLeg('a', 24, 0, 0), makeLeg('b', 18, 45, 30), makeLeg('c', 30, 60, 45)],
+    });
+    expect(spoolPlane(rolled.points)).toBeNull();
+    const range = allowedYaw(ISO_PITCH, null, legDirections(rolled.points));
+    expect(deg(range.total)).toBeGreaterThan(255);
+    expect(deg(range.total)).toBeLessThan(300);
+  });
+
+  test('a single straight length has nothing to lose and keeps the whole turn', () => {
+    const straight = solveSpool({ ...BASE, legs: [makeLeg('a', 24, 0, 0)] });
+    const range = allowedYaw(ISO_PITCH, spoolPlane(straight.points), legDirections(straight.points));
+    expect(deg(range.total)).toBeCloseTo(360, 6);
+  });
+
+  test('walking the sweep turns the spool, and comes back where it started', () => {
+    const range = allowedYaw(ISO_PITCH, flatPlane, flatDirs);
+    expect(yawAt(range, 0)).toBeCloseTo(yawAt(range, range.total), 9);
+    expect(yawAt(range, -range.total)).toBeCloseTo(yawAt(range, 0), 9);
+    // Distance along maps back to itself.
+    for (let along = 0; along < range.total; along += range.total / 37) {
+      expect(sweepOf(range, yawAt(range, along))).toBeCloseTo(along, 9);
+    }
+  });
+
+  test('a yaw inside a dead band snaps to the nearest wall of it', () => {
+    const range = allowedYaw(ISO_PITCH, flatPlane, flatDirs);
+    // Dead on the plane of the spool is the middle of a band.
+    for (const bad of [0, Math.PI, -Math.PI]) {
+      const snapped = snapYaw(range, bad);
+      expect(cameraMargin({ yaw: snapped, pitch: ISO_PITCH }, flatPlane, flatDirs)).toBeGreaterThanOrEqual(-1e-9);
+    }
+    // A yaw already in the sweep is not moved.
+    const inside = yawAt(range, range.total / 3);
+    expect(snapYaw(range, inside)).toBeCloseTo(inside, 9);
+  });
+
+  test('a spool with nothing to avoid rotates freely', () => {
+    const range = allowedYaw(ISO_PITCH, null, []);
+    expect(range.total).toBeCloseTo(Math.PI * 2, 9);
+    expect(range.arcs).toHaveLength(1);
+  });
+
+  test('a spool with legs at every bearing rotates freely rather than seizing', () => {
+    const dirs: Vec3[] = [];
+    for (let a = 0; a < 360; a += 5) {
+      const r = (a * Math.PI) / 180;
+      dirs.push(unit({ x: Math.cos(r), y: Math.tan(ISO_PITCH), z: Math.sin(r) }));
+    }
+    const range = allowedYaw(ISO_PITCH, null, dirs);
+    expect(range.total).toBeCloseTo(Math.PI * 2, 9);
+    expect(Number.isFinite(yawAt(range, 1.2))).toBe(true);
+  });
+
+  test('all four corners are inside the sweep of a plain spool', () => {
+    const range = allowedYaw(ISO_PITCH, flatPlane, flatDirs);
+    for (const c of ISO_CORNERS) {
+      expect(snapYaw(range, c.cam.yaw)).toBeCloseTo(c.cam.yaw, 9);
+    }
   });
 });

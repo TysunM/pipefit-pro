@@ -138,13 +138,20 @@ export function fitProjection(
 export const ISO_PITCH = Math.atan(Math.SQRT1_2);
 
 /** Lowest the camera tilts: any flatter and horizontal legs start to collapse. */
-export const MIN_PITCH = (15 * Math.PI) / 180;
-/** Highest it tilts: any steeper and risers start to collapse. */
-export const MAX_PITCH = (75 * Math.PI) / 180;
+export const MIN_PITCH = (20 * Math.PI) / 180;
+/**
+ * Highest it tilts.
+ *
+ * Looking down steeply at a spool standing in a vertical plane is inherently
+ * close to looking along that plane, so the steeper the tilt the less yaw is
+ * left that clears it. At 70 degrees nothing does. 55 keeps a sweep of better
+ * than two hundred degrees at the worst tilt the drag allows.
+ */
+export const MAX_PITCH = (55 * Math.PI) / 180;
 /** How far the view axis is kept off the plane of a flat spool. */
-export const MIN_PLANE_ANGLE = (12 * Math.PI) / 180;
+export const MIN_PLANE_ANGLE = (20 * Math.PI) / 180;
 /** How far the view axis is kept off any one leg. */
-export const MIN_LEG_ANGLE = (15 * Math.PI) / 180;
+export const MIN_LEG_ANGLE = (20 * Math.PI) / 180;
 
 /** Where the view starts: true isometric, looking down from the north east. */
 export const ISO_VIEW: Camera = { yaw: -Math.PI / 4, pitch: ISO_PITCH };
@@ -411,4 +418,114 @@ export function polylineCrossings(a: Pt[], b: Pt[]): Crossing[] {
     }
   }
   return out;
+}
+
+
+// Rotation as a sweep, not a circle
+// ---------------------------------
+// Steering the camera the shortest way out of a bad view works, but the view
+// it steers to is only just clear, and only just clear still reads as a leg
+// that has gone. The margin is what matters, and a margin of twenty degrees
+// leaves a leg a third of its length on screen instead of a fifth.
+//
+// Twenty degrees of clearance is not free. On a flat spool it costs about
+// fifty degrees of yaw either side of the two places the camera looks along
+// the plane, so a full turn is no longer available: what is left is around
+// 260 to 275 degrees depending on the tilt, in two arcs.
+//
+// So rotation is that sweep rather than a circle. The dead bands are taken out
+// of the range and the drag runs along what remains, which means there is no
+// yaw the drag can reach where the spool is edge on — not steered away from,
+// not recovered from, simply not there.
+
+export type YawArc = { start: number; end: number };
+export type YawRange = { arcs: YawArc[]; total: number };
+
+const TWO_PI = Math.PI * 2;
+const turn = (a: number): number => ((a % TWO_PI) + TWO_PI) % TWO_PI;
+
+/**
+ * The yaws at this tilt where nothing in the spool is edge on.
+ *
+ * Every constraint changes sign only where it is met exactly, and those yaws
+ * are solved in closed form, so cutting the circle at all of them leaves
+ * sectors that are wholly good or wholly bad. Testing one yaw in each sector
+ * settles it — no sampling, and no band narrower than the step.
+ */
+export function allowedYaw(pitch: number, normal: Vec3 | null, dirs: Vec3[]): YawRange {
+  const whole: YawRange = { arcs: [{ start: 0, end: TWO_PI }], total: TWO_PI };
+
+  const cuts: number[] = [];
+  if (normal) {
+    const m = Math.sin(MIN_PLANE_ANGLE);
+    cuts.push(...yawsWhereDot(pitch, normal, m), ...yawsWhereDot(pitch, normal, -m));
+  }
+  const c = Math.cos(MIN_LEG_ANGLE);
+  for (const u of dirs) cuts.push(...yawsWhereDot(pitch, u, c), ...yawsWhereDot(pitch, u, -c));
+
+  const edges = [...new Set(cuts.map((a) => turn(a).toFixed(9)))].map(Number).sort((a, b) => a - b);
+  if (!edges.length) return cameraMargin({ yaw: 0, pitch }, normal, dirs) >= 0 ? whole : { arcs: [], total: 0 };
+
+  const arcs: YawArc[] = [];
+  for (let i = 0; i < edges.length; i += 1) {
+    const a = edges[i]!;
+    const b = i + 1 < edges.length ? edges[i + 1]! : edges[0]! + TWO_PI;
+    if (b - a < 1e-9) continue;
+    if (cameraMargin({ yaw: (a + b) / 2, pitch }, normal, dirs) < 0) continue;
+    const last = arcs[arcs.length - 1];
+    // A yaw where a constraint is met exactly but never crossed is not a wall.
+    if (last && Math.abs(last.end - a) < 1e-9) last.end = b;
+    else arcs.push({ start: a, end: b });
+  }
+
+  // A sweep that closes on itself is a whole circle, not a wall at the seam.
+  const first = arcs[0];
+  const last = arcs[arcs.length - 1];
+  if (arcs.length > 1 && first && last && Math.abs(last.end - (first.start + TWO_PI)) < 1e-9) {
+    first.start = last.start - TWO_PI;
+    arcs.pop();
+  }
+
+  const total = arcs.reduce((t, a) => t + (a.end - a.start), 0);
+  // Nothing clears — a spool with legs at every bearing. Free rotation beats a
+  // drag that cannot move at all.
+  return total < 1e-9 ? whole : { arcs, total };
+}
+
+/** The yaw a given distance along the sweep, wrapping at its ends. */
+export function yawAt(range: YawRange, along: number): number {
+  if (!range.arcs.length || range.total < 1e-12) return 0;
+  let t = ((along % range.total) + range.total) % range.total;
+  for (const a of range.arcs) {
+    const w = a.end - a.start;
+    if (t <= w) return wrap(a.start + t);
+    t -= w;
+  }
+  return wrap(range.arcs[range.arcs.length - 1]!.end);
+}
+
+/** How far along the sweep a yaw sits, snapping to the nearest wall if outside. */
+export function sweepOf(range: YawRange, yaw: number): number {
+  if (!range.arcs.length || range.total < 1e-12) return 0;
+  let acc = 0;
+  let bestAlong = 0;
+  let bestGap = Infinity;
+  for (const a of range.arcs) {
+    const w = a.end - a.start;
+    for (const y of [turn(yaw), turn(yaw) + TWO_PI, turn(yaw) - TWO_PI]) {
+      if (y >= a.start - 1e-12 && y <= a.end + 1e-12) return acc + Math.max(0, Math.min(w, y - a.start));
+      const gap = Math.min(Math.abs(y - a.start), Math.abs(y - a.end));
+      if (gap < bestGap) {
+        bestGap = gap;
+        bestAlong = acc + (Math.abs(y - a.start) <= Math.abs(y - a.end) ? 0 : w);
+      }
+    }
+    acc += w;
+  }
+  return bestAlong;
+}
+
+/** The nearest yaw in the sweep to the one asked for. */
+export function snapYaw(range: YawRange, yaw: number): number {
+  return yawAt(range, sweepOf(range, yaw));
 }

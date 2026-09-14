@@ -14,11 +14,15 @@ import {
   distanceToSegment,
   fitProjection,
   fitSphere,
+  allowedYaw,
+  clampPitch,
   legDirections,
   polylineCrossings,
   project,
-  settleCamera,
+  snapYaw,
   spoolPlane,
+  sweepOf,
+  yawAt,
 } from './project';
 
 const W = 340;
@@ -167,12 +171,23 @@ export function SpoolView({
   const plane = useMemo(() => spoolPlane(spool.points), [spool.points]);
   const dirs = useMemo(() => legDirections(spool.points), [spool.points]);
 
-  // The drag writes the raw camera and the shown one is settled from it, so a
-  // deadband is a place the view will not stop rather than a place the drag
-  // cannot cross. Re-settling when the spool changes shape means a leg pulled
-  // into the view axis is answered as it happens.
-  const view = useMemo(() => settleCamera(cam, plane, dirs), [cam, plane, dirs]);
+  // Rotation is the sweep of yaws where nothing is edge on, with the dead bands
+  // taken out. The camera stored is always one of them, so there is no view the
+  // drag can reach where a leg has gone — it is not steered away from, it is
+  // not there. The sweep is recomputed when the tilt or the spool changes,
+  // because both move the walls.
+  const range = useMemo(() => allowedYaw(clampPitch(cam.pitch), plane, dirs), [cam.pitch, plane, dirs]);
+  const view = useMemo<Camera>(
+    () => ({ yaw: snapYaw(range, cam.yaw), pitch: clampPitch(cam.pitch) }),
+    [cam.yaw, cam.pitch, range]
+  );
+  const rangeRef = useRef(range);
+  rangeRef.current = range;
 
+  const planeRef = useRef(plane);
+  planeRef.current = plane;
+  const dirsRef = useRef(dirs);
+  dirsRef.current = dirs;
   const resizeRef = useRef(onResizeLeg);
   resizeRef.current = onResizeLeg;
 
@@ -243,9 +258,14 @@ export function SpoolView({
             clearTimeout(grab.current.timer);
             grab.current.timer = null;
           }
+          // The horizontal drag walks along the sweep rather than round a
+          // circle, so the same pull always turns the spool by the same amount
+          // of usable rotation whatever the tilt has done to the walls.
+          const pitch = clampPitch(start.current.pitch - g.dy * 0.011);
+          const walls = allowedYaw(pitch, planeRef.current, dirsRef.current);
           setCam({
-            yaw: start.current.yaw + g.dx * 0.011,
-            pitch: start.current.pitch - g.dy * 0.011,
+            yaw: yawAt(walls, sweepOf(walls, start.current.yaw) + g.dx * 0.011),
+            pitch,
           });
         },
         onPanResponderRelease: () => {
@@ -540,7 +560,7 @@ export function SpoolView({
                 key={c.id}
                 accessibilityRole="button"
                 accessibilityLabel={`Isometric view from the ${c.id}`}
-                onPress={() => setCam(c.cam)}
+                onPress={() => setCam({ yaw: snapYaw(allowedYaw(c.cam.pitch, plane, dirs), c.cam.yaw), pitch: c.cam.pitch })}
                 hitSlop={6}
                 style={{
                   paddingHorizontal: t.space.sm,

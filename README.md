@@ -177,6 +177,8 @@ crashing. `npm run runtime-version` prints the fingerprint to compare against
 the build on expo.dev — [docs/RELEASE.md §5](docs/RELEASE.md#5-push-an-update-over-the-air)
 covers the whole loop.
 
+**[docs/QUICK-REFERENCE.md](docs/QUICK-REFERENCE.md)** is the one page for the job: which screen, what to type, what to read, with the offset multipliers to check it against. There is a printable PDF of it beside it.
+
 **[docs/RELEASE.md](docs/RELEASE.md) is the full runbook** — signing, keystore
 backup and recovery, version rules, the config invariants that only break in a
 standalone build, and fixes for every install failure seen so far. Read it
