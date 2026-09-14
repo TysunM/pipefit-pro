@@ -384,10 +384,33 @@ describe('cut length', () => {
     near(r.totalDeduction, 0);
   });
 
-  test('elbow takeoffs agree with the offset solver', () => {
+  // A bend and a bought fitting are different things. The offset and bender
+  // screens work a bend; the cut length screen is picking a fitting off a
+  // shelf. At 90 degrees they agree exactly, because the tangent of 45 is one.
+  test('a 90 degree elbow agrees with the bend, because at 90 they are the same number', () => {
     for (const s of PIPE_SIZES) {
       near(endTakeoff('elbow90', s.nps, 'LR', NaN), takeoff(s.nps, 'LR', 90), 1e-9);
-      near(endTakeoff('elbow45', s.nps, 'LR', NaN), takeoff(s.nps, 'LR', 45), 1e-9);
+      near(endTakeoff('bend90', s.nps, 'LR', NaN), takeoff(s.nps, 'LR', 90), 1e-9);
+    }
+  });
+
+  test('a bend option is offered alongside the fitting, and works the formula', () => {
+    for (const s of PIPE_SIZES) {
+      near(endTakeoff('bend45', s.nps, 'LR', NaN), takeoff(s.nps, 'LR', 45), 1e-9);
+    }
+  });
+
+  // The one place they part company, and the reason the fitting is held: a
+  // two inch long radius 45 elbow takes out 1-3/8, not the 1.2426 the bend
+  // formula gives. Working fittings to the bend figure cuts a quarter of an
+  // inch long on every piece.
+  test('a bought 45 elbow takes out more than a 45 bend', () => {
+    near(endTakeoff('elbow45', 2, 'LR', NaN), 1.375, 1e-9);
+    near(endTakeoff('bend45', 2, 'LR', NaN), takeoff(2, 'LR', 45), 1e-9);
+    expect(endTakeoff('elbow45', 2, 'LR', NaN)).toBeGreaterThan(endTakeoff('bend45', 2, 'LR', NaN));
+    // From four inch up the published figure is five eighths of the size.
+    for (const nps of [4, 6, 8, 12, 24]) {
+      near(endTakeoff('elbow45', nps, 'LR', NaN), 0.625 * nps, 1e-9);
     }
   });
 
@@ -396,13 +419,28 @@ describe('cut length', () => {
     near(r.pipeCut, 19);
   });
 
-  test('every catalogue fitting resolves for every listed pipe size', () => {
+  test('every catalogue fitting resolves for every size it is made in', () => {
     for (const s of PIPE_SIZES)
-      for (const f of ['elbow90', 'elbow45', 'tee', 'flange150', 'flange300'] as const) {
+      for (const f of ['elbow90', 'tee', 'flange150', 'flange300'] as const) {
         const v = endTakeoff(f, s.nps, 'LR', NaN);
         expect(Number.isFinite(v)).toBe(true);
         expect(v).toBeGreaterThan(0);
       }
+  });
+
+  // A half inch butt welding 45 is not in the handbook, and the figures it
+  // prints below four inch are nothing like five eighths of the size — the one
+  // inch is forty per cent over it — so there is nothing to extrapolate from.
+  // The screen says so rather than inventing a number.
+  test('a 45 elbow in a size the book does not print is refused, not guessed', () => {
+    expect(Number.isNaN(endTakeoff('elbow45', 0.5, 'LR', NaN))).toBe(true);
+    expect(Number.isFinite(endTakeoff('elbow45', 0.75, 'LR', NaN))).toBe(true);
+    // And the cut refuses with it, rather than quietly dropping the end.
+    const r = solveCutLength({ ...base, nps: 0.5, centerToCenter: 24, endA: 'elbow45', endB: 'none' });
+    expect(r.valid).toBe(false);
+    expect(r.error).toContain('not made in this size');
+    // The bend is still there for anyone bending their own.
+    expect(Number.isFinite(endTakeoff('bend45', 0.5, 'LR', NaN))).toBe(true);
   });
 
   test('tee centre-to-end matches published B16.9 values', () => {
@@ -911,8 +949,8 @@ describe('cross-solver consistency', () => {
     const offset = solveOffset({ offset: 10, fittingAngle: 45, gap: 0, nps: 2, kind: 'LR', schedule: '40', lockRun: false });
     const cut = solveCutLength({
       centerToCenter: offset.travel,
-      endA: 'elbow45',
-      endB: 'elbow45',
+      endA: 'bend45',
+      endB: 'bend45',
       customA: NaN,
       customB: NaN,
       gap: 0,

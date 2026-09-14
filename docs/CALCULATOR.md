@@ -28,6 +28,8 @@ left unimplemented rather than filled with plausible numbers.
 | Full keypad map | `calc/keys.ts` | 40 keys, every shift bound |
 | Keypad screen | `screens/CalculatorScreen.tsx` | LCD with unit word and annunciators, Conv shift layer |
 | Handbook browser | `screens/ReferenceScreen.tsx`, `calc/reference.ts` | Every table in the app, grouped, searchable by name or page |
+| Takeout catalogue | `calc/takeoffCatalog.ts` | Screwed, welded, flanged and soldered fittings, all read from the handbook tables |
+| Cut length from a real fitting | `screens/CutLengthScreen.tsx` | Pick how it is joined and what is on each end; the gap follows the joint |
 | Pipe dimensions, steel and stainless | `calc/pipeData.ts` | Sch 40, 80, 120, Std, XS, 40S, 80S; bore area, weight, filled weight, capacity |
 | Standard threads and engagement | `calc/thread.ts` | 18 sizes; thread, hand-tight and tight engagement, bore size |
 | Screwed fitting dimensions | `calc/screwedFitting.ts` | Both classes, 17 sizes, centre to end and band diameter |
@@ -83,7 +85,7 @@ left unimplemented rather than filled with plausible numbers.
 | Pipe Material and Pipe Type keys | p21, p23 | Menus are encoded; selecting one needs the data above |
 | Elbow Type | p23 | Long radius butt weld is the default; short radius and threaded need take-out values |
 | Take-out and butt weld elbow cut marks | p32 | Partly covered by `calc/cutLength.ts` |
-| Cut length from a known take-out | p33 | |
+| Cut length from a known take-out | p33 | Done — the fitting picker reads the handbook tables |
 | Simple offset, known and unknown bend angle | p24–25 | Partly covered by `calc/offset.ts` |
 | Simple offset cut length | p25 | Needs Welder's Gap wired in |
 | Rolling offset, known and unknown angle, cut length | p27–29 | Partly covered by `calc/rolling.ts` |

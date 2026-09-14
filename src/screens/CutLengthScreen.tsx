@@ -10,7 +10,9 @@ import { PipeSheet } from '../components/PipeSheet';
 import { useUnits } from '../hooks/useUnits';
 import { usePipeConfig } from '../hooks/usePipeConfig';
 import { useSettings } from '../state/settings';
-import { END_FITTINGS, EndFitting, FITTING_SOURCE, solveCutLength } from '../calc/cutLength';
+import { END_FITTINGS, EndFitting, FITTING_SOURCE, endHasGap, solveCutLength } from '../calc/cutLength';
+import { JointKind, TAKEOFF_FAMILIES, optionsForFamily } from '../calc/takeoffCatalog';
+import { FlangeClass, flangedClasses } from '../calc/flangedFitting';
 
 export function CutLengthScreen() {
   const u = useUnits();
@@ -19,8 +21,10 @@ export function CutLengthScreen() {
 
   const [c2c, setC2c] = useState('');
   const [gap, setGap] = useState('');
-  const [endA, setEndA] = useState<EndFitting>('elbow90');
-  const [endB, setEndB] = useState<EndFitting>('elbow90');
+  const [family, setFamily] = useState<JointKind>('welded');
+  const [flangeClass, setFlangeClass] = useState<FlangeClass>('150');
+  const [endA, setEndA] = useState<EndFitting>('weld90');
+  const [endB, setEndB] = useState<EndFitting>('weld90');
   const [customA, setCustomA] = useState('');
   const [customB, setCustomB] = useState('');
 
@@ -38,17 +42,36 @@ export function CutLengthScreen() {
         nps: pipe.nps,
         kind: pipe.kind,
         schedule: pipe.schedule,
+        flangeClass,
       }),
-    [c2c, endA, endB, customA, customB, gapInches, pipe.nps, pipe.kind, pipe.schedule, u]
+    [c2c, endA, endB, customA, customB, gapInches, flangeClass, pipe.nps, pipe.kind, pipe.schedule, u]
   );
 
   const pristine = !c2c.trim();
 
-  const options = END_FITTINGS.map((f) => ({ value: f.id, label: f.label }));
+  // The fittings offered follow how the run is being joined. Switching the
+  // family moves both ends onto something that family actually makes.
+  const options = useMemo(
+    () => optionsForFamily(family).map((f) => ({ value: f.id, label: f.label })),
+    [family]
+  );
+  const familyOptions = TAKEOFF_FAMILIES.map((f) => ({ value: f.id, label: f.label }));
+  const classOptions = flangedClasses().map((c) => ({ value: c, label: `${c} lb` }));
+  const gapApplies = endHasGap(endA) || endHasGap(endB);
+  const gapNote = TAKEOFF_FAMILIES.find((f) => f.id === family)?.gapLabel ?? '';
+
+  const pickFamily = (next: JointKind) => {
+    setFamily(next);
+    const first = optionsForFamily(next).find((o) => o.id !== 'none' && o.id !== 'custom');
+    if (first) {
+      setEndA((prev) => (optionsForFamily(next).some((o) => o.id === prev) ? prev : first.id));
+      setEndB((prev) => (optionsForFamily(next).some((o) => o.id === prev) ? prev : first.id));
+    }
+  };
 
   return (
     <Screen>
-      <HintRow text="Turn a centre-to-centre dimension into a pipe cut. Pick the fitting on each end; takeouts and weld gaps come off automatically." />
+      <HintRow text="Turn a centre-to-centre dimension into a pipe cut. Pick how it is joined and what is on each end; the takeouts come straight out of the handbook tables." />
       <SectionHeader title="Dimensions" meta="Centre-to-centre" />
 
       <FieldRow>
@@ -65,9 +88,15 @@ export function CutLengthScreen() {
           value={gap}
           onChangeText={setGap}
           suffix={u.suffix}
-          placeholder={u.num(settings.defaultGap)}
+          placeholder={gapApplies ? u.num(settings.defaultGap) : '—'}
+          editable={gapApplies}
         />
       </FieldRow>
+
+      <ChipRow label="Joint" options={familyOptions} selected={family} onSelect={pickFamily} />
+      {family === 'flanged' ? (
+        <ChipRow label="Class" options={classOptions} selected={flangeClass} onSelect={setFlangeClass} />
+      ) : null}
 
       <ChipRow label="End A" options={options} selected={endA} onSelect={setEndA} />
       {endA === 'custom' ? (
@@ -93,8 +122,9 @@ export function CutLengthScreen() {
             setGap('');
             setCustomA('');
             setCustomB('');
-            setEndA('elbow90');
-            setEndB('elbow90');
+            setFamily('welded');
+            setEndA('weld90');
+            setEndB('weld90');
           }}
           style={{ flex: 1 }}
         />
@@ -119,7 +149,7 @@ export function CutLengthScreen() {
         stats={[
           { label: 'End A takeout', note: END_FITTINGS.find((f) => f.id === endA)?.label, value: u.dual(result.takeoffA) },
           { label: 'End B takeout', note: END_FITTINGS.find((f) => f.id === endB)?.label, value: u.dual(result.takeoffB) },
-          { label: 'Weld gaps', value: u.num(gapInches) },
+          { label: 'Joint gaps', note: gapApplies ? `${result.gapEnds} end${result.gapEnds === 1 ? '' : 's'}` : 'none', value: gapApplies ? u.num(gapInches) : '—' },
           { label: 'Total deduction', value: u.dual(result.totalDeduction) },
         ]}
       />
@@ -130,7 +160,7 @@ export function CutLengthScreen() {
       />
 
       <FooterNote
-        text={`End A — ${FITTING_SOURCE[endA]}.  End B — ${FITTING_SOURCE[endB]}.  Every takeout is shown above; check it against the fitting in your hand before you cut.`}
+        text={`End A — ${FITTING_SOURCE[endA]}.  End B — ${FITTING_SOURCE[endB]}.  ${gapNote}.  Every takeout is shown above; check it against the fitting in your hand before you cut.`}
       />
 
       <PipeSheet
