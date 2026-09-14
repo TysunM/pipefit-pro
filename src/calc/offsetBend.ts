@@ -1,3 +1,4 @@
+import { offsetAngleError, offsetRun } from './angle';
 import { rad } from './units';
 
 // A two-bend offset made by bending the pipe itself rather than by fittings.
@@ -45,14 +46,15 @@ const EMPTY: OffsetBendResult = {
 export function solveOffsetBend(input: OffsetBendInput): OffsetBendResult {
   const { offset, angle, radius, legA, legB } = input;
 
-  if (!(angle > 0 && angle < 90)) return { ...EMPTY, error: 'Offset angle must be between 0° and 90°.' };
+  const badAngle = offsetAngleError(angle, 'Offset angle');
+  if (badAngle) return { ...EMPTY, error: badAngle };
   if (!(radius > 0)) return { ...EMPTY, error: 'Enter a bend radius greater than zero.' };
   if (!(offset > 0)) return { ...EMPTY, error: 'Enter an offset greater than zero.' };
 
   const setback = radius * Math.tan(rad(angle) / 2);
   const arcLength = radius * rad(angle);
   const travel = offset / Math.sin(rad(angle));
-  const run = offset / Math.tan(rad(angle));
+  const run = offsetRun(offset, angle);
 
   // Between the two bends the pipe runs along the travel, less the setback
   // each bend takes out of it.
@@ -156,7 +158,8 @@ const EMPTY_DOUBLE: DoubleOffsetResult = {
 export function solveDoubleOffset(input: DoubleOffsetInput): DoubleOffsetResult {
   const { angle, radius, firstOffset, returnOffset, legA, legB, parallel } = input;
 
-  if (!(angle > 0 && angle < 90)) return { ...EMPTY_DOUBLE, error: 'Offset angle must be between 0° and 90°.' };
+  const badAngle = offsetAngleError(angle, 'Offset angle');
+  if (badAngle) return { ...EMPTY_DOUBLE, error: badAngle };
   if (!(radius > 0)) return { ...EMPTY_DOUBLE, error: 'Enter a bend radius greater than zero.' };
   if (!(firstOffset > 0) || !(returnOffset > 0)) {
     return { ...EMPTY_DOUBLE, error: 'Enter both offsets, greater than zero.' };
@@ -169,9 +172,9 @@ export function solveDoubleOffset(input: DoubleOffsetInput): DoubleOffsetResult 
   const arcLength = radius * rad(angle);
 
   const firstTravel = firstOffset / Math.sin(rad(angle));
-  const firstRun = firstOffset / Math.tan(rad(angle));
+  const firstRun = offsetRun(firstOffset, angle);
   const returnTravel = returnOffset / Math.sin(rad(angle));
-  const returnRun = returnOffset / Math.tan(rad(angle));
+  const returnRun = offsetRun(returnOffset, angle);
 
   const straightA = legA - setback;
   const betweenFirstPair = firstTravel - 2 * setback;

@@ -1,15 +1,24 @@
 import {
   Camera,
+  ISO_CORNERS,
+  ISO_PITCH,
   ISO_VIEW,
   MAX_PITCH,
+  MIN_LEG_ANGLE,
   MIN_PITCH,
   MIN_PLANE_ANGLE,
   avoidEdgeOn,
+  cameraMargin,
   clampPitch,
+  legDirections,
   projectedFraction,
   project,
+  fitSphere,
+  polylineCrossings,
+  settleCamera,
   spoolPlane,
   viewAxis,
+  yawsWhereDot,
 } from '../components/spool3d/project';
 import { START_FRAME, Vec3, makeLeg, solveSpool } from '../calc/spool';
 
@@ -93,9 +102,6 @@ describe('the camera never looks straight along a leg', () => {
     expect(Math.sin(MIN_PITCH)).toBeCloseTo(Math.cos(MAX_PITCH), 12);
     expect(ISO_VIEW.pitch).toBeGreaterThanOrEqual(MIN_PITCH);
     expect(ISO_VIEW.pitch).toBeLessThanOrEqual(MAX_PITCH);
-    // The view starts in the fifteen to thirty degree band.
-    expect((ISO_VIEW.pitch * 180) / Math.PI).toBeGreaterThanOrEqual(15);
-    expect((ISO_VIEW.pitch * 180) / Math.PI).toBeLessThanOrEqual(30);
   });
 
   // This is what the pitch band buys: at any yaw at all, a leg on a principal
@@ -275,5 +281,321 @@ describe('steering out of a flat spool plane', () => {
   // begin with, so a band wider than that could never be cleared by turning.
   test('the deadband is one turning can always clear', () => {
     expect(Math.sin(MIN_PLANE_ANGLE)).toBeLessThan(Math.cos(MAX_PITCH));
+  });
+});
+
+
+// The screen positions of the three world axes, which is all that decides
+// whether a drawing reads as isometric.
+const screenAxes = (cam: Camera) => ({
+  X: project(EAST, cam),
+  Y: project(UP, cam),
+  Z: project(NORTH, cam),
+});
+const len = (p: { x: number; y: number }) => Math.hypot(p.x, p.y);
+/** Bearing on the page, measured anticlockwise from due right, screen up positive. */
+const bearing = (p: { x: number; y: number }) => (Math.atan2(-p.y, p.x) * 180) / Math.PI;
+const apart = (a: { x: number; y: number }, b: { x: number; y: number }) => {
+  const d = Math.abs(bearing(a) - bearing(b));
+  return d > 180 ? 360 - d : d;
+};
+/**
+ * The angle between two axes taken as lines rather than as arrows.
+ *
+ * Which of an axis's two ends points towards the viewer depends on the corner
+ * the camera sits in, so the directed angle flips between 120 and 60 from one
+ * corner to the next while the drawing is the same. The angle between the
+ * lines does not, and 60 between all three is what isometric means.
+ */
+const apartLines = (a: { x: number; y: number }, b: { x: number; y: number }) => {
+  const d = apart(a, b);
+  return Math.min(d, 180 - d);
+};
+
+describe('the view is isometric, the way iso paper is', () => {
+  // Isometric means one thing exactly: the three axes come off the page 120
+  // degrees apart and all three are foreshortened the same. Nothing else reads
+  // as solid, which is why the drawing on paper beats a view that is merely
+  // tilted.
+  test('the three axes project the same length', () => {
+    const a = screenAxes(ISO_VIEW);
+    expect(len(a.X)).toBeCloseTo(len(a.Y), 12);
+    expect(len(a.Y)).toBeCloseTo(len(a.Z), 12);
+    // Each is sqrt(2/3) of true length, which is the isometric foreshortening.
+    expect(len(a.X)).toBeCloseTo(Math.sqrt(2 / 3), 12);
+  });
+
+  test('the three axes come off the page 120 degrees apart', () => {
+    const a = screenAxes(ISO_VIEW);
+    expect(apart(a.X, a.Y)).toBeCloseTo(120, 9);
+    expect(apart(a.Y, a.Z)).toBeCloseTo(120, 9);
+    expect(apart(a.X, a.Z)).toBeCloseTo(120, 9);
+    // As lines, which is the form that holds from every corner.
+    expect(apartLines(a.X, a.Y)).toBeCloseTo(60, 9);
+    expect(apartLines(a.Y, a.Z)).toBeCloseTo(60, 9);
+    expect(apartLines(a.X, a.Z)).toBeCloseTo(60, 9);
+  });
+
+  test('up is up, and the two horizontals fall 30 degrees either side', () => {
+    const a = screenAxes(ISO_VIEW);
+    expect(bearing(a.Y)).toBeCloseTo(90, 9);
+    expect(bearing(a.X)).toBeCloseTo(-30, 9);
+    expect(bearing(a.Z)).toBeCloseTo(-150, 9);
+  });
+
+  test('the pitch that does it is atan of one over root two', () => {
+    expect(ISO_PITCH).toBeCloseTo(Math.atan(Math.SQRT1_2), 15);
+    expect(ISO_PITCH).toBeCloseTo(Math.asin(Math.tan(Math.PI / 6)), 12);
+    expect((ISO_PITCH * 180) / Math.PI).toBeCloseTo(35.264389682754654, 9);
+  });
+
+  // The view this replaced. Kept as a test so the reason for the change is a
+  // measurement and not a matter of taste.
+  test('a merely tilted view is not isometric and measurably so', () => {
+    const a = screenAxes({ yaw: -Math.PI / 5, pitch: (25 * Math.PI) / 180 });
+    const lens = [len(a.X), len(a.Y), len(a.Z)];
+    const spreadPct = (Math.max(...lens) - Math.min(...lens)) / Math.max(...lens);
+    // A quarter of a difference between the axes, where isometric has none.
+    expect(spreadPct).toBeGreaterThan(0.24);
+    expect(apart(a.X, a.Y)).toBeLessThan(110);
+    expect(apart(a.X, a.Z)).toBeGreaterThan(130);
+  });
+
+  test('all four corners are isometric, a quarter turn apart', () => {
+    expect(ISO_CORNERS).toHaveLength(4);
+    const ids = ISO_CORNERS.map((c) => c.id);
+    expect(new Set(ids).size).toBe(4);
+    for (const c of ISO_CORNERS) {
+      expect(c.cam.pitch).toBe(ISO_PITCH);
+      const a = screenAxes(c.cam);
+      expect(len(a.X)).toBeCloseTo(Math.sqrt(2 / 3), 12);
+      expect(len(a.Y)).toBeCloseTo(Math.sqrt(2 / 3), 12);
+      expect(len(a.Z)).toBeCloseTo(Math.sqrt(2 / 3), 12);
+      expect(apartLines(a.X, a.Y)).toBeCloseTo(60, 9);
+      expect(apartLines(a.Y, a.Z)).toBeCloseTo(60, 9);
+      expect(apartLines(a.X, a.Z)).toBeCloseTo(60, 9);
+      expect(bearing(a.Y)).toBeCloseTo(90, 9);
+    }
+    // The corner names read off the view axis: +x is east, +z is north.
+    for (const c of ISO_CORNERS) {
+      const d = viewAxis(c.cam);
+      expect(d.z > 0).toBe(c.id.startsWith('N'));
+      expect(d.x > 0).toBe(c.id.endsWith('E'));
+      expect(d.y).toBeGreaterThan(0);
+    }
+    // The view opens on the north east corner.
+    expect(ISO_CORNERS[0]!.cam).toEqual(ISO_VIEW);
+  });
+});
+
+describe('solving for the yaws where something goes edge on', () => {
+  test('every yaw it returns actually hits the target', () => {
+    const vs: Vec3[] = [EAST, NORTH, unit({ x: 1, y: 1, z: 1 }), unit({ x: -2, y: 0.5, z: 3 })];
+    for (const v of vs) {
+      for (const pitch of [MIN_PITCH, ISO_PITCH, 0.9, MAX_PITCH]) {
+        for (const target of [-0.6, -0.2, 0, 0.2, 0.6]) {
+          for (const yaw of yawsWhereDot(pitch, v, target)) {
+            const d = viewAxis({ yaw, pitch });
+            expect(d.x * v.x + d.y * v.y + d.z * v.z).toBeCloseTo(target, 12);
+          }
+        }
+      }
+    }
+  });
+
+  test('a target out of reach at that pitch has no solution', () => {
+    // A level leg can never be more than cos(pitch) along the view axis.
+    expect(yawsWhereDot(ISO_PITCH, EAST, 0.99)).toHaveLength(0);
+    // A vertical leg has no horizontal part to turn against.
+    expect(yawsWhereDot(ISO_PITCH, UP, 0.2)).toHaveLength(0);
+  });
+});
+
+describe('legs as constraints', () => {
+  test('parallel and opposite legs are counted once', () => {
+    const straightBack: Vec3[] = [
+      { x: 0, y: 0, z: 0 },
+      { x: 0, y: 0, z: 10 },
+      { x: 0, y: 0, z: 24 },
+      { x: 0, y: 0, z: 4 },
+    ];
+    expect(legDirections(straightBack)).toHaveLength(1);
+    expect(legDirections(flat([24, 18, 30]).points)).toHaveLength(2);
+  });
+
+  test('a repeated point adds no leg', () => {
+    expect(legDirections([{ x: 0, y: 0, z: 0 }, { x: 0, y: 0, z: 0 }])).toHaveLength(0);
+  });
+});
+
+describe('settling the camera so nothing is edge on', () => {
+  const sweep = (dirs: Vec3[], plane: Vec3 | null) => {
+    let worst = Infinity;
+    let biggestTurn = 0;
+    for (let yaw = -Math.PI; yaw <= Math.PI; yaw += Math.PI / 360) {
+      for (const raw of [MIN_PITCH, 0.35, ISO_PITCH, 0.9, MAX_PITCH]) {
+        const out = settleCamera({ yaw, pitch: raw }, plane, dirs);
+        worst = Math.min(worst, cameraMargin(out, plane, dirs));
+        biggestTurn = Math.max(biggestTurn, Math.abs(out.yaw - yaw));
+        expect(out.pitch).toBe(clampPitch(raw));
+      }
+    }
+    return { worst, biggestTurn };
+  };
+
+  // The case the pitch band cannot answer: a leg on no principal axis, aimed
+  // where the camera would look straight down it.
+  test('a leg pointing along the view axis is steered off', () => {
+    const leg = unit(viewAxis(ISO_VIEW));
+    expect(projectedFraction(leg, ISO_VIEW)).toBeCloseTo(0, 12);
+    const out = settleCamera(ISO_VIEW, null, [leg]);
+    expect(projectedFraction(leg, out)).toBeGreaterThanOrEqual(Math.sin(MIN_LEG_ANGLE) - 1e-9);
+  });
+
+  test('every leg of a rolled spool stays on screen, right round', () => {
+    const spool = solveSpool({
+      ...BASE,
+      legs: [
+        makeLeg('a', 24, 0, 0),
+        makeLeg('b', 18, 45, 30),
+        makeLeg('c', 30, 60, 45),
+        makeLeg('d', 16, 45, 70),
+      ],
+    });
+    expect(spool.valid).toBe(true);
+    const dirs = legDirections(spool.points);
+    expect(dirs.length).toBeGreaterThan(2);
+    const { worst } = sweep(dirs, spoolPlane(spool.points));
+    expect(worst).toBeGreaterThanOrEqual(-1e-9);
+  });
+
+  test('a flat spool keeps both its plane and its legs clear', () => {
+    const spool = flat([24, 18, 30, 12], [0, 90, 90, 45]);
+    const plane = spoolPlane(spool.points);
+    expect(plane).not.toBeNull();
+    const { worst, biggestTurn } = sweep(legDirections(spool.points), plane);
+    expect(worst).toBeGreaterThanOrEqual(-1e-9);
+    // It is a nudge out of the way, never a jump to the other side of the spool.
+    expect((biggestTurn * 180) / Math.PI).toBeLessThan(60);
+  });
+
+  test('a view with nothing edge on is left exactly alone', () => {
+    const spool = solveSpool({
+      ...BASE,
+      legs: [makeLeg('a', 24, 0, 0), makeLeg('b', 18, 90, 0), makeLeg('c', 30, 45, 60)],
+    });
+    const dirs = legDirections(spool.points);
+    const out = settleCamera(ISO_VIEW, spoolPlane(spool.points), dirs);
+    expect(cameraMargin(ISO_VIEW, null, dirs)).toBeGreaterThan(0);
+    expect(out).toEqual(ISO_VIEW);
+  });
+
+  test('the pitch is clamped whatever the drag asked for', () => {
+    expect(settleCamera({ yaw: 0.3, pitch: -2 }, null, []).pitch).toBeCloseTo(MIN_PITCH, 12);
+    expect(settleCamera({ yaw: 0.3, pitch: 9 }, null, []).pitch).toBeCloseTo(MAX_PITCH, 12);
+  });
+
+  // A spool with legs at every bearing cannot have all of them clear at once
+  // in a single orthographic view. It must still answer, and answer with the
+  // best of a bad set rather than whatever it was handed.
+  test('when no yaw clears everything it settles on the least bad', () => {
+    const dirs: Vec3[] = [];
+    for (let a = 0; a < 360; a += 10) {
+      const r = (a * Math.PI) / 180;
+      dirs.push(unit({ x: Math.cos(r), y: Math.tan(ISO_PITCH), z: Math.sin(r) }));
+    }
+    for (let yaw = -Math.PI; yaw <= Math.PI; yaw += 0.2) {
+      const out = settleCamera({ yaw, pitch: ISO_PITCH }, null, dirs);
+      expect(Number.isFinite(out.yaw)).toBe(true);
+      expect(cameraMargin(out, null, dirs)).toBeGreaterThanOrEqual(
+        cameraMargin({ yaw, pitch: ISO_PITCH }, null, dirs) - 1e-9
+      );
+    }
+  });
+
+  test('the leg margin is the same fifteen degrees the pitch band holds', () => {
+    expect(MIN_LEG_ANGLE).toBeCloseTo(MIN_PITCH, 12);
+    expect(Math.sin(MIN_LEG_ANGLE)).toBeLessThan(Math.cos(MAX_PITCH) + 1e-12);
+  });
+});
+
+
+describe('fitting the drawing to the canvas', () => {
+  const spool = flat([36, 24, 30, 18], [0, 90, 90, 45]);
+  const CAMS: Camera[] = [
+    ISO_VIEW,
+    ...ISO_CORNERS.map((c) => c.cam),
+    { yaw: 0.9, pitch: MIN_PITCH },
+    { yaw: -2.6, pitch: MAX_PITCH },
+    { yaw: 2.0, pitch: 0.6 },
+  ];
+
+  test('turning the spool never resizes it', () => {
+    const scales = CAMS.map((c) => fitSphere(spool.points, c, 340, 340, 18).scale);
+    for (const s2 of scales) expect(s2).toBeCloseTo(scales[0]!, 12);
+  });
+
+  test('the drawing is centred on the canvas from every angle', () => {
+    for (const cam of CAMS) {
+      const f = fitSphere(spool.points, cam, 340, 340, 18);
+      const pts = spool.points.map(f.map);
+      const xs = pts.map((p) => p.x);
+      const ys = pts.map((p) => p.y);
+      expect((Math.min(...xs) + Math.max(...xs)) / 2).toBeCloseTo(170, 9);
+      expect((Math.min(...ys) + Math.max(...ys)) / 2).toBeCloseTo(170, 9);
+    }
+  });
+
+  test('nothing is drawn outside the padding', () => {
+    for (const cam of CAMS) {
+      const f = fitSphere(spool.points, cam, 340, 340, 18);
+      for (const p of spool.points.map(f.map)) {
+        expect(p.x).toBeGreaterThanOrEqual(18);
+        expect(p.x).toBeLessThanOrEqual(322);
+        expect(p.y).toBeGreaterThanOrEqual(18);
+        expect(p.y).toBeLessThanOrEqual(322);
+      }
+    }
+  });
+
+  test('an empty spool still maps somewhere sane', () => {
+    const f = fitSphere([], ISO_VIEW, 340, 340, 18);
+    expect(f.map({ x: 0, y: 0, z: 0 })).toEqual({ x: 170, y: 170, depth: 0 });
+  });
+});
+
+describe('breaking the line behind at a crossing', () => {
+  const H = (y: number) => [{ x: 0, y }, { x: 10, y }];
+  const V = (x: number) => [{ x, y: 0 }, { x, y: 10 }];
+
+  test('a square crossing is found, at the crossing point', () => {
+    const c = polylineCrossings(H(5), V(4));
+    expect(c).toHaveLength(1);
+    expect(c[0]!.x).toBeCloseTo(4, 12);
+    expect(c[0]!.y).toBeCloseTo(5, 12);
+    // Square on, the break only has to reach the other pipe's own width.
+    expect(c[0]!.sin).toBeCloseTo(1, 12);
+    // And it runs along the near piece.
+    expect(c[0]!.ax).toBeCloseTo(1, 12);
+    expect(c[0]!.ay).toBeCloseTo(0, 12);
+  });
+
+  test('the shallower the crossing the further the break must reach', () => {
+    const shallow = polylineCrossings(H(5), [{ x: 0, y: 0 }, { x: 10, y: 10 }]);
+    expect(shallow).toHaveLength(1);
+    expect(shallow[0]!.sin).toBeCloseTo(Math.SQRT1_2, 12);
+  });
+
+  test('lines that miss, stop short, or run together do not cross', () => {
+    expect(polylineCrossings(H(5), V(40))).toHaveLength(0);
+    expect(polylineCrossings(H(5), [{ x: 4, y: 0 }, { x: 4, y: 2 }])).toHaveLength(0);
+    expect(polylineCrossings(H(5), H(5))).toHaveLength(0);
+    expect(polylineCrossings(H(5), [{ x: 3, y: 3 }])).toHaveLength(0);
+  });
+
+  test('a bent piece is crossed at every place it is crossed', () => {
+    // A zig zag cut twice by one straight.
+    const zig = [{ x: 0, y: 0 }, { x: 4, y: 8 }, { x: 8, y: 0 }];
+    expect(polylineCrossings(H(4), zig)).toHaveLength(2);
   });
 });

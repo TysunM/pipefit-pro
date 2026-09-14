@@ -228,8 +228,28 @@ describe('simple offset — guards', () => {
   test('rejects a 0 degree fitting', () => expect(solveOffset({ ...base, offset: 10, fittingAngle: 0 }).valid).toBe(false));
   test('rejects a 90 degree fitting through the angle guard', () =>
     expect(solveOffset({ ...base, offset: 10, fittingAngle: 91 }).valid).toBe(false));
-  test('rejects a locked run of zero', () =>
-    expect(solveOffset({ ...base, offset: 10, run: 0, lockRun: true }).valid).toBe(false));
+  // A locked run of zero is the square jog: out 90, across, back 90. It is the
+  // most used offset after 45, so it solves rather than being refused.
+  test('a locked run of zero is the square jog, not an error', () => {
+    const r = solveOffset({ ...base, offset: 10, run: 0, lockRun: true });
+    expect(r.valid).toBe(true);
+    near(r.cutAngle, 90, 1e-9);
+    near(r.travel, 10, 1e-9);
+    near(r.shrink, 10, 1e-9);
+  });
+  test('a 90 degree fitting angle gives the same spool as a locked run of zero', () => {
+    const byAngle = solveOffset({ ...base, offset: 10, fittingAngle: 90, lockRun: false });
+    const byRun = solveOffset({ ...base, offset: 10, run: 0, lockRun: true });
+    expect(byAngle.valid).toBe(true);
+    near(byAngle.run, 0, 1e-12);
+    near(byAngle.pipeCut, byRun.pipeCut, 1e-9);
+  });
+  // 2 inch LR takes out 3 inch a side, so a 10 inch square jog leaves 4 inch.
+  test('the square jog cut is the offset less both takeouts', () => {
+    const r = solveOffset({ ...base, offset: 10, fittingAngle: 90, lockRun: false });
+    near(r.setback, 3, 1e-9);
+    near(r.pipeCut, 4, 1e-9);
+  });
   test('rejects a blank locked run instead of silently using the chip angle', () => {
     const r = solveOffset({ ...base, offset: 10, run: NaN, lockRun: true });
     expect(r.valid).toBe(false);
@@ -348,7 +368,23 @@ describe('rolling offset — guards', () => {
   const base = { useFittingAngle: false, gap: 0, nps: 2, kind: 'LR' as const, schedule: '40' as const };
   test('rejects rise and roll both zero', () => expect(solveRolling({ ...base, rise: 0, roll: 0, run: 10 }).valid).toBe(false));
   test('rejects NaN rise', () => expect(solveRolling({ ...base, rise: NaN, roll: 5, run: 10 }).valid).toBe(false));
-  test('rejects a run of zero', () => expect(solveRolling({ ...base, rise: 12, roll: 5, run: 0 }).valid).toBe(false));
+  // Rise 12, roll 5 is a 13 inch true offset. Squared off, the travel is that
+  // 13 and the run is nothing.
+  test('a run of zero rolls square rather than being refused', () => {
+    const r = solveRolling({ ...base, rise: 12, roll: 5, run: 0 });
+    expect(r.valid).toBe(true);
+    near(r.trueOffset, 13, 1e-9);
+    near(r.cutAngle, 90, 1e-9);
+    near(r.travel, 13, 1e-9);
+    near(r.pipeCut, 13 - 6, 1e-9);
+  });
+  test('a 90 degree fitting angle matches a run of zero', () => {
+    const byAngle = solveRolling({ ...base, rise: 12, roll: 5, useFittingAngle: true, fittingAngle: 90 });
+    near(byAngle.run, 0, 1e-12);
+    near(byAngle.pipeCut, solveRolling({ ...base, rise: 12, roll: 5, run: 0 }).pipeCut, 1e-9);
+  });
+  test('rejects a fitting angle past square', () =>
+    expect(solveRolling({ ...base, rise: 12, roll: 5, useFittingAngle: true, fittingAngle: 91 }).valid).toBe(false));
   test('rejects a bad stock elbow angle', () =>
     expect(solveRolling({ ...base, rise: 12, roll: 5, useFittingAngle: true, fittingAngle: 0 }).valid).toBe(false));
 });
