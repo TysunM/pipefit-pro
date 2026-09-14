@@ -179,7 +179,7 @@ checked against a property the data has to hold, never against itself.
 | 2-67, 2-68 | Spacing of pipe supports, water and gas or steam |
 | 3-26, 3-27 | Polyvinyl chloride pipe, dimensions and pressure limits |
 | 3-29, 3-30 | Type I polyethylene pipe, dimensions and pressure limits |
-| 3-5 to 3-9 | Cast brass solder joint ends, elbows, tees, couplings and reducers |
+| 3-5 to 3-9 | Cast brass solder joint ends, elbows, tees, couplings, reducers and reducing elbows |
 | 5-13 to 5-16 | Copper tube, types K, L, M and DWV |
 | 5-19, 5-20 | Schedule 120 and stainless, read a second time as a check on the project's own table |
 | 5-25 | Expansion of pipe per 100 feet |
@@ -194,8 +194,10 @@ cast iron, welding neck flanges), 4-76, 4-82, 4-86, 4-87, 4-90, 4-93, 4-96
 4-109 and 4-110, the remaining globe valve pages.
 
 Part 2: 2-52 (lap joint stub ends), 2-54 to 2-56 (crosses), 2-64, 2-65 (bull
-nose and dead end cap templates). Part 3: 3-8, 3-10 to 3-21, the solder reducing elbows and tees and the
-thread-end adapters. Part 5:
+nose and dead end cap templates). Part 3: 3-10 to 3-21, the solder reducing tees and the thread-end adapters.
+Seven pages of reducing tees, roughly 130 rows. The run and outlet do not
+follow a rule the way the reducing elbows do, so there is nothing to check
+them against but the print itself. Part 5:
 copper tube, the rest of the steel schedules, pipe expansion.
 
 ### Rules found behind the printed tables
@@ -226,6 +228,7 @@ and answers combinations the book never printed.
 | Solder joint ends | the male end is the female plus a sixteenth, both being rounded up to one |
 | Solder street elbow | an eighth over the plain elbow at 90 degrees, on every size both are made in |
 | Solder reducer | the length depends only on the larger size |
+| Solder reducing elbow | the large end is the plain elbow takeout of the larger size |
 | Flanged ring joint, every class | the raised face figure, plus an allowance for each flange face in the dimension |
 | Ring joint gate valves | the raised face figure plus twice that allowance, a valve carrying it at both ends |
 | Heavy class valves | gate, globe and swing check share one face to face table in 900, 1500 and 2500 lb, flanged and butt welding alike |

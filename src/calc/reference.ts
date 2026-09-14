@@ -28,9 +28,12 @@ import { PIPE_TABLE, pipeDims } from './pipeData';
 import {
   SOLDER_ELBOWS,
   SOLDER_ENDS,
+  SOLDER_REDUCING_ELBOWS,
   solderCouplingStop,
   solderReducer,
   solderReducerLargeSizes,
+  solderReducingElbowLarge,
+  solderReducingElbowSmall,
 } from './solderFitting';
 
 // The handbook, made reachable. Each entry knows its own columns and builds
@@ -915,6 +918,20 @@ REFERENCE_TABLES.push(
         red: solderReducerLargeSizes().includes(e.nps)
           ? f(solderReducer(e.nps, e.nps / 2), 32)
           : '—',
+      })),
+  },
+  {
+    id: 'solder-reducing-elbows',
+    title: 'Solder reducing 90° elbows',
+    group: 'Pipe and tube',
+    page: '3-8',
+    note: 'The large end is the plain elbow takeout of the larger size on every row.',
+    columns: [PAIR, { key: 'x', label: 'Small end' }, { key: 'z', label: 'Large end' }],
+    rows: () =>
+      SOLDER_REDUCING_ELBOWS.map((r) => ({
+        size: `${label(r.large)} × ${label(r.small)}`,
+        x: f(solderReducingElbowSmall(r.large, r.small), 32),
+        z: f(solderReducingElbowLarge(r.large, r.small), 32),
       })),
   },
   {

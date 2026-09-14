@@ -217,3 +217,69 @@ describe('solder couplings and reducers', () => {
     expect(Number.isNaN(solderReducer(6, 4))).toBe(true);
   });
 });
+
+import {
+  SOLDER_REDUCING_ELBOWS,
+  solderReducingElbowLarge,
+  solderReducingElbowPairs,
+  solderReducingElbowSmall,
+} from '../calc/solderFitting';
+
+describe('reducing 90 degree solder elbows', () => {
+  // Read off page 3-8: large, small, X, Z.
+  const PRINTED: [number, number, number, number][] = [
+    [0.75, 0.5, 7 / 16, 9 / 16], [1, 0.75, 0.625, 0.75], [1, 0.5, 0.5, 0.75],
+    [1.25, 1, 0.75, 0.875], [1.5, 1.25, 0.875, 1], [1.5, 0.75, 0.625, 1],
+    [2, 1.5, 1, 1.25], [2, 1, 0.75, 1.25], [2, 0.75, 0.625, 1.25],
+    [2.5, 2, 1.25, 1.5], [2.5, 1.5, 1, 1.5], [2.5, 1, 0.75, 1.5],
+    [3, 2.5, 1.5, 1.75], [3, 1.5, 1, 1.75], [3, 1.25, 0.875, 1.75],
+    [4, 3, 1.75, 2.25], [4, 2, 1.25, 2.25], [6, 4, 2.625, 3.625],
+    [8, 6, 3.875, 4.875],
+  ];
+
+  test('nineteen printed combinations', () => {
+    expect(SOLDER_REDUCING_ELBOWS.length).toBe(19);
+    expect(PRINTED.length).toBe(19);
+    expect(solderReducingElbowPairs()).toEqual(PRINTED.map(([a, b]) => [a, b]));
+  });
+
+  // The whole Z column is the plain elbow takeout of the larger size.
+  test('the large end is the plain elbow takeout of the larger size, every row', () => {
+    for (const [large, small, , z] of PRINTED) {
+      expect(solderReducingElbowLarge(large, small)).toBeCloseTo(z, 12);
+      expect(solderTakeout(large)).toBeCloseTo(z, 12);
+    }
+  });
+
+  test('every printed small end reads back', () => {
+    for (const [large, small, x] of PRINTED) {
+      expect(solderReducingElbowSmall(large, small)).toBeCloseTo(x, 12);
+    }
+  });
+
+  // X is the plain takeout of the smaller size on thirteen rows and runs over
+  // it on six, so it is held rather than worked out.
+  test('the small end matches the plain takeout on thirteen rows and exceeds it on six', () => {
+    const over: string[] = [];
+    for (const [large, small, x] of PRINTED) {
+      const plain = solderTakeout(small);
+      expect(x).toBeGreaterThanOrEqual(plain - 1e-9);
+      if (x - plain > 1e-9) over.push(`${large}x${small}`);
+    }
+    expect(over).toEqual(['1x0.75', '1x0.5', '1.5x0.75', '2x0.75', '6x4', '8x6']);
+  });
+
+  test('the small end always takes out less than the large', () => {
+    for (const r of SOLDER_REDUCING_ELBOWS) {
+      expect(r.small).toBeLessThan(r.large);
+      expect(solderReducingElbowSmall(r.large, r.small)).toBeLessThan(
+        solderReducingElbowLarge(r.large, r.small)
+      );
+    }
+  });
+
+  test('a combination the page does not carry gives nothing', () => {
+    expect(Number.isNaN(solderReducingElbowSmall(2, 0.5))).toBe(true);
+    expect(Number.isNaN(solderReducingElbowLarge(6, 2))).toBe(true);
+  });
+});

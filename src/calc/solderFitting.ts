@@ -159,3 +159,49 @@ export function solderCut(centerToCenter: number, takeoutA: number, takeoutB: nu
 }
 
 export const solderSizes = (): number[] => SOLDER_ELBOWS.map((e) => e.nps);
+
+// Reducing 90 degree elbows, page 3-8.
+//
+// Z, the large end, is the plain elbow takeout of the larger size on all
+// nineteen rows, so only X is held. X is the plain takeout of the smaller size
+// on thirteen of them and runs over it on the other six, so it is not a rule
+// and is kept as printed.
+
+export type SolderReducingElbow = { large: number; small: number; x: number };
+
+export const SOLDER_REDUCING_ELBOWS: SolderReducingElbow[] = [
+  { large: 0.75, small: 0.5, x: 0.4375 },
+  { large: 1, small: 0.75, x: 0.625 },
+  { large: 1, small: 0.5, x: 0.5 },
+  { large: 1.25, small: 1, x: 0.75 },
+  { large: 1.5, small: 1.25, x: 0.875 },
+  { large: 1.5, small: 0.75, x: 0.625 },
+  { large: 2, small: 1.5, x: 1 },
+  { large: 2, small: 1, x: 0.75 },
+  { large: 2, small: 0.75, x: 0.625 },
+  { large: 2.5, small: 2, x: 1.25 },
+  { large: 2.5, small: 1.5, x: 1 },
+  { large: 2.5, small: 1, x: 0.75 },
+  { large: 3, small: 2.5, x: 1.5 },
+  { large: 3, small: 1.5, x: 1 },
+  { large: 3, small: 1.25, x: 0.875 },
+  { large: 4, small: 3, x: 1.75 },
+  { large: 4, small: 2, x: 1.25 },
+  { large: 6, small: 4, x: 2.625 },
+  { large: 8, small: 6, x: 3.875 },
+];
+
+const REDUCING_ELBOW_BY_PAIR = new Map(
+  SOLDER_REDUCING_ELBOWS.map((r) => [`${r.large}x${r.small}`, r])
+);
+
+/** Small end takeout of a reducing 90 degree solder elbow, dimension X. */
+export const solderReducingElbowSmall = (large: number, small: number): number =>
+  REDUCING_ELBOW_BY_PAIR.get(`${large}x${small}`)?.x ?? NaN;
+
+/** Large end takeout, dimension Z: the plain elbow takeout of the larger size. */
+export const solderReducingElbowLarge = (large: number, small: number): number =>
+  REDUCING_ELBOW_BY_PAIR.has(`${large}x${small}`) ? solderTakeout(large) : NaN;
+
+export const solderReducingElbowPairs = (): [number, number][] =>
+  SOLDER_REDUCING_ELBOWS.map((r) => [r.large, r.small]);
