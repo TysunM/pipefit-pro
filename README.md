@@ -128,6 +128,30 @@ like any other app. Nothing is uploaded to a store and nothing is public.
 Bump `android.versionCode` in `app.json` before each rebuild so Android treats
 it as an upgrade rather than refusing to install over the old one.
 
+## Updating it once it is on the phone
+
+That APK only has to be built again when the **native** app changes — a new
+dependency with native code, an SDK bump, a new icon or permission. Everything
+else is a one-minute push:
+
+```
+npm run typecheck
+npm test
+npm run push
+```
+
+The app checks on launch and downloads in the background, so a cold start never
+waits on the network. When the new bundle is ready an **Update ready** bar
+appears; tapping **Restart** applies it, and ignoring it applies it on the next
+cold start anyway. Nothing reloads underneath you mid-calculation.
+**Settings → Updates** shows what is running and checks on demand.
+
+`runtimeVersion` is on the `fingerprint` policy, so a push that no longer
+matches the installed app is never downloaded rather than installed and
+crashing. `npm run runtime-version` prints the fingerprint to compare against
+the build on expo.dev — [docs/RELEASE.md §5](docs/RELEASE.md#5-push-an-update-over-the-air)
+covers the whole loop.
+
 **[docs/RELEASE.md](docs/RELEASE.md) is the full runbook** — signing, keystore
 backup and recovery, version rules, the config invariants that only break in a
 standalone build, and fixes for every install failure seen so far. Read it

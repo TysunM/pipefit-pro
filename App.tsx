@@ -3,16 +3,22 @@ import { View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { SettingsProvider } from './src/state/settings';
+import { UpdatesProvider, useOtaUpdate } from './src/state/updates';
 import { ThemeProvider, useTheme } from './src/theme/ThemeProvider';
 import { useAppFonts } from './src/theme/useFonts';
 import { RootNavigator } from './src/navigation/RootNavigator';
+import { UpdateBanner } from './src/components/UpdateBanner';
 
 function Shell() {
   const t = useTheme();
+  const { visible, bannerHeight } = useOtaUpdate();
   return (
     <>
       <StatusBar style={t.mode === 'dark' ? 'light' : 'dark'} />
-      <RootNavigator />
+      <View style={{ flex: 1, paddingBottom: visible ? bannerHeight : 0 }}>
+        <RootNavigator />
+      </View>
+      <UpdateBanner />
     </>
   );
 }
@@ -42,7 +48,9 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <SettingsProvider>
-        <Gate />
+        <UpdatesProvider>
+          <Gate />
+        </UpdatesProvider>
       </SettingsProvider>
     </SafeAreaProvider>
   );

@@ -3,10 +3,11 @@
 How to build, sign, install and update the Android app. Written so a future
 you with no memory of this session can ship a release in ten minutes.
 
-- **Package ID** `com.pipefitpro.app` — never change it, see [Invariants](#invariants)
+- **Package ID** `com.pipefitpro.app` — never change it, see [Invariants](#8-invariants)
 - **Repo** `TysunM/pipefit-pro`, branch `main`
 - **Build service** Expo EAS, free tier
 - **Distribution** signed APK, sideloaded. Not on the Play Store.
+- **Updates** over the air via EAS Update. A full rebuild is only for native changes.
 
 ---
 
@@ -42,6 +43,23 @@ create a new project.
 ---
 
 ## 2. Cut a release
+
+**Most changes do not need a release.** A change to anything under `src/`,
+`App.tsx` or `assets/` ships over the air in about a minute — jump to
+[section 5](#5-push-an-update-over-the-air). Build an APK only when the native
+app itself changed:
+
+| Changed | How it ships |
+|---|---|
+| Calculations, screens, styling, reference tables, fonts, images | `npm run push` |
+| A new dependency with native code, an Expo SDK bump | rebuild |
+| `app.json` icon, splash, permissions, plugins, `versionCode` | rebuild |
+| `eas.json`, `package.json` scripts, `.gitignore` | rebuild |
+
+The last row surprises people. `runtimeVersion.policy` is `fingerprint`, and
+those files are part of the fingerprint, so touching them makes every installed
+app ineligible for the push. `npm run runtime-version` prints the current
+fingerprint — see [section 5](#5-push-an-update-over-the-air).
 
 ```powershell
 npm run typecheck
@@ -85,7 +103,7 @@ Two fields in `app.json`, and they do different jobs.
 
 Android refuses to install an APK whose `versionCode` is lower than or equal
 to the installed one. That failure reads as a generic "App not installed",
-which is why it wastes so much time — see [Failure modes](#failure-modes).
+which is why it wastes so much time — see [Failure modes](#7-failure-modes).
 
 Bump both, commit, then build:
 
@@ -98,6 +116,11 @@ npm run build:apk
 
 The `production` profile has `autoIncrement: true` and bumps `versionCode`
 for you. The `preview` profile does not — bump it by hand.
+
+Neither field moves for an over-the-air push. `expo.version` is the version of
+the *installed app*, and a push does not reinstall anything. The settings screen
+reads it, so it will keep reading `1.0.0` across a dozen pushes — that is
+correct. What changed is shown next to it: **Updated Sep 14**.
 
 ---
 
@@ -155,7 +178,59 @@ copy of the app. To back up, arrow down to **Download existing keystore**.
 
 ---
 
-## 5. Install on a phone
+## 5. Push an update over the air
+
+This is the normal way to ship. The app carries `expo-updates`; a push uploads
+a new JS bundle to EAS and every installed copy picks it up.
+
+```powershell
+npm run typecheck
+npm test
+npm run runtime-version
+npm run push
+```
+
+`push` publishes to the **preview** branch, which is the channel the
+`build:apk` profile is on. `push:release` publishes to **production**, for
+builds cut with `build:release`. Both use `--auto`, so the update is labelled
+with the current git branch and commit message — commit before you push and the
+EAS dashboard reads like the git log.
+
+### What the phone does
+
+| When | What happens |
+|---|---|
+| App opens | Checks, and downloads in the background. Launch never waits — no signal means it opens on the bundle it has. |
+| Already open, brought back to the foreground | Re-checks, at most every 5 minutes. |
+| Download finished | A **Update ready** bar appears. Tapping **Restart** applies it. |
+| Bar dismissed, or never tapped | The update applies by itself the next time the app is opened cold. |
+
+Nothing reloads underneath a fitter mid-calculation. That is deliberate —
+losing a screen of dimensions on a lift is worse than running yesterday's build
+for another hour.
+
+**Settings → Updates** shows what is running and has a manual **Check for
+updates** button.
+
+### Confirm the push landed
+
+`npm run runtime-version` prints a fingerprint like `de2267e1…`. The build on
+the phone has one too — **expo.dev → pipefit-pro → Builds → the build →
+Runtime version**. They must match exactly. If they do not, the push uploaded
+fine and no phone will ever see it; the fix is a rebuild, never a re-push.
+
+### Rolling one back
+
+A bad push is undone by pushing again — the newest update on the branch wins.
+`npm run eas -- update:republish --branch preview` reinstates an earlier one by
+picking it from a list, which is faster than reverting the code.
+
+The embedded bundle is the floor. A user who clears app storage, or reinstalls
+the APK, is back on the code that shipped inside it until the next check.
+
+---
+
+## 6. Install on a phone
 
 1. Open the build link on the phone, or scan the QR code.
 2. Download the `.apk`.
@@ -165,9 +240,13 @@ copy of the app. To back up, arrow down to **Download existing keystore**.
 Updates from a later build install straight over the top with no uninstall,
 as long as the keystore is the same and `versionCode` went up.
 
+This is only needed for native changes. Everything else reaches the phone
+through [section 5](#5-push-an-update-over-the-air) with no download and no
+install prompt.
+
 ---
 
-## 6. Failure modes
+## 7. Failure modes
 
 Every one of these was hit for real. Cause, then fix.
 
@@ -183,6 +262,17 @@ Not in the list? It is under a second user or work profile:
 ```powershell
 adb uninstall com.pipefitpro.app
 ```
+
+### Pushed an update and the phone never gets it
+
+The runtime versions do not match. Compare `npm run runtime-version` against
+the build's **Runtime version** on expo.dev. Something in the native
+fingerprint moved — usually `eas.json`, a `package.json` script, or a new
+dependency. Re-pushing cannot fix it. Rebuild and reinstall.
+
+Matching fingerprints but still nothing: check the app is on the branch you
+pushed to. `Updates.channel` is shown under **Settings → Updates**; `npm run
+push` writes to `preview`, `npm run push:release` to `production`.
 
 ### "App not installed" with no "update" prompt
 
@@ -225,7 +315,7 @@ survive a closed terminal, so leave it.
 
 ---
 
-## 7. Invariants
+## 8. Invariants
 
 Things that look harmless to change and are not. Each of these was a live
 defect that only showed up in a standalone APK, never in Expo Go.
@@ -249,10 +339,24 @@ setting never reaches the native theme, and **Settings → Appearance → System
 silently sticks on light. Expo Go bundles the package, so this bug is
 invisible in development and only appears in the APK.
 
-### No `channel` in `eas.json` without `expo-updates`
+### Keep `channel` and `expo-updates` together
 
-The project does not use over-the-air updates. A `channel` field on a build
-profile without `expo-updates` installed makes EAS reject the build outright.
+Every build profile in `eas.json` carries a `channel`, and `expo-updates` is a
+dependency. Removing either without the other breaks the pair: a `channel` with
+no `expo-updates` makes EAS reject the build outright, and `expo-updates` with
+no channel builds an app that can never be reached by a push.
+
+### Leave `runtimeVersion.policy` on `fingerprint`
+
+A fixed string such as `"1.0.0"` would make pushes land more often, because
+editing a script or a config file would stop invalidating them. It would also
+make it possible to push a bundle that calls a native module the installed APK
+does not contain, which crashes on launch, on every phone, with no way back in
+to fix it.
+
+`fingerprint` fails the other way: a push that does not match is simply never
+downloaded. An update that quietly does not arrive is recoverable. An app that
+will not open on a job is not.
 
 ### No `developmentClient: true` without `expo-dev-client`
 
@@ -262,10 +366,14 @@ as the profile.
 
 ---
 
-## 8. Sharing with other people
+## 9. Sharing with other people
 
 The EAS build link expires after 30 days. For anything ongoing, re-run
 `npm run build:apk` and send the fresh link.
+
+Only the first install needs a link. Once someone has the APK, `npm run push`
+reaches them like it reaches you — same channel, same bundle, no new download
+for them to accept.
 
 Each recipient needs to allow installs from unknown sources once, on the app
 they open the link with. After that, updates install over the top normally.
