@@ -1,4 +1,4 @@
-import { findRow } from './pipeData';
+import { findRow, wallFor } from './pipeData';
 
 // Laying lengths of butt welding fittings, pages 2-42 onward.
 //
@@ -343,3 +343,42 @@ export const reducingElbowMade = (a: number, b: number): boolean =>
 export const reducingElbowLargeSizes = (): number[] => [...REDUCING_ELBOW_BRANCHES.keys()];
 export const reducingElbowBranches = (large: number): number[] =>
   REDUCING_ELBOW_BRANCHES.get(large) ?? [];
+
+// Butt welding lap joint stub ends, page 2-52.
+//
+// P is the diameter of the lap the flange bears on, S the overall length. The
+// wall and lap thickness T is the standard weight wall in every size the page
+// prints, so it is read from the pipe table rather than held here.
+
+export type StubEnd = { nps: number; label: string; lapDiameter: number; length: number };
+
+export const STUB_ENDS: StubEnd[] = [
+  { nps: 0.5, label: '1/2"', lapDiameter: 1.375, length: 3 },
+  { nps: 0.75, label: '3/4"', lapDiameter: 1.6875, length: 3 },
+  { nps: 1, label: '1"', lapDiameter: 2, length: 4 },
+  { nps: 1.25, label: '1-1/4"', lapDiameter: 2.5, length: 4 },
+  { nps: 1.5, label: '1-1/2"', lapDiameter: 2.875, length: 4 },
+  { nps: 2, label: '2"', lapDiameter: 3.625, length: 6 },
+  { nps: 2.5, label: '2-1/2"', lapDiameter: 4.125, length: 6 },
+  { nps: 3, label: '3"', lapDiameter: 5, length: 6 },
+  { nps: 3.5, label: '3-1/2"', lapDiameter: 5.5, length: 6 },
+  { nps: 4, label: '4"', lapDiameter: 6.1875, length: 6 },
+  { nps: 5, label: '5"', lapDiameter: 7.3125, length: 8 },
+  { nps: 6, label: '6"', lapDiameter: 8.5, length: 8 },
+  { nps: 8, label: '8"', lapDiameter: 10.625, length: 8 },
+  { nps: 10, label: '10"', lapDiameter: 12.75, length: 10 },
+  { nps: 12, label: '12"', lapDiameter: 15, length: 10 },
+  { nps: 14, label: '14" OD', lapDiameter: 16.25, length: 12 },
+  { nps: 16, label: '16" OD', lapDiameter: 18.5, length: 12 },
+  { nps: 18, label: '18" OD', lapDiameter: 21, length: 12 },
+];
+
+const STUB_BY_NPS = new Map(STUB_ENDS.map((s) => [s.nps, s]));
+
+export const stubEnd = (nps: number): StubEnd | undefined => STUB_BY_NPS.get(nps);
+
+/** Wall and lap thickness of a stub end: the standard weight wall. */
+export const stubEndThickness = (nps: number): number =>
+  STUB_BY_NPS.has(nps) ? wallFor(nps, 'Std') : NaN;
+
+export const stubEndSizes = (): number[] => STUB_ENDS.map((s) => s.nps);

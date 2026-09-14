@@ -59,7 +59,9 @@ left unimplemented rather than filled with plausible numbers.
 | U-bolts for pipe hangers | `calc/uBolt.ts` | Fourteen sizes, seven bolt diameters |
 | Plastic pipe dimensions and pressure limits | `calc/plasticPipe.ts` | PVC schedules A, 40, 80 and 120 in both types; polyethylene in three series |
 | Copper tube | `calc/copperTube.ts` | Types K, L, M and DWV; bore held, everything else worked |
-| Solder joint fittings | `calc/solderFitting.ts` | Ends, elbows, tees, street elbows, couplings and reducers |
+| Solder joint fittings | `calc/solderFitting.ts` | Ends, elbows, tees, street elbows, couplings, reducers and reducing elbows |
+| Lap joint stub ends | `calc/weldFitting.ts` | Lap diameter and length; the thickness is the standard weight wall |
+| Contents of cylindrical tanks | `calc/tank.ts` | Full, part full on its side, standing on end, and the depth for a wanted amount |
 | Expansion of pipe | `calc/expansion.ts` | Steel, wrought iron and copper, nought to 1200 degrees |
 | Butt welding end valves | `calc/weldValve.ts` | Gate, globe, angle and check; heavy classes read from the flanged tables |
 | Field made concentric reducer | `calc/reducerTemplate.ts` | Arms, notches, bevel and push-in |
@@ -172,6 +174,7 @@ checked against a property the data has to hold, never against itself.
 | 2-48, 2-50 | Butt welding reducers |
 | 2-51 | Butt welding 180 degree returns |
 | 2-44 to 2-47 | Butt welding reducing outlet tees and reducing elbows |
+| 2-52 | Lap joint stub ends |
 | 2-53 | Butt welding caps |
 | 2-57 to 2-62 | Valves with butt welding ends, gate, globe and swing check |
 | 2-63 | Making a concentric reducer out of pipe |
@@ -183,6 +186,7 @@ checked against a property the data has to hold, never against itself.
 | 5-13 to 5-16 | Copper tube, types K, L, M and DWV |
 | 5-19, 5-20 | Schedule 120 and stainless, read a second time as a check on the project's own table |
 | 5-25 | Expansion of pipe per 100 feet |
+| 5-26 to 5-28 | Contents of cylindrical tanks |
 
 ### Still to transcribe
 
@@ -193,8 +197,9 @@ cast iron, welding neck flanges), 4-76, 4-82, 4-86, 4-87, 4-90, 4-93, 4-96
 (the flange tables themselves and the remaining lateral pages), and 4-99 to
 4-109 and 4-110, the remaining globe valve pages.
 
-Part 2: 2-52 (lap joint stub ends), 2-54 to 2-56 (crosses), 2-64, 2-65 (bull
-nose and dead end cap templates). Part 3: 3-10 to 3-21, the solder reducing tees and the thread-end adapters.
+Part 2: 2-54 to 2-56 (crosses, whose figures are the reducing tee figures;
+only which combinations are made is left), 2-64, 2-65 (bull nose and dead
+end cap templates). Part 3: 3-10 to 3-21, the solder reducing tees and the thread-end adapters.
 Seven pages of reducing tees, roughly 130 rows. The run and outlet do not
 follow a rule the way the reducing elbows do, so there is nothing to check
 them against but the print itself. Part 5:
@@ -229,6 +234,8 @@ and answers combinations the book never printed.
 | Solder street elbow | an eighth over the plain elbow at 90 degrees, on every size both are made in |
 | Solder reducer | the length depends only on the larger size |
 | Solder reducing elbow | the large end is the plain elbow takeout of the larger size |
+| Lap joint stub end thickness | the standard weight wall |
+| Tank contents | plain geometry: eighty printed figures out of one formula, which also answers a tank part full |
 | Flanged ring joint, every class | the raised face figure, plus an allowance for each flange face in the dimension |
 | Ring joint gate valves | the raised face figure plus twice that allowance, a valve carrying it at both ends |
 | Heavy class valves | gate, globe and swing check share one face to face table in 900, 1500 and 2500 lb, flanged and butt welding alike |
@@ -267,6 +274,7 @@ where the book contradicts itself. All are pinned by tests.
 | Type L copper tube, 2-1/2 inch bore | 1.465 | 2.465: as printed it is smaller than the two inch above it, and the printed weight works back to a wall of eighty thousandths |
 | Steel expansion at 1100 degrees | 10.042 | 10.402: the two digits after the point are swapped, which puts a step of 0.767 next to one of 1.556 in a column whose other hundred degree steps all run between one and one and a quarter |
 | Concentric reducer template, 8 x 6 arm | 3-15/16 | 3-7/16: six arms and notches at the printed figure come to thirty inches round an eight inch pipe, which is twenty seven |
+| Tank contents, 7 ft by 19 ft | 5480 | 5470: every other step in that column is 288 gallons a foot, and the printed figure makes 18 to 19 step 298 and 19 to 20 step 278 |
 
 ### Corrections made to this project's own data
 

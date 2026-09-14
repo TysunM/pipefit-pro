@@ -25,6 +25,8 @@ import { PVC_A, PVC_SCH40, PVC_SCH80, PVC_SCH120, PE_RATED_75, PE_SCH40, PE_RATE
 import { copperSizes, copperTube } from './copperTube';
 import { EXPANSION } from './expansion';
 import { PIPE_TABLE, pipeDims } from './pipeData';
+import { STUB_ENDS, stubEnd, stubEndThickness } from './weldFitting';
+import { horizontalTankGallons, tankGallons } from './tank';
 import {
   SOLDER_ELBOWS,
   SOLDER_ENDS,
@@ -599,6 +601,21 @@ REFERENCE_TABLES.push(
     rows: () => WELD_CAPS.map((c) => ({ size: c.label, e: f(c.e) })),
   },
   {
+    id: 'stub-ends',
+    title: 'Lap joint stub ends',
+    group: 'Welded fittings',
+    page: '2-52',
+    note: 'The wall and lap thickness is the standard weight wall in every size.',
+    columns: [SIZE, { key: 'p', label: 'Lap diameter' }, { key: 's', label: 'Length' }, { key: 't', label: 'Thickness' }],
+    rows: () =>
+      STUB_ENDS.map((e) => ({
+        size: e.label,
+        p: f(e.lapDiameter),
+        s: n(stubEnd(e.nps)!.length),
+        t: d(stubEndThickness(e.nps)),
+      })),
+  },
+  {
     id: 'reducer-template',
     title: 'Making a reducer out of pipe',
     group: 'Welded fittings',
@@ -952,6 +969,52 @@ REFERENCE_TABLES.push(
         s: d(r.steel),
         w: d(r.wroughtIron),
         c: d(r.copper),
+      })),
+  },
+  {
+    id: 'tank-capacity',
+    title: 'Contents of cylindrical tanks',
+    group: 'Pipe and tube',
+    page: '5-26 to 5-28',
+    note: 'US gallons, full. The rule behind the page also answers a tank lying on its side and only part full, which the page does not.',
+    columns: [
+      { key: 'size', label: 'Length ft' },
+      { key: 'd5', label: '5 ft dia' },
+      { key: 'd6', label: '6 ft' },
+      { key: 'd7', label: '7 ft' },
+      { key: 'd8', label: '8 ft' },
+      { key: 'd9', label: '9 ft' },
+      { key: 'd10', label: '10 ft' },
+      { key: 'd12', label: '12 ft' },
+    ],
+    rows: () =>
+      Array.from({ length: 16 }, (_, i) => i + 5).map((len) => ({
+        size: `${len}`,
+        d5: n(Math.round(tankGallons(5, len))),
+        d6: n(Math.round(tankGallons(6, len))),
+        d7: n(Math.round(tankGallons(7, len))),
+        d8: n(Math.round(tankGallons(8, len))),
+        d9: n(Math.round(tankGallons(9, len))),
+        d10: n(Math.round(tankGallons(10, len))),
+        d12: n(Math.round(tankGallons(12, len))),
+      })),
+  },
+  {
+    id: 'tank-part-full',
+    title: 'A tank on its side, part full',
+    group: 'Pipe and tube',
+    page: '5-26, worked from it',
+    note: 'Gallons an eight foot tank holds at each depth, per foot of its length. The bottom foot holds far less than the middle one, which is why a dipstick on a round tank does not read straight.',
+    columns: [
+      { key: 'size', label: 'Depth ft' },
+      { key: 'g', label: 'Gallons per ft' },
+      { key: 'pc', label: 'Per cent full' },
+    ],
+    rows: () =>
+      Array.from({ length: 17 }, (_, i) => i * 0.5).map((depth) => ({
+        size: depth.toFixed(1),
+        g: d(horizontalTankGallons(8, 1, depth), 1),
+        pc: d((100 * horizontalTankGallons(8, 1, depth)) / tankGallons(8, 1), 1),
       })),
   },
   {

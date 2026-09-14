@@ -460,3 +460,67 @@ describe('90 degree reducing elbows', () => {
     expect(Number.isNaN(reducingElbow(4, 4))).toBe(true);
   });
 });
+
+import { STUB_ENDS, stubEnd, stubEndSizes, stubEndThickness } from '../calc/weldFitting';
+import { wallFor } from '../calc/pipeData';
+
+describe('lap joint stub ends', () => {
+  // Read off page 2-52: size, lap diameter P, length S, thickness T.
+  const PRINTED: [number, number, number, number][] = [
+    [0.5, 1.375, 3, 0.109], [0.75, 1.6875, 3, 0.113], [1, 2, 4, 0.133],
+    [1.25, 2.5, 4, 0.14], [1.5, 2.875, 4, 0.145], [2, 3.625, 6, 0.154],
+    [2.5, 4.125, 6, 0.203], [3, 5, 6, 0.216], [3.5, 5.5, 6, 0.226],
+    [4, 6.1875, 6, 0.237], [5, 7.3125, 8, 0.258], [6, 8.5, 8, 0.28],
+    [8, 10.625, 8, 0.322], [10, 12.75, 10, 0.365], [12, 15, 10, 0.375],
+    [14, 16.25, 12, 0.375], [16, 18.5, 12, 0.375], [18, 21, 12, 0.375],
+  ];
+
+  test('eighteen printed sizes, half inch to eighteen', () => {
+    expect(STUB_ENDS.length).toBe(18);
+    expect(stubEndSizes()[0]).toBe(0.5);
+    expect(stubEndSizes()[17]).toBe(18);
+  });
+
+  test('every printed lap diameter and length reads back', () => {
+    for (const [nps, p, s] of PRINTED) {
+      expect(stubEnd(nps)).toMatchObject({ lapDiameter: p, length: s });
+    }
+  });
+
+  // The whole thickness column is the standard weight wall, so it is read
+  // from the pipe table rather than held twice.
+  test('the wall and lap thickness is the standard weight wall, every size', () => {
+    for (const [nps, , , t] of PRINTED) {
+      expect(stubEndThickness(nps)).toBeCloseTo(t, 3);
+      expect(wallFor(nps, 'Std')).toBeCloseTo(t, 3);
+    }
+  });
+
+  // The lap has to stand proud of the pipe for a flange to bear on it.
+  test('the lap is wider than the pipe it is welded to', () => {
+    for (const s of STUB_ENDS) {
+      const row = findRow(s.nps);
+      if (!row) continue;
+      expect(s.lapDiameter).toBeGreaterThan(row.od);
+    }
+  });
+
+  test('both columns grow with the size', () => {
+    for (let i = 1; i < STUB_ENDS.length; i++) {
+      expect(STUB_ENDS[i]!.lapDiameter).toBeGreaterThan(STUB_ENDS[i - 1]!.lapDiameter);
+      expect(STUB_ENDS[i]!.length).toBeGreaterThanOrEqual(STUB_ENDS[i - 1]!.length);
+    }
+  });
+
+  // Stocked in six whole-inch lengths, the smallest two sizes on a three.
+  test('the length comes in whole inches from a short list', () => {
+    const stocked = new Set(STUB_ENDS.map((s) => s.length));
+    expect([...stocked].sort((a, b) => a - b)).toEqual([3, 4, 6, 8, 10, 12]);
+    for (const s of STUB_ENDS) expect(Number.isInteger(s.length)).toBe(true);
+  });
+
+  test('a size not listed gives nothing', () => {
+    expect(stubEnd(20)).toBeUndefined();
+    expect(Number.isNaN(stubEndThickness(20))).toBe(true);
+  });
+});
