@@ -59,6 +59,7 @@ left unimplemented rather than filled with plausible numbers.
 | U-bolts for pipe hangers | `calc/uBolt.ts` | Fourteen sizes, seven bolt diameters |
 | Plastic pipe dimensions and pressure limits | `calc/plasticPipe.ts` | PVC schedules A, 40, 80 and 120 in both types; polyethylene in three series |
 | Copper tube | `calc/copperTube.ts` | Types K, L, M and DWV; bore held, everything else worked |
+| Solder joint fittings | `calc/solderFitting.ts` | Ends, elbows, tees, street elbows, couplings and reducers |
 | Expansion of pipe | `calc/expansion.ts` | Steel, wrought iron and copper, nought to 1200 degrees |
 | Butt welding end valves | `calc/weldValve.ts` | Gate, globe, angle and check; heavy classes read from the flanged tables |
 | Field made concentric reducer | `calc/reducerTemplate.ts` | Arms, notches, bevel and push-in |
@@ -178,6 +179,7 @@ checked against a property the data has to hold, never against itself.
 | 2-67, 2-68 | Spacing of pipe supports, water and gas or steam |
 | 3-26, 3-27 | Polyvinyl chloride pipe, dimensions and pressure limits |
 | 3-29, 3-30 | Type I polyethylene pipe, dimensions and pressure limits |
+| 3-5 to 3-9 | Cast brass solder joint ends, elbows, tees, couplings and reducers |
 | 5-13 to 5-16 | Copper tube, types K, L, M and DWV |
 | 5-19, 5-20 | Schedule 120 and stainless, read a second time as a check on the project's own table |
 | 5-25 | Expansion of pipe per 100 feet |
@@ -192,7 +194,8 @@ cast iron, welding neck flanges), 4-76, 4-82, 4-86, 4-87, 4-90, 4-93, 4-96
 4-109 and 4-110, the remaining globe valve pages.
 
 Part 2: 2-52 (lap joint stub ends), 2-54 to 2-56 (crosses), 2-64, 2-65 (bull
-nose and dead end cap templates). Part 3: 3-9 to 3-21, the cast brass solder joint fittings. Part 5:
+nose and dead end cap templates). Part 3: 3-8, 3-10 to 3-21, the solder reducing elbows and tees and the
+thread-end adapters. Part 5:
 copper tube, the rest of the steel schedules, pipe expansion.
 
 ### Rules found behind the printed tables
@@ -220,6 +223,9 @@ and answers combinations the book never printed.
 | Threaded plastic pipe | about 55 per cent of the plain end pressure |
 | Copper tube outside diameter | the nominal size plus an eighth, on every type |
 | Copper tube weight | the wall and copper's density, which lands on the printed figure on all four pages |
+| Solder joint ends | the male end is the female plus a sixteenth, both being rounded up to one |
+| Solder street elbow | an eighth over the plain elbow at 90 degrees, on every size both are made in |
+| Solder reducer | the length depends only on the larger size |
 | Flanged ring joint, every class | the raised face figure, plus an allowance for each flange face in the dimension |
 | Ring joint gate valves | the raised face figure plus twice that allowance, a valve carrying it at both ends |
 | Heavy class valves | gate, globe and swing check share one face to face table in 900, 1500 and 2500 lb, flanged and butt welding alike |

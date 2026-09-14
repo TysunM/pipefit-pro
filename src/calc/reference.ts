@@ -25,6 +25,13 @@ import { PVC_A, PVC_SCH40, PVC_SCH80, PVC_SCH120, PE_RATED_75, PE_SCH40, PE_RATE
 import { copperSizes, copperTube } from './copperTube';
 import { EXPANSION } from './expansion';
 import { PIPE_TABLE, pipeDims } from './pipeData';
+import {
+  SOLDER_ELBOWS,
+  SOLDER_ENDS,
+  solderCouplingStop,
+  solderReducer,
+  solderReducerLargeSizes,
+} from './solderFitting';
 
 // The handbook, made reachable. Each entry knows its own columns and builds
 // its own rows, so a screen can render any of them without knowing what is in
@@ -862,6 +869,52 @@ REFERENCE_TABLES.push(
         p40: n(r.at75),
         od75: d(PE_RATED_75.find((x) => x.nps === r.nps)?.od),
         od100: d(PE_RATED_100.find((x) => x.nps === r.nps)?.od),
+      })),
+  },
+  {
+    id: 'solder-elbows',
+    title: 'Solder fittings, elbows and tees',
+    group: 'Pipe and tube',
+    page: '3-6, 3-7',
+    note: 'H is centre of the fitting to the bottom of the socket, which is where the tube end lands. A tee uses it on the run and the outlet alike.',
+    columns: [
+      SIZE,
+      { key: 'h', label: '90° takeout' },
+      { key: 's90', label: '90° street' },
+      { key: 'j', label: '45° takeout' },
+      { key: 's45', label: '45° street' },
+      { key: 'stop', label: 'Coupling stop' },
+    ],
+    rows: () =>
+      SOLDER_ELBOWS.map((e) => ({
+        size: e.label,
+        h: f(e.h, 32),
+        s90: f(e.street90, 32),
+        j: f(e.j, 32),
+        s45: f(e.street45, 32),
+        stop: f(solderCouplingStop(e.nps), 32),
+      })),
+  },
+  {
+    id: 'solder-ends',
+    title: 'Solder joint ends and reducers',
+    group: 'Pipe and tube',
+    page: '3-5, 3-9',
+    note: 'The male end is the female plus a sixteenth: both are given to the nearest larger sixteenth. A reducer depends only on its larger size.',
+    columns: [
+      SIZE,
+      { key: 'g', label: 'Socket depth' },
+      { key: 'k', label: 'Male end' },
+      { key: 'red', label: 'Reducer' },
+    ],
+    rows: () =>
+      SOLDER_ENDS.map((e) => ({
+        size: e.label,
+        g: f(e.female, 32),
+        k: f(e.male, 32),
+        red: solderReducerLargeSizes().includes(e.nps)
+          ? f(solderReducer(e.nps, e.nps / 2), 32)
+          : '—',
       })),
   },
   {
