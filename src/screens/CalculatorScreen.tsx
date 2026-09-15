@@ -14,13 +14,17 @@ export function CalculatorScreen() {
   const { settings } = useSettings();
   const den = (settings.fractionDenominator || 16) as FracDen;
 
-  const [state, setState] = useState<CalcState>(() => initialState(den));
+  const [state, setState] = useState<CalcState>(() =>
+    initialState(den, settings.lengthReadout === 'feetInches' ? 'ft' : 'in')
+  );
 
   const shown = displayText(state);
   const unitWord = isEntryEmpty(state.entry) ? '' : entryUnitWord(state.entry);
 
   const annunciators = useMemo(() => {
     const out: string[] = [];
+    // Which unit the answer is being read in, so it is never a guess.
+    out.push(state.displayUnit.linear === 'ft' ? 'FT-IN' : 'IN');
     if (state.shift) out.push('CONV');
     if (state.pending === 'store') out.push('STO');
     if (state.pending === 'recall') out.push('RCL');

@@ -6,10 +6,14 @@ import { ElbowRadius, Schedule } from '../calc/pipe';
 
 export type ThemePreference = 'light' | 'dark' | 'system';
 
+/** What the calculator shows a length as before any conversion is asked for. */
+export type LengthReadout = 'inches' | 'feetInches';
+
 export type Settings = {
   themePreference: ThemePreference;
   unitSystem: UnitSystem;
   fractionDenominator: FractionDenominator;
+  lengthReadout: LengthReadout;
   defaultNps: number;
   defaultKind: ElbowRadius;
   defaultSchedule: Schedule;
@@ -21,6 +25,7 @@ export const DEFAULT_SETTINGS: Settings = {
   themePreference: 'light',
   unitSystem: 'imperial',
   fractionDenominator: 16,
+  lengthReadout: 'inches',
   defaultNps: 2,
   defaultKind: 'LR',
   defaultSchedule: '40',

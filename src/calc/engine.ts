@@ -5,7 +5,7 @@ import {
 } from './dim';
 import {
   Entry, emptyEntry, entryDisplay, entryExponent, entryUnit, entryUnitWord, entryValue,
-  formatFeetInch, isEntryEmpty, pressBackspace, pressDigit, pressDot, pressFeet, pressInch,
+  formatFeetInch, formatInches, isEntryEmpty, pressBackspace, pressDigit, pressDot, pressFeet, pressInch,
   pressMetre, pressMillimetre, pressSign, pressSlash, type FracDen,
 } from './ftin';
 import type { KeyAction } from './keys';
@@ -47,7 +47,10 @@ export type CalcState = {
   accFromTrade: boolean;
 };
 
-export const initialState = (den: FracDen = 16): CalcState => ({
+/** Linear readout the calculator opens on. Inches, unless it is asked otherwise. */
+export type LinearReadout = 'in' | 'ft';
+
+export const initialState = (den: FracDen = 16, linear: LinearReadout = 'in'): CalcState => ({
   entry: emptyEntry(),
   acc: null,
   operands: [],
@@ -58,7 +61,7 @@ export const initialState = (den: FracDen = 16): CalcState => ({
   pending: null,
   shift: false,
   error: null,
-  displayUnit: {},
+  displayUnit: { linear },
   dmsMode: false,
   den,
   unitCost: CLEAR_ALL_DEFAULTS.unitCost,
@@ -217,9 +220,11 @@ export function press(state: CalcState, action: KeyAction, arg?: string): CalcSt
         const base = LINEAR_KEY[action]!;
 
         // With nothing being typed, a dimension key restates the value on
-        // display in that unit rather than starting a new entry.
-        if (isEntryEmpty(s.entry) && s.acc) {
-          const kind = s.acc.kind;
+        // display in that unit rather than starting a new entry. With nothing
+        // on display either it still sets the unit the next answer is read in,
+        // so pressing IN always means inches and never silently does nothing.
+        if (isEntryEmpty(s.entry)) {
+          const kind = s.acc ? s.acc.kind : 'linear';
           const id =
             kind === 'linear' ? base : kind === 'area' ? AREA_OF[base] : kind === 'volume' ? VOLUME_OF[base] : undefined;
           if (!id) return fail(s, `Cannot read ${kindLabel(kind)} in ${findUnit(base).label}.`);
@@ -491,11 +496,14 @@ export function formatDim(d: Dim, state: CalcState): string {
 
   if (d.kind === 'linear') {
     const unitId = state.displayUnit.linear;
+    // Feet is the one conversion a fitter calls out in feet AND inches rather
+    // than as a decimal, so the FT key gives 2' 6-1/2" and not 2.5417 ft.
+    if (unitId === 'ft') return formatFeetInch(d.value, state.den);
     if (unitId && unitId !== 'in') {
       const def = findUnit(unitId);
       return `${fromBase(d, unitId).toFixed(4).replace(/0+$/, '').replace(/\.$/, '')} ${def.label}`;
     }
-    return formatFeetInch(d.value, state.den);
+    return formatInches(d.value, state.den);
   }
 
   if (d.kind === 'angle') {
