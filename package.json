@@ -16,7 +16,8 @@
     "eas": "npx --yes eas-cli@latest",
     "push": "npx --yes eas-cli@latest update --branch preview --auto",
     "push:release": "npx --yes eas-cli@latest update --branch production --auto",
-    "runtime-version": "node tools/runtime-version.mjs"
+    "runtime-version": "node tools/runtime-version.mjs",
+    "web:build": "expo export --platform web && node tools/pwa.mjs dist"
   },
   "dependencies": {
     "@expo-google-fonts/bitter": "^0.4.2",

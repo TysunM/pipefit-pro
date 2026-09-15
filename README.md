@@ -153,6 +153,34 @@ like any other app. Nothing is uploaded to a store and nothing is public.
 Bump `android.versionCode` in `app.json` before each rebuild so Android treats
 it as an upgrade rather than refusing to install over the old one.
 
+## Putting it on a phone with no store and no signing
+
+`npm run web:build` produces an installable, offline web app. Open the link on
+any phone, add it to the home screen, and it runs from an icon with no browser
+chrome — the same on an iPhone as on an Android, with no Apple Developer
+account, no keystore and no store listing.
+
+`.github/workflows/pages.yml` publishes it to GitHub Pages on every push to
+`main`. One-time setup: **Settings → Pages → Source: GitHub Actions**.
+
+Three things make the difference between a bookmark and an app, and all three
+are done after the export by `tools/pwa.mjs` so that none of them touch
+`app.json` and move the native runtime fingerprint:
+
+- **The asset paths are made relative.** Expo bakes every font and image into
+  the bundle as `/assets/...`, rooted at the domain. Served from a folder,
+  which is what Pages gives you, every one of them 404s and the app comes up
+  with no icons and a fallback serif.
+- **The manifest and the iOS meta tags are injected**, which is what Safari
+  needs before *Add to Home Screen* gives an app rather than a shortcut.
+- **A service worker precaches the whole build**, so it opens with no signal.
+  A calculator that needs a bar of service is no use in a basement, and
+  basements are where the pipe is.
+
+It updates on the next open after a deploy: the new build has a new cache name,
+the worker swaps it in behind the running page, and the next launch is on the
+new one.
+
 ## Updating it once it is on the phone
 
 That APK only has to be built again when the **native** app changes — a new

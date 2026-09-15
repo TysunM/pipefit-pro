@@ -366,7 +366,43 @@ as the profile.
 
 ---
 
-## 9. Sharing with other people
+## 9. The web app, for anyone without an Android
+
+`npm run web:build`, or just push to `main` and let
+`.github/workflows/pages.yml` do it. One-time setup: **Settings → Pages →
+Source: GitHub Actions**.
+
+That is the whole iOS story. An iPhone cannot take a sideloaded APK and Apple
+charges 99 dollars a year before it will let an app onto a device it did not
+sell you the review for. The web build sidesteps all of it: Safari → Share →
+Add to Home Screen puts it on the dock as an app, offline, free, with no
+account and nothing on any store.
+
+What it gives up against the APK, honestly:
+
+| | APK | Web app |
+|---|---|---|
+| Offline | yes | yes, once opened once |
+| Home screen icon, no browser bars | yes | yes |
+| Haptics on a keypress | yes | no |
+| Settings survive | always | cleared if the phone reclaims site data |
+| Updates | `npm run push` | next open after a deploy |
+
+The settings row is the only one that bites, and it is small: unit system,
+fraction denominator and default pipe size, all reset to defaults if it
+happens. No calculation is stored.
+
+### Do not point it at a folder without testing
+
+Expo bakes asset paths as `/assets/...`, from the domain root. Pages serves the
+site from `/<repo>/`, so every font and icon 404s and the app comes up bare.
+`tools/pwa.mjs` rewrites them relative after the export, and the fix is
+verified at both a root and a subfolder. If you ever replace that script,
+check a subfolder deploy before trusting it.
+
+---
+
+## 10. Sharing with other people
 
 The EAS build link expires after 30 days. For anything ongoing, re-run
 `npm run build:apk` and send the fresh link.

@@ -130,6 +130,20 @@ The **Cut length** screen offers both, labelled. The **Simple offset**, **Rollin
 
 ---
 
+## Putting it on someone else's phone
+
+Send them the web link. Works on iPhone and Android, no store, nothing to sign.
+
+**iPhone** — open the link in **Safari** (it has to be Safari) → **Share** →
+**Add to Home Screen**.
+
+**Android** — open in Chrome → **⋮** → **Add to Home screen** / **Install app**.
+
+It then opens from an icon like any other app, and works with no signal. It
+updates itself the next time they open it after you push a change.
+
+---
+
 ## The calculator reads in inches
 
 It stays in inches. 30 inches is `30"`, not `2' 6"`. The **IN** marker top-left says so.
