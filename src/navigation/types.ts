@@ -9,6 +9,8 @@ export type RootStackParamList = {
   HandBender: undefined;
   Calculator: undefined;
   SpoolBuilder: undefined;
+  Reference: undefined;
+  ReferenceTable: { id: string };
   Settings: undefined;
 };
 

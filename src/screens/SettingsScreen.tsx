@@ -5,11 +5,12 @@ import { Screen } from '../components/Screen';
 import { SectionHeader } from '../components/SectionHeader';
 import { DimensionInput, FieldRow } from '../components/DimensionInput';
 import { ChipRow } from '../components/ChipRow';
-import { ControlRow, GhostButton, SelectorButton } from '../components/Buttons';
+import { AccentButton, ControlRow, GhostButton, SelectorButton } from '../components/Buttons';
 import { FooterNote } from '../components/Results';
 import { PipeSheet } from '../components/PipeSheet';
 import { useTheme } from '../theme/ThemeProvider';
 import { useSettings } from '../state/settings';
+import { appVersion, runningBuild, useOtaUpdate } from '../state/updates';
 import { useUnits } from '../hooks/useUnits';
 import { findSize } from '../calc/pipe';
 import { FractionDenominator } from '../calc/format';
@@ -19,6 +20,8 @@ export function SettingsScreen() {
   const t = useTheme();
   const u = useUnits();
   const { settings, update, reset } = useSettings();
+  const ota = useOtaUpdate();
+  const [otaNote, setOtaNote] = React.useState<string | null>(null);
   const [sheetOpen, setSheetOpen] = React.useState(false);
   const [gapText, setGapText] = React.useState(String(fromInches(settings.defaultGap, settings.unitSystem)));
   const [stockText, setStockText] = React.useState(String(fromInches(settings.stockLength, settings.unitSystem)));
@@ -120,7 +123,47 @@ export function SettingsScreen() {
         </Text>
       </View>
 
-      <FooterNote text={`PipeFit Pro ${'1.0.0'} · Settings are stored on this device only.`} />
+      <SectionHeader title="Updates" meta={runningBuild()} />
+      {ota.enabled ? (
+        <>
+          <ControlRow>
+            {ota.ready ? (
+              <AccentButton label="Restart to apply update" icon="arrow-down-circle-outline" onPress={ota.apply} style={{ flex: 1 }} />
+            ) : (
+              <GhostButton
+                label={ota.busy ? 'Checking\u2026' : 'Check for updates'}
+                icon="cloud-download-outline"
+                onPress={() => {
+                  setOtaNote(null);
+                  void ota.checkNow().then((found) => setOtaNote(found ? null : 'No update available.'));
+                }}
+                style={{ flex: 1 }}
+              />
+            )}
+          </ControlRow>
+          {(ota.error ?? otaNote) ? (
+            <Text
+              style={[
+                t.type.caption,
+                { color: ota.error ? t.colors.danger : t.colors.textMuted, paddingHorizontal: t.layout.screenPadding, marginTop: -t.space.md, marginBottom: t.space.lg },
+              ]}
+            >
+              {ota.error ?? otaNote}
+            </Text>
+          ) : null}
+        </>
+      ) : (
+        <Text
+          style={[
+            t.type.caption,
+            { color: t.colors.textMuted, paddingHorizontal: t.layout.screenPadding, marginBottom: t.space.lg },
+          ]}
+        >
+          Over-the-air updates are off in development. They are live in the installed app.
+        </Text>
+      )}
+
+      <FooterNote text={`PipeFit Pro ${appVersion()} \u00b7 Settings are stored on this device only.`} />
 
       <PipeSheet
         visible={sheetOpen}

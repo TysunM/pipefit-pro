@@ -1,68 +1,56 @@
-import { ElbowRadius, findSize, pipeWeight, Schedule, takeoff } from './pipe';
+import { ElbowRadius, findSize, pipeWeight, Schedule } from './pipe';
+import { FlangeClass } from './flangedFitting';
+import {
+  DEFAULT_TAKEOFF_OPTIONS,
+  JointKind,
+  TAKEOFF_FAMILIES,
+  TAKEOFF_OPTIONS,
+  TakeoffOptions,
+  endHasGap,
+  endTakeout,
+  takeoffOption,
+} from './takeoffCatalog';
 
-export type EndFitting =
-  | 'none'
-  | 'elbow90'
-  | 'elbow45'
-  | 'tee'
-  | 'flange150'
-  | 'flange300'
-  | 'custom';
+// Turning a centre to centre dimension into a pipe cut.
+//
+// Every takeout comes from `takeoffCatalog`, which reads the handbook tables
+// in this project. Nothing is held here twice.
 
-export const END_FITTINGS: { id: EndFitting; label: string }[] = [
-  { id: 'none', label: 'Open end' },
-  { id: 'elbow90', label: '90° elbow' },
-  { id: 'elbow45', label: '45° elbow' },
-  { id: 'tee', label: 'Tee (run)' },
-  { id: 'flange150', label: 'WN flange 150#' },
-  { id: 'flange300', label: 'WN flange 300#' },
-  { id: 'custom', label: 'Custom' },
-];
+export type EndFitting = string;
 
-export const FITTING_SOURCE: Record<EndFitting, string> = {
-  none: 'No fitting — nothing deducted',
-  elbow90: 'ASME B16.9 — 1.5D / 1.0D centre to face',
-  elbow45: 'ASME B16.9 — 1.5D / 1.0D centre to face',
-  tee: 'ASME B16.9 — centre to end, run',
-  flange150: 'ASME B16.5 Class 150 — weld neck, length through hub',
-  flange300: 'ASME B16.5 Class 300 — weld neck, length through hub',
-  custom: 'Your measured dimension',
-};
+export const END_FITTINGS: { id: EndFitting; label: string; family: JointKind }[] =
+  TAKEOFF_OPTIONS.map((o) => ({ id: o.id, label: o.label, family: o.family }));
 
-const TEE_CENTER_TO_END: Record<number, number> = {
-  0.5: 1.0, 0.75: 1.125, 1: 1.5, 1.25: 1.875, 1.5: 2.25, 2: 2.5, 2.5: 3.0, 3: 3.375, 3.5: 3.75,
-  4: 4.125, 5: 4.875, 6: 5.625, 8: 7.0, 10: 8.5, 12: 10.0, 14: 11.0, 16: 12.0, 18: 13.5, 20: 15.0, 24: 17.0,
-};
+export const FITTING_SOURCE: Record<string, string> = Object.fromEntries(
+  TAKEOFF_OPTIONS.map((o) => [o.id, o.source])
+);
 
-const FLANGE_150_LTH: Record<number, number> = {
-  0.5: 1.88, 0.75: 2.06, 1: 2.19, 1.25: 2.25, 1.5: 2.44, 2: 2.5, 2.5: 2.75, 3: 2.75, 3.5: 2.81,
-  4: 3.0, 5: 3.5, 6: 3.5, 8: 4.0, 10: 4.0, 12: 4.5, 14: 5.0, 16: 5.0, 18: 5.5, 20: 5.69, 24: 6.0,
-};
+export { TAKEOFF_FAMILIES, endHasGap };
 
-const FLANGE_300_LTH: Record<number, number> = {
-  0.5: 2.06, 0.75: 2.25, 1: 2.44, 1.25: 2.56, 1.5: 2.69, 2: 2.75, 2.5: 3.0, 3: 3.12, 3.5: 3.19,
-  4: 3.38, 5: 3.88, 6: 3.88, 8: 4.38, 10: 4.62, 12: 5.12, 14: 5.62, 16: 5.75, 18: 6.25, 20: 6.38, 24: 6.62,
-};
-
-export function endTakeoff(fitting: EndFitting, nps: number, kind: ElbowRadius, custom: number): number {
-  switch (fitting) {
-    case 'none':
-      return 0;
-    case 'elbow90':
-      return takeoff(nps, kind, 90);
-    case 'elbow45':
-      return takeoff(nps, kind, 45);
-    case 'tee':
-      return TEE_CENTER_TO_END[nps] ?? NaN;
-    case 'flange150':
-      return FLANGE_150_LTH[nps] ?? NaN;
-    case 'flange300':
-      return FLANGE_300_LTH[nps] ?? NaN;
-    case 'custom':
-      return Number.isFinite(custom) ? custom : 0;
-    default:
-      return 0;
-  }
+/**
+ * Inches off a centre to centre dimension for one end.
+ *
+ * The older four argument form is kept: it covers the welded fittings and the
+ * two weld neck flanges, which is what this screen offered before the rest of
+ * the handbook was in.
+ */
+export function endTakeoff(
+  fitting: EndFitting,
+  nps: number,
+  kind: ElbowRadius,
+  custom: number,
+  flangeClass: FlangeClass = '150'
+): number {
+  const opts: TakeoffOptions = { radius: kind, flangeClass, custom };
+  // The two legacy flange ids carry their own class.
+  if (fitting === 'flange150') return endTakeout('weldNeck', nps, { ...opts, flangeClass: '150' });
+  if (fitting === 'flange300') return endTakeout('weldNeck', nps, { ...opts, flangeClass: '300' });
+  const legacy: Record<string, string> = {
+    elbow90: 'weld90',
+    elbow45: 'weld45',
+    tee: 'weldTee',
+  };
+  return endTakeout(legacy[fitting] ?? fitting, nps, opts);
 }
 
 export type CutLengthInput = {
@@ -75,6 +63,7 @@ export type CutLengthInput = {
   nps: number;
   kind: ElbowRadius;
   schedule: Schedule;
+  flangeClass?: FlangeClass;
 };
 
 export type CutLengthResult = {
@@ -82,34 +71,44 @@ export type CutLengthResult = {
   error?: string;
   takeoffA: number;
   takeoffB: number;
+  /** How many ends leave a gap that comes off the cut as well. */
+  gapEnds: number;
   totalDeduction: number;
   pipeCut: number;
   weight: number;
 };
 
+const LEGACY_GAP = new Set(['elbow90', 'elbow45', 'tee', 'flange150', 'flange300', 'custom']);
+const leavesGap = (id: EndFitting): boolean =>
+  takeoffOption(id) ? endHasGap(id) : LEGACY_GAP.has(id);
+
 export function solveCutLength(input: CutLengthInput): CutLengthResult {
   const { centerToCenter, gap, nps, kind, schedule } = input;
-  const base = {
-    takeoffA: endTakeoff(input.endA, nps, kind, input.customA),
-    takeoffB: endTakeoff(input.endB, nps, kind, input.customB),
-  };
-  const gapValue = Number.isFinite(gap) ? gap : 0;
-  const weldCount = (input.endA === 'none' ? 0 : 1) + (input.endB === 'none' ? 0 : 1);
-  const totalDeduction = base.takeoffA + base.takeoffB + gapValue * weldCount;
+  const flangeClass = input.flangeClass ?? DEFAULT_TAKEOFF_OPTIONS.flangeClass;
 
-  if (!Number.isFinite(base.takeoffA) || !Number.isFinite(base.takeoffB)) {
+  const takeoffA = endTakeoff(input.endA, nps, kind, input.customA, flangeClass);
+  const takeoffB = endTakeoff(input.endB, nps, kind, input.customB, flangeClass);
+  const gapValue = Number.isFinite(gap) ? gap : 0;
+
+  // A screwed or soldered end leaves no gap: the takeout already reaches the
+  // end of the pipe. Only welded and flanged ends add one.
+  const gapEnds = (leavesGap(input.endA) ? 1 : 0) + (leavesGap(input.endB) ? 1 : 0);
+  const totalDeduction = takeoffA + takeoffB + gapValue * gapEnds;
+  const base = { takeoffA, takeoffB, gapEnds, totalDeduction };
+
+  if (!Number.isFinite(takeoffA) || !Number.isFinite(takeoffB)) {
     return {
       valid: false,
-      error: 'No published dimension for that fitting at this size — use Custom and enter the measured takeout.',
+      error:
+        'That fitting is not made in this size — pick another, or use Custom and enter the measured takeout.',
       ...base,
-      totalDeduction,
       pipeCut: NaN,
       weight: NaN,
     };
   }
 
   if (!Number.isFinite(centerToCenter) || centerToCenter <= 0) {
-    return { valid: false, error: 'Enter a centre-to-centre dimension.', ...base, totalDeduction, pipeCut: NaN, weight: NaN };
+    return { valid: false, error: 'Enter a centre-to-centre dimension.', ...base, pipeCut: NaN, weight: NaN };
   }
 
   const pipeCut = centerToCenter - totalDeduction;
@@ -118,7 +117,6 @@ export function solveCutLength(input: CutLengthInput): CutLengthResult {
     valid: pipeCut > 0,
     error: pipeCut > 0 ? undefined : 'Deductions exceed the centre-to-centre dimension.',
     ...base,
-    totalDeduction,
     pipeCut,
     weight: pipeWeight(pipeCut, size.od, size.wall[schedule]),
   };

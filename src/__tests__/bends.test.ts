@@ -162,11 +162,31 @@ describe('offset bends', () => {
   });
 
   test('bad inputs are refused', () => {
-    expect(solveOffsetBend({ offset: 36, angle: 0, radius: 30, legA: 49, legB: 30 }).error).toMatch(/between/i);
-    expect(solveOffsetBend({ offset: 36, angle: 90, radius: 30, legA: 49, legB: 30 }).error).toMatch(/between/i);
+    expect(solveOffsetBend({ offset: 36, angle: 0, radius: 30, legA: 49, legB: 30 }).error).toMatch(/greater than zero/i);
+    expect(solveOffsetBend({ offset: 36, angle: 91, radius: 30, legA: 49, legB: 30 }).error).toMatch(/back on itself/i);
     expect(solveOffsetBend({ offset: 36, angle: 45, radius: 0, legA: 49, legB: 30 }).error).toMatch(/radius/i);
     expect(solveOffsetBend({ offset: 0, angle: 45, radius: 30, legA: 49, legB: 30 }).error).toMatch(/offset/i);
     expect(solveOffsetBend({ offset: 36, angle: 45, radius: 30, legA: NaN, legB: 30 }).error).toMatch(/both legs/i);
+  });
+
+  // Two square bends and a piece between them. The pipe goes straight across
+  // and advances nothing, so travel is the offset itself and the run is zero.
+  test('a square offset is worked, not refused', () => {
+    const s = solveOffsetBend({ offset: 36, angle: 90, radius: 6, legA: 20, legB: 20 });
+    expect(s.valid).toBe(true);
+    near(s.run, 0, 1e-9);
+    near(s.travel, 36, 1e-9);
+    near(s.setback, 6, 1e-9);
+    near(s.straightBetween, 36 - 12, 1e-9);
+  });
+
+  // Nothing special happens at 90: it is the limit of the same formula.
+  test('the run closes on zero as the angle approaches square', () => {
+    const runs = [80, 85, 89, 89.9, 90].map(
+      (a) => solveOffsetBend({ offset: 36, angle: a, radius: 6, legA: 20, legB: 20 }).run
+    );
+    for (let i = 1; i < runs.length; i += 1) expect(runs[i]!).toBeLessThan(runs[i - 1]!);
+    near(runs[runs.length - 1]!, 0, 1e-12);
   });
 });
 
@@ -252,7 +272,8 @@ describe('double offset bends', () => {
 
   test('bad inputs are refused by name', () => {
     const base = { angle: 60, radius: 5, firstOffset: 10, returnOffset: 8, legA: 12, legB: 10, parallel: 14 };
-    expect(solveDoubleOffset({ ...base, angle: 90 }).error).toMatch(/between/i);
+    expect(solveDoubleOffset({ ...base, angle: 91 }).error).toMatch(/back on itself/i);
+    expect(solveDoubleOffset({ ...base, angle: 0 }).error).toMatch(/greater than zero/i);
     expect(solveDoubleOffset({ ...base, radius: 0 }).error).toMatch(/radius/i);
     expect(solveDoubleOffset({ ...base, returnOffset: 0 }).error).toMatch(/both offsets/i);
     expect(solveDoubleOffset({ ...base, parallel: NaN }).error).toMatch(/parallel/i);

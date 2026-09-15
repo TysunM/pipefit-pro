@@ -1,5 +1,5 @@
 import { ElbowRadius, Schedule, backArc, centerlineArc, findSize, spoolWeight, takeoff, throatArc } from './pipe';
-import { deg, rad } from './units';
+import { offsetAngleError, offsetAngleFromRun, offsetRun } from './angle';
 
 export type OffsetInput = {
   offset: number;
@@ -58,15 +58,15 @@ export function solveOffset(input: OffsetInput): OffsetResult {
 
   if (input.lockRun) {
     const locked = input.run ?? NaN;
-    if (!Number.isFinite(locked) || locked <= 0) return { ...EMPTY, error: 'Enter a run greater than zero.' };
+    // A run of zero is the square jog: two 90s with a piece between them.
+    if (!Number.isFinite(locked) || locked < 0) return { ...EMPTY, error: 'Enter a run of zero or more.' };
     run = locked;
-    cutAngle = deg(Math.atan(offset / run));
+    cutAngle = offsetAngleFromRun(offset, run);
   } else {
-    if (!(cutAngle > 0 && cutAngle < 90)) return { ...EMPTY, error: 'Fitting angle must be between 0° and 90°.' };
-    run = offset / Math.tan(rad(cutAngle));
+    const bad = offsetAngleError(cutAngle);
+    if (bad) return { ...EMPTY, error: bad };
+    run = offsetRun(offset, cutAngle);
   }
-
-  if (!(cutAngle > 0 && cutAngle < 90)) return { ...EMPTY, error: 'Resulting angle is outside 0°–90°.' };
 
   const travel = Math.hypot(offset, run);
   const shrink = travel - run;

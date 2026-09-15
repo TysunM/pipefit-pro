@@ -228,8 +228,28 @@ describe('simple offset — guards', () => {
   test('rejects a 0 degree fitting', () => expect(solveOffset({ ...base, offset: 10, fittingAngle: 0 }).valid).toBe(false));
   test('rejects a 90 degree fitting through the angle guard', () =>
     expect(solveOffset({ ...base, offset: 10, fittingAngle: 91 }).valid).toBe(false));
-  test('rejects a locked run of zero', () =>
-    expect(solveOffset({ ...base, offset: 10, run: 0, lockRun: true }).valid).toBe(false));
+  // A locked run of zero is the square jog: out 90, across, back 90. It is the
+  // most used offset after 45, so it solves rather than being refused.
+  test('a locked run of zero is the square jog, not an error', () => {
+    const r = solveOffset({ ...base, offset: 10, run: 0, lockRun: true });
+    expect(r.valid).toBe(true);
+    near(r.cutAngle, 90, 1e-9);
+    near(r.travel, 10, 1e-9);
+    near(r.shrink, 10, 1e-9);
+  });
+  test('a 90 degree fitting angle gives the same spool as a locked run of zero', () => {
+    const byAngle = solveOffset({ ...base, offset: 10, fittingAngle: 90, lockRun: false });
+    const byRun = solveOffset({ ...base, offset: 10, run: 0, lockRun: true });
+    expect(byAngle.valid).toBe(true);
+    near(byAngle.run, 0, 1e-12);
+    near(byAngle.pipeCut, byRun.pipeCut, 1e-9);
+  });
+  // 2 inch LR takes out 3 inch a side, so a 10 inch square jog leaves 4 inch.
+  test('the square jog cut is the offset less both takeouts', () => {
+    const r = solveOffset({ ...base, offset: 10, fittingAngle: 90, lockRun: false });
+    near(r.setback, 3, 1e-9);
+    near(r.pipeCut, 4, 1e-9);
+  });
   test('rejects a blank locked run instead of silently using the chip angle', () => {
     const r = solveOffset({ ...base, offset: 10, run: NaN, lockRun: true });
     expect(r.valid).toBe(false);
@@ -348,7 +368,23 @@ describe('rolling offset — guards', () => {
   const base = { useFittingAngle: false, gap: 0, nps: 2, kind: 'LR' as const, schedule: '40' as const };
   test('rejects rise and roll both zero', () => expect(solveRolling({ ...base, rise: 0, roll: 0, run: 10 }).valid).toBe(false));
   test('rejects NaN rise', () => expect(solveRolling({ ...base, rise: NaN, roll: 5, run: 10 }).valid).toBe(false));
-  test('rejects a run of zero', () => expect(solveRolling({ ...base, rise: 12, roll: 5, run: 0 }).valid).toBe(false));
+  // Rise 12, roll 5 is a 13 inch true offset. Squared off, the travel is that
+  // 13 and the run is nothing.
+  test('a run of zero rolls square rather than being refused', () => {
+    const r = solveRolling({ ...base, rise: 12, roll: 5, run: 0 });
+    expect(r.valid).toBe(true);
+    near(r.trueOffset, 13, 1e-9);
+    near(r.cutAngle, 90, 1e-9);
+    near(r.travel, 13, 1e-9);
+    near(r.pipeCut, 13 - 6, 1e-9);
+  });
+  test('a 90 degree fitting angle matches a run of zero', () => {
+    const byAngle = solveRolling({ ...base, rise: 12, roll: 5, useFittingAngle: true, fittingAngle: 90 });
+    near(byAngle.run, 0, 1e-12);
+    near(byAngle.pipeCut, solveRolling({ ...base, rise: 12, roll: 5, run: 0 }).pipeCut, 1e-9);
+  });
+  test('rejects a fitting angle past square', () =>
+    expect(solveRolling({ ...base, rise: 12, roll: 5, useFittingAngle: true, fittingAngle: 91 }).valid).toBe(false));
   test('rejects a bad stock elbow angle', () =>
     expect(solveRolling({ ...base, rise: 12, roll: 5, useFittingAngle: true, fittingAngle: 0 }).valid).toBe(false));
 });
@@ -384,10 +420,33 @@ describe('cut length', () => {
     near(r.totalDeduction, 0);
   });
 
-  test('elbow takeoffs agree with the offset solver', () => {
+  // A bend and a bought fitting are different things. The offset and bender
+  // screens work a bend; the cut length screen is picking a fitting off a
+  // shelf. At 90 degrees they agree exactly, because the tangent of 45 is one.
+  test('a 90 degree elbow agrees with the bend, because at 90 they are the same number', () => {
     for (const s of PIPE_SIZES) {
       near(endTakeoff('elbow90', s.nps, 'LR', NaN), takeoff(s.nps, 'LR', 90), 1e-9);
-      near(endTakeoff('elbow45', s.nps, 'LR', NaN), takeoff(s.nps, 'LR', 45), 1e-9);
+      near(endTakeoff('bend90', s.nps, 'LR', NaN), takeoff(s.nps, 'LR', 90), 1e-9);
+    }
+  });
+
+  test('a bend option is offered alongside the fitting, and works the formula', () => {
+    for (const s of PIPE_SIZES) {
+      near(endTakeoff('bend45', s.nps, 'LR', NaN), takeoff(s.nps, 'LR', 45), 1e-9);
+    }
+  });
+
+  // The one place they part company, and the reason the fitting is held: a
+  // two inch long radius 45 elbow takes out 1-3/8, not the 1.2426 the bend
+  // formula gives. Working fittings to the bend figure cuts a quarter of an
+  // inch long on every piece.
+  test('a bought 45 elbow takes out more than a 45 bend', () => {
+    near(endTakeoff('elbow45', 2, 'LR', NaN), 1.375, 1e-9);
+    near(endTakeoff('bend45', 2, 'LR', NaN), takeoff(2, 'LR', 45), 1e-9);
+    expect(endTakeoff('elbow45', 2, 'LR', NaN)).toBeGreaterThan(endTakeoff('bend45', 2, 'LR', NaN));
+    // From four inch up the published figure is five eighths of the size.
+    for (const nps of [4, 6, 8, 12, 24]) {
+      near(endTakeoff('elbow45', nps, 'LR', NaN), 0.625 * nps, 1e-9);
     }
   });
 
@@ -396,13 +455,28 @@ describe('cut length', () => {
     near(r.pipeCut, 19);
   });
 
-  test('every catalogue fitting resolves for every listed pipe size', () => {
+  test('every catalogue fitting resolves for every size it is made in', () => {
     for (const s of PIPE_SIZES)
-      for (const f of ['elbow90', 'elbow45', 'tee', 'flange150', 'flange300'] as const) {
+      for (const f of ['elbow90', 'tee', 'flange150', 'flange300'] as const) {
         const v = endTakeoff(f, s.nps, 'LR', NaN);
         expect(Number.isFinite(v)).toBe(true);
         expect(v).toBeGreaterThan(0);
       }
+  });
+
+  // A half inch butt welding 45 is not in the handbook, and the figures it
+  // prints below four inch are nothing like five eighths of the size — the one
+  // inch is forty per cent over it — so there is nothing to extrapolate from.
+  // The screen says so rather than inventing a number.
+  test('a 45 elbow in a size the book does not print is refused, not guessed', () => {
+    expect(Number.isNaN(endTakeoff('elbow45', 0.5, 'LR', NaN))).toBe(true);
+    expect(Number.isFinite(endTakeoff('elbow45', 0.75, 'LR', NaN))).toBe(true);
+    // And the cut refuses with it, rather than quietly dropping the end.
+    const r = solveCutLength({ ...base, nps: 0.5, centerToCenter: 24, endA: 'elbow45', endB: 'none' });
+    expect(r.valid).toBe(false);
+    expect(r.error).toContain('not made in this size');
+    // The bend is still there for anyone bending their own.
+    expect(Number.isFinite(endTakeoff('bend45', 0.5, 'LR', NaN))).toBe(true);
   });
 
   test('tee centre-to-end matches published B16.9 values', () => {
@@ -911,8 +985,8 @@ describe('cross-solver consistency', () => {
     const offset = solveOffset({ offset: 10, fittingAngle: 45, gap: 0, nps: 2, kind: 'LR', schedule: '40', lockRun: false });
     const cut = solveCutLength({
       centerToCenter: offset.travel,
-      endA: 'elbow45',
-      endB: 'elbow45',
+      endA: 'bend45',
+      endB: 'bend45',
       customA: NaN,
       customB: NaN,
       gap: 0,

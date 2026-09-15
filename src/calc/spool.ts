@@ -213,3 +213,50 @@ export function rollLabel(roll: number): string {
 export function makeLeg(id: string, length: number, bend = 90, roll = 0): SpoolLeg {
   return { id, length, bend, roll };
 }
+
+/**
+ * The centreline of an elbow, as points along its arc.
+ *
+ * A spool solved to centres is a set of corners, and a corner is not what gets
+ * installed. The fitting leaves the incoming leg one takeoff back from the
+ * corner, swings round on the bend radius, and meets the outgoing leg one
+ * takeoff along it. Drawing that arc instead of the corner is the difference
+ * between a stick figure and a picture of the pipe.
+ *
+ * The turn is read from the two leg directions rather than passed in beside
+ * them. An angle that disagrees with the directions it is handed describes no
+ * fitting that exists, and there is no way to tell from inside which of the two
+ * was meant, so the question is not asked.
+ *
+ * The centre of the arc sits on the bisector of the turn, at radius over the
+ * cosine of half the angle — which follows from the takeoff being the radius
+ * times the tangent of that same half angle.
+ */
+export function elbowCenterline(
+  vertex: Vec3,
+  inDir: Vec3,
+  outDir: Vec3,
+  takeoffLength: number,
+  steps = 12
+): Vec3[] {
+  const u = unit(inDir);
+  const v = unit(outDir);
+  const a = add(vertex, scale(u, -takeoffLength));
+  const b = add(vertex, scale(v, takeoffLength));
+
+  const theta = Math.acos(Math.max(-1, Math.min(1, dot(u, v))));
+  if (!(theta > 1e-6) || !(takeoffLength > 1e-9) || !(steps > 0)) return [a, b];
+
+  const half = theta / 2;
+  const radius = takeoffLength / Math.tan(half);
+  const centre = add(vertex, scale(unit(sub(v, u)), radius / Math.cos(half)));
+
+  const ra = sub(a, centre);
+  const axis = cross(ra, sub(b, centre));
+  // A turn of half a circle leaves no plane to swing in.
+  if (len(axis) < 1e-12) return [a, b];
+
+  const out: Vec3[] = [];
+  for (let i = 0; i <= steps; i += 1) out.push(add(centre, rotateAbout(ra, axis, (theta * i) / steps)));
+  return out;
+}

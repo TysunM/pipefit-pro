@@ -1,5 +1,6 @@
 import { ElbowRadius, Schedule, backArc, centerlineArc, findSize, spoolWeight, takeoff, throatArc } from './pipe';
-import { deg, rad } from './units';
+import { offsetAngleError, offsetAngleFromRun, offsetRun } from './angle';
+import { deg } from './units';
 
 export type RollingInput = {
   rise: number;
@@ -66,12 +67,14 @@ export function solveRolling(input: RollingInput): RollingResult {
 
   if (input.useFittingAngle) {
     cutAngle = input.fittingAngle ?? NaN;
-    if (!(cutAngle > 0 && cutAngle < 90)) return { ...EMPTY, error: 'Fitting angle must be between 0° and 90°.' };
-    run = trueOffset / Math.tan(rad(cutAngle));
+    const bad = offsetAngleError(cutAngle);
+    if (bad) return { ...EMPTY, error: bad };
+    run = offsetRun(trueOffset, cutAngle);
   } else {
     run = input.run ?? NaN;
-    if (!Number.isFinite(run) || run <= 0) return { ...EMPTY, error: 'Enter a run greater than zero.' };
-    cutAngle = deg(Math.atan(trueOffset / run));
+    // A run of zero is the square jog: two 90s with a piece between them.
+    if (!Number.isFinite(run) || run < 0) return { ...EMPTY, error: 'Enter a run of zero or more.' };
+    cutAngle = offsetAngleFromRun(trueOffset, run);
   }
 
   const travel = Math.hypot(run, trueOffset);

@@ -27,13 +27,46 @@ left unimplemented rather than filled with plausible numbers.
 | Documented defaults | `calc/defaults.ts` | Appendix B and C |
 | Full keypad map | `calc/keys.ts` | 40 keys, every shift bound |
 | Keypad screen | `screens/CalculatorScreen.tsx` | LCD with unit word and annunciators, Conv shift layer |
+| Handbook browser | `screens/ReferenceScreen.tsx`, `calc/reference.ts` | Every table in the app, grouped, searchable by name or page |
+| Takeout catalogue | `calc/takeoffCatalog.ts` | Screwed, welded, flanged and soldered fittings, all read from the handbook tables |
+| Cut length from a real fitting | `screens/CutLengthScreen.tsx` | Pick how it is joined and what is on each end; the gap follows the joint |
 | Pipe dimensions, steel and stainless | `calc/pipeData.ts` | Sch 40, 80, 120, Std, XS, 40S, 80S; bore area, weight, filled weight, capacity |
 | Standard threads and engagement | `calc/thread.ts` | 18 sizes; thread, hand-tight and tight engagement, bore size |
 | Screwed fitting dimensions | `calc/screwedFitting.ts` | Both classes, 17 sizes, centre to end and band diameter |
 | Screwed reducing fittings | `calc/reducingFitting.ts` | 65 combinations across elbow, cross and tee; heavy class separate |
 | Reducing couplings | `calc/coupling.ts` | Length depends only on the larger size |
+| Reducer couplings, cast iron | `calc/reducerCoupling.ts` | Two patterns, forty two combinations, one shoulder rule fills the rest |
+| Malleable straight couplings | `calc/coupling.ts` | Held as the gap it leaves; the length works back from it |
+| Wall and parallel line clearances | `calc/clearance.ts` | Swept radius and spacing computed from the book's own rule |
+| Screwed elbow takeout, 90 and 45 | `calc/takeout.ts`, `calc/takeout45.ts` | Worked to 12 inch, past where the print stops |
+| Screwed wye laying lengths | `calc/takeout45.ts` | Cast iron and malleable; sizes not made held as no value |
+| Street elbows | `calc/streetElbow.ts` | 90 is the ordinary takeout; 45 is its own casting, to 2 inch |
+| Malleable reducer couplings | `calc/reducerCoupling.ts` | Forty combinations, same shoulder rule, two suspect rows flagged |
+| Unions and union fittings | `calc/union.ts` | Gap, takeout and worked length |
+| Tee with a street elbow in it | `calc/union.ts` | Centre to centre with a 90 and a 45 |
+| Minimum bending radius | `calc/bendRadius.ts` | Steel and wrought iron, with the advised five times size |
 | Pipe nipples | `calc/nipple.ts` | Long, short and close; stocked lengths generated |
-| Flanged fitting laying lengths | `calc/flangedFitting.ts` | 150 lb steel, 18 sizes |
+| Flanged fitting laying lengths | `calc/flangedFitting.ts` | All seven steel classes, raised face and ring joint |
+| Flanged laterals and reducers | `calc/flangedFitting.ts` | 150, 300 and 400 lb |
+| Cast iron flanged fittings | `calc/flangedFitting.ts` | 125 and 250 lb, read from the steel class each lays out the same as |
+| Flanged base elbows and tees | `calc/flangedFitting.ts` | 150 and 300 lb |
+| Flanged gate valve laying lengths | `calc/valve.ts` | Cast iron 125/175/250, steel 150 to 2500, both facings |
+| Globe, angle and swing check valves | `calc/valve.ts` | Cast iron and steel; angle is half the globe figure |
+| Flange thickness and overall length | `calc/flange.ts` | All seven classes; screwed, slip-on, lapped and blind |
+| Drilling templates and bolt-up | `calc/boltUp.ts` | 125 and 250 lb cast iron: bolt circle, count, size, length, gasket, hole layout |
+| Welding neck flange length | `calc/weldingNeck.ts` | All seven classes, length through the hub |
+| Butt welding elbows, tees, reducers, returns, caps | `calc/weldFitting.ts` | Held as rules where the pages are rules, so they answer past 24 inch |
+| Butt welding reducing tees, crosses and reducing elbows | `calc/weldFitting.ts` | Run and elbow figures follow the plain fitting; only the outlet is held |
+| Pipe support spacing | `calc/support.ts` | Water and gas or steam, by temperature and grade, with the grade capped by temperature |
+| U-bolts for pipe hangers | `calc/uBolt.ts` | Fourteen sizes, seven bolt diameters |
+| Plastic pipe dimensions and pressure limits | `calc/plasticPipe.ts` | PVC schedules A, 40, 80 and 120 in both types; polyethylene in three series |
+| Copper tube | `calc/copperTube.ts` | Types K, L, M and DWV; bore held, everything else worked |
+| Solder joint fittings | `calc/solderFitting.ts` | Ends, elbows, tees, street elbows, couplings, reducers and reducing elbows |
+| Lap joint stub ends | `calc/weldFitting.ts` | Lap diameter and length; the thickness is the standard weight wall |
+| Contents of cylindrical tanks | `calc/tank.ts` | Full, part full on its side, standing on end, and the depth for a wanted amount |
+| Expansion of pipe | `calc/expansion.ts` | Steel, wrought iron and copper, nought to 1200 degrees |
+| Butt welding end valves | `calc/weldValve.ts` | Gate, globe, angle and check; heavy classes read from the flanged tables |
+| Field made concentric reducer | `calc/reducerTemplate.ts` | Arms, notches, bevel and push-in |
 | Framing square layout | `calc/square.ts` | Pitch, rise on a twelve inch run, angle, travel multiplier |
 | Bend setback, arc and gain, any angle | `calc/bender.ts` | Checked against the printed multipliers from a quarter degree to 179 |
 | Piece length from two legs, and the inverse from stock | `calc/bender.ts` | Every printed single-bend worked example passes |
@@ -52,7 +85,7 @@ left unimplemented rather than filled with plausible numbers.
 | Pipe Material and Pipe Type keys | p21, p23 | Menus are encoded; selecting one needs the data above |
 | Elbow Type | p23 | Long radius butt weld is the default; short radius and threaded need take-out values |
 | Take-out and butt weld elbow cut marks | p32 | Partly covered by `calc/cutLength.ts` |
-| Cut length from a known take-out | p33 | |
+| Cut length from a known take-out | p33 | Done — the fitting picker reads the handbook tables |
 | Simple offset, known and unknown bend angle | p24–25 | Partly covered by `calc/offset.ts` |
 | Simple offset cut length | p25 | Needs Welder's Gap wired in |
 | Rolling offset, known and unknown angle, cut length | p27–29 | Partly covered by `calc/rolling.ts` |
@@ -80,10 +113,11 @@ Each of these has a published source:
   are now in `calc/pipeData.ts`. Schedules 60, 100, 140, 160, XXS, 20 and 30
   are still missing.
 - **Stainless steel** — 40S and 80S are present. 5S, 10S and 160 are missing.
-- **Copper** — ASTM B88 for types K, L and M; B306 for DWV; B819 for medical;
-  B280 for ACR.
-- **Plastic** — ASTM D1785 for schedules 40, 80 and 120; D2241 for the SDR
-  series.
+- **Copper** — types K, L, M and DWV are now in `calc/copperTube.ts`. Medical
+  gas and ACR tube are still missing.
+- **Plastic** — PVC schedules A, 40, 80 and 120 and Type I polyethylene are
+  now in `calc/plasticPipe.ts`, with the pressure limits. The SDR series is
+  still missing.
 - **Surface roughness per material**, for pressure loss.
 
 Supplying any one of these unblocks the functions listed against it.
@@ -109,20 +143,116 @@ checked against a property the data has to hold, never against itself.
 | 4-26 | Reducing outlet tees, 150 lb malleable |
 | 4-29 | Reducing couplings, 300 lb malleable |
 | 4-30 | Reducing outlet tees, 300 lb malleable |
+| 4-25 | Reducing crosses, 150 lb malleable |
+| 4-27 | Reducing outlet tees, 150 lb malleable, continued |
+| 4-28 | Reducing elbows, 300 lb malleable |
 | 4-31 | Pipe nipple lengths |
-| 4-71 | Laying lengths, 150 lb steel flanged fittings |
+| 4-32 to 4-36 | Wall and parallel line clearances |
+| 4-37, 4-38 | Takeout, 90 degree screwed elbows; screwed wyes |
+| 4-39 | Takeout, 45 degree screwed elbows |
+| 4-40, 4-41 | Reducer couplings, cast iron |
+| 4-42 | Couplings and close nipples, malleable |
+| 4-43 | Street elbows, 45 and 90, malleable |
+| 4-44 | Reducer couplings, malleable |
+| 4-45 | Unions and union fittings, malleable |
+| 4-46 | Combined tees and street elbows, malleable |
+| 4-71 to 4-75 | 150 lb steel flanged fittings, laterals, reducers, ring joint and bases |
+| 4-77 to 4-81 | 300 lb steel, the same set |
+| 4-83 to 4-85 | 400 lb steel elbows, laterals and ring joint |
+| 4-88, 4-89 | 600 lb steel, raised face and ring joint |
+| 4-91, 4-92 | 900 lb steel |
+| 4-94, 4-95 | 1500 lb steel |
+| 4-97, 4-98 | 2500 lb steel |
+| 4-99 to 4-104 | Gate valves, cast iron and steel, every class and both facings |
+| 4-51 to 4-54 | Drilling templates, 125 and 250 lb cast iron flanges |
+| 4-59, 4-66 | Cast iron flanged fittings, 125 and 250 lb |
+| 4-68, 4-69 | Welding neck flanges, every class |
+| 4-70, 4-76, 4-82, 4-87, 4-90, 4-93, 4-96 | Flange thickness and overall length, every class |
+| 4-105 to 4-108 | Globe and angle valves, cast iron and steel |
+| 4-111, 4-112 | Swing check valves, steel |
+| 1-106 | Minimum bending radius, standard weight pipe |
+
+| 2-42, 2-43 | Butt welding elbows and straight tees |
+| 2-48, 2-50 | Butt welding reducers |
+| 2-51 | Butt welding 180 degree returns |
+| 2-44 to 2-47 | Butt welding reducing outlet tees and reducing elbows |
+| 2-52 | Lap joint stub ends |
+| 2-53 | Butt welding caps |
+| 2-57 to 2-62 | Valves with butt welding ends, gate, globe and swing check |
+| 2-63 | Making a concentric reducer out of pipe |
+| 2-66 | U-bolts for pipe hangers |
+| 2-67, 2-68 | Spacing of pipe supports, water and gas or steam |
+| 3-26, 3-27 | Polyvinyl chloride pipe, dimensions and pressure limits |
+| 3-29, 3-30 | Type I polyethylene pipe, dimensions and pressure limits |
+| 3-5 to 3-9 | Cast brass solder joint ends, elbows, tees, couplings, reducers and reducing elbows |
+| 5-13 to 5-16 | Copper tube, types K, L, M and DWV |
+| 5-19, 5-20 | Schedule 120 and stainless, read a second time as a check on the project's own table |
+| 5-25 | Expansion of pipe per 100 feet |
+| 5-26 to 5-28 | Contents of cylindrical tanks |
 
 ### Still to transcribe
 
-Screwed: 4-25, 4-27, 4-28 (remaining reducing tables), 4-32 to 4-36
-(clearances), 4-37 to 4-46 (laying lengths).
+Screwed: done, 4-13 to 4-46.
 
-Flanged: 4-62 to 4-112, the 250, 300, 400, 600, 900, 1500 and 2500 lb
-classes and the valve laying lengths.
+Flanged: 4-49 to 4-70 (drilling templates, 25 lb cast iron, 125 and 250 lb
+cast iron, welding neck flanges), 4-76, 4-82, 4-86, 4-87, 4-90, 4-93, 4-96
+(the flange tables themselves and the remaining lateral pages), and 4-99 to
+4-109 and 4-110, the remaining globe valve pages.
 
-Part 2: 2-42 to 2-62 welded fitting laying lengths, 2-66 U-bolts, 2-67
-support spacing. Part 3: solder joint fittings, plastic pipe. Part 5:
+Part 2: 2-54 to 2-56 (crosses, whose figures are the reducing tee figures;
+only which combinations are made is left), 2-64, 2-65 (bull nose and dead
+end cap templates). Part 3: 3-10 to 3-21, the solder reducing tees and the thread-end adapters.
+Seven pages of reducing tees, roughly 130 rows. The run and outlet do not
+follow a rule the way the reducing elbows do, so there is nothing to check
+them against but the print itself. Part 5:
 copper tube, the rest of the steel schedules, pipe expansion.
+
+### Rules found behind the printed tables
+
+Where a printed block turns out to follow one rule, the rule is held and the
+print is used to check it. That is smaller, cannot go internally inconsistent,
+and answers combinations the book never printed.
+
+| Table | Rule |
+|---|---|
+| Screwed elbow takeout, 90 and 45 | centre to end, less the engagement when tight |
+| Reducer couplings, both patterns | the casting's shoulder depth, less the small end's engagement |
+| Reducing couplings | the length depends only on the larger size |
+| Parallel line spacing | swept radius of the larger, plus half the smaller's band |
+| Street elbow, 90 degree | the ordinary elbow takeout, exactly |
+| Malleable coupling, union and close nipple | the length, less the two threads buried in it |
+| Butt welding 90 elbow | one and a half times the nominal size long radius, the size itself short radius |
+| Butt welding 45 elbow | five eighths of the nominal size, from four inch up |
+| Butt welding reducer | the length depends only on the larger size |
+| Butt welding 180 return | spacing is twice the bend radius; height is that radius plus half the outside diameter |
+| Butt welding reducing tee and cross | the run keeps the plain tee's centre to end; only the outlet changes |
+| Butt welding reducing elbow | the long radius rule on the larger of the two sizes |
+| Sloping support spacing | never longer than the figure for the temperature, which is the rule printed under both tables |
+| Plastic pipe outside diameter | the iron pipe size, so only the bore is held |
+| Threaded plastic pipe | about 55 per cent of the plain end pressure |
+| Copper tube outside diameter | the nominal size plus an eighth, on every type |
+| Copper tube weight | the wall and copper's density, which lands on the printed figure on all four pages |
+| Solder joint ends | the male end is the female plus a sixteenth, both being rounded up to one |
+| Solder street elbow | an eighth over the plain elbow at 90 degrees, on every size both are made in |
+| Solder reducer | the length depends only on the larger size |
+| Solder reducing elbow | the large end is the plain elbow takeout of the larger size |
+| Lap joint stub end thickness | the standard weight wall |
+| Tank contents | plain geometry: eighty printed figures out of one formula, which also answers a tank part full |
+| Flanged ring joint, every class | the raised face figure, plus an allowance for each flange face in the dimension |
+| Ring joint gate valves | the raised face figure plus twice that allowance, a valve carrying it at both ends |
+| Heavy class valves | gate, globe and swing check share one face to face table in 900, 1500 and 2500 lb, flanged and butt welding alike |
+| Butt welding valve, 400 and 600 lb | the flanged figure; only 150 and 300 lb are longer |
+| Cast iron flanged fitting | the steel table for the class alongside it: 125 lb is 150 lb steel, 250 lb is 300 lb |
+| Field made reducer | the arms and notches come to the larger pipe's circumference |
+| Angle valve | half the globe valve's face to face, the same casting opened out |
+| Bolt hole layout | a multiple of four holes, straddling the centreline, so a fitting turns a quarter and still bolts up |
+| Cast iron flange thickness | the same as the matching steel class, once past the sizes where the steel raised face makes the difference |
+| 900 lb, every table | below three inch it is the 1500 lb casting, so its three inch is smaller than its two and a half |
+
+The reducer coupling shoulders work back to thread engagements for 4, 5, 6 and
+8 inch that match this project's thread table, which that page never prints.
+The close nipple gaps work back to the close nipple column on all fifteen
+sizes. Neither was fitted to; both fell out.
 
 ### Disagreements found in the printed book
 
@@ -137,6 +267,16 @@ where the book contradicts itself. All are pinned by tests.
 | Double offset, 75° centre bend setback | .763 | .7673, per the book's own universal table |
 | Reducing elbow 1/2 x 3/8 | X 1-1/16, Z 1 | inverted against all 35 other rows; printed the same way twice |
 | Reducing tee 3-1/2 x 3-1/2 x 2 | outlet 2-1/8 | 3-1/8, per the cross table and the run of outlets either side |
+| Reducer coupling 1 x 1/2, dimension J | 1/2 | 11/16, per the shoulder every other row on both pages obeys |
+| Malleable reducer coupling 1/2 x 1/2 | not a reducer | 1/2 x 3/8: the gap works back to the 3/8 engagement, and 3/8 is the one size otherwise missing from that block |
+| Malleable reducer coupling 3 x 2-1/2 | 1 | 1-3/4 per the rule; 1 is the cast iron figure for the same pair |
+| Malleable reducer coupling 6 x 4 | 1-15/16 | unknown; that is the cast iron figure, and it would make the six inch casting shallower than the five. Refused rather than served |
+| 1500 lb ring joint 5 inch 45 elbow | 3-13/16 | 8-13/16: shorter as printed than both the four and the six inch, and the allowance every other row on the page obeys gives 8-13/16 |
+| 180 degree return, 1/2 inch | O 3, K 1-7/8 | O 1-1/2, K 1-3/16 per the geometry every other row obeys; the printed O is the one inch figure and the printed K is taller than the 3/4 inch below it |
+| Type L copper tube, 2-1/2 inch bore | 1.465 | 2.465: as printed it is smaller than the two inch above it, and the printed weight works back to a wall of eighty thousandths |
+| Steel expansion at 1100 degrees | 10.042 | 10.402: the two digits after the point are swapped, which puts a step of 0.767 next to one of 1.556 in a column whose other hundred degree steps all run between one and one and a quarter |
+| Concentric reducer template, 8 x 6 arm | 3-15/16 | 3-7/16: six arms and notches at the printed figure come to thirty inches round an eight inch pipe, which is twenty seven |
+| Tank contents, 7 ft by 19 ft | 5480 | 5470: every other step in that column is 288 gallons a foot, and the printed figure makes 18 to 19 step 298 and 19 to 20 step 278 |
 
 ### Corrections made to this project's own data
 

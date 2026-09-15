@@ -9,6 +9,10 @@ import { screwedFitting } from './screwedFitting';
 // fitting on the run. It is also exactly the fitting's centre to end less the
 // engagement when made up tight, which is how the three tables check each
 // other.
+//
+// The printed table stops at 8 inch, but 125 lb cast iron screwed fittings are
+// made to 12. For those two sizes the same rule is worked from the fitting and
+// thread tables rather than leaving a fitter with nothing.
 
 export type Takeout = { nps: number; label: string; takeout: number };
 
@@ -32,7 +36,7 @@ export const TAKEOUTS: Takeout[] = [
 
 const BY_NPS = new Map(TAKEOUTS.map((t) => [t.nps, t]));
 
-export const takeout = (nps: number): number => BY_NPS.get(nps)?.takeout ?? NaN;
+export const takeout = (nps: number): number => BY_NPS.get(nps)?.takeout ?? takeoutFromTables(nps);
 
 /** The same figure worked from the fitting and thread tables instead. */
 export function takeoutFromTables(nps: number): number {

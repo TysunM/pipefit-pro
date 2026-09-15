@@ -6,10 +6,10 @@ import { screwedFitting } from '../calc/screwedFitting';
 import { findRow } from '../calc/pipeData';
 
 describe('screwed reducing fittings', () => {
-  test('sixty-three combinations across the four printed tables', () => {
+  test('sixty-five combinations across the five printed tables', () => {
     expect(REDUCING_FITTINGS.length).toBe(65);
     expect(REDUCING_FITTINGS.filter((r) => r.kinds.includes('elbow')).length).toBe(42);
-    expect(REDUCING_FITTINGS.filter((r) => r.kinds.includes('cross')).length).toBe(35);
+    expect(REDUCING_FITTINGS.filter((r) => r.kinds.includes('cross')).length).toBe(36);
     expect(REDUCING_FITTINGS.filter((r) => r.kinds.includes('tee')).length).toBe(60);
   });
 

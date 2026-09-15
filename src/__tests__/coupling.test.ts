@@ -59,7 +59,29 @@ describe('reducing couplings', () => {
 });
 
 describe('heavy class reducing fittings', () => {
-  test('nineteen printed combinations', () => expect(REDUCING_FITTINGS_HEAVY.length).toBe(19));
+  test('twenty one combinations across the two heavy tables', () => {
+    expect(REDUCING_FITTINGS_HEAVY.length).toBe(21);
+    expect(REDUCING_FITTINGS_HEAVY.filter((h) => h.kinds.includes('tee')).length).toBe(19);
+    expect(REDUCING_FITTINGS_HEAVY.filter((h) => h.kinds.includes('elbow')).length).toBe(8);
+  });
+
+  // Six combinations appear in both heavy tables, and the elbow figures are
+  // the tee figures exactly, which is how the two readings check each other.
+  test('the heavy elbow and tee tables agree wherever they overlap', () => {
+    const both = REDUCING_FITTINGS_HEAVY.filter(
+      (h) => h.kinds.includes('elbow') && h.kinds.includes('tee')
+    );
+    expect(both.length).toBe(6);
+    expect(both.map((h) => `${h.run}x${h.branch}`)).toEqual([
+      '1x0.75', '1.25x1', '1.5x1.25', '2x1.5', '2.5x2', '3x2.5',
+    ]);
+  });
+
+  test('the two the elbow table adds are made as elbows only', () => {
+    expect(reducingFittingHeavy(0.5, 0.375)).toMatchObject({ x: 1.1875, z: 1.1875, kinds: ['elbow'] });
+    expect(reducingFittingHeavy(0.75, 0.5)).toMatchObject({ x: 1.3125, z: 1.375, kinds: ['elbow'] });
+    expect(reducingFittingHeavy(0.5, 0.375, 'tee')).toBeUndefined();
+  });
 
   test('rows read back as printed', () => {
     expect(reducingFittingHeavy(2, 1)).toMatchObject({ x: 2, z: 2.25 });
@@ -108,12 +130,102 @@ describe('heavy class reducing fittings', () => {
     }
   });
 
-  test('all of them are tees', () => {
-    for (const h of REDUCING_FITTINGS_HEAVY) expect(h.kinds).toEqual(['tee']);
+  test('every row is a tee, an elbow, or both', () => {
+    for (const h of REDUCING_FITTINGS_HEAVY) {
+      expect(h.kinds.length).toBeGreaterThan(0);
+      for (const k of h.kinds) expect(['elbow', 'tee']).toContain(k);
+    }
+    expect(REDUCING_FITTINGS_HEAVY.some((h) => h.kinds.includes('cross'))).toBe(false);
   });
 
   test('a combination the heavy table does not carry gives nothing', () => {
     expect(reducingFittingHeavy(8, 6)).toBeUndefined();
     expect(reducingFittingHeavy(2, 2)).toBeUndefined();
+  });
+});
+
+import {
+  MALLEABLE_COUPLING_GAP,
+  malleableCouplingGap,
+  malleableCouplingLength,
+  malleableCouplingSizes,
+} from '../calc/coupling';
+import { NIPPLES, closeNippleGap, nipple } from '../calc/nipple';
+
+const eng = (n: number) => NPT_TABLE.find((x) => x.nps === n)!.engagementWhenTight;
+
+describe('malleable straight couplings', () => {
+  test('twelve printed sizes', () => {
+    expect(MALLEABLE_COUPLING_GAP.length).toBe(12);
+    expect(malleableCouplingSizes()).toEqual([
+      0.125, 0.25, 0.375, 0.5, 0.75, 1, 1.25, 1.5, 2, 2.5, 3, 4,
+    ]);
+  });
+
+  test('rows read back as printed', () => {
+    expect(malleableCouplingGap(0.5)).toBe(0.3125);
+    expect(malleableCouplingGap(2)).toBe(1);
+    expect(malleableCouplingGap(4)).toBe(1.4375);
+  });
+
+  // The gap dips and rises at the small end. That is the table being right,
+  // not a misreading: the thread engagement steps up faster than the casting.
+  test('the gap is not monotonic, but the length it works back to is', () => {
+    expect(malleableCouplingGap(0.375)).toBeGreaterThan(malleableCouplingGap(0.5));
+    let last = 0;
+    for (const c of MALLEABLE_COUPLING_GAP) {
+      const len = malleableCouplingLength(c.nps);
+      expect(len).toBeGreaterThan(last);
+      last = len;
+    }
+  });
+
+  test('the length is the gap plus the two buried threads', () => {
+    for (const c of MALLEABLE_COUPLING_GAP) {
+      near(malleableCouplingLength(c.nps), c.gap + 2 * eng(c.nps), 1e-12);
+    }
+  });
+
+  // Malleable is a lighter casting than 300 lb cast iron, so it lays shorter
+  // in every size both tables carry.
+  test('it is shorter than the heavy cast iron coupling', () => {
+    let compared = 0;
+    for (const c of MALLEABLE_COUPLING_GAP) {
+      const heavy = coupling(c.nps);
+      if (!heavy) continue;
+      expect(malleableCouplingLength(c.nps)).toBeLessThan(heavy.endToEnd);
+      compared++;
+    }
+    expect(compared).toBeGreaterThan(6);
+  });
+
+  test('a size not listed gives nothing', () => {
+    expect(Number.isFinite(malleableCouplingGap(5))).toBe(false);
+    expect(Number.isFinite(malleableCouplingLength(5))).toBe(false);
+  });
+});
+
+// The same page prints the gap a close nipple leaves, under the name short
+// nipple. It is an independent reading of the close nipple column.
+describe('the gap a close nipple leaves', () => {
+  const PRINTED: [number, number][] = [
+    [0.125, 0.25], [0.25, 0.125], [0.375, 0.25], [0.5, 0.125], [0.75, 0.25],
+    [1, 0.125], [1.25, 0.25], [1.5, 0.375], [2, 0.5], [2.5, 0.625],
+    [3, 0.625], [3.5, 0.625], [4, 0.625], [5, 0.5], [6, 0.5],
+  ];
+
+  test('all fifteen printed sizes work back to the close nipple length', () => {
+    for (const [nps, gap] of PRINTED) {
+      near(closeNippleGap(nps), gap, 1e-12);
+      near(gap + 2 * eng(nps), nipple(nps)!.close, 1e-12);
+    }
+  });
+
+  test('a close nipple always leaves some bare pipe', () => {
+    for (const n of NIPPLES) expect(closeNippleGap(n.nps)).toBeGreaterThan(0);
+  });
+
+  test('a size not listed gives nothing', () => {
+    expect(Number.isFinite(closeNippleGap(7))).toBe(false);
   });
 });

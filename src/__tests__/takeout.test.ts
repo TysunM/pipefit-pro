@@ -71,10 +71,20 @@ describe('screwed fitting takeout', () => {
       expect(Number.isFinite(screwedCut(7.625, 8))).toBe(false);
     });
 
-    test('a size not listed is refused rather than guessed', () => {
-      expect(Number.isFinite(screwedCut(24, 10))).toBe(false);
-      expect(Number.isFinite(takeout(10))).toBe(false);
+    test('a size no table carries is refused rather than guessed', () => {
+      expect(Number.isFinite(screwedCut(24, 7))).toBe(false);
+      expect(Number.isFinite(takeout(7))).toBe(false);
       expect(Number.isFinite(takeoutFromTables(7))).toBe(false);
+    });
+
+    // The printed table stops at 8 inch but the fittings are made to 12, and
+    // every number the rule needs is already here.
+    test('ten and twelve inch are worked from the rule instead of refused', () => {
+      for (const nps of [10, 12]) {
+        expect(takeout(nps)).toBeCloseTo(takeoutFromTables(nps), 12);
+        expect(takeout(nps)).toBeGreaterThan(takeout(8));
+      }
+      expect(Number.isFinite(screwedCut(48, 12))).toBe(true);
     });
 
     test('cutting then adding the takeouts back gives the centre to centre', () => {

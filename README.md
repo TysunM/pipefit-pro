@@ -34,6 +34,11 @@ All elbow figures derive from the centreline bend radius `R` (1.5×NPS long radi
 - Back arc: `(R + OD/2) · θ`
 - Pipe weight: `10.6802 · t · (OD − t)` lb/ft
 
+An offset is worked at any angle above zero up to and including a square 90,
+where the pipe goes straight across and the run is nothing. Past 90 the travel
+points back the way it came, so it is refused with the reason rather than
+clamped.
+
 Pipe OD and wall thickness follow ASME B36.10M. Tee and flange takeouts follow ASME B16.9 and B16.5. NPT values follow ASME B1.20.1. Miter cut angles are checked against the ASME B31.3 §304.2.3 22.5° threshold.
 
 Fitting weights are geometric estimates, not vendor catalogue figures. They are labelled as estimates in the UI.
@@ -43,6 +48,26 @@ Fitting weights are geometric estimates, not vendor catalogue figures. They are 
 Five calculators draw a live 2D schematic from the values already computed — simple offset, rolling offset (isometric), saddle bend, miter bend and hand bender. They are flat `react-native-svg` primitives with no geometry engine, no 3D and no external assets: a pipe polyline, dimension lines with arrowheads and rotated labels, a deflection-angle arc and numbered bend marks, all fitted to the viewport and drawn from theme tokens so they follow light and dark.
 
 The drawing is a schematic, not a scale model. The saddle view truncates the straight lead-in (marked with a break symbol) so the bend stays legible when the obstruction is far from the conduit end. Numbers on the diagram are the same values shown in the result banner and stat grid.
+
+## The 3D spool
+
+The spool view is a true isometric projection, not a tilted one: yaw −45° and
+pitch `atan(1/√2)` = 35.264°, the only orientation where the three axes project
+the same length and 120° apart. That is what iso paper enforces and what makes
+a drawing read as solid. Tests measure it rather than assert it, and the view it
+replaced is kept as a test showing its axes differ by a quarter in length.
+
+Legs are drawn from where the pipe starts to where it stops, a takeoff short of
+each corner, and the corner itself is drawn as the elbow that fills it — an arc
+on the bend radius, with a weld line at each end. Where two pieces that are not
+joined cross, the one in front breaks the one behind, across its width only.
+
+The camera is held off anything that would go edge on: the pitch stays in a
+15°–75° band, the yaw is steered out of the plane a flat spool lies in, and off
+the direction of every individual leg. All three reduce to solving
+`d(yaw) · v = t` for yaw, so the camera is never searched for, only solved and
+snapped to the nearest answer. Scale comes from the bounding sphere so turning
+never resizes the drawing; centring comes from where it actually lands.
 
 ## Data provenance
 
@@ -127,6 +152,32 @@ like any other app. Nothing is uploaded to a store and nothing is public.
 
 Bump `android.versionCode` in `app.json` before each rebuild so Android treats
 it as an upgrade rather than refusing to install over the old one.
+
+## Updating it once it is on the phone
+
+That APK only has to be built again when the **native** app changes — a new
+dependency with native code, an SDK bump, a new icon or permission. Everything
+else is a one-minute push:
+
+```
+npm run typecheck
+npm test
+npm run push
+```
+
+The app checks on launch and downloads in the background, so a cold start never
+waits on the network. When the new bundle is ready an **Update ready** bar
+appears; tapping **Restart** applies it, and ignoring it applies it on the next
+cold start anyway. Nothing reloads underneath you mid-calculation.
+**Settings → Updates** shows what is running and checks on demand.
+
+`runtimeVersion` is on the `fingerprint` policy, so a push that no longer
+matches the installed app is never downloaded rather than installed and
+crashing. `npm run runtime-version` prints the fingerprint to compare against
+the build on expo.dev — [docs/RELEASE.md §5](docs/RELEASE.md#5-push-an-update-over-the-air)
+covers the whole loop.
+
+**[docs/QUICK-REFERENCE.md](docs/QUICK-REFERENCE.md)** is the one page for the job: which screen, what to type, what to read, with the offset multipliers to check it against. There is a printable PDF of it beside it.
 
 **[docs/RELEASE.md](docs/RELEASE.md) is the full runbook** — signing, keystore
 backup and recovery, version rules, the config invariants that only break in a
