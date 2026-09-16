@@ -14,7 +14,7 @@ import { useTheme } from '../theme/ThemeProvider';
 import { useUnits } from '../hooks/useUnits';
 import { usePipeConfig } from '../hooks/usePipeConfig';
 import { useSettings } from '../state/settings';
-import { BEND_PRESETS, MAX_LEGS, ROLL_PRESETS, SpoolLeg, makeLeg, rollLabel, solveSpool } from '../calc/spool';
+import { BEND_PRESETS, MAX_LEGS, ROLL_PRESETS, SpoolLeg, flipAll, flipLeg, makeLeg, mirrorLegs, rollLabel, solveSpool } from '../calc/spool';
 import { parseNumber } from '../calc/format';
 
 let counter = 0;
@@ -33,6 +33,9 @@ export function SpoolBuilderScreen() {
   ]);
   const [gap, setGap] = useState('');
   const [open, setOpen] = useState<number | null>(0);
+  // Roll is what handedness lives in, so a spool with none is flat and is its
+  // own mirror. Worth saying, or Mirror looks broken on the default spool.
+  const rolled = legs.some((l, i) => i > 0 && ((l.roll % 360) + 360) % 360 !== 0);
 
   const gapInches = Number.isFinite(u.parse(gap)) ? u.parse(gap) : settings.defaultGap;
 
@@ -142,6 +145,15 @@ export function SpoolBuilderScreen() {
                 size={16}
                 color={t.colors.textFaint}
               />
+              {i > 0 ? (
+                <Pressable
+                  onPress={() => setLegs((ls) => flipLeg(ls, i))}
+                  hitSlop={12}
+                  accessibilityLabel={`Flip leg ${i + 1} the other way`}
+                >
+                  <Ionicons name="swap-vertical-outline" size={18} color={t.colors.textFaint} />
+                </Pressable>
+              ) : null}
               {legs.length > 1 ? (
                 <Pressable onPress={() => removeLeg(l.id)} hitSlop={12} accessibilityLabel={`Remove leg ${i + 1}`}>
                   <Ionicons name="trash-outline" size={18} color={t.colors.textFaint} />
@@ -220,6 +232,30 @@ export function SpoolBuilderScreen() {
           style={{ flex: 1 }}
         />
       </ControlRow>
+
+      {/* Turning the spool over. Neither of these changes a cut — the cut comes
+          from the leg length and the bend, and both are left alone. */}
+      <ControlRow>
+        <GhostButton
+          label="Mirror"
+          icon="git-compare-outline"
+          onPress={() => setLegs(mirrorLegs)}
+          style={{ flex: 1 }}
+        />
+        <GhostButton
+          label="Flip all"
+          icon="swap-vertical-outline"
+          onPress={() => setLegs(flipAll)}
+          style={{ flex: 1 }}
+        />
+      </ControlRow>
+      <HintRow
+        text={
+          rolled
+            ? 'Mirror gives the opposite hand — same lengths, same bends, every roll reversed. Flip all turns every leg the other way. Neither changes a cut.'
+            : 'This spool lies flat, so it is already its own mirror — use Flip all to fold it the other way, or the arrows on a leg to turn just that one.'
+        }
+      />
 
       <ControlRow>
         <SelectorButton primary={pipe.label} badge={pipe.kind} onPress={pipe.openSheet} style={{ flex: 1 }} />

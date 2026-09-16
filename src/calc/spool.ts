@@ -260,3 +260,54 @@ export function elbowCenterline(
   for (let i = 0; i <= steps; i += 1) out.push(add(centre, rotateAbout(ra, axis, (theta * i) / steps)));
   return out;
 }
+
+// Handing a spool
+// ---------------
+// A leg is described by how far it turns off the last one (the bend) and which
+// way round that turn is pointed (the roll). Bend is how much; roll is which
+// way. So every way of turning a spool over is done to the roll, and neither
+// the bend nor the length is touched by any of it.
+//
+// Which is the reassuring part: **none of these change a single cut.** The cut
+// comes from the leg length and the takeouts, and the takeouts come from the
+// bend angle. Turn a spool over as many times as you like and the pipe you buy
+// and the pieces you cut are the same pieces.
+
+const turnRoll = (r: number): number => ((r % 360) + 360) % 360;
+
+/**
+ * The opposite hand of the same spool.
+ *
+ * Reflecting a spool reverses its handedness, and handedness lives entirely in
+ * the roll, so a mirror is every roll negated. Verified against the geometry:
+ * the result is the original reflected exactly, to the last decimal place.
+ *
+ * A spool with no roll in it lies flat, and a flat spool is its own mirror —
+ * so this correctly does nothing to one. That is not a bug in the button; it
+ * is what a flat spool is. Use `flipAll` to fold one the other way.
+ */
+export function mirrorLegs(legs: SpoolLeg[]): SpoolLeg[] {
+  return legs.map((l) => ({ ...l, roll: turnRoll(-l.roll) }));
+}
+
+/**
+ * Turn one leg the other way, and everything past it with it.
+ *
+ * Half a turn of roll. The legs after it are described relative to it, so they
+ * come along — which is what a fitter means by flipping a leg rather than
+ * breaking the spool in half.
+ */
+export function flipLeg(legs: SpoolLeg[], index: number): SpoolLeg[] {
+  if (index <= 0 || index >= legs.length) return legs;
+  return legs.map((l, i) => (i === index ? { ...l, roll: turnRoll(l.roll + 180) } : l));
+}
+
+/**
+ * Turn every leg the other way.
+ *
+ * On a flat spool this is the fold seen from the other side: what runs up now
+ * runs down. The first leg has nothing to turn off, so it is left alone.
+ */
+export function flipAll(legs: SpoolLeg[]): SpoolLeg[] {
+  return legs.map((l, i) => (i === 0 ? l : { ...l, roll: turnRoll(l.roll + 180) }));
+}

@@ -171,3 +171,5 @@ It stays in inches. 30 inches is `30"`, not `2' 6"`. The **IN** marker top-left 
 - **Drag** to turn it. The rotation is the sweep where nothing goes edge on — about 260°, with the dead views taken out rather than passed through.
 - **Hold a leg** in the picture and drag along it to stretch or shorten it.
 - **NE / NW / SW / SE** jump to the four isometric corners.
+- **Mirror** gives the opposite hand; **Flip all** folds the whole run the other way; the **⇕** on a leg turns just that leg. None of them changes a cut.
+- A spool with no roll in it is flat, and a flat spool is its own mirror — use **Flip all** on those.
