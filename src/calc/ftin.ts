@@ -35,6 +35,32 @@ export function formatFeetInch(inches: number, den: FracDen = 16): string {
   return sign + parts.join(' ');
 }
 
+/**
+ * Inches, with a fraction, never rolled up into feet.
+ *
+ * A fitter works in inches. A thirty inch piece is thirty inches; calling it
+ * two foot six is a conversion, and a conversion is something you ask for. The
+ * FT key asks for it, and until it is pressed the readout stays in the unit the
+ * work is measured, cut and called out in.
+ */
+export function formatInches(inches: number, den: FracDen = 16): string {
+  if (!Number.isFinite(inches)) return '—';
+  const sign = inches < 0 ? '-' : '';
+  const abs = Math.abs(inches);
+
+  let whole = Math.floor(abs);
+  let ticks = Math.round((abs - whole) * den);
+  if (ticks === den) {
+    ticks = 0;
+    whole += 1;
+  }
+  if (!ticks) return `${sign}${whole}"`;
+
+  const g = gcd(ticks, den);
+  const frac = `${ticks / g}/${den / g}`;
+  return `${sign}${whole ? `${whole}-${frac}` : frac}"`;
+}
+
 export function parseFeetInch(raw: string): number {
   if (!raw) return NaN;
   const text = raw.trim().toLowerCase();

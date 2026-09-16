@@ -56,6 +56,15 @@ export function SettingsScreen() {
         onSelect={(v) => update({ unitSystem: v })}
       />
       <ChipRow
+        label="Length readout"
+        options={[
+          { value: 'inches', label: 'Inches' },
+          { value: 'feetInches', label: "Feet + inches" },
+        ]}
+        selected={settings.lengthReadout}
+        onSelect={(v) => update({ lengthReadout: v })}
+      />
+      <ChipRow
         label="Fractions"
         options={[
           { value: 0, label: 'Off' },
@@ -118,6 +127,8 @@ export function SettingsScreen() {
       >
         <Ionicons name="information-circle-outline" size={19} color={t.colors.textMuted} style={{ marginTop: 1 }} />
         <Text style={[t.type.caption, { color: t.colors.textMuted, flex: 1 }]}>
+          The calculator reads out in inches and stays there: 30 inches is 30 inches, not two foot six. Press FT on the keypad to
+          convert an answer to feet and inches, IN to go back. Length readout sets which one it opens on.{'\n\n'}
           Fraction readouts round to the nearest tick of the denominator you pick. The decimal value above them is always the exact
           calculated figure — cut to the decimal when tolerance is tight.
         </Text>

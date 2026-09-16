@@ -130,9 +130,35 @@ The **Cut length** screen offers both, labelled. The **Simple offset**, **Rollin
 
 ---
 
+## Putting it on someone else's phone
+
+Send them the web link. Works on iPhone and Android, no store, nothing to sign.
+
+**iPhone** — open the link in **Safari** (it has to be Safari) → **Share** →
+**Add to Home Screen**.
+
+**Android** — open in Chrome → **⋮** → **Add to Home screen** / **Install app**.
+
+It then opens from an icon like any other app, and works with no signal. It
+updates itself the next time they open it after you push a change.
+
+---
+
+## The calculator reads in inches
+
+It stays in inches. 30 inches is `30"`, not `2' 6"`. The **IN** marker top-left says so.
+
+- **Feet** converts what is on display to feet and inches — `2' 6"`, not a decimal. The marker changes to **FT-IN**.
+- **Inch** takes it back.
+- The choice sticks until you change it, and survives a Clear.
+- **Settings → Length readout** sets which one it opens on.
+
+---
+
 ## Settings worth setting once
 
 - **Weld gap** — default 3/32". Comes off welded and flanged ends only; a screwed or soldered joint pulls up tight and never has it deducted.
+- **Length readout** — Inches (default) or Feet + inches, for the calculator.
 - **Fractions** — off, 1/8, 1/16, 1/32, 1/64. The decimal under it is always the exact figure. Cut to the decimal when tolerance is tight.
 - **Default size** — the pipe every screen opens on.
 

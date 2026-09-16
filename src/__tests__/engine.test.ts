@@ -80,7 +80,7 @@ describe('feet inch fraction arithmetic', () => {
       ...D('12'), ['feet'], ...D('6'), ['inch'], ['add'],
       ...D('3'), ['feet'], ...D('9'), ['inch'], ['equals'],
     ];
-    expect(show(steps)).toBe(`16' 3"`);
+    expect(show(steps)).toBe(`195"`);
   });
 
   test('a fraction survives the arithmetic', () => {
@@ -95,11 +95,11 @@ describe('feet inch fraction arithmetic', () => {
     const steps: Step[] = [
       ...D('10'), ['feet'], ['subtract'], ...D('3'), ['inch'], ['equals'],
     ];
-    expect(show(steps)).toBe(`9' 9"`);
+    expect(show(steps)).toBe(`117"`);
   });
 
   test('a length times a plain number stays a length', () => {
-    expect(show([...D('2'), ['feet'], ['multiply'], ...D('3'), ['equals']])).toBe(`6'`);
+    expect(show([...D('2'), ['feet'], ['multiply'], ...D('3'), ['equals']])).toBe(`72"`);
   });
 
   test('a length divided by a length gives a plain count', () => {
@@ -118,7 +118,7 @@ describe('feet inch fraction arithmetic', () => {
   });
 
   test('a bare number added to a length is taken as inches', () => {
-    expect(show([...D('2'), ['feet'], ['add'], ...D('6'), ['equals']])).toBe(`2' 6"`);
+    expect(show([...D('2'), ['feet'], ['add'], ...D('6'), ['equals']])).toBe(`30"`);
   });
 });
 
@@ -157,7 +157,9 @@ describe('unit conversion through Conv', () => {
   test('a computed length restates in millimetres, metres and feet', () => {
     expect(show([...D('1'), ['inch'], ['equals'], ['mm']])).toBe('25.4 mm');
     expect(show([...D('100'), ['inch'], ['equals'], ['metre']])).toBe('2.54 m');
-    expect(show([...D('30'), ['inch'], ['equals'], ['feet']])).toBe('2.5 feet');
+    // Feet is the one unit a fitter calls out in feet AND inches, so FT gives
+    // that rather than a decimal nobody says out loud.
+    expect(show([...D('30'), ['inch'], ['equals'], ['feet']])).toBe(`2' 6"`);
   });
 
   test('a computed area restates in square feet', () => {
@@ -235,7 +237,7 @@ describe('memory registers and the accumulator', () => {
   test('a register keeps the kind it was given', () => {
     const s = run([...D('12'), ['feet'], ['store'], ['digit', '2']]);
     expect(s.registers['2']!.kind).toBe('linear');
-    expect(displayText(run([['clear'], ['clear'], ['recall'], ['digit', '2']], s))).toBe(`12'`);
+    expect(displayText(run([['clear'], ['clear'], ['recall'], ['digit', '2']], s))).toBe(`144"`);
   });
 
   test('M+ accumulates and Rcl M+ shows the total', () => {
@@ -365,7 +367,7 @@ describe('pi', () => {
 
   test('the circumference of a twelve inch circle', () => {
     const steps: Step[] = [['conv'], ['pi'], ['multiply'], ...D('12'), ['inch'], ['equals']];
-    expect(show(steps)).toBe(`3' 1-11/16"`);
+    expect(show(steps)).toBe(`37-11/16"`);
   });
 });
 
@@ -584,7 +586,7 @@ describe('the trade registers', () => {
     const s = run([...D('15'), ['offset'], ...D('15'), ['run'], ['travel']]);
     near(s.tri.travel!, 21.2132034, 1e-6);
     // 21.2132 to the nearest sixteenth is 9-3/16 over the foot, not 9-1/4.
-    expect(displayText(s)).toBe(`1' 9-3/16"`);
+    expect(displayText(s)).toBe(`21-3/16"`);
   });
 
   test('and the angle falls out of the same pair', () => {
@@ -605,7 +607,7 @@ describe('the trade registers', () => {
 
   test('a register pressed with nothing entered recalls what it holds', () => {
     const s = run([...D('12'), ['offset'], ['clear'], ['clear'], ['offset']]);
-    expect(displayText(s)).toBe(`1'`);
+    expect(displayText(s)).toBe(`12"`);
   });
 
   test('a length is stored as a length and an angle as an angle', () => {
@@ -653,5 +655,67 @@ describe('the trade registers', () => {
   test('the registers survive an ordinary clear', () => {
     const s = run([...D('15'), ['offset'], ['clear'], ['clear']]);
     near(s.tri.offset!, 15, 1e-12);
+  });
+});
+
+
+describe('inches stay inches until feet are asked for', () => {
+  // The thing this is here to stop: a fitter types a length, presses an
+  // operator, and the answer comes back in feet he did not ask for.
+  test('an answer in inches is never rolled up into feet', () => {
+    expect(show([...D('30'), ['inch'], ['equals']])).toBe(`30"`);
+    expect(show([...D('12'), ['inch'], ['multiply'], ...D('6'), ['equals']])).toBe(`72"`);
+    expect(show([...D('96'), ['inch'], ['add'], ...D('99'), ['inch'], ['equals']])).toBe(`195"`);
+    expect(show([...D('240'), ['inch'], ['equals']])).toBe(`240"`);
+  });
+
+  test('a fraction still reads as a fraction, just not as feet', () => {
+    expect(show([...D('30'), ['inch'], ['add'], ...D('1'), ['slash'], ...D('2'), ['inch'], ['equals']])).toBe(
+      `30-1/2"`
+    );
+    // Twelve inch circumference: 37-11/16, not 3 foot 1 and 11/16.
+    expect(show([...D('12'), ['inch'], ['multiply'], ['pi'], ['equals']])).toBe(`37-11/16"`);
+  });
+
+  test('FT converts on demand and IN takes it back', () => {
+    const feet = run([...D('30'), ['inch'], ['equals'], ['feet']]);
+    expect(displayText(feet)).toBe(`2' 6"`);
+    expect(displayText(pressMany(feet, [['inch']]))).toBe(`30"`);
+  });
+
+  test('once asked for, feet stay until asked otherwise', () => {
+    const feet = run([...D('30'), ['inch'], ['equals'], ['feet']]);
+    // A clear wipes the working, not the unit the fitter chose to read in.
+    const next = pressMany(feet, [['clear'], ...D('18'), ['inch'], ['equals']]);
+    expect(displayText(next)).toBe(`1' 6"`);
+    expect(displayText(pressMany(next, [['inch']]))).toBe(`18"`);
+  });
+
+  test('the calculator can be set to open in feet and inches instead', () => {
+    const ft = initialState(16, 'ft');
+    expect(displayText(pressMany(ft, [...D('30'), ['inch'], ['equals']]))).toBe(`2' 6"`);
+    const inches = initialState(16, 'in');
+    expect(displayText(pressMany(inches, [...D('30'), ['inch'], ['equals']]))).toBe(`30"`);
+    // Inches is what it opens on when nothing is said.
+    expect(displayText(pressMany(initialState(), [...D('30'), ['inch'], ['equals']]))).toBe(`30"`);
+  });
+
+  test('metric and the other units are untouched by any of this', () => {
+    expect(show([...D('1'), ['inch'], ['equals'], ['mm']])).toBe('25.4 mm');
+    expect(show([...D('100'), ['inch'], ['equals'], ['metre']])).toBe('2.54 m');
+    expect(show([...D('12'), ['inch'], ['multiply'], ...D('12'), ['inch'], ['equals'], ['feet']])).toBe('1 sq feet');
+  });
+
+  test('IN on an empty calculator still means inches, not nothing', () => {
+    // Pressing a unit key with no digits typed used to be a no-op, so a fitter
+    // who had converted to feet, cleared, and pressed IN was still in feet.
+    const feet = run([...D('30'), ['inch'], ['equals'], ['feet']]);
+    const back = pressMany(feet, [['clear'], ['clear'], ['inch'], ...D('30'), ['inch'], ['equals']]);
+    expect(displayText(back)).toBe(`30"`);
+  });
+
+  test('negatives and a bare zero read straight', () => {
+    expect(show([...D('30'), ['inch'], ['subtract'], ...D('42'), ['inch'], ['equals']])).toBe(`-12"`);
+    expect(show([...D('30'), ['inch'], ['subtract'], ...D('30'), ['inch'], ['equals']])).toBe(`0"`);
   });
 });
