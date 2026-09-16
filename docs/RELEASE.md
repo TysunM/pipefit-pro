@@ -368,17 +368,43 @@ as the profile.
 
 ## 9. The web app, for anyone without an Android
 
-`npm run web:build`, or just push to `main` and let
-`.github/workflows/pages.yml` do it. One-time setup: **Settings → Pages →
-Source: GitHub Actions**.
+`npm run web:build`, or push to `main` and take the **pipefit-pro-web**
+artifact off the run in Actions. That is the whole build.
 
-That is the whole iOS story. An iPhone cannot take a sideloaded APK and Apple
-charges 99 dollars a year before it will let an app onto a device it did not
-sell you the review for. The web build sidesteps all of it: Safari → Share →
+That is also the whole iOS story. An iPhone cannot take a sideloaded APK and
+Apple charges 99 dollars a year before it will let an app onto a device on any
+terms, TestFlight included. The web build sidesteps all of it: Safari, Share,
 Add to Home Screen puts it on the dock as an app, offline, free, with no
-account and nothing on any store.
+account and nothing on any store. The same link installs on Android.
 
-What it gives up against the APK, honestly:
+### Hosting it
+
+**This repository is private, and GitHub Pages will not serve a private
+repository on a free account.** The deploy fails at `actions/configure-pages`
+with nothing the workflow can do about it, which is why the Pages job is off by
+default.
+
+| Route | Cost | Private repo | Gets you |
+|---|---|---|---|
+| **Cloudflare Pages** | free | yes | `pipefit-pro.pages.dev`, auto-deploys on push |
+| **Netlify** | free | yes | `<name>.netlify.app`, auto-deploys on push |
+| GitHub Pages | $4/mo Pro | with Pro | `tysunm.github.io/pipefit-pro/` |
+| GitHub Pages | free | only if public | as above, and the handbook transcription is then on the open internet |
+
+**Cloudflare Pages, once:**
+
+1. dash.cloudflare.com, sign in with GitHub, **Workers & Pages → Create → Pages
+   → Connect to Git**.
+2. Pick `pipefit-pro`, branch `main`.
+3. Build command `npm run web:build`, output directory `dist`.
+4. Save. Every push to `main` redeploys.
+
+**GitHub Pages, if the repo ever goes public or the account goes Pro:**
+Settings → Pages → Source: GitHub Actions, then add a repository variable
+`ENABLE_PAGES` = `true` under Settings → Secrets and variables → Actions →
+Variables. The workflow picks it up on the next push.
+
+### What it gives up against the APK
 
 | | APK | Web app |
 |---|---|---|
@@ -394,11 +420,11 @@ happens. No calculation is stored.
 
 ### Do not point it at a folder without testing
 
-Expo bakes asset paths as `/assets/...`, from the domain root. Pages serves the
-site from `/<repo>/`, so every font and icon 404s and the app comes up bare.
-`tools/pwa.mjs` rewrites them relative after the export, and the fix is
-verified at both a root and a subfolder. If you ever replace that script,
-check a subfolder deploy before trusting it.
+Expo bakes asset paths as `/assets/...`, from the domain root. A host that
+serves the site from `/<repo>/` makes every font and icon 404, and the app
+comes up bare. `tools/pwa.mjs` rewrites them relative after the export, and the
+fix is verified at both a root and a subfolder. If you ever replace that
+script, check a subfolder deploy before trusting it.
 
 ---
 

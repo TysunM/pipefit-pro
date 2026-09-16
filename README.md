@@ -160,8 +160,12 @@ any phone, add it to the home screen, and it runs from an icon with no browser
 chrome — the same on an iPhone as on an Android, with no Apple Developer
 account, no keystore and no store listing.
 
-`.github/workflows/pages.yml` publishes it to GitHub Pages on every push to
-`main`. One-time setup: **Settings → Pages → Source: GitHub Actions**.
+`.github/workflows/web.yml` builds it on every push to `main` and leaves the
+whole site downloadable from the run. Hosting is a separate choice: this repo
+is private, and GitHub Pages will not serve a private repo on a free account,
+so the Pages job is off unless a repository variable `ENABLE_PAGES` says
+otherwise. [docs/RELEASE.md §9](docs/RELEASE.md) walks through Cloudflare Pages,
+which is free and does serve a private repo.
 
 Three things make the difference between a bookmark and an app, and all three
 are done after the export by `tools/pwa.mjs` so that none of them touch
@@ -204,6 +208,8 @@ matches the installed app is never downloaded rather than installed and
 crashing. `npm run runtime-version` prints the fingerprint to compare against
 the build on expo.dev — [docs/RELEASE.md §5](docs/RELEASE.md#5-push-an-update-over-the-air)
 covers the whole loop.
+
+**[docs/USER-GUIDE.md](docs/USER-GUIDE.md)** is the full guide: every module, what to measure, what to type, what each number means and why, with a worked example on each that was run through the solvers rather than typed from memory. A printable PDF sits beside it.
 
 **[docs/QUICK-REFERENCE.md](docs/QUICK-REFERENCE.md)** is the one page for the job: which screen, what to type, what to read, with the offset multipliers to check it against. There is a printable PDF of it beside it.
 
