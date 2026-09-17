@@ -193,6 +193,21 @@ It stays in inches. 30 inches is `30"`, not `2' 6"`. The **IN** marker top-left 
 
 ---
 
+## The re-torque log
+
+On a finished joint, under **Re-torque**.
+
+- A joint that was right **cold can be slack hot**: the gasket creeps, the bolts and flanges grow at different rates, the whole thing relaxes.
+- Once the line has been up to temperature and back, go round at full torque and tap **Record a check**.
+- The question is **Bolts moved** or **All tight**, with no default. That finding is the reading, not the date.
+- **Bolts took up** = still relaxing, go back after another cycle. **All tight** = settled, and that closes it out.
+- The register splits into **Needs a re-check** and **Closed out**. Work the first list after a startup.
+- **Clear closed out** never touches a joint still waiting on a check.
+- The app will not tell you *when* to go back — that comes from the job's spec, not from an app.
+- Reopening a bolt-up, or changing the flange, throws its log away with it.
+
+---
+
 ## The 3D spool
 
 **3D spool** → add legs, each with a length, a bend angle off the last one and a roll.

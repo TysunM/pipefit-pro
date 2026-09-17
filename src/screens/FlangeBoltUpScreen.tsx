@@ -34,13 +34,20 @@ import { useJoints } from '../state/joints';
 import {
   Joint,
   JointSpec,
+  ReCheck,
   Register,
   SCRATCH_ID,
+  addCheck,
   freshId,
   getJoint,
+  isDone,
   isScratch,
+  isSettled,
+  lastCheck,
   newJoint,
   putJoint,
+  removeCheck,
+  sinceLabel,
   withFlange,
   withState,
 } from '../state/register';
@@ -157,6 +164,7 @@ function Bolting({
   const [width, setWidth] = useState(FACE_MAX);
   const [showDone, setShowDone] = useState(false);
   const [naming, setNaming] = useState(false);
+  const [checking, setChecking] = useState(false);
 
   const flange = useMemo(() => boltUp(nps ?? NaN, cls), [nps, cls]);
   const sizes = useMemo(() => boltUpSizes(cls), [cls]);
@@ -381,6 +389,15 @@ function Bolting({
         />
       </ControlRow>
 
+      {isDone(joint) ? (
+        <ReTorque
+          t={t}
+          joint={joint}
+          onRecord={() => setChecking(true)}
+          onRemove={(at) => write(removeCheck(joint, at, Date.now()))}
+        />
+      ) : null}
+
       <Divider />
 
       <HintRow text="A flange is never pulled down round the circle. Every bolt is followed by the one straight across it, in three passes, then checked round at full torque. The screen will only take the bolt the sequence is asking for — tap anything else and it points you back." />
@@ -521,6 +538,18 @@ function Bolting({
         joint={joint}
         onCancel={() => setNaming(false)}
         onSave={saveName}
+      />
+      <CheckSheet
+        t={t}
+        visible={checking}
+        joint={joint}
+        onCancel={() => setChecking(false)}
+        onSave={(moved, torqueText, note) => {
+          setChecking(false);
+          const n = Number(torqueText);
+          const value = torqueText.trim() !== '' && Number.isFinite(n) && n > 0 ? n : null;
+          write(addCheck(joint, { moved, torque: value, note }, Date.now()));
+        }}
       />
     </Screen>
   );
@@ -849,6 +878,279 @@ function NameSheet({
               onPress={() => onSave(tag.trim(), note.trim())}
             />
           </View>
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
+}
+
+/** The date a check was taken, written the way it would go on a turnover sheet. */
+const checkDate = (at: number): string =>
+  new Date(at).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+
+/**
+ * The re-torque log, on a joint that has been finished once.
+ *
+ * A bolted joint is a spring holding a gasket squashed, and taking the line up
+ * to temperature relaxes all of it at once — the gasket creeps, the bolts and
+ * flanges grow at different rates. So a joint that was right cold can be slack
+ * hot, and the heading says which of those this one is rather than only that
+ * somebody went back to look.
+ */
+function ReTorque({
+  t,
+  joint,
+  onRecord,
+  onRemove,
+}: {
+  t: Theme;
+  joint: Joint;
+  onRecord: () => void;
+  onRemove: (at: number) => void;
+}) {
+  const last = lastCheck(joint);
+  const settled = isSettled(joint);
+  const tone = settled ? t.colors.success : last ? t.colors.accent : t.colors.textMuted;
+  const heading = settled
+    ? 'Nothing moved last time'
+    : last
+      ? 'Still taking up'
+      : 'Not checked since it came up to temperature';
+
+  return (
+    <>
+      <Divider />
+      <SectionHeader
+        title="Re-torque"
+        meta={joint.checks.length ? `${joint.checks.length} check${joint.checks.length === 1 ? '' : 's'}` : undefined}
+      />
+
+      <View style={{ paddingHorizontal: t.layout.screenPadding, marginBottom: t.space.lg }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.sm, marginBottom: t.space.sm }}>
+          <Ionicons
+            name={settled ? 'checkmark-circle' : last ? 'alert-circle' : 'time-outline'}
+            size={18}
+            color={tone}
+          />
+          <Text style={[t.type.bodyStrong, { color: tone, flex: 1 }]}>{heading}</Text>
+        </View>
+        <Text style={[t.type.caption, { color: t.colors.textMuted }]}>
+          {settled
+            ? 'A check that finds every bolt tight is the one that closes a joint out. Check it again if the line cycles hard.'
+            : last
+              ? 'Bolts took up on the last check, so the joint is still relaxing. Go back to it after another cycle.'
+              : 'Hot service relaxes a joint that was right when it was cold. Once the line has been up to temperature and back, go round it again and record what you find.'}
+        </Text>
+      </View>
+
+      {joint.checks
+        .slice()
+        .reverse()
+        .map((c) => (
+          <CheckRow key={c.at} t={t} check={c} onRemove={() => onRemove(c.at)} />
+        ))}
+
+      <ControlRow>
+        <AccentButton label="Record a check" icon="create-outline" style={{ flex: 1 }} onPress={onRecord} />
+      </ControlRow>
+    </>
+  );
+}
+
+function CheckRow({ t, check, onRemove }: { t: Theme; check: ReCheck; onRemove: () => void }) {
+  const [confirming, setConfirming] = useState(false);
+  const now = Date.now();
+  return (
+    <View
+      style={{
+        marginHorizontal: t.layout.screenPadding,
+        marginBottom: t.space.md,
+        padding: t.space.lg,
+        borderRadius: t.radius.md,
+        borderWidth: t.hairline,
+        borderColor: confirming ? t.colors.danger : t.colors.border,
+        backgroundColor: t.colors.bgRaised,
+        gap: 5,
+      }}
+    >
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.sm }}>
+        <Ionicons
+          name={check.moved ? 'alert-circle' : 'checkmark-circle'}
+          size={16}
+          color={check.moved ? t.colors.accent : t.colors.success}
+        />
+        <Text style={[t.type.bodyStrong, { color: check.moved ? t.colors.accent : t.colors.success, flex: 1 }]}>
+          {check.moved ? 'Bolts took up' : 'All tight'}
+        </Text>
+        {confirming ? (
+          <>
+            <Pressable onPress={() => setConfirming(false)} hitSlop={10} accessibilityRole="button">
+              <Text style={[t.type.labelSmall, { color: t.colors.textMuted }]}>Keep</Text>
+            </Pressable>
+            <Pressable
+              onPress={onRemove}
+              hitSlop={10}
+              accessibilityRole="button"
+              accessibilityLabel={`Confirm delete the check from ${checkDate(check.at)}`}
+            >
+              <Text style={[t.type.labelSmall, { color: t.colors.danger }]}>Delete</Text>
+            </Pressable>
+          </>
+        ) : (
+          <Pressable
+            onPress={() => setConfirming(true)}
+            hitSlop={10}
+            accessibilityRole="button"
+            accessibilityLabel={`Delete the check from ${checkDate(check.at)}`}
+          >
+            <Ionicons name="trash-outline" size={15} color={t.colors.textFaint} />
+          </Pressable>
+        )}
+      </View>
+      <Text style={[t.type.caption, { color: t.colors.textMuted }]}>
+        {`${checkDate(check.at)} · ${sinceLabel(check.at, now)}${
+          check.torque ? ` · ${Math.round(check.torque)} ft-lb` : ''
+        }`}
+      </Text>
+      {check.note ? <Text style={[t.type.caption, { color: t.colors.text }]}>{check.note}</Text> : null}
+    </View>
+  );
+}
+
+/**
+ * Recording a check.
+ *
+ * Whether anything moved is asked as two buttons with no default on purpose.
+ * It is the reading the whole log exists for, and a preselected answer is one
+ * somebody taps past without going and looking.
+ */
+function CheckSheet({
+  t,
+  visible,
+  joint,
+  onCancel,
+  onSave,
+}: {
+  t: Theme;
+  visible: boolean;
+  joint: Joint;
+  onCancel: () => void;
+  onSave: (moved: boolean, torque: string, note: string) => void;
+}) {
+  const [moved, setMoved] = useState<boolean | null>(null);
+  const [torque, setTorque] = useState('');
+  const [note, setNote] = useState('');
+
+  // The torque box starts empty, with the joint's own figure only as a hint.
+  // Pre-filling it would put a number nobody typed into a record, and the
+  // point of a record is that everything in it was actually observed.
+  useEffect(() => {
+    if (visible) {
+      setMoved(null);
+      setTorque('');
+      setNote('');
+    }
+  }, [visible]);
+
+  const field = {
+    height: t.layout.fieldHeight,
+    borderRadius: t.radius.md,
+    borderWidth: 1,
+    borderColor: t.colors.border,
+    backgroundColor: t.colors.bgRaised,
+    color: t.colors.text,
+    paddingHorizontal: t.space.lg,
+    fontSize: 17,
+    fontWeight: '600' as const,
+  };
+
+  const answer = (value: boolean, label: string, icon: keyof typeof Ionicons.glyphMap, colour: string) => {
+    const on = moved === value;
+    return (
+      <Pressable
+        onPress={() => setMoved(value)}
+        accessibilityRole="button"
+        accessibilityState={{ selected: on }}
+        accessibilityLabel={label}
+        style={{
+          flex: 1,
+          height: t.layout.controlHeight,
+          borderRadius: t.radius.md,
+          borderWidth: on ? 2 : 1,
+          borderColor: on ? colour : t.colors.border,
+          backgroundColor: on ? colour : t.colors.bgRaised,
+          alignItems: 'center',
+          justifyContent: 'center',
+          flexDirection: 'row',
+          gap: t.space.sm,
+        }}
+      >
+        <Ionicons name={icon} size={18} color={on ? '#FFFFFF' : colour} />
+        <Text style={[t.type.button, { color: on ? '#FFFFFF' : t.colors.text }]}>{label}</Text>
+      </Pressable>
+    );
+  };
+
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
+      <Pressable style={{ flex: 1, backgroundColor: t.colors.overlay, justifyContent: 'center' }} onPress={onCancel}>
+        <Pressable
+          onPress={(e) => e.stopPropagation()}
+          style={{
+            margin: t.space.xxl,
+            padding: t.space.xxl,
+            borderRadius: t.radius.xl,
+            backgroundColor: t.colors.bg,
+            gap: t.space.md,
+          }}
+        >
+          <Text style={[t.type.sectionTitle, { color: t.colors.text, fontFamily: t.font.serif }]}>
+            Re-torque check
+          </Text>
+          <Text style={[t.type.caption, { color: t.colors.textMuted }]}>
+            Go round the flange at full torque. Did any bolt take up?
+          </Text>
+
+          <View style={{ flexDirection: 'row', gap: t.space.md, marginTop: t.space.xs }}>
+            {answer(true, 'Bolts moved', 'alert-circle-outline', t.colors.accent)}
+            {answer(false, 'All tight', 'checkmark-circle-outline', t.colors.success)}
+          </View>
+
+          <TextInput
+            value={torque}
+            onChangeText={setTorque}
+            keyboardType="decimal-pad"
+            placeholder={joint.torque ? `Torque used \u2014 spec is ${Math.round(joint.torque)}` : 'Torque used, ft-lb'}
+            placeholderTextColor={t.colors.textFaint}
+            accessibilityLabel="Re-torque check torque"
+            style={field}
+          />
+          <TextInput
+            value={note}
+            onChangeText={setNote}
+            placeholder="What you found, if it is worth keeping"
+            placeholderTextColor={t.colors.textFaint}
+            accessibilityLabel="Re-torque check note"
+            style={field}
+          />
+
+          <View style={{ flexDirection: 'row', gap: t.space.md, marginTop: t.space.sm }}>
+            <GhostButton label="Cancel" onPress={onCancel} style={{ flex: 1 }} />
+            <AccentButton
+              label="Save"
+              icon="checkmark"
+              style={{ flex: 1, opacity: moved === null ? 0.4 : 1 }}
+              onPress={() => {
+                if (moved === null) return;
+                onSave(moved, torque, note.trim());
+              }}
+            />
+          </View>
+          {moved === null ? (
+            <Text style={[t.type.caption, { color: t.colors.textFaint, textAlign: 'center' }]}>
+              Answer the question above to save the check.
+            </Text>
+          ) : null}
         </Pressable>
       </Pressable>
     </Modal>

@@ -16,8 +16,12 @@ import {
   doneJoints,
   getJoint,
   isDone,
+  isSettled,
+  lastCheck,
+  needsCheckJoints,
   openJoints,
   removeJoint,
+  settledJoints,
   sinceLabel,
 } from '../state/register';
 import { useJoints } from '../state/joints';
@@ -33,7 +37,11 @@ function flangeLabel(j: Joint): string {
 }
 
 function where(j: Joint): string {
-  if (isFinished(j.state)) return 'All four passes recorded';
+  if (isFinished(j.state)) {
+    const last = lastCheck(j);
+    if (!last) return 'All four passes · not re-checked';
+    return last.moved ? 'Re-checked · bolts took up' : 'Re-checked · all tight';
+  }
   const pass = currentPass(j.state);
   if (boltUpProgress(j.state).done === 0) return 'Not started';
   return `${pass?.label ?? ''} · bolt ${j.state.step + 1} of ${j.bolts}`;
@@ -119,7 +127,20 @@ function JointRow({
           </Text>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.sm, marginTop: 2 }}>
             <PassPips t={t} joint={joint} />
-            <Text style={[t.type.caption, { color: isDone(joint) ? t.colors.success : t.colors.data, flexShrink: 1 }]} numberOfLines={1}>
+            <Text
+              style={[
+                t.type.caption,
+                {
+                  color: isSettled(joint)
+                    ? t.colors.success
+                    : isDone(joint)
+                      ? t.colors.accent
+                      : t.colors.data,
+                  flexShrink: 1,
+                },
+              ]}
+              numberOfLines={1}
+            >
               {where(joint)}
             </Text>
           </View>
@@ -129,7 +150,13 @@ function JointRow({
             </Text>
           ) : null}
           <Text style={[t.type.caption, { color: t.colors.textFaint }]}>
-            {isDone(joint) ? `Finished ${sinceLabel(joint.completedAt ?? joint.updatedAt, now)}` : `Worked ${sinceLabel(joint.updatedAt, now)}`}
+            {(() => {
+              const last = lastCheck(joint);
+              if (last) return `Checked ${sinceLabel(last.at, now)}`;
+              return isDone(joint)
+                ? `Finished ${sinceLabel(joint.completedAt ?? joint.updatedAt, now)}`
+                : `Worked ${sinceLabel(joint.updatedAt, now)}`;
+            })()}
           </Text>
         </View>
         <Ionicons name="chevron-forward" size={18} color={t.colors.textFaint} />
@@ -220,6 +247,10 @@ export function JointsScreen({ navigation }: Props) {
 
   const open = openJoints(register);
   const done = doneJoints(register);
+  // Finished is not the same as closed out. A joint that has not been back to
+  // since the line came up to temperature is the one worth a walk.
+  const due = needsCheckJoints(register);
+  const settled = settledJoints(register);
   const scratch = getJoint(register, SCRATCH_ID);
   const scratchStarted = scratch ? boltUpProgress(scratch.state).done > 0 : false;
 
@@ -290,10 +321,28 @@ export function JointsScreen({ navigation }: Props) {
         </>
       ) : null}
 
-      {done.length ? (
+      {due.length ? (
         <>
-          <SectionHeader title="Finished" meta={`${done.length} ${done.length === 1 ? 'joint' : 'joints'}`} />
-          {done.map((j) => (
+          <SectionHeader title="Needs a re-check" meta={`${due.length} ${due.length === 1 ? 'joint' : 'joints'}`} />
+          <View style={{ paddingHorizontal: t.layout.screenPadding, marginBottom: t.space.md }}>
+            <Text style={[t.type.caption, { color: t.colors.textMuted }]}>
+              Bolted up, but either not been back to since the line came up to temperature, or still taking up when it
+              was.
+            </Text>
+          </View>
+          {due.map((j) => (
+            <JointRow key={j.id} t={t} joint={j} now={now} onOpen={() => go(j.id)} onDelete={() => drop(j.id)} />
+          ))}
+        </>
+      ) : null}
+
+      {settled.length ? (
+        <>
+          <SectionHeader
+            title="Closed out"
+            meta={`${settled.length} ${settled.length === 1 ? 'joint' : 'joints'}`}
+          />
+          {settled.map((j) => (
             <JointRow key={j.id} t={t} joint={j} now={now} onOpen={() => go(j.id)} onDelete={() => drop(j.id)} />
           ))}
         </>
@@ -308,24 +357,26 @@ export function JointsScreen({ navigation }: Props) {
         </View>
       ) : null}
 
-      {done.length > 1 ? (
+      {settled.length > 1 ? (
         <ControlRow>
           {clearing ? (
             <>
               <GhostButton label="Keep them" style={{ flex: 1 }} onPress={() => setClearing(false)} />
               <GhostButton
-                label={`Delete ${done.length}`}
+                label={`Delete ${settled.length}`}
                 icon="trash-outline"
                 style={{ flex: 1, borderColor: t.colors.danger }}
                 onPress={() => {
                   setClearing(false);
-                  apply((r) => doneJoints(r).reduce((acc, j) => removeJoint(acc, j.id), r));
+                  // Only the closed-out ones. A joint still waiting on a
+                  // re-check is not finished with, whatever the passes say.
+                  apply((r) => settledJoints(r).reduce((acc, j) => removeJoint(acc, j.id), r));
                 }}
               />
             </>
           ) : (
             <GhostButton
-              label="Clear finished"
+              label="Clear closed out"
               icon="trash-outline"
               style={{ flex: 1 }}
               onPress={() => setClearing(true)}
