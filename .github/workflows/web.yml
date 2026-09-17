@@ -10,6 +10,12 @@
 #
 #   ENABLE_PAGES = true   once the repo is public, or the account is on Pro.
 #
+# Pages itself also has to be set to build from GitHub Actions rather than from
+# a branch, under Settings -> Pages -> Source. On "Deploy from a branch" this
+# workflow's deploy job is bypassed entirely and Pages serves the repository
+# root, which holds no index.html — so the site comes out as the README or a
+# 404 rather than the app.
+#
 # For a private repo on a free account, host it somewhere that will serve one.
 # docs/RELEASE.md section 9 has the walk-through.
 name: Web
@@ -52,6 +58,13 @@ jobs:
       # opens the app rather than a 404.
       - name: Fall back to the app on any path
         run: cp dist/index.html dist/404.html
+
+      # A custom domain set in the Pages settings is stored against the repo,
+      # but an Actions deploy publishes only what is in the artifact — so the
+      # CNAME has to travel with the built site or the first deploy drops the
+      # domain. Guarded, so taking the CNAME out never breaks the build.
+      - name: Keep the custom domain
+        run: if [ -f CNAME ]; then cp CNAME dist/CNAME; fi
 
       # Always downloadable from the run, hosting or not.
       - name: Keep the built site on the run
