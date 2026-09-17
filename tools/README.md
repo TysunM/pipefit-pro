@@ -20,6 +20,21 @@ Edit `mark.js` and re-run. Android masks the adaptive foreground to roughly the
 inner two thirds, so anything drawn outside that scale gets cut off on a
 launcher — keep `adaptive-icon.png` at or below 0.62.
 
+## docs.mjs — the guide as a PDF
+
+Renders `docs/*.md` to the PDFs beside them, through the same Chromium
+`icons.mjs` uses.
+
+```
+node tools/docs.mjs
+```
+
+Not a `package.json` script on purpose: the scripts block is hashed into the
+expo runtime fingerprint, so adding one would force every installed build to be
+rebuilt before it could take another OTA update. `KEEP_HTML=1` leaves the
+intermediate page next to the PDF, which is the only way to see what went into
+it without a PDF renderer to hand.
+
 ## scan.py — reading the scanned handbooks
 
 The handbook scans are mixed raster: a blurred JPEG 2000 background carrying

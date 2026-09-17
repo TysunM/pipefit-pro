@@ -1,0 +1,26 @@
+{
+  // Cloudflare Workers Builds. This repository is private, and GitHub Pages
+  // will not serve a private repository on a free account, so this is how the
+  // web app gets a link the crew can install from.
+  //
+  // There is no `main` here on purpose: with `assets` and no script, the
+  // Worker is a pure static host. Nothing runs per request.
+  //
+  // The build command that produces ./dist is set in the Cloudflare dashboard,
+  // under the project's Settings -> Build, and must be:
+  //
+  //     npm run web:build
+  //
+  // That runs the Expo web export and then tools/pwa.mjs, which makes the
+  // asset paths relative, injects the manifest and the iOS meta tags, and
+  // writes the service worker that lets it open with no signal.
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "pipefit-pro",
+  "compatibility_date": "2026-09-16",
+  "assets": {
+    "directory": "./dist",
+    // The whole app lives behind one page, so any path that is not a file is
+    // the app. Without this a stale bookmark or a refresh lands on a 404.
+    "not_found_handling": "single-page-application"
+  }
+}

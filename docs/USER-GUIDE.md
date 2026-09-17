@@ -587,6 +587,129 @@ The dark keys along the top are the pipefitting ones. **Conv** turns on the seco
 
 ---
 
+## Flange bolt-up
+
+**Work the bolts in the order the standard says, and have the app refuse the wrong one.**
+
+### Why a flange is not tightened round the circle
+
+A flange joint is a spring. Pull one bolt down hard and the flange tips towards it, which *unloads* the bolts on the far side. Go round the circle in order and you chase that tip all the way round: by the time you get back to bolt 1 it is slack, the gasket is crushed on one side and dry on the other, and the joint weeps.
+
+Two rules fix it, and this module is nothing more than those two rules made hard to get wrong:
+
+- **Cross the flange.** Every bolt is followed by the one **straight across** from it, so the two sides come down together and the flange stays parallel.
+- **Do it in passes.** Snug the whole joint at about a third, go round again at about two thirds, then again at full. Tightening any bolt relaxes its neighbours, so the first trip round is always uneven no matter how careful you are.
+
+Then one more that gets skipped more than any other step in pipefitting:
+
+- **The last pass goes round, not across, at full torque.** Its job is to pick up the relaxation the three cross passes left behind. This is the *rotational* pass in ASME PCC-1, and it is the difference between a joint that holds and a joint that needs re-torquing next week.
+
+### The four passes
+
+| Pass | Torque | Order | What it is doing |
+|---|---|---|---|
+| 1 | ~30% | Across | Snugging the joint up square before anything is pulled down hard |
+| 2 | ~60% | Across | The gasket is seating, so bolts done early have gone slack |
+| 3 | 100% | Across | Full torque, still crossing |
+| 4 | 100% | **Round** | The check. Picks up what the cross passes left |
+
+Four passes over every bolt. On an 8 bolt flange that is 32 taps; on a 16 bolt flange, 64.
+
+### Step by step
+
+1. Tap **Flange bolt-up**. It opens on the size the app is set to.
+2. Set **CLASS** (125 or 250 lb) and **SIZE**. The bolt count follows the size — you do not set it.
+3. If the flange is not in the cast iron tables (a raised-face steel flange, say), set **BOLTS** directly. The sequence only needs the count.
+4. Optional: put the **final torque from the job's bolting spec** in the torque field. The header then shows the figure for each pass instead of the percentage.
+5. The header says which bolt is next. Find it on the face — it has a dark ring around it — and tighten it.
+6. **Tap that bolt.** It changes colour and the header moves to the next one.
+7. Work round until the header reads **Joint complete**.
+
+### What happens if you tap the wrong bolt
+
+Nothing moves. The app tells you which bolt you hit, which bolt it wants, and flashes red on the **right** one. Nothing is recorded, no colour changes, and the sequence does not advance.
+
+That is the point. A bolt map you can tap anywhere is a picture. One that only accepts the bolt the sequence is asking for is a check.
+
+**Undo** takes the last bolt back, including back into the previous pass if that is where you are. **Start over** clears the joint.
+
+### What the colours mean
+
+| Colour | Meaning |
+|---|---|
+| Grey outline | Not touched yet |
+| **Yellow** | Snug, pass 1 at ~30% |
+| **Orange** | Pass 2 at ~60% |
+| **Blue** | Pass 3, full torque |
+| **Green** | Checked on the final round |
+
+Four flat, saturated colours rather than the soft tints the rest of the app uses, because you have to tell a bolt at a third from a bolt at two thirds *across the width of a phone, in daylight*.
+
+### Worked example — 6" class 125
+
+Eight bolts. The app shows this from the table:
+
+| Figure | Value |
+|---|---|
+| Flange OD | 11" |
+| Flange thickness | 1" |
+| Bolt circle | 9-1/2" |
+| Bolts | 8 × 3/4", 3-1/4" long |
+| Bolt hole | 7/8" drilled |
+| Bolt to bolt | 3.6355" |
+| Ring gasket | 6" × 8-3/4" |
+
+**Passes 1, 2 and 3 (across):**
+
+```
+1 → 5 → 3 → 7 → 2 → 6 → 4 → 8
+```
+
+**Pass 4 (round):**
+
+```
+1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
+```
+
+With a bolting spec of **300 ft-lb**, the app shows **90**, then **180**, then **300**, then **300** ft-lb.
+
+Read the cross sequence and you can see the rule: 1 then 5 is straight across (180°), 5 then 3 is a quarter turn back, 3 then 7 straight across again. Every *pair* is opposite; the pairs themselves step round the flange.
+
+### Worked example — 16" OD class 125
+
+Sixteen bolts, and the sequence a lot of shops have taped inside a gang box:
+
+```
+1 → 9 → 5 → 13 → 3 → 11 → 7 → 15 → 2 → 10 → 6 → 14 → 4 → 12 → 8 → 16
+```
+
+The app generates this rather than looking it up, by the halving rule the tabulated sequences are built on: take the pattern for half the bolts and follow each entry with the bolt directly opposite. It reproduces the published **4, 8, 12 and 16** bolt orders exactly, which is the check that the rule is the right one.
+
+### Where the bolt numbers are on the real flange
+
+Bolt 1 is the first hole **clockwise of top dead centre**, and it sits **half a pitch off the centreline, not on it**. That is how flanges are drilled — it is what lets a fitting be turned a quarter turn and still bolt up — and it is how the app draws them.
+
+- 8 bolts: first hole at 22.5°, then every 45°
+- 16 bolts: first hole at 11.25°, then every 22.5°
+- 24 bolts: first hole at 7.5°, then every 15°
+
+Any starting bolt works as long as you keep the pattern. The app starts at its bolt 1; if you would rather start somewhere else, turn the screen so the app's bolt 1 lands on yours and keep going round the same way.
+
+### Big flanges
+
+A 48" flange has 44 bolts and a 96" has 68. Drawn to fit a phone those holes would be twelve pixels apart, and a touch target that spills into its neighbour would register the wrong bolt — which on a screen whose whole job is to refuse the wrong bolt is worse than useless.
+
+So above about 40 bolts the face **grows and scrolls sideways** instead of the bolts shrinking into each other. Swipe the picture across. Every target stays at least 26 pixels from the next one, at every count in both tables.
+
+### Where people go wrong
+
+- **Skipping the last pass.** Three cross passes and no check round is the most common version of this job, and it is the one that comes back.
+- **One bolt straight to full torque.** Tempting when you are near the end of a shift. It cocks the flange and unloads everything opposite.
+- **Guessing the torque.** The app deliberately does not supply a final figure. It depends on the gasket, the stud material and whether the threads are lubricated, and a guess either crushes the gasket or leaves the joint loose. Get it from the bolting spec.
+- **Treating "Joint complete" as a sign-off.** The app recorded a sequence. It did not measure torque and it cannot see the gasket. On anything that runs hot, check the joint again after the line has been up to temperature.
+
+---
+
 ## Handbook
 
 Every table from the printed book, searchable, **with its page number on it**.
