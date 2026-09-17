@@ -16,6 +16,7 @@ import { MiterBendScreen } from '../screens/MiterBendScreen';
 import { ThreadEngagementScreen } from '../screens/ThreadEngagementScreen';
 import { HandBenderScreen } from '../screens/HandBenderScreen';
 import { FlangeBoltUpScreen } from '../screens/FlangeBoltUpScreen';
+import { JointsScreen } from '../screens/JointsScreen';
 import { SpoolBuilderScreen } from '../screens/SpoolBuilderScreen';
 import { CalculatorScreen } from '../screens/CalculatorScreen';
 import { ReferenceScreen } from '../screens/ReferenceScreen';
@@ -74,6 +75,7 @@ export function RootNavigator() {
         <Stack.Screen name="ThreadEngagement" component={ThreadEngagementScreen} options={{ title: 'Thread engagement' }} />
         <Stack.Screen name="HandBender" component={HandBenderScreen} options={{ title: 'Pipe bend' }} />
         <Stack.Screen name="FlangeBoltUp" component={FlangeBoltUpScreen} options={{ title: 'Flange bolt-up' }} />
+        <Stack.Screen name="Joints" component={JointsScreen} options={{ title: 'Joint register' }} />
         <Stack.Screen name="Calculator" component={CalculatorScreen} options={{ title: 'Calculator' }} />
         <Stack.Screen name="SpoolBuilder" component={SpoolBuilderScreen} options={{ title: '3D spool' }} />
         <Stack.Screen name="Reference" component={ReferenceScreen} options={{ title: 'Handbook' }} />

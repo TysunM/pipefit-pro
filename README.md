@@ -22,7 +22,7 @@ npx expo start
 
 ## Calculators
 
-Simple offset · Rolling offset · Cut length · Saddle bend · Miter bend · Thread engagement · Hand bender · Flange bolt-up.
+Simple offset · Rolling offset · Cut length · Saddle bend · Miter bend · Thread engagement · Hand bender · Flange bolt-up · Joint register.
 
 ## Flange bolt-up
 
@@ -44,6 +44,34 @@ screen can point at it. Undo is its exact inverse, across pass boundaries.
 Face geometry is sized from the bolt count rather than the other way round, so
 no two touch targets ever overlap — a 68 hole flange grows the face and scrolls
 sideways instead of shrinking the bolts into each other.
+
+## The joint register
+
+A bolt-up is written to AsyncStorage on every bolt, not on leaving the screen,
+because the case it exists for is a phone going into a pocket mid-pass. All the
+reasoning is pure and in `src/state/register.ts`; `joints.tsx` only reads the
+store once, hands the register out and writes it back.
+
+Writes are queued rather than fired in parallel: only the newest value is ever
+pending, it stays pending until the store has taken it, and a failed write
+leaves it there to be retried by the next change instead of vanishing.
+
+Stored joints are validated against themselves on the way in, not merely
+type-checked. In any reachable state every bolt sits at `pass` or `pass + 1`,
+and the count at `pass + 1` is exactly `step` — a pass advances only when its
+last bolt is worked, which zeroes the step and levels the array. A store that
+fails that is dropped and counted, never repaired: a half-repaired bolt-up is
+indistinguishable from a real one on screen and would put the fitter on the
+wrong bolt.
+
+A store written by a newer `REGISTER_VERSION` is left untouched and nothing is
+written for the session, because the web app and the APK run side by side and
+the older one must not overwrite the newer one's joints. Overriding it is an
+explicit tap that says what it costs.
+
+The 200-joint cap drops finished joints oldest first and **never** drops a
+part-done one, even over the cap — unfinished work is the only thing in the
+register that cannot be worked out again.
 
 ## Geometry
 

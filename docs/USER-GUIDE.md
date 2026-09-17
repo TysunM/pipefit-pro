@@ -737,6 +737,78 @@ So above about 40 bolts the face **grows and scrolls sideways** instead of the b
 
 ---
 
+## Joint register
+
+**Every bolt-up is saved as you work it, bolt by bolt.**
+
+### What it is for
+
+A flange bolt-up is four passes over every bolt. On a real job you get called away in the middle of one — the crane needs a hand, the welder wants the fit checked, your phone goes in your pocket and stays there.
+
+Come back and you have two bad options: start the joint again, or guess which bolts you had already pulled down. **Guessing is how a bolt gets taken to full torque twice while its neighbour never gets touched at all** — which is exactly the uneven joint the passes exist to prevent.
+
+So the app writes the joint down **on every bolt**, not when you leave the screen. Close the app, kill it, restart the phone: you come back on the same bolt, with the same bolts coloured in.
+
+### Two kinds of joint
+
+| | Where it lives | When to use it |
+|---|---|---|
+| **The unnamed joint** | Opens straight from **Flange bolt-up** | One joint, no paperwork. Still saved, still resumable. |
+| **A named joint** | Kept in the register by its tag | You will come back to it, or you want a record of it |
+
+You never have to name anything. Open **Flange bolt-up**, work the joint, and it is saved either way. Naming is for when you want it **kept** — several joints on the go, or a record that the joint was done.
+
+### Step by step
+
+1. Tap **Flange bolt-up** and work the joint as normal. The bar at the top reads **Unnamed joint · Saved as you go**.
+2. To keep it, tap **Name it**. Give it whatever you would call it out by — a line number, a spool mark, a valve tag — and a note for where it is.
+3. It moves into the register under that tag, **with the work you have already done**, and the unnamed slot is cleared for the next one.
+4. Tap the **list icon** in that bar, or **Joint register** on the home screen, to see everything.
+5. Tap any joint to pick it up exactly where it was.
+
+### Reading a row
+
+```
+8-CWS-102 FL-3
+6" · class 125 · 8 bolts
+▬▬ ▬▬ ▬▬ ▬▬   Pass 2 · bolt 5 of 8
+north rack, behind the pump
+Worked 20 min ago
+```
+
+The four bars are the four passes, filled as far as the joint has got, in the **same colours the flange face uses** — yellow, orange, blue, green. One glance tells you how far round it is without opening it.
+
+### How the list is ordered
+
+- **Working now** — the unnamed joint, if there is anything in it.
+- **Part done** — live joints, most recently worked at the top. This is where you look when you come back from break.
+- **Finished** — all four passes recorded, most recently finished first.
+
+Delete asks first, in the row. On a joint that is only part done it says so before it goes.
+
+### Changing the flange starts the bolt-up again
+
+Pick a different size, class or bolt count on a joint and **the bolt-up resets**. That is deliberate: a level array for sixteen bolts means nothing on a flange with twelve, and carrying it across would put colours on bolts nobody touched.
+
+Setting the **BOLTS** count by hand unsets the size, because a hand-set count belongs to no table row. The picture falls back to generic proportions rather than drawing a flange it is not.
+
+### What it will not do
+
+Two things it refuses on purpose, because both come down to the same rule — **the app would rather lose a joint than show you a wrong one.**
+
+**A stored joint that does not add up is not loaded.** Every saved bolt-up is checked against itself on the way in: in any state the app can actually reach, every bolt sits at either the current pass or one above it, and the number of bolts one above is exactly how far through the pass you are. If a stored joint fails that, it is dropped and the register says how many went. A half-repaired bolt-up state looks exactly like a real one on screen, and would put you on the wrong bolt.
+
+**A list written by a newer version of the app is left alone.** If the register was last written by a newer build — the web app and the APK do get out of step — nothing is saved at all, and the screen says so. The alternative is the older build quietly overwriting joints the newer one is holding. If you would rather start clean, **Start new** on that notice does it, and says what it costs.
+
+### Where people go wrong
+
+- **Assuming you have to name it.** You do not. The unnamed joint is saved the same as any other.
+- **Naming every joint.** The register is for joints you will come back to. One-and-done joints do not need a tag.
+- **Expecting it to sync.** It does not. The register lives on **that phone**. Two people on the same flange keep two lists.
+- **Treating "Finished" as a sign-off.** It records that the sequence was followed. It did not measure torque and cannot see the gasket.
+
+---
+
 ## Handbook
 
 Every table from the printed book, searchable, **with its page number on it**.

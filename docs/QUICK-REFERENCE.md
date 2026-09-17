@@ -179,6 +179,20 @@ It stays in inches. 30 inches is `30"`, not `2' 6"`. The **IN** marker top-left 
 
 ---
 
+## The joint register
+
+**Joint register** on the home screen, or the list icon in the flange bolt-up bar.
+
+- Every bolt-up is written down **on every bolt**. Close the app mid-pass and you come back on the same bolt.
+- The **unnamed joint** is saved too. You never have to name anything.
+- **Name it** keeps a joint by tag, with the work already done, and clears the unnamed slot for the next one.
+- Four bars on a row are the four passes, in the same yellow/orange/blue/green as the face.
+- **Part done** at the top, **Finished** below. Delete confirms in the row.
+- Changing the size, class or bolt count **starts that joint again** — a sixteen-bolt pattern means nothing on a twelve-bolt flange.
+- It lives on that phone. It does not sync, and two people on one flange keep two lists.
+
+---
+
 ## The 3D spool
 
 **3D spool** → add legs, each with a length, a bend angle off the last one and a roll.

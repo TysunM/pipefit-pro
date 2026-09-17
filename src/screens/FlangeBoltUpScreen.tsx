@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, Modal, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
@@ -8,7 +8,7 @@ import { RootStackParamList } from '../navigation/types';
 import { Screen } from '../components/Screen';
 import { ChipRow } from '../components/ChipRow';
 import { SectionHeader } from '../components/SectionHeader';
-import { ControlRow, GhostButton } from '../components/Buttons';
+import { AccentButton, ControlRow, GhostButton } from '../components/Buttons';
 import { HintRow } from '../components/HintRow';
 import { Divider } from '../components/Divider';
 import { useTheme, Theme } from '../theme/ThemeProvider';
@@ -30,6 +30,20 @@ import {
 } from '../calc/boltUpSequence';
 import { formatInches } from '../calc/ftin';
 import { useSettings } from '../state/settings';
+import { useJoints } from '../state/joints';
+import {
+  Joint,
+  JointSpec,
+  Register,
+  SCRATCH_ID,
+  freshId,
+  getJoint,
+  isScratch,
+  newJoint,
+  putJoint,
+  withFlange,
+  withState,
+} from '../state/register';
 import { boltCentre, flangeFace } from '../components/flange/face';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'FlangeBoltUp'>;
@@ -75,24 +89,90 @@ function boltSkin(t: Theme, level: number): BoltSkin {
 
 const LEVEL_LABELS = ['Not started', 'Snug, 30%', 'Two thirds, 60%', 'Full torque', 'Checked'];
 
-export function FlangeBoltUpScreen(_props: Props) {
+/**
+ * Resolves which joint the screen is working before anything is drawn.
+ *
+ * Without a `jointId` it is the unnamed working joint, which is seeded from the
+ * app's default pipe size the first time and then simply picked back up — the
+ * bolt-up you were part-way through is still there whether you left the screen,
+ * backed out of the app or put the phone in your pocket.
+ *
+ * The split is so the inner component can take a joint that definitely exists,
+ * and so remounting it on a change of id resets the fields that shadow the
+ * record.
+ */
+export function FlangeBoltUpScreen({ route, navigation }: Props) {
+  const t = useTheme();
+  const { settings } = useSettings();
+  const { register, hydrated, apply } = useJoints();
+
+  const jointId = route.params?.jointId ?? SCRATCH_ID;
+  const joint = getJoint(register, jointId);
+
+  // Seeded only once the store has been read, or it would be written and then
+  // immediately replaced by whatever was on disk.
+  useEffect(() => {
+    if (!hydrated || joint) return;
+    const opening = boltUp(settings.defaultNps, '125') ?? boltUp(6, '125');
+    apply((r) =>
+      getJoint(r, jointId)
+        ? r
+        : putJoint(
+            r,
+            newJoint(jointId, { cls: '125', nps: opening?.nps ?? 6, bolts: opening?.bolts ?? 8 }, Date.now()),
+          ),
+    );
+  }, [hydrated, joint, jointId, settings.defaultNps, apply]);
+
+  if (!joint) {
+    return (
+      <Screen>
+        <View style={{ padding: t.layout.screenPadding, paddingTop: t.space.xxxl, alignItems: 'center' }}>
+          <Text style={[t.type.body, { color: t.colors.textMuted, textAlign: 'center' }]}>
+            {hydrated ? 'That joint is no longer in the register.' : 'Reading the register\u2026'}
+          </Text>
+        </View>
+      </Screen>
+    );
+  }
+
+  return <Bolting key={joint.id} joint={joint} register={register} apply={apply} navigation={navigation} />;
+}
+
+function Bolting({
+  joint,
+  register,
+  apply,
+  navigation,
+}: {
+  joint: Joint;
+  register: Register;
+  apply: (f: (r: Register) => Register) => void;
+  navigation: Props['navigation'];
+}) {
   const t = useTheme();
 
-  // Opens on whatever size the app is set to, so the flange on screen is the
-  // one in front of you. Sizes outside the cast iron tables fall back to 6".
-  const { settings } = useSettings();
-  const opening = boltUp(settings.defaultNps, '125') ?? boltUp(6, '125');
-
-  const [cls, setCls] = useState<CastIronFlangeClass>('125');
-  const [nps, setNps] = useState<number>(opening?.nps ?? 6);
-  const [state, setState] = useState<BoltUpState>(() => startBoltUp(opening?.bolts ?? 8));
-  const [torque, setTorque] = useState('');
+  const { cls, nps, bolts, state } = joint;
+  const [torque, setTorque] = useState(joint.torque === null ? '' : String(joint.torque));
   const [width, setWidth] = useState(FACE_MAX);
   const [showDone, setShowDone] = useState(false);
+  const [naming, setNaming] = useState(false);
 
-  const flange = useMemo(() => boltUp(nps, cls), [nps, cls]);
+  const flange = useMemo(() => boltUp(nps ?? NaN, cls), [nps, cls]);
   const sizes = useMemo(() => boltUpSizes(cls), [cls]);
-  const bolts = state.bolts;
+
+  const write = useCallback(
+    (next: Joint) => apply((r) => putJoint(r, next)),
+    [apply],
+  );
+  const setState = useCallback(
+    (next: BoltUpState) => write(withState(joint, next, Date.now())),
+    [joint, write],
+  );
+  const setFlange = useCallback(
+    (spec: JointSpec) => write(withFlange(joint, spec, Date.now())),
+    [joint, write],
+  );
 
   const expected = expectedBolt(state);
   const pass = currentPass(state);
@@ -119,24 +199,53 @@ export function FlangeBoltUpScreen(_props: Props) {
     ]).start();
   }, [wrongCount, flash]);
 
+  // A bolt count set by hand belongs to no table size, so nps goes null and
+  // the picture falls back to generic proportions rather than a wrong flange.
   const setBolts = (n: number) => {
-    setState(startBoltUp(n));
+    setFlange({ cls, nps: null, bolts: n });
     setShowDone(false);
   };
 
   const pickSize = (size: number) => {
-    setNps(size);
     const f = boltUp(size, cls);
-    if (f) setBolts(f.bolts);
+    if (!f) return;
+    setFlange({ cls, nps: f.nps, bolts: f.bolts });
+    setShowDone(false);
   };
 
   const pickClass = (c: CastIronFlangeClass) => {
-    setCls(c);
-    const f = boltUp(nps, c) ?? boltUp(boltUpSizes(c)[0] ?? 1, c);
-    if (f) {
-      setNps(f.nps);
-      setBolts(f.bolts);
+    const f = boltUp(nps ?? NaN, c) ?? boltUp(boltUpSizes(c)[0] ?? 1, c);
+    if (!f) return;
+    setFlange({ cls: c, nps: f.nps, bolts: f.bolts });
+    setShowDone(false);
+  };
+
+  const commitTorque = (text: string) => {
+    setTorque(text);
+    const n = Number(text);
+    const value = text.trim() !== '' && Number.isFinite(n) && n > 0 ? n : null;
+    if (value !== joint.torque) write({ ...joint, torque: value, updatedAt: Date.now() });
+  };
+
+  /**
+   * Naming the unnamed joint moves the work it holds into a record of its own
+   * and leaves the scratch slot clear for the next one, so the screen you come
+   * back to unnamed is never someone else's half-finished joint.
+   */
+  const saveName = (tag: string, note: string) => {
+    setNaming(false);
+    const now = Date.now();
+    if (!isScratch(joint)) {
+      write({ ...joint, tag, note, updatedAt: now });
+      return;
     }
+    // The id is worked out here rather than inside the reducer: a reducer must
+    // be a pure function of the state it is handed, and navigating is not.
+    const id = freshId(register, tag || `joint-${now.toString(36)}`);
+    const moved: Joint = { ...joint, id, tag, note, createdAt: now, updatedAt: now };
+    const cleared = newJoint(SCRATCH_ID, { cls, nps, bolts }, now);
+    apply((r) => putJoint(putJoint(r, moved), cleared));
+    navigation.setParams({ jointId: id });
   };
 
   const onBolt = (bolt: number) => {
@@ -169,6 +278,13 @@ export function FlangeBoltUpScreen(_props: Props) {
   return (
     <Screen>
       <View onLayout={(e) => setWidth(e.nativeEvent.layout.width)} />
+
+      <JointBar
+        t={t}
+        joint={joint}
+        onName={() => setNaming(true)}
+        onRegister={() => navigation.navigate('Joints')}
+      />
 
       <PassBanner
         t={t}
@@ -318,7 +434,7 @@ export function FlangeBoltUpScreen(_props: Props) {
       <View style={{ paddingHorizontal: t.layout.screenPadding, marginBottom: t.space.lg }}>
         <TextInput
           value={torque}
-          onChangeText={setTorque}
+          onChangeText={commitTorque}
           keyboardType="decimal-pad"
           placeholder="Final torque, ft-lb"
           placeholderTextColor={t.colors.textFaint}
@@ -399,6 +515,13 @@ export function FlangeBoltUpScreen(_props: Props) {
       </View>
 
       <DoneSheet t={t} visible={showDone} bolts={bolts} onClose={() => setShowDone(false)} />
+      <NameSheet
+        t={t}
+        visible={naming}
+        joint={joint}
+        onCancel={() => setNaming(false)}
+        onSave={saveName}
+      />
     </Screen>
   );
 }
@@ -587,6 +710,146 @@ function DoneSheet({ t, visible, bolts, onClose }: { t: Theme; visible: boolean;
           </Text>
           <GhostButton label="Close" onPress={onClose} style={{ alignSelf: 'stretch', marginTop: t.space.sm }} />
         </View>
+      </Pressable>
+    </Modal>
+  );
+}
+
+
+/**
+ * Which joint is on screen, and the way into the register.
+ *
+ * The unnamed joint reads as what it is rather than as a blank: it is still
+ * saved, so the bar says so, and offers a name for the times you want the
+ * joint kept as a record instead of just picked back up.
+ */
+function JointBar({
+  t,
+  joint,
+  onName,
+  onRegister,
+}: {
+  t: Theme;
+  joint: Joint;
+  onName: () => void;
+  onRegister: () => void;
+}) {
+  const named = !isScratch(joint) && joint.tag.trim() !== '';
+  return (
+    <View
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: t.space.md,
+        paddingHorizontal: t.layout.screenPadding,
+        paddingVertical: t.space.md,
+        borderBottomWidth: t.hairline,
+        borderBottomColor: t.colors.border,
+      }}
+    >
+      <Ionicons name={named ? 'pricetag' : 'pricetag-outline'} size={17} color={t.colors.textMuted} />
+      <View style={{ flex: 1 }}>
+        <Text style={[t.type.bodyStrong, { color: t.colors.text }]} numberOfLines={1}>
+          {named ? joint.tag : 'Unnamed joint'}
+        </Text>
+        <Text style={[t.type.caption, { color: t.colors.textMuted }]} numberOfLines={1}>
+          {named ? joint.note || 'Saved as you go' : 'Saved as you go'}
+        </Text>
+      </View>
+      <Pressable onPress={onName} hitSlop={10} accessibilityRole="button">
+        <Text style={[t.type.labelSmall, { color: t.colors.data }]}>{named ? 'Rename' : 'Name it'}</Text>
+      </Pressable>
+      <Pressable onPress={onRegister} hitSlop={10} accessibilityRole="button" accessibilityLabel="Open the joint register">
+        <Ionicons name="list-outline" size={20} color={t.colors.text} />
+      </Pressable>
+    </View>
+  );
+}
+
+function NameSheet({
+  t,
+  visible,
+  joint,
+  onCancel,
+  onSave,
+}: {
+  t: Theme;
+  visible: boolean;
+  joint: Joint;
+  onCancel: () => void;
+  onSave: (tag: string, note: string) => void;
+}) {
+  const [tag, setTag] = useState(joint.tag);
+  const [note, setNote] = useState(joint.note);
+
+  // The fields hold what the record holds every time the sheet opens, so a
+  // cancelled edit never leaks into the next one.
+  useEffect(() => {
+    if (visible) {
+      setTag(joint.tag);
+      setNote(joint.note);
+    }
+  }, [visible, joint.tag, joint.note]);
+
+  const field = {
+    height: t.layout.fieldHeight,
+    borderRadius: t.radius.md,
+    borderWidth: 1,
+    borderColor: t.colors.border,
+    backgroundColor: t.colors.bgRaised,
+    color: t.colors.text,
+    paddingHorizontal: t.space.lg,
+    fontSize: 17,
+    fontWeight: '600' as const,
+  };
+
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
+      <Pressable style={{ flex: 1, backgroundColor: t.colors.overlay, justifyContent: 'center' }} onPress={onCancel}>
+        <Pressable
+          onPress={(e) => e.stopPropagation()}
+          style={{
+            margin: t.space.xxl,
+            padding: t.space.xxl,
+            borderRadius: t.radius.xl,
+            backgroundColor: t.colors.bg,
+            gap: t.space.md,
+          }}
+        >
+          <Text style={[t.type.sectionTitle, { color: t.colors.text, fontFamily: t.font.serif }]}>
+            {isScratch(joint) ? 'Name this joint' : 'Rename this joint'}
+          </Text>
+          <Text style={[t.type.caption, { color: t.colors.textMuted }]}>
+            Whatever you would call it out by \u2014 a line number, a spool mark, a valve tag.
+          </Text>
+          <TextInput
+            value={tag}
+            onChangeText={setTag}
+            placeholder="8-CWS-102 FL-3"
+            placeholderTextColor={t.colors.textFaint}
+            accessibilityLabel="Joint tag"
+            autoCapitalize="characters"
+            autoCorrect={false}
+            style={field}
+          />
+          <TextInput
+            value={note}
+            onChangeText={setNote}
+            placeholder="Where it is, or anything worth remembering"
+            placeholderTextColor={t.colors.textFaint}
+            accessibilityLabel="Joint note"
+            style={field}
+          />
+          <View style={{ flexDirection: 'row', gap: t.space.md, marginTop: t.space.sm }}>
+            <GhostButton label="Cancel" onPress={onCancel} style={{ flex: 1 }} />
+            <AccentButton
+              label="Save"
+              icon="checkmark"
+              style={{ flex: 1 }}
+              onPress={() => onSave(tag.trim(), note.trim())}
+            />
+          </View>
+        </Pressable>
       </Pressable>
     </Modal>
   );

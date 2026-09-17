@@ -7,7 +7,9 @@ export type RootStackParamList = {
   MiterBend: undefined;
   ThreadEngagement: undefined;
   HandBender: undefined;
-  FlangeBoltUp: undefined;
+  /** Which joint in the register is being worked. Absent means the unnamed one. */
+  FlangeBoltUp: { jointId?: string } | undefined;
+  Joints: undefined;
   Calculator: undefined;
   SpoolBuilder: undefined;
   Reference: undefined;
