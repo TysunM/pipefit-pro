@@ -22,7 +22,7 @@ npx expo start
 
 ## Calculators
 
-Simple offset · Rolling offset · Cut length · Saddle bend · Miter bend · Thread engagement · Hand bender · Flange bolt-up · Joint register.
+Simple offset · Rolling offset · Cut length · Saddle bend · Miter bend · Thread engagement · Hand bender · Flange bolt-up · Joint register · Re-torque log.
 
 ## Flange bolt-up
 
@@ -72,6 +72,27 @@ explicit tap that says what it costs.
 The 200-joint cap drops finished joints oldest first and **never** drops a
 part-done one, even over the cap — unfinished work is the only thing in the
 register that cannot be worked out again.
+
+## The re-torque log
+
+A bolted joint relaxes when the line comes up to temperature — the gasket
+creeps, the bolts and flanges grow at different rates — so the cold bolt-up is
+not the end of it on hot service. A finished joint carries a list of `ReCheck`
+records, and the field that matters is `moved`: whether any bolt took up. A
+date alone records that somebody went back, not what they found.
+
+`isSettled` is finished AND checked at least once AND nothing moved last time,
+so a joint checked once where bolts still moved stays on the list. The register
+splits on that rather than on `completedAt`, and the bulk delete only ever
+takes settled joints.
+
+Checks belong to the bolt-up that produced them: reopening a joint with undo,
+or changing its flange, clears them. `validJoint` refuses a check on a joint
+that was never finished, so that pairing cannot come back off disk either.
+
+`REGISTER_VERSION` went to 2 for the new field. A version 1 store loads with an
+absent check list read as an empty one — that is the whole migration — and
+reading never rewrites the store, so it lands on the first real write.
 
 ## Geometry
 

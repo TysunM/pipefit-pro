@@ -27,7 +27,7 @@ export const SCRATCH_ID = 'scratch';
  * side by side, and one of them being a version behind must not wipe the other's
  * joints.
  */
-export const REGISTER_VERSION = 1;
+export const REGISTER_VERSION = 2;
 
 /**
  * Enough joints for any job, and small enough that the whole register stays a
@@ -36,6 +36,34 @@ export const REGISTER_VERSION = 1;
  * because unfinished work is the one thing here that cannot be reconstructed.
  */
 export const MAX_JOINTS = 200;
+
+/**
+ * Re-torque checks kept per joint, oldest dropped first past the cap. Fifty is
+ * far beyond any real joint: a flange that has been back to twice is unusual.
+ */
+export const MAX_CHECKS = 50;
+
+/**
+ * A re-torque check, after the joint has been through a thermal cycle.
+ *
+ * A bolted joint is a spring holding a gasket squashed. Take the line up to
+ * temperature and three things happen at once: the gasket creeps, the flanges
+ * and bolts grow at different rates, and the whole joint relaxes. So a joint
+ * that was correct cold can be slack hot, and the bolting spec on most hot
+ * service says to check it again once it has cycled.
+ *
+ * `moved` is the field that matters. Whether any bolt took up is the reading
+ * that says whether the joint has settled or wants looking at again — a date
+ * on its own only records that somebody went back, not what they found.
+ */
+export type ReCheck = {
+  at: number;
+  /** Did any bolt take up on this check. */
+  moved: boolean;
+  /** Torque used, when it was not the joint's own figure. */
+  torque: number | null;
+  note: string;
+};
 
 export type Joint = {
   id: string;
@@ -53,6 +81,12 @@ export type Joint = {
   updatedAt: number;
   /** When the fourth pass closed, or null while it is still open. */
   completedAt: number | null;
+  /**
+   * Re-torque checks after the joint came up to temperature, oldest first.
+   * Only a finished joint can have any: there is nothing to re-check on a
+   * bolt-up that has not been finished once.
+   */
+  checks: ReCheck[];
 };
 
 export type Register = {
@@ -68,6 +102,23 @@ export const emptyRegister = (): Register => ({ joints: [], foreign: false, drop
 export const isScratch = (j: Joint): boolean => j.id === SCRATCH_ID;
 export const isNamed = (j: Joint): boolean => !isScratch(j) && j.tag.trim() !== '';
 export const isDone = (j: Joint): boolean => j.completedAt !== null;
+
+/** The most recent re-torque check, or undefined if it has not been back. */
+export const lastCheck = (j: Joint): ReCheck | undefined => j.checks[j.checks.length - 1];
+
+/**
+ * Finished, been back at least once, and nothing took up the last time.
+ *
+ * That last clause is the whole point: a joint checked once where bolts still
+ * moved has told you it is still relaxing, and is not done relaxing yet.
+ */
+export function isSettled(j: Joint): boolean {
+  const last = lastCheck(j);
+  return isDone(j) && last !== undefined && !last.moved;
+}
+
+/** Finished, but either never checked or still taking up when it was. */
+export const needsCheck = (j: Joint): boolean => isDone(j) && !isSettled(j);
 
 // ---------------------------------------------------------------- validation
 
@@ -123,6 +174,17 @@ export function validState(v: unknown, bolts: number): BoltUpState | null {
 
 const CLASSES: CastIronFlangeClass[] = ['125', '250'];
 
+/** One re-torque check, or null if it does not hold up. */
+export function validCheck(v: unknown): ReCheck | null {
+  if (!isRec(v)) return null;
+  const { at, moved, torque, note } = v;
+  if (!isInt(at) || at < 0) return null;
+  if (typeof moved !== 'boolean') return null;
+  if (torque !== null && (typeof torque !== 'number' || !Number.isFinite(torque) || torque <= 0)) return null;
+  if (!isStr(note)) return null;
+  return { at, moved, torque, note };
+}
+
 /** One joint, or null if anything about it does not hold up. */
 export function validJoint(v: unknown): Joint | null {
   if (!isRec(v)) return null;
@@ -145,6 +207,22 @@ export function validJoint(v: unknown): Joint | null {
   // show a finished joint the screen then reopens part-way through.
   if ((completedAt !== null) !== isFinished(state)) return null;
 
+  // Version 1 stores have no checks at all, and that is the whole migration:
+  // an absent list reads as an empty one. Anything present has to hold up.
+  const rawChecks = v.checks === undefined ? [] : v.checks;
+  if (!Array.isArray(rawChecks)) return null;
+  const checks: ReCheck[] = [];
+  for (const c of rawChecks) {
+    const ok = validCheck(c);
+    if (!ok) return null;
+    checks.push(ok);
+  }
+  // Nothing to re-check on a joint that was never finished.
+  if (checks.length && completedAt === null) return null;
+  if (checks.length > MAX_CHECKS) return null;
+  // Order is presentation, not a claim, so it is sorted rather than refused.
+  checks.sort((a, b) => a.at - b.at);
+
   return {
     id,
     tag,
@@ -157,6 +235,7 @@ export function validJoint(v: unknown): Joint | null {
     createdAt,
     updatedAt,
     completedAt: completedAt as number | null,
+    checks,
   };
 }
 
@@ -277,6 +356,7 @@ export function newJoint(id: string, spec: JointSpec, now: number): Joint {
     createdAt: now,
     updatedAt: now,
     completedAt: null,
+    checks: [],
   };
 }
 
@@ -293,6 +373,10 @@ export function withState(joint: Joint, state: BoltUpState, now: number): Joint 
     state,
     updatedAt: now,
     completedAt: finished ? (joint.completedAt ?? now) : null,
+    // Undo past the end reopens the bolt-up, and a re-torque check on a joint
+    // that is being worked again is a check of something that no longer
+    // exists. Keeping it would be a record of a joint nobody finished.
+    checks: finished ? joint.checks : [],
   };
 }
 
@@ -311,7 +395,35 @@ export function withFlange(joint: Joint, spec: JointSpec, now: number): Joint {
     state: sameFlange ? joint.state : startBoltUp(spec.bolts),
     updatedAt: now,
     completedAt: sameFlange ? joint.completedAt : null,
+    checks: sameFlange ? joint.checks : [],
   };
+}
+
+/**
+ * Record a re-torque check.
+ *
+ * Refused on a joint that is not finished: there is nothing to check again on
+ * a bolt-up nobody has been through once. Past the cap the oldest check goes,
+ * which on a flange that has been back fifty times is not the interesting one.
+ */
+export function addCheck(joint: Joint, check: Omit<ReCheck, 'at'>, now: number): Joint {
+  if (!isDone(joint)) return joint;
+  const torque = check.torque;
+  const entry: ReCheck = {
+    at: now,
+    moved: check.moved,
+    torque: torque !== null && Number.isFinite(torque) && torque > 0 ? torque : null,
+    note: check.note,
+  };
+  const checks = [...joint.checks, entry].sort((a, b) => a.at - b.at);
+  return { ...joint, checks: checks.slice(-MAX_CHECKS), updatedAt: now };
+}
+
+/** Take a check back off, by the time it was recorded. */
+export function removeCheck(joint: Joint, at: number, now: number): Joint {
+  const checks = joint.checks.filter((c) => c.at !== at);
+  if (checks.length === joint.checks.length) return joint;
+  return { ...joint, checks, updatedAt: now };
 }
 
 /** An id that is not already in the register, derived from a seed. */
@@ -348,3 +460,13 @@ export function sinceLabel(then: number, now: number): string {
 export const listed = (r: Register): Joint[] => r.joints.filter((j) => !isScratch(j));
 export const openJoints = (r: Register): Joint[] => listed(r).filter((j) => !isDone(j));
 export const doneJoints = (r: Register): Joint[] => listed(r).filter(isDone);
+
+/**
+ * Finished joints that have not settled — never checked, or still taking up
+ * the last time somebody looked. This is the list worth working from once the
+ * line has been up to temperature.
+ */
+export const needsCheckJoints = (r: Register): Joint[] => listed(r).filter(needsCheck);
+
+/** Finished, checked, and nothing moved the last time. */
+export const settledJoints = (r: Register): Joint[] => listed(r).filter(isSettled);

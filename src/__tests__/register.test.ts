@@ -1,24 +1,33 @@
 import {
   Joint,
+  MAX_CHECKS,
   MAX_JOINTS,
   REGISTER_VERSION,
   Register,
   SCRATCH_ID,
+  addCheck,
   doneJoints,
   emptyRegister,
   freshId,
   getJoint,
   isDone,
+  isSettled,
+  lastCheck,
   listed,
+  needsCheck,
+  needsCheckJoints,
   newJoint,
   openJoints,
   parseRegister,
   pruneRegister,
   putJoint,
+  removeCheck,
   removeJoint,
   serialiseRegister,
+  settledJoints,
   sinceLabel,
   sortJoints,
+  validCheck,
   validJoint,
   validState,
   withFlange,
@@ -432,9 +441,15 @@ describe('how long ago', () => {
   });
 
   it('only ever moves forwards as time passes', () => {
+    // Fine steps over the first couple of hours, where every boundary lives,
+    // then hourly. Sampling beats grinding: the same boundaries, in no time.
+    const steps = [
+      ...Array.from({ length: 130 }, (_, i) => i * MIN),
+      ...Array.from({ length: 24 * 60 }, (_, i) => 2 * HR + i * HR),
+    ];
     let last = '';
     let changes = 0;
-    for (let s = 0; s < 60 * DAY; s += 37_000) {
+    for (const s of steps) {
       const label = sinceLabel(T0, T0 + s);
       expect(label).not.toContain('NaN');
       expect(label).not.toContain('-');
@@ -442,5 +457,242 @@ describe('how long ago', () => {
       last = label;
     }
     expect(changes).toBeGreaterThan(5);
+  });
+});
+
+// ---------------------------------------------------------- re-torque checks
+
+describe('a version 1 store still loads', () => {
+  /** Exactly what the previous version wrote: no checks key at all. */
+  const v1Joint = (j: Joint) => {
+    const { checks, ...rest } = j;
+    void checks;
+    return rest;
+  };
+
+  it('reads a joint with no checks as a joint with none', () => {
+    const walked = walk(4);
+    const done = withState(newJoint('old', { cls: '125', nps: 6, bolts: 4, tag: 'OLD-1' }, T0), walked[walked.length - 1]!, T0 + 1);
+    const store = JSON.stringify({ v: 1, joints: [v1Joint(done)] });
+
+    const r = parseRegister(store);
+    expect(r.dropped).toBe(0);
+    expect(r.foreign).toBe(false);
+    expect(r.joints[0]).toEqual({ ...done, checks: [] });
+  });
+
+  it('migrates a part-done joint too, without touching its place', () => {
+    const j = withState(newJoint('old2', spec(8), T0), tapBolt(startBoltUp(8), 1).state, T0 + 1);
+    const r = parseRegister(JSON.stringify({ v: 1, joints: [v1Joint(j)] }));
+    expect(r.joints[0]!.state).toEqual(j.state);
+    expect(r.joints[0]!.checks).toEqual([]);
+  });
+
+  it('writes version 2 from then on', () => {
+    expect(REGISTER_VERSION).toBe(2);
+    expect(JSON.parse(serialiseRegister(emptyRegister())).v).toBe(2);
+  });
+});
+
+describe('a check records what was found, not just that someone went', () => {
+  const finished = (id = 'j1', bolts = 4) => {
+    const walked = walk(bolts);
+    return withState(newJoint(id, spec(bolts), T0), walked[walked.length - 1]!, T0 + 1);
+  };
+
+  it('round-trips through the store', () => {
+    const j = addCheck(finished(), { moved: true, torque: 300, note: 'two bolts took a quarter turn' }, T0 + 5000);
+    const back = parseRegister(serialiseRegister({ ...emptyRegister(), joints: [j] }));
+    expect(back.dropped).toBe(0);
+    expect(back.joints[0]).toEqual(j);
+    expect(back.joints[0]!.checks[0]).toEqual({
+      at: T0 + 5000,
+      moved: true,
+      torque: 300,
+      note: 'two bolts took a quarter turn',
+    });
+  });
+
+  it('will not be recorded on a joint that was never finished', () => {
+    const open = newJoint('j1', spec(4), T0);
+    expect(addCheck(open, { moved: false, torque: null, note: '' }, T0 + 1)).toBe(open);
+    expect(addCheck(open, { moved: false, torque: null, note: '' }, T0 + 1).checks).toEqual([]);
+  });
+
+  it('keeps them oldest first however they arrive', () => {
+    let j = finished();
+    j = addCheck(j, { moved: true, torque: null, note: 'first' }, T0 + 300);
+    j = addCheck(j, { moved: false, torque: null, note: 'second' }, T0 + 100);
+    expect(j.checks.map((c) => c.note)).toEqual(['second', 'first']);
+    expect(lastCheck(j)?.note).toBe('first');
+  });
+
+  it('drops a torque figure that is not one', () => {
+    for (const bad of [0, -5, NaN, Infinity]) {
+      const j = addCheck(finished(), { moved: false, torque: bad, note: '' }, T0 + 1);
+      expect(j.checks[0]!.torque).toBeNull();
+    }
+  });
+
+  it('keeps the oldest out once the cap is reached', () => {
+    let j = finished();
+    for (let i = 0; i < MAX_CHECKS + 5; i++) {
+      j = addCheck(j, { moved: false, torque: null, note: `check ${i}` }, T0 + 1000 + i);
+    }
+    expect(j.checks).toHaveLength(MAX_CHECKS);
+    expect(j.checks[0]!.note).toBe('check 5');
+    expect(lastCheck(j)!.note).toBe(`check ${MAX_CHECKS + 4}`);
+    expect(validJoint(j)).not.toBeNull();
+  });
+
+  it('comes back off by the time it was taken', () => {
+    let j = addCheck(finished(), { moved: true, torque: null, note: 'a' }, T0 + 10);
+    j = addCheck(j, { moved: false, torque: null, note: 'b' }, T0 + 20);
+    const cut = removeCheck(j, T0 + 10, T0 + 99);
+    expect(cut.checks.map((c) => c.note)).toEqual(['b']);
+    expect(cut.updatedAt).toBe(T0 + 99);
+    // A time nothing was taken at changes nothing, object and all.
+    expect(removeCheck(cut, T0 + 555, T0 + 100)).toBe(cut);
+  });
+});
+
+describe('settled means nothing moved the last time', () => {
+  const finished = (id = 'j1') => {
+    const walked = walk(4);
+    return withState(newJoint(id, spec(4), T0), walked[walked.length - 1]!, T0 + 1);
+  };
+
+  it('is false while the joint is still being worked', () => {
+    const open = newJoint('j1', spec(4), T0);
+    expect(isSettled(open)).toBe(false);
+    expect(needsCheck(open)).toBe(false);
+  });
+
+  it('is false on a finished joint nobody has been back to', () => {
+    const j = finished();
+    expect(isSettled(j)).toBe(false);
+    expect(needsCheck(j)).toBe(true);
+  });
+
+  it('stays false when bolts took up on the check', () => {
+    const j = addCheck(finished(), { moved: true, torque: null, note: '' }, T0 + 100);
+    expect(isSettled(j)).toBe(false);
+    expect(needsCheck(j)).toBe(true);
+  });
+
+  it('turns true once a check finds nothing moving', () => {
+    let j = addCheck(finished(), { moved: true, torque: null, note: '' }, T0 + 100);
+    j = addCheck(j, { moved: false, torque: null, note: '' }, T0 + 200);
+    expect(isSettled(j)).toBe(true);
+    expect(needsCheck(j)).toBe(false);
+  });
+
+  it('goes back to unsettled if a later check finds it moving again', () => {
+    let j = addCheck(finished(), { moved: false, torque: null, note: '' }, T0 + 100);
+    expect(isSettled(j)).toBe(true);
+    j = addCheck(j, { moved: true, torque: null, note: 'took up again' }, T0 + 200);
+    expect(isSettled(j)).toBe(false);
+  });
+
+  it('splits the register into exactly one bucket per finished joint', () => {
+    let r = emptyRegister();
+    r = putJoint(r, newJoint('open', spec(4), T0));
+    r = putJoint(r, finished('never'));
+    r = putJoint(r, addCheck(finished('moved'), { moved: true, torque: null, note: '' }, T0 + 5));
+    r = putJoint(r, addCheck(finished('still'), { moved: false, torque: null, note: '' }, T0 + 5));
+
+    expect(openJoints(r).map((j) => j.id)).toEqual(['open']);
+    expect(needsCheckJoints(r).map((j) => j.id).sort()).toEqual(['moved', 'never']);
+    expect(settledJoints(r).map((j) => j.id)).toEqual(['still']);
+    expect(needsCheckJoints(r).length + settledJoints(r).length).toBe(doneJoints(r).length);
+  });
+});
+
+describe('a check belongs to the joint that was finished', () => {
+  const finishedWith = (bolts: number) => {
+    const walked = walk(bolts);
+    return withState(newJoint('j1', spec(bolts), T0), walked[walked.length - 1]!, T0 + 1);
+  };
+
+  it('is thrown away when the bolt-up is reopened', () => {
+    const walked = walk(4);
+    const done = addCheck(finishedWith(4), { moved: false, torque: null, note: 'kept?' }, T0 + 50);
+    expect(done.checks).toHaveLength(1);
+
+    const back = withState(done, walked[walked.length - 2]!, T0 + 60);
+    expect(isDone(back)).toBe(false);
+    expect(back.checks).toEqual([]);
+    expect(validJoint(back)).not.toBeNull();
+  });
+
+  it('is thrown away when the flange changes', () => {
+    const done = addCheck(finishedWith(4), { moved: false, torque: null, note: '' }, T0 + 50);
+    const moved = withFlange(done, { cls: '125', nps: null, bolts: 12 }, T0 + 60);
+    expect(moved.checks).toEqual([]);
+    expect(moved.completedAt).toBeNull();
+  });
+
+  it('survives the flange being set to what it already was', () => {
+    const done = addCheck(finishedWith(4), { moved: false, torque: null, note: 'stay' }, T0 + 50);
+    const same = withFlange(done, spec(4), T0 + 60);
+    expect(same.checks).toHaveLength(1);
+  });
+});
+
+describe('a check that does not hold up is refused', () => {
+  const ok = { at: T0, moved: false, torque: null, note: '' };
+
+  it('takes a good one', () => {
+    expect(validCheck(ok)).toEqual(ok);
+    expect(validCheck({ ...ok, torque: 275, moved: true, note: 'hot' })).not.toBeNull();
+  });
+
+  it('refuses a moved flag that is not a yes or a no', () => {
+    for (const moved of [undefined, null, 1, 0, 'yes', '']) expect(validCheck({ ...ok, moved })).toBeNull();
+  });
+
+  it('refuses a bad time, torque or note', () => {
+    for (const at of [-1, 1.5, '2026', null, NaN]) expect(validCheck({ ...ok, at })).toBeNull();
+    for (const torque of [0, -10, Infinity, NaN, 'lots']) expect(validCheck({ ...ok, torque })).toBeNull();
+    for (const note of [null, 7, undefined, {}]) expect(validCheck({ ...ok, note })).toBeNull();
+  });
+
+  it('refuses junk in place of a check', () => {
+    for (const bad of [null, 4, 'x', [], undefined]) expect(validCheck(bad)).toBeNull();
+  });
+
+  it('drops the whole joint when one of its checks is bad', () => {
+    const walked = walk(4);
+    const done = withState(newJoint('j1', spec(4), T0), walked[walked.length - 1]!, T0 + 1);
+    const store = JSON.stringify({
+      v: REGISTER_VERSION,
+      joints: [{ ...done, checks: [ok, { ...ok, moved: 'maybe' }] }],
+    });
+    const r = parseRegister(store);
+    expect(r.joints).toEqual([]);
+    expect(r.dropped).toBe(1);
+  });
+
+  it('refuses a check on a joint that was never finished', () => {
+    const open = newJoint('j1', spec(4), T0);
+    expect(validJoint({ ...open, checks: [ok] })).toBeNull();
+    expect(validJoint({ ...open, checks: [] })).not.toBeNull();
+  });
+
+  it('refuses more checks than the cap allows, and a list that is not one', () => {
+    const walked = walk(4);
+    const done = withState(newJoint('j1', spec(4), T0), walked[walked.length - 1]!, T0 + 1);
+    const many = Array.from({ length: MAX_CHECKS + 1 }, (_, i) => ({ ...ok, at: T0 + i }));
+    expect(validJoint({ ...done, checks: many })).toBeNull();
+    expect(validJoint({ ...done, checks: 'none' })).toBeNull();
+    expect(validJoint({ ...done, checks: { at: T0 } })).toBeNull();
+  });
+
+  it('sorts a store that arrives out of order rather than refusing it', () => {
+    const walked = walk(4);
+    const done = withState(newJoint('j1', spec(4), T0), walked[walked.length - 1]!, T0 + 1);
+    const out = [{ ...ok, at: T0 + 300, note: 'c' }, { ...ok, at: T0 + 100, note: 'a' }, { ...ok, at: T0 + 200, note: 'b' }];
+    const loaded = validJoint({ ...done, checks: out });
+    expect(loaded!.checks.map((c) => c.note)).toEqual(['a', 'b', 'c']);
   });
 });

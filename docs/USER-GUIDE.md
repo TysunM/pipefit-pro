@@ -809,6 +809,74 @@ Two things it refuses on purpose, because both come down to the same rule — **
 
 ---
 
+## Re-torque log
+
+**A joint that was right cold can be slack hot. This records what you find when you go back.**
+
+### Why a joint needs checking again
+
+A bolted joint is a spring holding a gasket squashed. Take the line up to temperature and three things happen at once:
+
+- The **gasket creeps** under load and heat, and gives up some of its thickness for good.
+- The **bolts and flanges grow at different rates**, because they are different steels in different sections.
+- The whole joint **relaxes**, and what was 300 ft-lb cold is less than that hot.
+
+None of it is a mistake anybody made. It is what the joint does. Which is why most bolting specs on hot service say to go round it again once it has been through a thermal cycle — and why that pass is the one that actually keeps the joint.
+
+### The one thing worth writing down
+
+Not the date. **Whether anything moved.**
+
+A date on its own says somebody went back. It does not say what they found, and what they found is the whole reading:
+
+| What you found | What it means |
+|---|---|
+| **Bolts took up** | Still relaxing. Go back to it after another cycle. |
+| **All tight** | It has settled. That is the check that closes a joint out. |
+
+So the app asks that question with **two buttons and no default answer**. A preselected answer is one somebody taps past without walking to the flange.
+
+### Step by step
+
+1. Finish the bolt-up. The **Re-torque** section appears under the controls — only on a joint that has been finished once, because there is nothing to re-check otherwise.
+2. Once the line has been up to temperature and back, go round the flange **at full torque, in order**.
+3. Tap **Record a check**.
+4. Answer **Bolts moved** or **All tight**.
+5. Optionally add the torque you used and a note — "after 8 hr at temp", "two bolts took a quarter turn".
+6. **Save.**
+
+The heading above the log then reads one of three things: *Not checked since it came up to temperature*, *Still taking up*, or *Nothing moved last time*.
+
+### The register sorts itself by what is left to do
+
+| Section | What is in it |
+|---|---|
+| **Working now** | The unnamed joint |
+| **Part done** | Bolt-ups still going |
+| **Needs a re-check** | Finished, but never been back to — or still taking up when it was |
+| **Closed out** | Finished, checked, nothing moved |
+
+**Needs a re-check is the list to work from** after a startup. Finished is not the same as closed out, and the register stopped treating it that way.
+
+**Clear closed out** only ever removes the settled ones. A joint still waiting on a re-check is not finished with, whatever its four passes say.
+
+### What the app will not do
+
+**It will not tell you when to go back.** That depends on the service, the medium, the gasket and the spec — a hard cycle wants checking sooner than a line that warms up once and sits there. Inventing a schedule would be inventing engineering. The app records what you found and shows you what is outstanding; the timing comes from the job.
+
+**A check cannot be recorded on an unfinished joint.** There is nothing to re-check on a bolt-up nobody has been through once.
+
+**Reopening a bolt-up throws the log away.** Undo past the end, or change the size, class or bolt count, and the checks go with it — they were checks of a joint that no longer exists, and keeping them would be a record of something nobody finished.
+
+### Where people go wrong
+
+- **Treating the fourth pass as the end.** It closes the *cold* bolt-up. On hot service the joint has not finished moving yet.
+- **Logging the date and not the finding.** "Checked 14 Sep" tells the next person nothing. "Checked 14 Sep, two bolts took a quarter turn" tells them to come back.
+- **Closing a joint out on one check where bolts moved.** That check said the opposite — it is still going. The app will keep it under **Needs a re-check** for exactly that reason.
+- **Expecting it to sync.** It does not. The log lives on that phone, like the rest of the register.
+
+---
+
 ## Handbook
 
 Every table from the printed book, searchable, **with its page number on it**.
