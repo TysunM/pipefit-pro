@@ -7,6 +7,7 @@ export type RootStackParamList = {
   MiterBend: undefined;
   ThreadEngagement: undefined;
   HandBender: undefined;
+  FlangeBoltUp: undefined;
   Calculator: undefined;
   SpoolBuilder: undefined;
   Reference: undefined;

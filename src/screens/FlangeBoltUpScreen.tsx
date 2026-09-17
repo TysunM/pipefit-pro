@@ -1,0 +1,593 @@
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Animated, Modal, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { Ionicons } from '@expo/vector-icons';
+import Svg, { Circle, Line } from 'react-native-svg';
+import * as Haptics from 'expo-haptics';
+import { RootStackParamList } from '../navigation/types';
+import { Screen } from '../components/Screen';
+import { ChipRow } from '../components/ChipRow';
+import { SectionHeader } from '../components/SectionHeader';
+import { ControlRow, GhostButton } from '../components/Buttons';
+import { HintRow } from '../components/HintRow';
+import { Divider } from '../components/Divider';
+import { useTheme, Theme } from '../theme/ThemeProvider';
+import { CastIronFlangeClass, boltHoleAngles, boltUp, boltUpSizes } from '../calc/boltUp';
+import {
+  BoltUpState,
+  PASSES,
+  boltLevel,
+  boltUpProgress,
+  currentPass,
+  expectedBolt,
+  isFinished,
+  passOrder,
+  passTorque,
+  resetBoltUp,
+  startBoltUp,
+  tapBolt,
+  undoBolt,
+} from '../calc/boltUpSequence';
+import { formatInches } from '../calc/ftin';
+import { useSettings } from '../state/settings';
+import { boltCentre, flangeFace } from '../components/flange/face';
+
+type Props = NativeStackScreenProps<RootStackParamList, 'FlangeBoltUp'>;
+
+/** Bolt counts the handbook flanges actually use, for setting one by hand. */
+const COUNTS = [4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 52, 60, 64, 68];
+
+const FACE_MIN = 300;
+const FACE_MAX = 360;
+
+type BoltSkin = { fill: string; border: string; text: string; width: number };
+
+/**
+ * Untouched, then one step per pass: snug, two thirds, full, checked.
+ *
+ * These are flat, saturated colours rather than the soft tints the rest of the
+ * app uses, and they are not taken from the theme. The reason is legibility at
+ * a distance: a fitter glancing at the face has to tell a bolt at a third from
+ * a bolt at two thirds across the width of a phone, in daylight, and the
+ * theme's tinted backgrounds sit within a few points of each other. Four
+ * distinct hues, one per pass, is the only arrangement that survives that.
+ *
+ * Numerals are dark on the two light fills and white on the two dark ones, so
+ * every bolt number clears 4.5:1 against what it sits on.
+ */
+const BOLT_RAMP: readonly BoltSkin[] = [
+  { fill: '#FACC15', border: '#CA9A04', text: '#1C1917', width: 2 }, // 30%, snug
+  { fill: '#F97316', border: '#C2540A', text: '#1C1917', width: 2 }, // 60%
+  { fill: '#2563EB', border: '#1D4FD8', text: '#FFFFFF', width: 2 }, // full torque
+  { fill: '#15803D', border: '#106431', text: '#FFFFFF', width: 2 }, // checked
+];
+
+function boltSkin(t: Theme, level: number): BoltSkin {
+  return (
+    BOLT_RAMP[level - 1] ?? {
+      fill: t.colors.bgSubtle,
+      border: t.colors.borderStrong,
+      text: t.colors.textMuted,
+      width: 1,
+    }
+  );
+}
+
+const LEVEL_LABELS = ['Not started', 'Snug, 30%', 'Two thirds, 60%', 'Full torque', 'Checked'];
+
+export function FlangeBoltUpScreen(_props: Props) {
+  const t = useTheme();
+
+  // Opens on whatever size the app is set to, so the flange on screen is the
+  // one in front of you. Sizes outside the cast iron tables fall back to 6".
+  const { settings } = useSettings();
+  const opening = boltUp(settings.defaultNps, '125') ?? boltUp(6, '125');
+
+  const [cls, setCls] = useState<CastIronFlangeClass>('125');
+  const [nps, setNps] = useState<number>(opening?.nps ?? 6);
+  const [state, setState] = useState<BoltUpState>(() => startBoltUp(opening?.bolts ?? 8));
+  const [torque, setTorque] = useState('');
+  const [width, setWidth] = useState(FACE_MAX);
+  const [showDone, setShowDone] = useState(false);
+
+  const flange = useMemo(() => boltUp(nps, cls), [nps, cls]);
+  const sizes = useMemo(() => boltUpSizes(cls), [cls]);
+  const bolts = state.bolts;
+
+  const expected = expectedBolt(state);
+  const pass = currentPass(state);
+  const done = isFinished(state);
+  const progress = boltUpProgress(state);
+  const order = useMemo(() => (done ? [] : passOrder(bolts, state.pass)), [bolts, state.pass, done]);
+
+  const finalTorque = Number(torque);
+  const target = pass ? passTorque(finalTorque, state.pass) : NaN;
+
+  // The wrong-bolt flash. It is pinned to the bolt the sequence wanted, not the
+  // one that was hit, because pointing at the mistake does not tell anyone what
+  // to do next — pointing at the right bolt does.
+  const flash = useRef(new Animated.Value(0)).current;
+  const wrongCount = state.wrongCount;
+  useEffect(() => {
+    if (!wrongCount) return;
+    flash.setValue(0);
+    Animated.sequence([
+      Animated.timing(flash, { toValue: 1, duration: 90, useNativeDriver: true }),
+      Animated.timing(flash, { toValue: 0, duration: 140, useNativeDriver: true }),
+      Animated.timing(flash, { toValue: 1, duration: 90, useNativeDriver: true }),
+      Animated.timing(flash, { toValue: 0, duration: 260, useNativeDriver: true }),
+    ]).start();
+  }, [wrongCount, flash]);
+
+  const setBolts = (n: number) => {
+    setState(startBoltUp(n));
+    setShowDone(false);
+  };
+
+  const pickSize = (size: number) => {
+    setNps(size);
+    const f = boltUp(size, cls);
+    if (f) setBolts(f.bolts);
+  };
+
+  const pickClass = (c: CastIronFlangeClass) => {
+    setCls(c);
+    const f = boltUp(nps, c) ?? boltUp(boltUpSizes(c)[0] ?? 1, c);
+    if (f) {
+      setNps(f.nps);
+      setBolts(f.bolts);
+    }
+  };
+
+  const onBolt = (bolt: number) => {
+    const r = tapBolt(state, bolt);
+    setState(r.state);
+    if (r.ok) {
+      Haptics.impactAsync(
+        r.finished ? Haptics.ImpactFeedbackStyle.Heavy : Haptics.ImpactFeedbackStyle.Light,
+      ).catch(() => {});
+      if (r.finished) setShowDone(true);
+    } else {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
+    }
+  };
+
+  // The picture is the flange in front of you: the bolt circle sits inside the
+  // rim at the ratio the table gives, so a 2" joint reads narrow and a 24" one
+  // reads wide.
+  const bcFrac = flange ? flange.boltCircle / flange.flangeOd : 0.85;
+  const avail = Math.max(FACE_MIN, Math.min(width - t.layout.screenPadding * 2, FACE_MAX));
+  const L = flangeFace(bolts, avail, bcFrac);
+  const { face, c, odR, bcR, marker } = L;
+
+  const scale = flange ? odR / (flange.flangeOd / 2) : 0;
+  const gasketOdR = flange ? (flange.gasketOd / 2) * scale : bcR * 0.82;
+  const gasketIdR = flange ? (flange.gasketId / 2) * scale : bcR * 0.58;
+
+  const angles = boltHoleAngles(bolts);
+
+  return (
+    <Screen>
+      <View onLayout={(e) => setWidth(e.nativeEvent.layout.width)} />
+
+      <PassBanner
+        t={t}
+        state={state}
+        expected={expected}
+        target={target}
+        progress={progress}
+        order={order}
+      />
+
+      <View style={{ alignItems: 'center', paddingBottom: t.space.lg }}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={L.scrolls}
+          contentContainerStyle={{ paddingHorizontal: t.space.md }}
+        >
+          <View style={{ width: face, height: face }}>
+            <Svg width={face} height={face}>
+              <Circle cx={c} cy={c} r={odR} fill={t.colors.bgSubtle} stroke={t.colors.border} strokeWidth={1} />
+              {/* The gasket, so the sealing face is the thing the bolts surround. */}
+              <Circle
+                cx={c}
+                cy={c}
+                r={gasketOdR}
+                fill={t.colors.accentSoft}
+                stroke={t.colors.borderStrong}
+                strokeWidth={1}
+              />
+              {/* The bore, which is a hole and should read as one. */}
+              <Circle
+                cx={c}
+                cy={c}
+                r={gasketIdR}
+                fill={t.colors.bg}
+                stroke={t.colors.borderStrong}
+                strokeWidth={1.5}
+              />
+              <Circle
+                cx={c}
+                cy={c}
+                r={bcR}
+                fill="none"
+                stroke={t.colors.textFaint}
+                strokeWidth={1}
+                strokeDasharray="4 5"
+                opacity={0.7}
+              />
+              <Line x1={c} y1={c - odR} x2={c} y2={c + odR} stroke={t.colors.textFaint} strokeWidth={0.75} opacity={0.4} />
+              <Line x1={c - odR} y1={c} x2={c + odR} y2={c} stroke={t.colors.textFaint} strokeWidth={0.75} opacity={0.4} />
+            </Svg>
+
+            {angles.map((deg, i) => {
+              const bolt = i + 1;
+              const { x, y } = boltCentre(L, deg);
+              return (
+                <BoltMarker
+                  key={bolt}
+                  t={t}
+                  bolt={bolt}
+                  level={boltLevel(state, bolt)}
+                  size={marker}
+                  ring={L.ring}
+                  slop={L.slop}
+                  x={x}
+                  y={y}
+                  next={!done && bolt === expected}
+                  flash={flash}
+                  onPress={() => onBolt(bolt)}
+                />
+              );
+            })}
+          </View>
+        </ScrollView>
+      </View>
+
+      <ControlRow>
+        <GhostButton
+          label="Undo"
+          icon="arrow-undo-outline"
+          style={{ flex: 1 }}
+          onPress={() => {
+            setState(undoBolt(state));
+            setShowDone(false);
+          }}
+        />
+        <GhostButton
+          label="Start over"
+          icon="refresh-outline"
+          style={{ flex: 1 }}
+          onPress={() => {
+            setState(resetBoltUp(state));
+            setShowDone(false);
+          }}
+        />
+      </ControlRow>
+
+      <Divider />
+
+      <HintRow text="A flange is never pulled down round the circle. Every bolt is followed by the one straight across it, in three passes, then checked round at full torque. The screen will only take the bolt the sequence is asking for — tap anything else and it points you back." />
+
+      <SectionHeader title="The joint" meta={flange ? `${flange.label} · class ${cls}` : `${bolts} bolts`} />
+
+      <ChipRow
+        label="CLASS"
+        options={[
+          { value: '125' as CastIronFlangeClass, label: '125 lb' },
+          { value: '250' as CastIronFlangeClass, label: '250 lb' },
+        ]}
+        selected={cls}
+        onSelect={pickClass}
+      />
+
+      <ChipRow
+        label="SIZE"
+        options={sizes.map((s) => ({ value: s, label: boltUp(s, cls)?.label ?? `${s}"` }))}
+        selected={flange ? nps : null}
+        onSelect={pickSize}
+      />
+
+      <ChipRow
+        label="BOLTS"
+        options={COUNTS.map((n) => ({ value: n, label: String(n) }))}
+        selected={bolts}
+        onSelect={setBolts}
+      />
+
+      {flange ? (
+        <View style={{ paddingHorizontal: t.layout.screenPadding, marginBottom: t.space.lg }}>
+          <Text style={[t.type.caption, { color: t.colors.textMuted }]}>
+            {`${flange.bolts} × ${formatInches(flange.boltDiameter)} bolts, ${formatInches(
+              flange.boltLength,
+            )} long, on a ${formatInches(flange.boltCircle)} bolt circle. Ring gasket ${formatInches(
+              flange.gasketId,
+            )} × ${formatInches(flange.gasketOd)}.`}
+          </Text>
+        </View>
+      ) : (
+        <View style={{ paddingHorizontal: t.layout.screenPadding, marginBottom: t.space.lg }}>
+          <Text style={[t.type.caption, { color: t.colors.textMuted }]}>
+            {`${bolts} bolts, set by hand. The sequence works off the count alone, so this covers a flange that is not in the cast iron tables.`}
+          </Text>
+        </View>
+      )}
+
+      <Divider />
+      <SectionHeader title="Torque" meta="from the job's bolting spec" />
+      <View style={{ paddingHorizontal: t.layout.screenPadding, marginBottom: t.space.lg }}>
+        <TextInput
+          value={torque}
+          onChangeText={setTorque}
+          keyboardType="decimal-pad"
+          placeholder="Final torque, ft-lb"
+          placeholderTextColor={t.colors.textFaint}
+          accessibilityLabel="Final torque in foot pounds"
+          style={{
+            height: t.layout.fieldHeight,
+            borderRadius: t.radius.md,
+            borderWidth: 1,
+            borderColor: t.colors.border,
+            backgroundColor: t.colors.bgRaised,
+            color: t.colors.text,
+            paddingHorizontal: t.space.lg,
+            fontSize: 23,
+            fontWeight: '700',
+          }}
+        />
+        <Text style={[t.type.caption, { color: t.colors.textMuted, marginTop: t.space.md }]}>
+          The app splits the figure into passes. It does not supply it: final torque depends on the gasket, the stud
+          material and whether the threads are lubricated, and a guessed figure either crushes the gasket or leaves the
+          joint loose.
+        </Text>
+      </View>
+
+      <Divider />
+      <SectionHeader title="The passes" />
+      {PASSES.map((p, i) => {
+        const active = !done && i === state.pass;
+        const finished = done || i < state.pass;
+        return (
+          <View
+            key={p.number}
+            style={{
+              marginHorizontal: t.layout.screenPadding,
+              marginBottom: t.space.md,
+              padding: t.space.lg,
+              borderRadius: t.radius.md,
+              borderWidth: active ? 1.5 : 1,
+              borderColor: active ? t.colors.accent : t.colors.border,
+              backgroundColor: active ? t.colors.accentSoft : t.colors.bgRaised,
+            }}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.sm }}>
+              <Ionicons
+                name={finished ? 'checkmark-circle' : active ? 'ellipse' : 'ellipse-outline'}
+                size={16}
+                color={finished ? t.colors.success : active ? t.colors.accent : t.colors.textFaint}
+              />
+              <Text style={[t.type.labelSmall, { color: t.colors.textMuted }]}>
+                {`${p.label} · ${Math.round(p.target * 100)}% · ${p.order === 'cross' ? 'across' : 'round'}`}
+              </Text>
+            </View>
+            <Text style={[t.type.body, { color: t.colors.text, marginTop: t.space.sm }]}>{p.note}</Text>
+          </View>
+        );
+      })}
+
+      <Divider />
+      <SectionHeader title="What the colours mean" />
+      <View style={{ paddingHorizontal: t.layout.screenPadding }}>
+        {LEVEL_LABELS.map((label, level) => {
+          const skin = boltSkin(t, level);
+          return (
+            <View key={label} style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.md, paddingVertical: 6 }}>
+              <View
+                style={{
+                  width: 24,
+                  height: 24,
+                  borderRadius: 12,
+                  backgroundColor: skin.fill,
+                  borderWidth: skin.width,
+                  borderColor: skin.border,
+                }}
+              />
+              <Text style={[t.type.body, { color: t.colors.textMuted }]}>{label}</Text>
+            </View>
+          );
+        })}
+      </View>
+
+      <DoneSheet t={t} visible={showDone} bolts={bolts} onClose={() => setShowDone(false)} />
+    </Screen>
+  );
+}
+
+function PassBanner({
+  t,
+  state,
+  expected,
+  target,
+  progress,
+  order,
+}: {
+  t: Theme;
+  state: BoltUpState;
+  expected: number;
+  target: number;
+  progress: { done: number; total: number };
+  order: number[];
+}) {
+  const pass = currentPass(state);
+  const done = isFinished(state);
+  const wrong = state.lastWrong;
+
+  return (
+    <View style={{ backgroundColor: t.colors.bgSubtle, paddingHorizontal: t.layout.screenPadding, paddingVertical: t.space.lg }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.sm }}>
+        <Ionicons
+          name={done ? 'checkmark-done-outline' : 'git-compare-outline'}
+          size={18}
+          color={done ? t.colors.success : t.colors.textMuted}
+        />
+        <Text style={[t.type.label, { color: done ? t.colors.success : t.colors.textMuted }]}>
+          {done
+            ? 'All four passes recorded'
+            : `Pass ${pass?.number} of ${PASSES.length} · ${Math.round((pass?.target ?? 0) * 100)}% · ${
+                pass?.order === 'cross' ? 'across' : 'round'
+              }`}
+        </Text>
+        <Text style={[t.type.labelSmall, { color: t.colors.textFaint, marginLeft: 'auto' }]}>
+          {`${progress.done}/${progress.total}`}
+        </Text>
+      </View>
+
+      <Text
+        style={[t.type.displaySmall, { color: done ? t.colors.success : t.colors.text, marginTop: t.space.xs }]}
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.6}
+      >
+        {done ? 'Joint complete' : `Bolt ${expected}`}
+      </Text>
+
+      {!done ? (
+        <Text style={[t.type.bodyStrong, { color: t.colors.data, marginTop: t.space.xs }]} numberOfLines={2}>
+          {Number.isFinite(target)
+            ? `${Math.round(target)} ft-lb · ${state.step + 1} of ${state.bolts} on this pass`
+            : `${state.step + 1} of ${state.bolts} on this pass`}
+        </Text>
+      ) : null}
+
+      {!done && order.length ? (
+        <Text style={[t.type.caption, { color: t.colors.textMuted, marginTop: t.space.sm }]} numberOfLines={1}>
+          {`Then ${order.slice(state.step + 1, state.step + 5).join(' → ') || 'the next pass'}`}
+        </Text>
+      ) : null}
+
+      {!done && wrong !== null ? (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.sm, marginTop: t.space.md }}>
+          <Ionicons name="alert-circle" size={16} color={t.colors.danger} />
+          <Text style={[t.type.captionStrong, { color: t.colors.danger, flex: 1 }]}>
+            {`Bolt ${wrong} is out of sequence. Bolt ${expected} is next.`}
+          </Text>
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
+function BoltMarker({
+  t,
+  bolt,
+  level,
+  size,
+  ring,
+  slop,
+  x,
+  y,
+  next,
+  flash,
+  onPress,
+}: {
+  t: Theme;
+  bolt: number;
+  level: number;
+  size: number;
+  ring: number;
+  slop: number;
+  x: number;
+  y: number;
+  next: boolean;
+  flash: Animated.Value;
+  onPress: () => void;
+}) {
+  const skin = boltSkin(t, level);
+
+  return (
+    <View style={{ position: 'absolute', left: x - ring / 2, top: y - ring / 2, width: ring, height: ring }}>
+      {next ? (
+        <>
+          <View
+            style={{
+              position: 'absolute',
+              width: ring,
+              height: ring,
+              borderRadius: ring / 2,
+              borderWidth: 2,
+              borderColor: t.colors.primary,
+            }}
+          />
+          <Animated.View
+            style={{
+              position: 'absolute',
+              width: ring,
+              height: ring,
+              borderRadius: ring / 2,
+              borderWidth: 3,
+              borderColor: t.colors.danger,
+              backgroundColor: t.colors.danger,
+              opacity: flash,
+            }}
+          />
+        </>
+      ) : null}
+      <Pressable
+        onPress={onPress}
+        hitSlop={slop}
+        accessibilityRole="button"
+        accessibilityLabel={`Bolt ${bolt}, ${LEVEL_LABELS[level] ?? ''}${next ? ', next in the sequence' : ''}`}
+        style={({ pressed }) => ({
+          position: 'absolute',
+          left: (ring - size) / 2,
+          top: (ring - size) / 2,
+          width: size,
+          height: size,
+          borderRadius: size / 2,
+          borderWidth: skin.width,
+          borderColor: skin.border,
+          backgroundColor: skin.fill,
+          alignItems: 'center',
+          justifyContent: 'center',
+          opacity: pressed ? 0.65 : 1,
+        })}
+      >
+        <Text style={{ color: skin.text, fontSize: Math.max(9, Math.min(15, size * 0.45)), fontWeight: '700' }}>
+          {bolt}
+        </Text>
+      </Pressable>
+    </View>
+  );
+}
+
+function DoneSheet({ t, visible, bolts, onClose }: { t: Theme; visible: boolean; bolts: number; onClose: () => void }) {
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <Pressable style={{ flex: 1, backgroundColor: t.colors.overlay, justifyContent: 'center' }} onPress={onClose}>
+        <View
+          style={{
+            margin: t.space.xxl,
+            padding: t.space.xxl,
+            borderRadius: t.radius.xl,
+            backgroundColor: t.colors.bg,
+            alignItems: 'center',
+            gap: t.space.md,
+          }}
+        >
+          <Ionicons name="checkmark-circle" size={52} color={t.colors.success} />
+          <Text style={[t.type.sectionTitle, { color: t.colors.text, fontFamily: t.font.serif, textAlign: 'center' }]}>
+            Joint complete
+          </Text>
+          <Text style={[t.type.body, { color: t.colors.textMuted, textAlign: 'center' }]}>
+            {`Three cross passes and the check round, on all ${bolts} bolts, in order.`}
+          </Text>
+          <Text style={[t.type.caption, { color: t.colors.textMuted, textAlign: 'center' }]}>
+            The app recorded the sequence. It did not measure torque, and it cannot see the gasket. Check the joint again
+            once the line has been up to temperature.
+          </Text>
+          <GhostButton label="Close" onPress={onClose} style={{ alignSelf: 'stretch', marginTop: t.space.sm }} />
+        </View>
+      </Pressable>
+    </Modal>
+  );
+}

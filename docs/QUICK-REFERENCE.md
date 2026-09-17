@@ -164,6 +164,21 @@ It stays in inches. 30 inches is `30"`, not `2' 6"`. The **IN** marker top-left 
 
 ---
 
+## Bolting a flange up
+
+**Flange bolt-up** → set the class and size, and the bolt count follows.
+
+- Three passes **across** the flange at about **30%**, **60%** and **100%**, then a fourth pass **round** it at full torque. The fourth is the one that gets skipped and the one that matters.
+- Every bolt in a cross pass is followed by the bolt **straight across** from it.
+- 8 bolts: `1 5 3 7 2 6 4 8`. 16 bolts: `1 9 5 13 3 11 7 15 2 10 6 14 4 12 8 16`.
+- Tap each bolt as you tighten it. **Grey → yellow → orange → blue → green**, one step per pass.
+- Tap the wrong bolt and nothing happens: it flashes red on the **right** one and stays put.
+- Put the job's final torque in the box and it shows the ft-lb for each pass. It will not guess the figure for you.
+- Bolt 1 is the first hole clockwise of top dead centre, half a pitch off the centreline — which is how flanges are drilled.
+- **Joint complete** means the sequence was followed, not that the torque was measured. Re-check anything that runs hot once it is up to temperature.
+
+---
+
 ## The 3D spool
 
 **3D spool** → add legs, each with a length, a bend angle off the last one and a roll.
