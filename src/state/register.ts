@@ -1,0 +1,350 @@
+// The joint register
+// ------------------
+// A flange bolt-up is four passes over every bolt, and on a real job you get
+// called away in the middle of one. Losing your place means either starting the
+// joint again or guessing which bolts you had already pulled down — and
+// guessing is how a bolt gets taken to full torque twice while its neighbour
+// never gets touched.
+//
+// So the register keeps every joint by name, and the working state with it. It
+// is written through on every bolt rather than on leaving the screen, because
+// the case it exists for is the phone being put in a pocket mid-pass.
+//
+// Everything here is pure. The provider in joints.tsx holds one Register and
+// persists it; all the reasoning lives in these functions so it can be tested
+// without a device.
+
+import { CastIronFlangeClass } from '../calc/boltUp';
+import { BoltUpState, PASSES, isFinished, startBoltUp } from '../calc/boltUpSequence';
+
+/** The unnamed joint the flange screen uses until it is given a tag. */
+export const SCRATCH_ID = 'scratch';
+
+/**
+ * Bumped only when the stored shape changes in a way an older app would read
+ * wrongly. A store written by a NEWER version is left untouched rather than
+ * parsed optimistically or overwritten: the crew runs the web app and the APK
+ * side by side, and one of them being a version behind must not wipe the other's
+ * joints.
+ */
+export const REGISTER_VERSION = 1;
+
+/**
+ * Enough joints for any job, and small enough that the whole register stays a
+ * few hundred kilobytes. Completed joints are dropped oldest first when it is
+ * reached; a joint still part-way through is never dropped, even over the cap,
+ * because unfinished work is the one thing here that cannot be reconstructed.
+ */
+export const MAX_JOINTS = 200;
+
+export type Joint = {
+  id: string;
+  /** What the fitter calls it — line number, spool mark, "pump suction". */
+  tag: string;
+  note: string;
+  cls: CastIronFlangeClass;
+  /** The table size, or null when the bolt count was set by hand. */
+  nps: number | null;
+  bolts: number;
+  /** Final torque from the job's bolting spec, or null when none was given. */
+  torque: number | null;
+  state: BoltUpState;
+  createdAt: number;
+  updatedAt: number;
+  /** When the fourth pass closed, or null while it is still open. */
+  completedAt: number | null;
+};
+
+export type Register = {
+  joints: Joint[];
+  /** The store was written by a newer app and has been left alone. */
+  foreign: boolean;
+  /** Joints the store held that did not survive validation. */
+  dropped: number;
+};
+
+export const emptyRegister = (): Register => ({ joints: [], foreign: false, dropped: 0 });
+
+export const isScratch = (j: Joint): boolean => j.id === SCRATCH_ID;
+export const isNamed = (j: Joint): boolean => !isScratch(j) && j.tag.trim() !== '';
+export const isDone = (j: Joint): boolean => j.completedAt !== null;
+
+// ---------------------------------------------------------------- validation
+
+const isInt = (v: unknown): v is number => typeof v === 'number' && Number.isInteger(v);
+const isStr = (v: unknown): v is string => typeof v === 'string';
+const isRec = (v: unknown): v is Record<string, unknown> =>
+  typeof v === 'object' && v !== null && !Array.isArray(v);
+
+/**
+ * A bolt-up state, checked against itself rather than merely type-checked.
+ *
+ * The strong check is the last one. In any state the machine can actually
+ * reach, every bolt sits at either `pass` or `pass + 1`, and the number of
+ * bolts at `pass + 1` is exactly `step` — because a pass advances only when the
+ * last bolt on it is worked, which resets step to zero and levels the array. A
+ * store that has been corrupted, hand-edited, or written by a different
+ * version will fail that, and failing it is the point: a level array that
+ * disagrees with the step would put the screen on the wrong bolt, which is
+ * worse than losing the joint.
+ */
+export function validState(v: unknown, bolts: number): BoltUpState | null {
+  if (!isRec(v)) return null;
+  if (!isInt(bolts) || bolts < 1) return null;
+  if (v.bolts !== bolts) return null;
+
+  const { pass, step, level, lastWrong, wrongCount } = v;
+  if (!isInt(pass) || pass < 0 || pass > PASSES.length) return null;
+  if (!isInt(step) || step < 0 || step >= bolts) return null;
+  if (!isInt(wrongCount) || wrongCount < 0) return null;
+  if (lastWrong !== null && (!isInt(lastWrong) || lastWrong < 1 || lastWrong > bolts)) return null;
+
+  if (!Array.isArray(level) || level.length !== bolts) return null;
+  if (!level.every((l) => isInt(l) && l >= 0 && l <= PASSES.length)) return null;
+
+  const finished = pass === PASSES.length;
+  if (finished && step !== 0) return null;
+  if (finished) {
+    if (!level.every((l) => l === PASSES.length)) return null;
+  } else {
+    if (!level.every((l) => l === pass || l === pass + 1)) return null;
+    if (level.filter((l) => l === pass + 1).length !== step) return null;
+  }
+
+  return {
+    bolts,
+    pass,
+    step,
+    level: level.slice() as number[],
+    lastWrong: lastWrong as number | null,
+    wrongCount,
+  };
+}
+
+const CLASSES: CastIronFlangeClass[] = ['125', '250'];
+
+/** One joint, or null if anything about it does not hold up. */
+export function validJoint(v: unknown): Joint | null {
+  if (!isRec(v)) return null;
+  const { id, tag, note, cls, nps, bolts, torque, createdAt, updatedAt, completedAt } = v;
+
+  if (!isStr(id) || id === '') return null;
+  if (!isStr(tag) || !isStr(note)) return null;
+  if (!isStr(cls) || !CLASSES.includes(cls as CastIronFlangeClass)) return null;
+  if (nps !== null && (typeof nps !== 'number' || !Number.isFinite(nps) || nps <= 0)) return null;
+  if (!isInt(bolts) || bolts < 1) return null;
+  if (torque !== null && (typeof torque !== 'number' || !Number.isFinite(torque) || torque <= 0)) return null;
+  if (!isInt(createdAt) || createdAt < 0) return null;
+  if (!isInt(updatedAt) || updatedAt < 0) return null;
+  if (completedAt !== null && (!isInt(completedAt) || completedAt < 0)) return null;
+
+  const state = validState(v.state, bolts);
+  if (!state) return null;
+
+  // A joint cannot be marked done unless its state says so, or the list would
+  // show a finished joint the screen then reopens part-way through.
+  if ((completedAt !== null) !== isFinished(state)) return null;
+
+  return {
+    id,
+    tag,
+    note,
+    cls: cls as CastIronFlangeClass,
+    nps: nps as number | null,
+    bolts,
+    torque: torque as number | null,
+    state,
+    createdAt,
+    updatedAt,
+    completedAt: completedAt as number | null,
+  };
+}
+
+// ------------------------------------------------------------- persistence
+
+export function serialiseRegister(r: Register): string {
+  return JSON.stringify({ v: REGISTER_VERSION, joints: r.joints });
+}
+
+/**
+ * Read the store.
+ *
+ * Nothing here throws and nothing here guesses. A store from a newer app comes
+ * back empty with `foreign` set, so the caller can say so and — importantly —
+ * decline to write over it. Individual joints that fail validation are dropped
+ * and counted rather than repaired, because a half-repaired bolt-up state is
+ * indistinguishable from a real one on screen.
+ */
+export function parseRegister(raw: string | null | undefined): Register {
+  if (!raw) return emptyRegister();
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return { ...emptyRegister(), dropped: 1 };
+  }
+
+  if (!isRec(parsed)) return { ...emptyRegister(), dropped: 1 };
+  if (!isInt(parsed.v) || parsed.v < 1) return { ...emptyRegister(), dropped: 1 };
+  if (parsed.v > REGISTER_VERSION) return { ...emptyRegister(), foreign: true };
+  if (!Array.isArray(parsed.joints)) return { ...emptyRegister(), dropped: 1 };
+
+  const joints: Joint[] = [];
+  const seen = new Set<string>();
+  let dropped = 0;
+  for (const raw2 of parsed.joints) {
+    const j = validJoint(raw2);
+    if (!j || seen.has(j.id)) {
+      dropped += 1;
+      continue;
+    }
+    seen.add(j.id);
+    joints.push(j);
+  }
+
+  return { joints: sortJoints(joints), foreign: false, dropped };
+}
+
+// -------------------------------------------------------------- operations
+
+/**
+ * Live work first, most recently touched at the top; finished joints below it,
+ * most recently finished first. The scratch joint never appears in a list, so
+ * it is not special-cased here.
+ */
+export function sortJoints(joints: Joint[]): Joint[] {
+  return joints.slice().sort((a, b) => {
+    const ad = isDone(a) ? 1 : 0;
+    const bd = isDone(b) ? 1 : 0;
+    if (ad !== bd) return ad - bd;
+    if (ad === 1) return (b.completedAt ?? 0) - (a.completedAt ?? 0) || a.id.localeCompare(b.id);
+    return b.updatedAt - a.updatedAt || a.id.localeCompare(b.id);
+  });
+}
+
+/**
+ * Bring the register back under the cap.
+ *
+ * Finished joints go first, oldest finish first. If that is not enough, the
+ * register is left over the cap: dropping a joint someone is part-way through
+ * to make room for a new one would lose the only thing in here that cannot be
+ * worked out again.
+ */
+export function pruneRegister(r: Register): Register {
+  if (r.joints.length <= MAX_JOINTS) return r;
+
+  const keep = r.joints.filter((j) => !isDone(j) || isScratch(j));
+  const done = r.joints
+    .filter((j) => isDone(j) && !isScratch(j))
+    .sort((a, b) => (b.completedAt ?? 0) - (a.completedAt ?? 0));
+
+  const room = Math.max(0, MAX_JOINTS - keep.length);
+  return { ...r, joints: sortJoints([...keep, ...done.slice(0, room)]) };
+}
+
+export const getJoint = (r: Register, id: string): Joint | undefined => r.joints.find((j) => j.id === id);
+
+/** Insert or replace a joint, then re-sort and prune. */
+export function putJoint(r: Register, joint: Joint): Register {
+  const without = r.joints.filter((j) => j.id !== joint.id);
+  return pruneRegister({ ...r, joints: sortJoints([...without, joint]) });
+}
+
+export function removeJoint(r: Register, id: string): Register {
+  return { ...r, joints: r.joints.filter((j) => j.id !== id) };
+}
+
+export type JointSpec = {
+  tag?: string;
+  note?: string;
+  cls: CastIronFlangeClass;
+  nps: number | null;
+  bolts: number;
+  torque?: number | null;
+};
+
+export function newJoint(id: string, spec: JointSpec, now: number): Joint {
+  return {
+    id,
+    tag: spec.tag ?? '',
+    note: spec.note ?? '',
+    cls: spec.cls,
+    nps: spec.nps,
+    bolts: spec.bolts,
+    torque: spec.torque ?? null,
+    state: startBoltUp(spec.bolts),
+    createdAt: now,
+    updatedAt: now,
+    completedAt: null,
+  };
+}
+
+/**
+ * Write a worked state back onto a joint.
+ *
+ * `completedAt` is set from the state rather than passed in, so the flag and
+ * the state can never disagree — which is the pair `validJoint` refuses to load.
+ */
+export function withState(joint: Joint, state: BoltUpState, now: number): Joint {
+  const finished = isFinished(state);
+  return {
+    ...joint,
+    state,
+    updatedAt: now,
+    completedAt: finished ? (joint.completedAt ?? now) : null,
+  };
+}
+
+/**
+ * Change the flange a joint is for. The bolt-up starts again, because a level
+ * array for sixteen bolts means nothing on a flange with twelve.
+ */
+export function withFlange(joint: Joint, spec: JointSpec, now: number): Joint {
+  const sameFlange = joint.bolts === spec.bolts && joint.cls === spec.cls && joint.nps === spec.nps;
+  return {
+    ...joint,
+    cls: spec.cls,
+    nps: spec.nps,
+    bolts: spec.bolts,
+    torque: spec.torque === undefined ? joint.torque : spec.torque,
+    state: sameFlange ? joint.state : startBoltUp(spec.bolts),
+    updatedAt: now,
+    completedAt: sameFlange ? joint.completedAt : null,
+  };
+}
+
+/** An id that is not already in the register, derived from a seed. */
+export function freshId(r: Register, seed: string): string {
+  const base = seed.replace(/[^a-zA-Z0-9]/g, '') || 'j';
+  if (!getJoint(r, base) && base !== SCRATCH_ID) return base;
+  for (let n = 2; ; n++) {
+    const id = `${base}-${n}`;
+    if (!getJoint(r, id) && id !== SCRATCH_ID) return id;
+  }
+}
+
+/**
+ * How long ago something happened, at the resolution a shift cares about.
+ *
+ * Nobody reading a joint list wants a timestamp. They want to know whether
+ * this is the joint they were on ten minutes ago or one from last week.
+ */
+export function sinceLabel(then: number, now: number): string {
+  const s = Math.max(0, Math.round((now - then) / 1000));
+  if (s < 60) return 'just now';
+  const m = Math.round(s / 60);
+  if (m < 60) return `${m} min ago`;
+  const h = Math.round(m / 60);
+  if (h < 24) return `${h} hr ago`;
+  const d = Math.round(h / 24);
+  if (d === 1) return 'yesterday';
+  if (d < 7) return `${d} days ago`;
+  const w = Math.round(d / 7);
+  return w === 1 ? 'a week ago' : `${w} weeks ago`;
+}
+
+/** Everything a list should show: the named joints, in order, scratch aside. */
+export const listed = (r: Register): Joint[] => r.joints.filter((j) => !isScratch(j));
+export const openJoints = (r: Register): Joint[] => listed(r).filter((j) => !isDone(j));
+export const doneJoints = (r: Register): Joint[] => listed(r).filter(isDone);
