@@ -391,13 +391,30 @@ default.
 | GitHub Pages | $4/mo Pro | with Pro | `tysunm.github.io/pipefit-pro/` |
 | GitHub Pages | free | only if public | as above, and the handbook transcription is then on the open internet |
 
-**Cloudflare Pages, once:**
+**Cloudflare, once:**
 
-1. dash.cloudflare.com, sign in with GitHub, **Workers & Pages → Create → Pages
-   → Connect to Git**.
+1. dash.cloudflare.com, sign in with GitHub, **Workers & Pages → Create →
+   Connect to Git**.
 2. Pick `pipefit-pro`, branch `main`.
-3. Build command `npm run web:build`, output directory `dist`.
+3. **Build command `npm run web:build`.** This is the one setting that is not
+   in the repo and the one that breaks it if it is wrong: without it there is
+   no `dist` to serve.
 4. Save. Every push to `main` redeploys.
+
+`wrangler.jsonc` in the repo root carries the rest. It has no `main` on
+purpose: with `assets` and no script, the Worker is a pure static host and
+nothing runs per request. `not_found_handling` is set to
+`single-page-application`, so a refresh or a stale bookmark on any path opens
+the app instead of a 404 — the whole app lives behind one page.
+
+Validate a change to it before pushing:
+
+```powershell
+npm run web:build
+npx wrangler deploy --dry-run
+```
+
+It should read the files out of `dist` and stop without deploying.
 
 **GitHub Pages, if the repo ever goes public or the account goes Pro:**
 Settings → Pages → Source: GitHub Actions, then add a repository variable

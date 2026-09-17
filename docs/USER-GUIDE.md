@@ -537,6 +537,33 @@ Roll is the part people find odd. With a 90° bend and 0° roll the pipe turns u
 
 Leg 1 loses one takeout (it has a fitting on one end only). Leg 2 sits between two elbows and loses two. That is the whole difference, and you can see it in the numbers.
 
+### Turning the spool over
+
+Three controls, and **not one of them changes a cut**. The cut comes from the
+leg length and the takeout, the takeout comes from the bend angle, and all
+three of these touch only the roll. Turn a spool over as many times as you
+like: the pipe you buy and the pieces you cut are the same pieces.
+
+| Control | Where | What it does |
+|---|---|---|
+| **Mirror** | under the legs | The opposite hand. Same lengths, same bends, every roll reversed. |
+| **Flip all** | under the legs | Every leg turns the other way. What ran up now runs down. |
+| **⇕ on a leg** | on the leg's row | Turns that one leg the other way, and everything past it comes with it. |
+
+**Mirror** is the one you want when the same spool is needed handed for the
+other side of a rack. **Flip all** is the one you want when the whole run
+should fold the other way.
+
+> **A flat spool is its own mirror.** If nothing has any roll in it, the spool
+> lies in one plane, and reflecting a flat thing in its own plane does nothing.
+> That is not the button failing — it is what a flat spool is. Use **Flip all**
+> to fold it the other way instead. The hint under the buttons tells you which
+> case you are in.
+
+Flipping one leg carries the legs after it. That is correct and it is what you
+want: each leg is described as a turn off the one before, so they travel with
+it rather than the spool breaking in half.
+
 ### Why the drawing is drawn the way it is
 
 It is a **true isometric** projection — yaw −45°, pitch 35.264°. That is the only orientation where all three axes are foreshortened equally and sit 120° apart, and it is what makes iso paper read as solid instead of flat.
