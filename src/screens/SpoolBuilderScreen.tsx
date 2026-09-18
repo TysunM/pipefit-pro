@@ -9,12 +9,14 @@ import { ChipRow } from '../components/ChipRow';
 import { AccentButton, ControlRow, GhostButton, SelectorButton } from '../components/Buttons';
 import { FooterNote, MetaBar, ResultBanner, SpoolBar, StatGrid, WarningBanner } from '../components/Results';
 import { PipeSheet } from '../components/PipeSheet';
+import { CutList } from '../components/CutList';
 import { SpoolView } from '../components/spool3d/SpoolView';
 import { useTheme } from '../theme/ThemeProvider';
 import { useUnits } from '../hooks/useUnits';
 import { usePipeConfig } from '../hooks/usePipeConfig';
 import { useSettings } from '../state/settings';
 import { MAX_LEGS, solveSpool } from '../calc/spool';
+import { planCuts } from '../calc/cutList';
 import {
   COMPASS,
   DirLeg,
@@ -117,8 +119,9 @@ export function SpoolBuilderScreen() {
   // has on it, and metric keeps the one decimal that means anything.
   const figure = useCallback(
     (inches: number) => {
+      // A fraction comes back carrying its own inch mark, so it takes no suffix.
       const f = u.frac(inches);
-      if (f) return `${f}${u.suffix}`;
+      if (f) return f;
       const shown = fromInches(inches, u.system);
       return `${u.num(inches, Math.abs(shown - Math.round(shown)) < 0.005 ? 0 : 1)}${u.suffix}`;
     },
@@ -143,6 +146,22 @@ export function SpoolBuilderScreen() {
       return f.stock ? [`${tidy(e.angle)}°`] : [`${tidy(e.angle)}°`, 'cut to suit'];
     },
     [spool.elbows]
+  );
+
+  // The cuts are only half the answer. What a man actually needs to know at
+  // the rack is how many sticks to pull, and the two are not the same
+  // question: four pieces totalling 180 inches are one stick if they nest and
+  // two if they do not.
+  const cuts = useMemo(
+    () =>
+      planCuts(
+        valid
+          ? spool.runs.map((r, i) => ({ id: `leg${i}`, label: `Leg ${i + 1}`, tag: String(i + 1), length: r.cutLength }))
+          : [],
+        settings.stockLength,
+        settings.cutAllowance
+      ),
+    [valid, spool.runs, settings.stockLength, settings.cutAllowance]
   );
 
   const odd = turns.ok ? turns.legs.filter((l, i) => i > 0 && !fittingFor(l.bend).stock).length : 0;
@@ -406,9 +425,19 @@ export function SpoolBuilderScreen() {
         </>
       ) : null}
 
+      {valid ? (
+        <CutList plan={cuts} stock={settings.stockLength} length={(v) => `${u.num(v)} ${u.unitName}`} short={figure} />
+      ) : null}
+
       <StatGrid
         stats={[
-          { label: 'Total cut', note: 'Pipe to buy', value: valid ? u.dual(spool.totalCut) : '—' },
+          { label: 'Total cut', note: 'Pipe in the job', value: valid ? u.dual(spool.totalCut) : '—' },
+          {
+            label: 'Sticks to pull',
+            note: `${u.num(settings.stockLength, 0)} ${u.unitName} stock`,
+            value: cuts.ok ? String(cuts.count) : '—',
+          },
+          { label: 'Longest drop', note: 'Worth keeping', value: cuts.ok ? u.dual(cuts.longestDrop) : '—' },
           { label: 'Centre to centre', value: valid ? u.dual(spool.totalCenterToCenter) : '—' },
           { label: 'Legs', value: String(legs.length) },
           { label: 'Elbows', value: valid ? String(spool.elbows.length) : '—' },

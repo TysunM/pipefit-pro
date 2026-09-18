@@ -10,6 +10,7 @@ import { PipeSheet } from '../components/PipeSheet';
 import { useUnits } from '../hooks/useUnits';
 import { usePipeConfig } from '../hooks/usePipeConfig';
 import { useSettings } from '../state/settings';
+import { StockNote } from '../components/StockNote';
 import { END_FITTINGS, EndFitting, FITTING_SOURCE, endHasGap, solveCutLength } from '../calc/cutLength';
 import { JointKind, TAKEOFF_FAMILIES, optionsForFamily } from '../calc/takeoffCatalog';
 import { FlangeClass, flangedClasses } from '../calc/flangedFitting';
@@ -144,6 +145,14 @@ export function CutLengthScreen() {
       />
 
       <MetaBar text={`${pipe.label} ${pipe.kind} · SCH ${pipe.schedule} · Stock ${u.num(settings.stockLength)} ${u.unitName}`} />
+      {result.valid ? (
+        <StockNote
+          cut={result.pipeCut}
+          stock={settings.stockLength}
+          kerf={settings.cutAllowance}
+          length={(v) => `${u.num(v)} ${u.unitName}`}
+        />
+      ) : null}
 
       <StatGrid
         stats={[

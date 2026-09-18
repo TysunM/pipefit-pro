@@ -56,7 +56,7 @@ The app is checked against the multipliers a fitter already carries in his head.
 
 The app agrees with every one of them to **four decimal places**, and a test proves it on every build. If it ever disagrees with that table, the app is wrong — not the table.
 
-## Set three things once
+## Set these once
 
 **Settings** (gear, top right of any screen).
 
@@ -65,6 +65,7 @@ The app agrees with every one of them to **four decimal places**, and a test pro
 | **Default size** | The pipe you are on today | Every screen opens on it. Saves a tap on every job. |
 | **Weld gap** | Your standard root gap, default 3/32" | Comes off welded and flanged ends only. A screwed or soldered joint pulls up tight and never has it deducted. |
 | **Fractions** | 1/16 for most work, 1/32 or 1/64 for tight tolerance | The decimal above the fraction is always the exact figure. Cut to the decimal when it matters. |
+| **Stock length** | What comes off the rack, default 20' | The cut list packs onto it. Get it wrong and the stick count is wrong. |
 | **Length readout** | Inches | The calculator stays in inches. Press **FT** when you actually want feet. |
 
 ---
@@ -596,6 +597,40 @@ Leg 1 loses one takeout (it has a fitting on one end only). Leg 2 sits between
 two elbows and loses two. That is the whole difference, and you can see it in
 the numbers.
 
+### The cut list — what to pull off the rack
+
+Knowing every cut is not the same as knowing what to go and get. Four pieces
+totalling 180" are not fifteen feet of pipe; they are **one** twenty-foot stick
+if they nest and **two** if they do not.
+
+Under the elbows the app shows the sticks themselves, drawn to scale, with the
+leg numbers on the pieces and the drop left blank on the end. Under them, in
+words: how many to pull, the longest drop, and what the saw took.
+
+Two things it is careful about, and both of them cost pipe:
+
+- **The blade takes pipe.** Every piece severed off a stick costs a **saw cut**
+  as well as its own length, so a stick that looks like it holds exactly four
+  60" pieces holds three. Set your blade in **Settings → Saw cut**. The kerf is
+  charged on the last piece too, which over-states the loss by one cut on a
+  stick used right to the end — the only direction it is safe to be wrong in
+  when you are ordering.
+- **It finds the fewest sticks, not a good guess.** The usual way to pack a cut
+  list is biggest first into the first stick that takes it, and it can call for
+  a stick nobody needs — 7, 5, 4, 2, 2 on an 11 ft stick comes out as three
+  that way and fits on two. For a spool the app tries every grouping and takes
+  the best, and among the ones that use the same number of sticks it takes the
+  one that **leaves the longest single drop**, because one long drop is
+  material and the same footage in four short ones is scrap.
+
+If any single cut is longer than a stick, it says so by name rather than
+quietly planning something that cannot be built.
+
+> **The same check on the single-cut screens.** Cut length, simple offset and
+> rolling offset all show the stock length, and now all three say whether the
+> cut comes off one stick and what is left. That figure used to sit there
+> meaning nothing.
+
 ### Why the drawing is drawn the way it is
 
 It is a **true isometric** projection — yaw −45°, pitch 35.264°. That is the
@@ -930,7 +965,8 @@ Use it when you want to see the figure the calculation used rather than take it 
 | **Length readout** | Inches, or feet + inches, for the calculator |
 | **Default size** | Pipe every screen opens on |
 | **Weld gap** | Your standard root gap |
-| **Stock length** | Length you buy, for counting legs out of a stick |
+| **Stock length** | The length you buy. The cut list packs onto it, and the offset and cut-length screens check against it. |
+| **Saw cut** | What the blade takes, default 1/8". Charged on every cut in the cut list. |
 | **Updates** | What is running, and a manual check |
 
 Settings are stored on the phone only. Nothing leaves it.

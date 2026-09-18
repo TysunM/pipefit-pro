@@ -197,6 +197,34 @@ each corner, and the corner itself is drawn as the elbow that fills it — an ar
 on the bend radius, with a weld line at each end. Where two pieces that are not
 joined cross, the one in front breaks the one behind, across its width only.
 
+## The cut list
+
+`src/calc/cutList.ts` packs the solved cuts onto sticks of the configured stock
+length. Two decisions in it are worth stating.
+
+**The kerf is charged on every piece, including the last.** A stick with *k*
+pieces takes *k* saw cuts when any drop is left and *k−1* when it is consumed
+exactly, and which of the two applies is not knowable before the packing is
+done. Charging *k* over-states the loss by one kerf on a stick used right to
+the end, which is the only direction it is safe to be wrong in when the output
+is a material order.
+
+**The packing is exact, not first-fit.** First-fit-decreasing is the usual
+answer and it is provably up to 11/9 of optimal: 7, 5, 4, 2, 2 on an 11 stick
+comes out as three bins and fits in two. A spool holds at most `MAX_LEGS` = 8
+pieces, so every grouping is enumerated with pruning (any branch already using
+more sticks than the best found is abandoned; bins with equal remaining space
+are the same choice and only one is tried), under a node budget that a full
+spool never reaches. Among packings using the fewest sticks it takes the one
+leaving the **longest single drop** — one long drop is material, the same
+footage in four short ones is scrap. Above `EXACT_UP_TO` = 9 pieces it falls
+back to first-fit-decreasing and says so in the output (`best: false`), which
+the screen repeats to the user.
+
+`settings.stockLength` was displayed on the cut length, simple offset and
+rolling offset screens and used by nothing. All three now check their cut
+against it and state the drop, so the figure means what it appears to mean.
+
 ## Data provenance
 
 Every number the app deducts comes from one of three places. Know which before you cut.

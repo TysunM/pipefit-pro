@@ -11,6 +11,7 @@ import { RollingDiagram } from '../components/diagram/RollingDiagram';
 import { useUnits } from '../hooks/useUnits';
 import { usePipeConfig } from '../hooks/usePipeConfig';
 import { useSettings } from '../state/settings';
+import { StockNote } from '../components/StockNote';
 import { FITTING_ANGLES } from '../calc/pipe';
 import { solveRolling } from '../calc/rolling';
 import { parseNumber } from '../calc/format';
@@ -188,6 +189,14 @@ export function RollingOffsetScreen() {
       />
 
       <MetaBar text={`${pipe.label} ${pipe.kind} · SCH ${pipe.schedule} · Stock ${u.num(settings.stockLength)} ${u.unitName}`} />
+      {result.valid ? (
+        <StockNote
+          cut={result.pipeCut}
+          stock={settings.stockLength}
+          kerf={settings.cutAllowance}
+          length={(v) => `${u.num(v)} ${u.unitName}`}
+        />
+      ) : null}
 
       <SummaryRow
         items={[

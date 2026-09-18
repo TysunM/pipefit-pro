@@ -220,3 +220,10 @@ On a finished joint, under **Re-torque**.
 - A leg drawn as a **circle** is coming straight at you. Read its figure — that is what a plan is.
 - **Hold a leg** in the picture and drag along it to stretch or shorten it.
 - **Mirror** gives the opposite hand; **Turn over** swaps every rise for a drop; **Swing 90°** points the whole spool elsewhere. None of the three changes a cut.
+
+**Cut list** — under the elbows. How many sticks to pull, what comes off each, and what is left.
+
+- Packed onto **Settings → Stock length**, with **Settings → Saw cut** charged on every piece.
+- It finds the **fewest** sticks, and among those the one that leaves the **longest single drop**.
+- A cut longer than a stick is named, not quietly planned around.
+- Cut length, simple offset and rolling offset now say whether their one cut comes off one stick, and what is left.
