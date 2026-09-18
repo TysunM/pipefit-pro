@@ -1,5 +1,5 @@
+import { KNOWN_ELBOWS } from '../calc/direction';
 import {
-  BEND_PRESETS,
   MAX_LEGS,
   START_FRAME,
   SpoolLeg,
@@ -8,7 +8,6 @@ import {
   dot,
   len,
   makeLeg,
-  rollLabel,
   rotateAbout,
   solveSpool,
   sub,
@@ -98,6 +97,26 @@ describe('frame advance', () => {
     const b = advanceFrame(START_FRAME, 45, 270);
     near(a.d.x, -b.d.x, 1e-9);
     near(a.d.y, b.d.y, 1e-9);
+  });
+
+  test('roll ninety is the right hand of a man facing along the pipe', () => {
+    // Handedness, and the only place it is decided. The start frame heads
+    // north with up overhead; facing north, a man's right hand is east. A
+    // frame that turned west here would build every rolled spool as its own
+    // mirror, which is the other hand, which does not fit the job.
+    const right = advanceFrame(START_FRAME, 45, 90);
+    expect(right.d.x).toBeGreaterThan(0.7);
+    near(right.d.y, 0, 1e-9);
+    const left = advanceFrame(START_FRAME, 45, 270);
+    expect(left.d.x).toBeLessThan(-0.7);
+  });
+
+  test('a start frame aims the first leg, and is left alone when none is given', () => {
+    const east = solveSpool({ ...base, start: { d: { x: 1, y: 0, z: 0 }, n: { x: 0, y: 1, z: 0 } }, legs: [leg(36)] });
+    near(east.points[1]!.x, 36);
+    near(east.points[1]!.z, 0, 1e-9);
+    const plain = solveSpool({ ...base, legs: [leg(36)] });
+    near(plain.points[1]!.z, 36);
   });
 
   test('roll wraps around 360', () => {
@@ -274,8 +293,8 @@ describe('elbow figures agree with the shared pipe module', () => {
     near(r.elbows[1]!.roll, 90);
   });
 
-  test('every bend preset resolves', () => {
-    for (const b of BEND_PRESETS) {
+  test('every elbow the app knows about resolves', () => {
+    for (const b of KNOWN_ELBOWS) {
       const r = solveSpool({ ...base, legs: [leg(40), leg(40, b, 0)] });
       expect(r.valid).toBe(true);
       near(r.elbows[0]!.angle, b);
@@ -290,14 +309,6 @@ describe('bounds and labels', () => {
     near(r.bounds.size.y, 24);
   });
 
-  test('roll labels read in plain words at the quarters', () => {
-    expect(rollLabel(0)).toBe('up');
-    expect(rollLabel(90)).toBe('right');
-    expect(rollLabel(180)).toBe('down');
-    expect(rollLabel(270)).toBe('left');
-    expect(rollLabel(360)).toBe('up');
-    expect(rollLabel(33)).toBe('33°');
-  });
 
   test('a single leg spool is valid with no elbows', () => {
     const r = solveSpool({ ...base, legs: [leg(96)] });

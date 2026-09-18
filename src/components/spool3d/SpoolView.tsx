@@ -1,32 +1,39 @@
-import React, { useMemo, useRef, useState } from 'react';
-import { PanResponder, Pressable, StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { PanResponder, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import Svg, { Circle, Defs, G, Line, LinearGradient, Path, Rect, Stop, Text as SvgText } from 'react-native-svg';
 import { SpoolResult, Vec3, add, elbowCenterline, scale, sub } from '../../calc/spool';
 import { useTheme } from '../../theme/ThemeProvider';
 import { pipeShades } from '../diagram/primitives';
+import { Box, LabelWant, Seg, placeLabels, segmentHitsBox } from './dimension';
 import {
   Camera,
   Crossing,
+  ELEVATIONS,
   ISO_CORNERS,
   ISO_VIEW,
+  LOST,
+  NamedView,
+  PLAN_VIEW,
   Projected,
+  bestCorner,
+  clampPitch,
   distanceToSegment,
   fitProjection,
-  fitSphere,
-  allowedYaw,
-  clampPitch,
-  legDirections,
+  fitView,
   polylineCrossings,
   project,
-  snapYaw,
-  spoolPlane,
-  sweepOf,
-  yawAt,
+  projectedFraction,
+  viewAt,
 } from './project';
 
-const W = 340;
-const H = 340;
+const W = 360;
+const H = 360;
+/** Room round the drawing for the figures that hang off it. */
+const PAD = 30;
+/** How big the compass is, and how close to the edge it sits. */
+const GIZMO = 80;
+const GIZMO_EDGE = 4;
 
 const hex = (c: string) => [
   parseInt(c.slice(1, 3), 16),
@@ -123,6 +130,13 @@ const GRAB_MS = 260;
 const GRAB_SLOP = 10;
 const HIT_PAD = 22;
 
+/** The compass arms, and where a collapsed one puts its name. */
+const AXES = [
+  { key: 'X' as const, label: 'E', colour: '#C0553F', away: { x: 1, y: 0.6 } },
+  { key: 'Y' as const, label: 'UP', colour: '#3E8F5B', away: { x: 0, y: -1 } },
+  { key: 'Z' as const, label: 'N', colour: '#2E6C9C', away: { x: -1, y: 0.6 } },
+];
+
 export function SpoolView({
   spool,
   showLabels,
@@ -130,6 +144,8 @@ export function SpoolView({
   selectedRun,
   onResizeLeg,
   lengthLabel,
+  legText,
+  elbowText,
 }: {
   spool: SpoolResult;
   showLabels: boolean;
@@ -137,10 +153,17 @@ export function SpoolView({
   selectedRun?: number | null;
   onResizeLeg?: (index: number, nextLength: number) => void;
   lengthLabel?: (inches: number) => string;
+  /** What goes against leg `index` on the drawing: its length, then where it runs. */
+  legText?: (index: number) => string[];
+  /** What goes against elbow `index`: its angle, then the fitting it needs. */
+  elbowText?: (index: number) => string[];
 }) {
   const t = useTheme();
   const sh = pipeShades(t);
-  const [cam, setCam] = useState<Camera>(ISO_VIEW);
+  // The view opens on the corner this spool reads best from, not on a fixed
+  // one. Which corner that is depends only on the shape, so it is worked out
+  // from the shape.
+  const [cam, setCam] = useState<Camera>(() => bestCorner(spool.points).cam);
   const [dragging, setDragging] = useState(false);
   const start = useRef<Camera>(ISO_VIEW);
   const camRef = useRef<Camera>(ISO_VIEW);
@@ -166,28 +189,15 @@ export function SpoolView({
   const spoolRef = useRef(spool);
   spoolRef.current = spool;
 
-  // What the spool would go edge on to: the plane a flat one lies in, and the
-  // direction of every leg.
-  const plane = useMemo(() => spoolPlane(spool.points), [spool.points]);
-  const dirs = useMemo(() => legDirections(spool.points), [spool.points]);
+  // The drawing fills the canvas, which means its scale follows the silhouette
+  // and the silhouette changes as the spool turns. Standing still that is what
+  // is wanted; under a thumb it would have the picture breathing. So a drag
+  // carries the scale it began with as a ceiling — the drawing may give ground
+  // to stay on the page and never swells — and it refits on release.
+  const [ceiling, setCeiling] = useState(Infinity);
+  const ceilingRef = useRef(Infinity);
+  ceilingRef.current = ceiling;
 
-  // Rotation is the sweep of yaws where nothing is edge on, with the dead bands
-  // taken out. The camera stored is always one of them, so there is no view the
-  // drag can reach where a leg has gone — it is not steered away from, it is
-  // not there. The sweep is recomputed when the tilt or the spool changes,
-  // because both move the walls.
-  const range = useMemo(() => allowedYaw(clampPitch(cam.pitch), plane, dirs), [cam.pitch, plane, dirs]);
-  const view = useMemo<Camera>(
-    () => ({ yaw: snapYaw(range, cam.yaw), pitch: clampPitch(cam.pitch) }),
-    [cam.yaw, cam.pitch, range]
-  );
-  const rangeRef = useRef(range);
-  rangeRef.current = range;
-
-  const planeRef = useRef(plane);
-  planeRef.current = plane;
-  const dirsRef = useRef(dirs);
-  dirsRef.current = dirs;
   const resizeRef = useRef(onResizeLeg);
   resizeRef.current = onResizeLeg;
 
@@ -241,13 +251,14 @@ export function SpoolView({
             }, GRAB_MS);
           }
           setDragging(true);
+          setCeiling(geom.current.scale || Infinity);
         },
         onPanResponderMove: (_e, g) => {
           if (Math.abs(g.dx) > GRAB_SLOP || Math.abs(g.dy) > GRAB_SLOP) grab.current.moved = true;
 
           if (grab.current.leg !== null) {
             const s = viewScale();
-            const along = ((g.dx / s) * grab.current.ux + (g.dy / s) * grab.current.uy);
+            const along = (g.dx / s) * grab.current.ux + (g.dy / s) * grab.current.uy;
             const next = grab.current.startLength + along / (geom.current.scale || 1);
             resizeRef.current?.(grab.current.leg, Math.max(0.5, next));
             return;
@@ -258,36 +269,66 @@ export function SpoolView({
             clearTimeout(grab.current.timer);
             grab.current.timer = null;
           }
-          // The horizontal drag walks along the sweep rather than round a
-          // circle, so the same pull always turns the spool by the same amount
-          // of usable rotation whatever the tilt has done to the walls.
-          const pitch = clampPitch(start.current.pitch - g.dy * 0.011);
-          const walls = allowedYaw(pitch, planeRef.current, dirsRef.current);
+          // Straight hold of the model under the thumb: pull it right and it
+          // goes right, pull it down and the top comes over. Nothing is fenced
+          // off — every yaw and every tilt from straight down to straight up
+          // is somewhere the drag can reach, because every one of them is a
+          // view a fitter asks for.
           setCam({
-            yaw: yawAt(walls, sweepOf(walls, start.current.yaw) + g.dx * 0.011),
-            pitch,
+            yaw: start.current.yaw - g.dx * 0.011,
+            pitch: clampPitch(start.current.pitch + g.dy * 0.011),
           });
         },
         onPanResponderRelease: () => {
           clearGrab();
           setDragging(false);
+          setCeiling(Infinity);
         },
         onPanResponderTerminate: () => {
           clearGrab();
           setDragging(false);
+          setCeiling(Infinity);
         },
       }),
     []
   );
 
+  const goTo = (v: NamedView) => {
+    setCam(v.cam);
+    setCeiling(Infinity);
+  };
+
+  const view = cam;
+  const here = useMemo(() => viewAt(view), [view]);
+
+  // A new shape may not read from the corner the old one did, so the corner is
+  // chosen again — but only while the camera is still on one of the four. A
+  // view somebody turned to by hand, or a plan they are reading dimensions
+  // off, is theirs, and stretching a leg is not a new shape.
+  const shape = useMemo(
+    () => spool.runs.map((r) => `${r.direction.x.toFixed(4)},${r.direction.y.toFixed(4)},${r.direction.z.toFixed(4)}`).join('|'),
+    [spool.runs]
+  );
+  const onCorner = ISO_CORNERS.some((c) => c.id === here?.id);
+  const onCornerRef = useRef(onCorner);
+  onCornerRef.current = onCorner;
+  const pointsRef = useRef(spool.points);
+  pointsRef.current = spool.points;
+  useEffect(() => {
+    if (!onCornerRef.current) return;
+    setCam(bestCorner(pointsRef.current).cam);
+    setCeiling(Infinity);
+  }, [shape]);
+
   const scene = useMemo(() => {
-    const none = { pieces: [] as Piece[], breaks: [] as Crossing[][] };
+    const none = { pieces: [] as Piece[], breaks: [] as Crossing[][], collapsed: [] as boolean[] };
     if (!spool.valid || spool.points.length < 2) return none;
-    const fitted = fitSphere(spool.points, view, W, H, 18);
+    const fitted = fitView(spool.points, view, W, H, PAD, ceiling);
     const pts = spool.points.map(fitted.map);
     geom.current = { pts, scale: fitted.scale };
 
     const pieces: Piece[] = [];
+    const collapsed = spool.runs.map((r) => projectedFraction(r.direction, view) < LOST);
 
     // Legs are drawn from where the pipe actually starts to where it actually
     // stops, a takeoff short of each corner it turns at, because that is where
@@ -327,8 +368,8 @@ export function SpoolView({
       return marks;
     });
 
-    return { pieces, breaks };
-  }, [spool, view]);
+    return { pieces, breaks, collapsed };
+  }, [spool, view, ceiling]);
 
   const pieces = scene.pieces;
 
@@ -344,6 +385,91 @@ export function SpoolView({
   const nearness = (d: number) => (d - depthRange.min) / (depthRange.max - depthRange.min);
   const fade = (c: string, d: number) => mix(c, haze, 0.42 * (1 - nearness(d)));
 
+  const od = dragging && grabbed === null ? 9 : 16;
+
+  // The compass goes in whichever corner the spool has least business in.
+  // Fixed in one corner it lands on the drawing about a quarter of the time,
+  // and a compass on top of a leg costs more than it gives.
+  const corner = useMemo(() => {
+    const spots: Box[] = [
+      { x: W - GIZMO - GIZMO_EDGE, y: H - GIZMO - GIZMO_EDGE, w: GIZMO, h: GIZMO },
+      { x: GIZMO_EDGE, y: H - GIZMO - GIZMO_EDGE, w: GIZMO, h: GIZMO },
+      { x: W - GIZMO - GIZMO_EDGE, y: GIZMO_EDGE, w: GIZMO, h: GIZMO },
+      { x: GIZMO_EDGE, y: GIZMO_EDGE, w: GIZMO, h: GIZMO },
+    ];
+    const pts = geom.current.pts;
+    const pipes: Seg[] = [];
+    for (let i = 0; i < pts.length - 1; i += 1)
+      pipes.push({ ax: pts[i]!.x, ay: pts[i]!.y, bx: pts[i + 1]!.x, by: pts[i + 1]!.y });
+    // Ties go to the first spot, which is the corner a drawing usually has it in.
+    let best = spots[0]!;
+    let bestHit = Infinity;
+    for (const spot of spots) {
+      const hit = pipes.filter((s) => segmentHitsBox(s, spot)).length;
+      if (hit < bestHit) {
+        bestHit = hit;
+        best = spot;
+      }
+    }
+    return best;
+  }, [scene]);
+
+  // The figures. A leg square on to the viewer has no length on the page, so
+  // its dimension is the only thing that says how long it is — which is how a
+  // riser has been drawn on a plan since drawings were drawn.
+  const labels = useMemo(() => {
+    if (!showLabels || dragging || !spool.valid) return [];
+    const pts = geom.current.pts;
+    if (pts.length < 2) return [];
+
+    const wants: LabelWant[] = [];
+    spool.runs.forEach((r, i) => {
+      const a = pts[i]!;
+      const b = pts[i + 1]!;
+      const l = Math.hypot(b.x - a.x, b.y - a.y);
+      const flat = scene.collapsed[i] ?? false;
+      const lines = legText?.(i) ?? [`${r.centerToCenter}`];
+      wants.push({
+        key: `leg${i}`,
+        ax: (a.x + b.x) / 2,
+        ay: (a.y + b.y) / 2,
+        ux: l > 1e-6 ? (b.x - a.x) / l : 1,
+        uy: l > 1e-6 ? (b.y - a.y) / l : 0,
+        collapsed: flat || l < od,
+        lines,
+        weight: 1000 + r.centerToCenter,
+        tone: 'leg',
+      });
+    });
+
+    spool.elbows.forEach((e, i) => {
+      const lines = elbowText?.(i) ?? [`${e.angle.toFixed(0)}°`];
+      const at = pts[e.index];
+      if (!at) return;
+      const into = pts[e.index - 1];
+      const outOf = pts[e.index + 1];
+      // Off the outside of the turn: away from both legs at once.
+      let ux = 1;
+      let uy = 0;
+      if (into && outOf) {
+        const vx = at.x - (into.x + outOf.x) / 2;
+        const vy = at.y - (into.y + outOf.y) / 2;
+        const l = Math.hypot(vx, vy);
+        if (l > 1e-6) {
+          ux = -vy / l;
+          uy = vx / l;
+        }
+      }
+      wants.push({ key: `elb${i}`, ax: at.x, ay: at.y, ux, uy, collapsed: false, lines, weight: 10 + i, tone: 'elbow' });
+    });
+
+    const pipes: Seg[] = [];
+    for (let i = 0; i < pts.length - 1; i += 1)
+      pipes.push({ ax: pts[i]!.x, ay: pts[i]!.y, bx: pts[i + 1]!.x, by: pts[i + 1]!.y });
+
+    return placeLabels(wants, pipes, W, H, 2, [corner]);
+  }, [showLabels, dragging, spool, scene, legText, elbowText, od, corner]);
+
   const axes = useMemo(() => {
     const o = { x: 0, y: 0, z: 0 };
     const L = 1;
@@ -353,8 +479,6 @@ export function SpoolView({
     const [O, X, Y, Z] = raw.map(map) as Projected[];
     return { O: O!, X: X!, Y: Y!, Z: Z! };
   }, [view]);
-
-  const od = dragging && grabbed === null ? 9 : 16;
 
   const breakMarks = (i: number) =>
     (scene.breaks[i] ?? []).map((c, k) => {
@@ -382,6 +506,33 @@ export function SpoolView({
     const l = Math.hypot(dx, dy) || 1;
     return { x: (-dy / l) * (od / 2), y: (dx / l) * (od / 2) };
   };
+
+  const viewRow = (views: readonly NamedView[]) => (
+    <View style={{ flexDirection: 'row', gap: t.space.xs }}>
+      {views.map((v) => {
+        const on = here?.id === v.id;
+        return (
+          <Pressable
+            key={v.id}
+            accessibilityRole="button"
+            accessibilityLabel={v.title}
+            onPress={() => goTo(v)}
+            hitSlop={6}
+            style={{
+              paddingHorizontal: t.space.sm,
+              paddingVertical: 4,
+              borderRadius: t.radius.sm,
+              backgroundColor: on ? t.colors.dataSoft : 'transparent',
+            }}
+          >
+            <Text style={[t.type.captionStrong, { color: on ? t.colors.data : t.colors.textFaint }]}>
+              {v.label}
+            </Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
 
   return (
     <View
@@ -466,14 +617,26 @@ export function SpoolView({
                     strokeLinecap="round"
                   />
                   {endOn ? (
-                    <Circle
-                      cx={(p.a.x + p.b.x) / 2}
-                      cy={(p.a.y + p.b.y) / 2}
-                      r={od / 2}
-                      fill="none"
-                      stroke={rim}
-                      strokeWidth={rimW}
-                    />
+                    <>
+                      <Circle
+                        cx={(p.a.x + p.b.x) / 2}
+                        cy={(p.a.y + p.b.y) / 2}
+                        r={od / 2}
+                        fill="none"
+                        stroke={rim}
+                        strokeWidth={rimW}
+                      />
+                      {/* Looking down the bore. The bore is what is there. */}
+                      <Circle
+                        cx={(p.a.x + p.b.x) / 2}
+                        cy={(p.a.y + p.b.y) / 2}
+                        r={od / 2 - 2.6}
+                        fill="none"
+                        stroke={rim}
+                        strokeWidth={0.8}
+                        strokeOpacity={0.8}
+                      />
+                    </>
                   ) : (
                     <Path
                       d={`M${p.a.x + nx},${p.a.y + ny} L${p.b.x + nx},${p.b.y + ny} M${p.b.x - nx},${p.b.y - ny} L${p.a.x - nx},${p.a.y - ny}`}
@@ -482,18 +645,6 @@ export function SpoolView({
                       strokeWidth={rimW}
                     />
                   )}
-                  {showLabels && !dragging ? (
-                    <SvgText
-                      x={(p.a.x + p.b.x) / 2}
-                      y={(p.a.y + p.b.y) / 2 - od}
-                      fontSize={10}
-                      fontWeight="700"
-                      fill={selected ? t.colors.accent : t.colors.text}
-                      textAnchor="middle"
-                    >
-                      {`${p.index + 1}`}
-                    </SvgText>
-                  ) : null}
                 </G>
               );
             }
@@ -522,60 +673,116 @@ export function SpoolView({
             );
           })}
 
-          <G transform={`translate(${W - 84} ${H - 84})`}>
+          {labels.map((l) => {
+            const legLabel = l.tone === 'leg';
+            const ink = legLabel
+              ? selectedRun !== null && `leg${selectedRun}` === l.key
+                ? t.colors.accent
+                : t.colors.text
+              : t.colors.data;
+            return (
+              <G key={l.key}>
+                {l.leader ? (
+                  <Line
+                    x1={l.ax}
+                    y1={l.ay}
+                    x2={l.x}
+                    y2={l.y}
+                    stroke={t.colors.textFaint}
+                    strokeWidth={0.7}
+                    strokeDasharray="2 2"
+                  />
+                ) : null}
+                <Rect
+                  x={l.box.x}
+                  y={l.box.y}
+                  width={l.box.w}
+                  height={l.box.h}
+                  rx={3}
+                  fill={haze}
+                  opacity={0.88}
+                />
+                {l.lines.map((line, k) => (
+                  <SvgText
+                    key={k}
+                    x={l.x}
+                    y={l.box.y + 2 + 8.5 + k * 11}
+                    fontSize={k === 0 ? 10.5 : 9}
+                    fontWeight={k === 0 ? '700' : '500'}
+                    fill={k === 0 ? ink : t.colors.textMuted}
+                    textAnchor="middle"
+                  >
+                    {line}
+                  </SvgText>
+                ))}
+              </G>
+            );
+          })}
+
+          <G transform={`translate(${corner.x} ${corner.y})`}>
             {/* The drawing now uses the whole canvas, so the compass needs its
-                own ground to stay readable when a leg runs under it. */}
-            <Rect x={2} y={2} width={76} height={76} rx={10} fill={haze} opacity={0.93} />
-            <Line x1={axes.O.x} y1={axes.O.y} x2={axes.X.x} y2={axes.X.y} stroke="#C0553F" strokeWidth={1.6} />
-            <Line x1={axes.O.x} y1={axes.O.y} x2={axes.Y.x} y2={axes.Y.y} stroke="#3E8F5B" strokeWidth={1.6} />
-            <Line x1={axes.O.x} y1={axes.O.y} x2={axes.Z.x} y2={axes.Z.y} stroke="#2E6C9C" strokeWidth={1.6} />
-            <SvgText x={axes.X.x} y={axes.X.y} fontSize={9} fontWeight="700" fill="#C0553F" textAnchor="middle">E</SvgText>
-            <SvgText x={axes.Y.x} y={axes.Y.y} fontSize={9} fontWeight="700" fill="#3E8F5B" textAnchor="middle">UP</SvgText>
-            <SvgText x={axes.Z.x} y={axes.Z.y} fontSize={9} fontWeight="700" fill="#2E6C9C" textAnchor="middle">N</SvgText>
+                own ground to stay readable when a leg runs under it. An axis
+                square on to the viewer has no arm to draw, and gets the same
+                treatment the pipe does: a dot, with its name set off it, so a
+                plan does not stack three labels on one point. */}
+            <Rect x={2} y={2} width={GIZMO - 4} height={GIZMO - 4} rx={10} fill={haze} opacity={0.93} />
+            {AXES.map((a) => {
+              const end = axes[a.key];
+              const dx = end.x - axes.O.x;
+              const dy = end.y - axes.O.y;
+              const l = Math.hypot(dx, dy);
+              if (l < 5)
+                return (
+                  <G key={a.key}>
+                    <Circle cx={axes.O.x} cy={axes.O.y} r={2.6} fill={a.colour} />
+                    <SvgText
+                      x={axes.O.x + a.away.x * 11}
+                      y={axes.O.y + a.away.y * 11}
+                      fontSize={9}
+                      fontWeight="700"
+                      fill={a.colour}
+                      textAnchor="middle"
+                    >
+                      {a.label}
+                    </SvgText>
+                  </G>
+                );
+              return (
+                <G key={a.key}>
+                  <Line x1={axes.O.x} y1={axes.O.y} x2={end.x} y2={end.y} stroke={a.colour} strokeWidth={1.6} />
+                  <SvgText
+                    x={end.x + (dx / l) * 5}
+                    y={end.y + (dy / l) * 5 + 3}
+                    fontSize={9}
+                    fontWeight="700"
+                    fill={a.colour}
+                    textAnchor="middle"
+                  >
+                    {a.label}
+                  </SvgText>
+                </G>
+              );
+            })}
           </G>
         </Svg>
         <View style={StyleSheet.absoluteFill} {...pan.panHandlers} />
       </View>
 
-      <View
-        style={{
-          flexDirection: 'row',
-          justifyContent: 'space-between',
-          paddingHorizontal: t.layout.screenPadding,
-          paddingBottom: t.space.md,
-        }}
-      >
+      <View style={{ paddingHorizontal: t.layout.screenPadding, paddingBottom: t.space.md, gap: t.space.xs }}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.sm }}>
+            {viewRow(ISO_CORNERS)}
+            <View style={{ width: t.hairline, height: 16, backgroundColor: t.colors.border }} />
+            {viewRow([PLAN_VIEW, ...ELEVATIONS])}
+          </View>
+        </ScrollView>
         <Text style={[t.type.caption, { color: grabbed !== null ? t.colors.accent : t.colors.textFaint }]}>
           {grabbed !== null
             ? `Leg ${grabbed + 1} — ${lengthLabel?.(spool.runs[grabbed]?.centerToCenter ?? 0) ?? ''}`
-            : 'Drag to rotate · hold a leg to resize'}
+            : here
+              ? here.title
+              : 'Turned by hand · pick a view above to square it up'}
         </Text>
-        <View style={{ flexDirection: 'row', gap: t.space.xs }}>
-          {ISO_CORNERS.map((c) => {
-            const here =
-              Math.abs(Math.atan2(Math.sin(view.yaw - c.cam.yaw), Math.cos(view.yaw - c.cam.yaw))) < 0.02 &&
-              Math.abs(view.pitch - c.cam.pitch) < 0.02;
-            return (
-              <Pressable
-                key={c.id}
-                accessibilityRole="button"
-                accessibilityLabel={`Isometric view from the ${c.id}`}
-                onPress={() => setCam({ yaw: snapYaw(allowedYaw(c.cam.pitch, plane, dirs), c.cam.yaw), pitch: c.cam.pitch })}
-                hitSlop={6}
-                style={{
-                  paddingHorizontal: t.space.sm,
-                  paddingVertical: 3,
-                  borderRadius: t.radius.sm,
-                  backgroundColor: here ? t.colors.dataSoft : 'transparent',
-                }}
-              >
-                <Text style={[t.type.captionStrong, { color: here ? t.colors.data : t.colors.textFaint }]}>
-                  {c.id}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
       </View>
     </View>
   );

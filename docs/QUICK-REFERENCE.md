@@ -210,10 +210,13 @@ On a finished joint, under **Re-torque**.
 
 ## The 3D spool
 
-**3D spool** → add legs, each with a length, a bend angle off the last one and a roll.
+**3D spool** → add legs. A leg is **a length and a direction** — 36" east, 24" straight up, 30" north. No bend angle, no roll.
 
-- **Drag** to turn it. The rotation is the sweep where nothing goes edge on — about 260°, with the dead views taken out rather than passed through.
+- The app works out every turn and names the fitting: `Turns 90° off leg 1 — 90° elbow`. A turn that is not stock is flagged above the leg list.
+- Every leg on the picture carries its length and direction; every fitting carries its angle.
+- **Nine views:** the four isometric corners, **Plan**, and an elevation from each side.
+- It **opens on the corner this spool reads best from** — the one with no legs crossing and nothing lost end-on.
+- **Drag** to turn it: pull right and it goes right, pull down and the top comes over. Nothing is fenced off.
+- A leg drawn as a **circle** is coming straight at you. Read its figure — that is what a plan is.
 - **Hold a leg** in the picture and drag along it to stretch or shorten it.
-- **NE / NW / SW / SE** jump to the four isometric corners.
-- **Mirror** gives the opposite hand; **Flip all** folds the whole run the other way; the **⇕** on a leg turns just that leg. None of them changes a cut.
-- A spool with no roll in it is flat, and a flat spool is its own mirror — use **Flip all** on those.
+- **Mirror** gives the opposite hand; **Turn over** swaps every rise for a drop; **Swing 90°** points the whole spool elsewhere. None of the three changes a cut.
