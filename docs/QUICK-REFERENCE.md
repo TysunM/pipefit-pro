@@ -216,7 +216,8 @@ On a finished joint, under **Re-torque**.
 - Every leg on the picture carries its length and direction; every fitting carries its angle.
 - **Nine views:** the four isometric corners, **Plan**, and an elevation from each side.
 - It **opens on the corner this spool reads best from** — the one with no legs crossing and nothing lost end-on.
-- **Drag** to turn it: pull right and it goes right, pull down and the top comes over. Nothing is fenced off.
+- **Drag** to turn it: pull right and it goes right, pull down and the top comes over. The yaw goes the whole way round.
+- The **tilt stays between 15° and 75°** above level — the band where all three directions still read. Under the spool and straight-down are not hand-turn views; the **Plan** and **elev** buttons give you those deliberately.
 - A leg drawn as a **circle** is coming straight at you. Read its figure — that is what a plan is.
 - **Hold a leg** in the picture and drag along it to stretch or shorten it. Pull the way it runs for longer.
 - While you pull, the drawing **holds its scale and its place** — the leg follows your thumb, its neighbours stay put. Letting go refits the whole run.

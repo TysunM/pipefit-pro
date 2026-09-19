@@ -75,10 +75,45 @@ export function project(p: Vec3, cam: Camera): Projected {
 /** The pitch at which the three axes project equal and 120° apart: 35.264°. */
 export const ISO_PITCH = Math.atan(Math.SQRT1_2);
 
-/** Straight down is as far as the camera goes; past it, up is upside down. */
-export const MAX_PITCH = Math.PI / 2;
+// How far the drag may tilt
+// -------------------------
+// Hand rotation is for looking at the picture. The square-on drawings — the
+// plan and the four elevations — are on the buttons, where they are chosen
+// deliberately, named, and their collapsed legs are expected and carried by
+// the figures. So the drag stays in the band where the drawing is still a
+// picture: every principal axis showing enough of its length to be read.
+//
+// The band falls out of the arithmetic rather than out of taste. World up
+// shows `cos(pitch)` of its length, and a horizontal axis at the worst bearing
+// shows `sin(pitch)`. Holding both to at least a quarter puts the floor at
+// 14.5 degrees and the ceiling at 75.5, so 15 and 75 are the round numbers
+// just inside. True isometric, at 35.264, sits comfortably in the middle.
+//
+// This is not the old fence returning. That one walled off the yaw and, with
+// it, the plan and every elevation — the views a dimension is read off. The
+// yaw is still free the whole way round. What is fenced is only the tilt, and
+// only where the drawing stops being one.
 
-export const clampPitch = (v: number): number => Math.max(-MAX_PITCH, Math.min(MAX_PITCH, v));
+/** How much of its length the shortest principal axis must keep. */
+const LEGIBLE = 0.25;
+
+/**
+ * Level and below is under the spool, looking up at it.
+ *
+ * Nobody has ever drawn a spool from underneath: the riser runs down the page,
+ * the compass turns over, and two axes that are square to each other draw as
+ * one. The drag could also sit down there against the stop, which is what it
+ * did.
+ */
+export const MIN_PITCH = (15 * Math.PI) / 180;
+
+/** Near enough straight down that the risers vanish while a thumb is moving. */
+export const MAX_PITCH = (75 * Math.PI) / 180;
+
+/** Straight down, which the Plan button reaches deliberately. */
+export const STRAIGHT_DOWN = Math.PI / 2;
+
+export const clampPitch = (v: number): number => Math.max(MIN_PITCH, Math.min(MAX_PITCH, v));
 
 /** Where the view starts: true isometric, looking down from the north east. */
 export const ISO_VIEW: Camera = { yaw: -Math.PI / 4, pitch: ISO_PITCH };
@@ -112,7 +147,7 @@ export const PLAN_VIEW: NamedView = {
   id: 'PLAN',
   label: 'Plan',
   title: 'Plan — looking down, north up the page',
-  cam: { yaw: Math.PI, pitch: Q },
+  cam: { yaw: Math.PI, pitch: STRAIGHT_DOWN },
 };
 
 /** The four square-on elevations, named for the side the viewer stands on. */

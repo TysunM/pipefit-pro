@@ -5,6 +5,7 @@ import {
   ISO_PITCH,
   ISO_VIEW,
   MAX_PITCH,
+  MIN_PITCH,
   NAMED_VIEWS,
   PLAN_VIEW,
   clampPitch,
@@ -248,12 +249,60 @@ describe('the plan and the elevations are square on and the right way round', ()
 });
 
 describe('the camera turns freely', () => {
-  test('the tilt stops at straight up and straight down and nowhere else', () => {
-    expect(clampPitch(0.3)).toBeCloseTo(0.3, 12);
-    expect(clampPitch(-0.3)).toBeCloseTo(-0.3, 12);
+  test('the drag tilts only where the drawing is still a picture', () => {
+    expect(clampPitch(ISO_PITCH)).toBeCloseTo(ISO_PITCH, 12);
     expect(clampPitch(9)).toBeCloseTo(MAX_PITCH, 12);
-    expect(clampPitch(-9)).toBeCloseTo(-MAX_PITCH, 12);
-    expect(MAX_PITCH).toBeCloseTo(Math.PI / 2, 12);
+    // Below the floor is under the spool or nearly level with it; above the
+    // ceiling the risers have gone. Both used to be places the drag could sit.
+    expect(clampPitch(-0.3)).toBe(MIN_PITCH);
+    expect(clampPitch(-9)).toBe(MIN_PITCH);
+    expect(clampPitch(Math.PI / 2)).toBe(MAX_PITCH);
+    expect((MIN_PITCH * 180) / Math.PI).toBeCloseTo(15, 9);
+    expect((MAX_PITCH * 180) / Math.PI).toBeCloseTo(75, 9);
+    // True isometric sits inside the band, not on its edge.
+    expect(ISO_PITCH).toBeGreaterThan(MIN_PITCH);
+    expect(ISO_PITCH).toBeLessThan(MAX_PITCH);
+  });
+
+  test('the band is the arithmetic, not a matter of taste', () => {
+    // World up keeps cos(pitch) of its length; a horizontal axis at the worst
+    // bearing keeps sin(pitch). Every camera the drag can reach holds both to
+    // at least a quarter, so no principal axis ever disappears under a thumb.
+    for (let p = MIN_PITCH; p <= MAX_PITCH + 1e-9; p += 0.01) {
+      expect(Math.cos(p)).toBeGreaterThanOrEqual(0.25);
+      expect(Math.sin(p)).toBeGreaterThanOrEqual(0.25);
+    }
+    // And just outside it, one of them has gone.
+    expect(Math.min(Math.cos(MIN_PITCH - 0.06), Math.sin(MIN_PITCH - 0.06))).toBeLessThan(0.25);
+    expect(Math.min(Math.cos(MAX_PITCH + 0.06), Math.sin(MAX_PITCH + 0.06))).toBeLessThan(0.25);
+  });
+
+  test('the drag can never get under the spool, from any tilt it starts at', () => {
+    // The viewer's height above the spool is the y of the view axis. Negative
+    // is underneath it, and no amount of dragging may produce one. Starting
+    // from a named view counts: a drag out of the Plan comes back into the
+    // band rather than carrying its tilt with it.
+    const starts = [...NAMED_VIEWS.map((v) => v.cam.pitch), -3, -1, 0, 0.5, 1.5, 3];
+    for (const start of starts) {
+      for (const push of [-9, -3, -1, -0.2, 0, 0.2, 1, 3, 9]) {
+        const cam = { yaw: 0.7, pitch: clampPitch(start + push) };
+        expect(viewAxis(cam).y).toBeGreaterThan(0);
+        // World up never points down the page, so nothing draws inverted.
+        expect(pageUp(cam).y).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  test('every named view is still reachable, including the square-on ones', () => {
+    // The fix is a floor on the drag, not the old fence: the plan and all four
+    // elevations sit exactly on the band's edges and stay one tap away.
+    // The four isometric corners are inside the band; the square-on views sit
+    // outside it on purpose, which is the whole point of them being buttons.
+    for (const c of ISO_CORNERS) expect(clampPitch(c.cam.pitch)).toBeCloseTo(c.cam.pitch, 12);
+    expect(PLAN_VIEW.cam.pitch).toBeCloseTo(Math.PI / 2, 12);
+    for (const e of ELEVATIONS) expect(e.cam.pitch).toBe(0);
+    // Tapping one still lands exactly on it — goTo does not clamp.
+    for (const v of NAMED_VIEWS) expect(viewAt(v.cam)?.id).toBe(v.id);
   });
 
   test('there is no yaw the drawing falls apart at, only ones a figure carries', () => {
