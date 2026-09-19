@@ -221,6 +221,13 @@ On a finished joint, under **Re-torque**.
 - **Hold a leg** in the picture and drag along it to stretch or shorten it.
 - **Mirror** gives the opposite hand; **Turn over** swaps every rise for a drop; **Swing 90°** points the whole spool elsewhere. None of the three changes a cut.
 
+**Saved spools** — under the handing buttons.
+
+- **Save this spool** keeps the legs, pipe and gap on the phone, by name. Survives restarts and updates.
+- Tap one to open it. The header says *saved* or *unsaved changes*.
+- Same name updates it; a **new name keeps both**. Delete takes two taps.
+- A shelf written by a newer app version is never overwritten by an older one.
+
 **Cut list** — under the elbows. How many sticks to pull, what comes off each, and what is left.
 
 - Packed onto **Settings → Stock length**, with **Settings → Saw cut** charged on every piece.
