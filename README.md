@@ -197,6 +197,26 @@ each corner, and the corner itself is drawn as the elbow that fills it — an ar
 on the bend radius, with a weld line at each end. Where two pieces that are not
 joined cross, the one in front breaks the one behind, across its width only.
 
+## Saved spools
+
+The spool screen's inputs — each leg's direction and length, the pipe, the
+gap — persist by name (`src/state/spoolStore.ts`), because the answer is
+deterministic from them: a test holds a round-tripped spool to reproducing its
+exact cuts. The shelf carries the same guarantees as the joint register — a
+versioned envelope, per-record validation that drops and counts rather than
+repairs, and a refusal to write over a store from a newer app.
+
+The persistence machinery itself — the queued write-through drain where only
+the newest value is ever pending and a failed write is retried by the next
+change, plus the foreign-store guard — is now one shared factory
+(`src/state/persisted.tsx`) that both the register and the shelf ride, so a
+drain bug can only exist in one place.
+
+Save semantics are decided by what would be lost: the same name updates the
+loaded spool; a new name with no edits renames it; a new name **with** edits
+keeps both, because renaming would silently destroy the version deliberately
+diverged from.
+
 ## The cut list
 
 `src/calc/cutList.ts` packs the solved cuts onto sticks of the configured stock

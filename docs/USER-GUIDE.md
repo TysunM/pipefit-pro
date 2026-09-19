@@ -597,6 +597,29 @@ Leg 1 loses one takeout (it has a fitting on one end only). Leg 2 sits between
 two elbows and loses two. That is the whole difference, and you can see it in
 the numbers.
 
+### Saving a spool
+
+A spool takes twenty minutes to lay out and a phone restart used to lose it.
+Now it does not: **Save this spool**, give it the name you would call it out
+by, and it is kept on the phone — through closing the app, restarting the
+phone, and every update.
+
+- **Save this spool** — name it, say where it goes, done. What is saved is the
+  input — the legs, the pipe, the gap — so a saved spool always rebuilds to
+  exactly the cuts it showed.
+- **Tap a saved spool** to open it. The header above the list says whether
+  what is on screen matches what is saved: *saved*, or *unsaved changes*.
+- **Update** — with changes on screen, saving under the same name replaces the
+  saved version. Saving under a **new name keeps both**, which is how you make
+  a variant without losing the original.
+- **Rename or copy** — with no changes on screen, the same sheet renames it.
+- **Delete** takes two taps: the bin, then **Delete?**. There is no undo.
+
+> **Saved spools live on the phone only.** Nothing leaves the device, and the
+> web app and the APK each have their own shelf. As with the joint register, a
+> store written by a newer version of the app is never overwritten by an older
+> one — the older one tells you to update instead.
+
 ### The cut list — what to pull off the rack
 
 Knowing every cut is not the same as knowing what to go and get. Four pieces
