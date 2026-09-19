@@ -485,6 +485,36 @@ backup and recovery, version rules, the config invariants that only break in a
 standalone build, and fixes for every install failure seen so far. Read it
 before the second release, and before sharing a build with anyone else.
 
+## Building without a computer
+
+`.github/workflows/build.yml` does both jobs a release needs — push an update,
+or build an APK — on GitHub's machines, started from a browser. No laptop, no
+Termux, no CLI, nothing installed. **Actions → Build → Run workflow**, pick
+`update` or `apk`, pick the profile.
+
+It needs one secret, once. Make an access token at expo.dev under **Account
+settings → Access tokens**, then add it at **Settings → Secrets and variables
+→ Actions** as `EXPO_TOKEN`. Without it the workflow stops at the first step
+and says so, rather than failing eight minutes in on an auth error.
+
+Typecheck and the full test suite run before either job. A bad build is worse
+on a phone than on a desk, because the phone is where it gets noticed last.
+
+The run summary prints the runtime version it went out with — the number that
+decides whether an update can reach the installed app at all, resolved through
+`npm run runtime-version` rather than a bare `@expo/fingerprint` run, which
+hashes the directory and prints a different number. An APK is only needed when
+it differs from the one the installed app was built with; otherwise an update
+is enough, and is instant.
+
+An APK build is queued rather than waited on. Holding a runner for the length
+of an Android build spends Actions minutes to watch a progress bar that the
+builds page already shows better.
+
+Running it on the phone instead is covered in
+[docs/RELEASE.md §7](docs/RELEASE.md#7-failure-modes), including the failure
+that looks like a broken API and is usually Android killing Termux.
+
 ## Continuous integration
 
 `.github/workflows/ci.yml` runs typecheck, the full test suite and a web bundle on every pull request and on pushes to `main`, with a concurrency group so a new push supersedes an in-flight run.

@@ -302,6 +302,45 @@ to `eas-cli`.
 npm ci
 ```
 
+### `Unexpected end of JSON input`, right after "Uploaded to EAS"
+
+The upload finished and the CLI then failed. Those are two different calls:
+the tarball goes to storage, and a second request asks the API to queue a
+build from it. This message is that second response arriving empty — the CLI
+ran `JSON.parse` on nothing. It says what broke and not a word about why.
+
+**Check whether the build exists before retrying.** The server may have queued
+it and only the reply got lost, and a blind retry then queues a second build
+and spends a second build credit.
+
+```
+npx --yes eas-cli@latest build:list --platform android --limit 5
+```
+
+Or open the builds page. A build from the last few minutes means it worked —
+watch it and scan its QR, and ignore the error.
+
+Nothing queued, so it really did fail. In order:
+
+1. **Run it again.** An empty response is usually one dropped connection. One
+   retry settles most of these.
+2. **Ask for the response it could not read.** `EXPO_DEBUG=1` in front of the
+   command prints the HTTP exchange, which turns this message into a real one
+   — an auth failure, a rate limit, a 502.
+
+   ```
+   EXPO_DEBUG=1 npx --yes eas-cli@latest build --platform android --profile preview
+   ```
+3. **Suspect the terminal before the API if you are on a phone.** Under Termux
+   the Android OOM killer takes background processes, and `npx eas-cli` is a
+   large Node process holding an upload. A killed process produces exactly
+   this: the upload lands, the next reply never arrives. Keep Termux in the
+   foreground with the screen on, or use the Build workflow below, which does
+   not run on the phone at all.
+4. **Use the Build workflow.** `.github/workflows/build.yml` runs the same
+   command on GitHub's machines from a browser button. It removes the phone,
+   the laptop and the local CLI from the question at once.
+
 ### Gradle failure 8–12 minutes into the build
 
 A real dependency or native config problem, not a fluke. The build page links
