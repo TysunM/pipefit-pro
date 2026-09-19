@@ -5,10 +5,10 @@ import Svg, { Circle, Defs, G, Line, LinearGradient, Path, Rect, Stop, Text as S
 import { SpoolResult, Vec3, add, elbowCenterline, scale, sub } from '../../calc/spool';
 import { useTheme } from '../../theme/ThemeProvider';
 import { pipeShades } from '../diagram/primitives';
-import { Box, LabelWant, Seg, placeLabels, segmentHitsBox } from './dimension';
+import { Box } from './dimension';
+import { Scene, ScenePiece, buildScene, polyline, runNormal, runSides, tubeSides, weldTick } from './scene';
 import {
   Camera,
-  Crossing,
   ELEVATIONS,
   ISO_CORNERS,
   ISO_VIEW,
@@ -20,10 +20,7 @@ import {
   clampPitch,
   distanceToSegment,
   fitProjection,
-  fitView,
-  polylineCrossings,
   project,
-  projectedFraction,
   viewAt,
 } from './project';
 
@@ -48,60 +45,6 @@ function mix(a: string, b: string, k: number): string {
   return `#${to(ar! + (br! - ar!) * k)}${to(ag! + (bg! - ag!) * k)}${to(ab! + (bb! - ab!) * k)}`;
 }
 
-/** An open polyline through projected points. */
-const polyline = (ps: Projected[]): string =>
-  ps.map((q, i) => `${i ? 'L' : 'M'}${q.x.toFixed(2)},${q.y.toFixed(2)}`).join(' ');
-
-/**
- * The two sides of a curved tube.
- *
- * A bent pipe's outline is its centreline pushed out half a diameter each way,
- * along the normal at each point rather than one normal for the whole fitting,
- * or the outline would cross itself round the inside of the bend.
- */
-function tubeSides(ps: Projected[], half: number): [string, string] {
-  if (ps.length < 2) return ['', ''];
-  const left: Projected[] = [];
-  const right: Projected[] = [];
-  for (let i = 0; i < ps.length; i += 1) {
-    const a = ps[Math.max(0, i - 1)]!;
-    const b = ps[Math.min(ps.length - 1, i + 1)]!;
-    const dx = b.x - a.x;
-    const dy = b.y - a.y;
-    const l = Math.hypot(dx, dy) || 1;
-    const nx = (-dy / l) * half;
-    const ny = (dx / l) * half;
-    const at = ps[i]!;
-    left.push({ x: at.x + nx, y: at.y + ny, depth: at.depth });
-    right.push({ x: at.x - nx, y: at.y - ny, depth: at.depth });
-  }
-  return [polyline(left), polyline(right)];
-}
-
-/** A short line across the pipe at one end of a fitting: the weld. */
-function jointMark(ps: Projected[], half: number, at: number, colour: string) {
-  const a = ps[Math.max(0, at - 1)]!;
-  const b = ps[Math.min(ps.length - 1, at + 1)]!;
-  const dx = b.x - a.x;
-  const dy = b.y - a.y;
-  const l = Math.hypot(dx, dy);
-  if (l < 1e-6) return null;
-  const nx = (-dy / l) * half;
-  const ny = (dx / l) * half;
-  const q = ps[at]!;
-  return (
-    <Line
-      x1={q.x + nx}
-      y1={q.y + ny}
-      x2={q.x - nx}
-      y2={q.y - ny}
-      stroke={colour}
-      strokeWidth={0.9}
-      strokeOpacity={0.75}
-    />
-  );
-}
-
 /** A line across the width of a fitting, for its gradient to run along. */
 function chordNormal(ps: Projected[], half: number) {
   const a = ps[0]!;
@@ -114,17 +57,6 @@ function chordNormal(ps: Projected[], half: number) {
   const ny = (dx / l) * half;
   return { x1: mid.x + nx, y1: mid.y + ny, x2: mid.x - nx, y2: mid.y - ny };
 }
-
-type Piece =
-  | { kind: 'run'; depth: number; a: Projected; b: Projected; index: number; joints: [number, number] }
-  | { kind: 'elbow'; depth: number; path: Projected[]; index: number; joints: [number, number] };
-
-const outline = (p: Piece): Projected[] => (p.kind === 'run' ? [p.a, p.b] : p.path);
-const joined = (a: Piece, b: Piece) =>
-  a.joints[0] === b.joints[0] ||
-  a.joints[0] === b.joints[1] ||
-  a.joints[1] === b.joints[0] ||
-  a.joints[1] === b.joints[1];
 
 const GRAB_MS = 260;
 const GRAB_SLOP = 10;
@@ -320,58 +252,34 @@ export function SpoolView({
     setCeiling(Infinity);
   }, [shape]);
 
-  const scene = useMemo(() => {
-    const none = { pieces: [] as Piece[], breaks: [] as Crossing[][], collapsed: [] as boolean[] };
-    if (!spool.valid || spool.points.length < 2) return none;
-    const fitted = fitView(spool.points, view, W, H, PAD, ceiling);
-    const pts = spool.points.map(fitted.map);
-    geom.current = { pts, scale: fitted.scale };
+  const od = dragging && grabbed === null ? 9 : 16;
 
-    const pieces: Piece[] = [];
-    const collapsed = spool.runs.map((r) => projectedFraction(r.direction, view) < LOST);
+  // One scene, shared with the sheet that gets printed. Everything about which
+  // piece is in front, where they cross, where the figures go and which corner
+  // the compass can have is worked out in scene.ts, so the drawing in a man's
+  // hand is the drawing on his screen.
+  const scene: Scene = useMemo(
+    () =>
+      buildScene({
+        spool,
+        cam: view,
+        width: W,
+        height: H,
+        pad: PAD,
+        od,
+        maxScale: ceiling,
+        gizmo: { size: GIZMO, edge: GIZMO_EDGE },
+        // A drag carries no figures: they cannot be placed faster than a thumb
+        // moves, and a figure in the wrong place reads worse than none.
+        text: showLabels && !dragging ? { legText, elbowText } : null,
+      }),
+    [spool, view, ceiling, od, showLabels, dragging, legText, elbowText]
+  );
 
-    // Legs are drawn from where the pipe actually starts to where it actually
-    // stops, a takeoff short of each corner it turns at, because that is where
-    // the fitting takes over. A leg too short for its own takeoffs is a spool
-    // that cannot be built; it draws as a stub rather than inside out.
-    spool.runs.forEach((r, i) => {
-      const half = r.centerToCenter / 2;
-      const a = fitted.map(add(r.from, scale(r.direction, Math.min(r.takeoffStart, half))));
-      const b = fitted.map(sub(r.to, scale(r.direction, Math.min(r.takeoffEnd, half))));
-      pieces.push({ kind: 'run', depth: (a.depth + b.depth) / 2, a, b, index: i, joints: [i, i + 1] });
-    });
-
-    // And the corner itself is drawn as the fitting that fills it: an arc on
-    // the bend radius, not a ball on a stick.
-    spool.elbows.forEach((e, i) => {
-      const into = spool.runs[e.index - 1];
-      const outOf = spool.runs[e.index];
-      if (!into || !outOf) return;
-      const path = elbowCenterline(spool.points[e.index]!, into.direction, outOf.direction, e.takeoff).map(
-        fitted.map
-      );
-      const depth = path.reduce((m, q) => m + q.depth, 0) / path.length;
-      pieces.push({ kind: 'elbow', depth, path, index: i, joints: [e.index, e.index] });
-    });
-
-    pieces.sort((p, q) => p.depth - q.depth);
-
-    // Painted far to near, so everything before a piece in this list is behind
-    // it. Where it crosses one of those and is not joined to it, it breaks it.
-    const breaks: Crossing[][] = pieces.map((near, i) => {
-      const marks: Crossing[] = [];
-      for (let j = 0; j < i; j += 1) {
-        const far = pieces[j]!;
-        if (joined(near, far)) continue;
-        marks.push(...polylineCrossings(outline(near), outline(far)));
-      }
-      return marks;
-    });
-
-    return { pieces, breaks, collapsed };
-  }, [spool, view, ceiling]);
-
+  geom.current = { pts: scene.pts, scale: scene.scale };
   const pieces = scene.pieces;
+  const corner = scene.gizmo;
+  const labels = scene.labels;
 
   const depthRange = useMemo(() => {
     if (!pieces.length) return { min: 0, max: 1 };
@@ -384,91 +292,6 @@ export function SpoolView({
   const haze = t.mode === 'dark' ? '#0C1216' : '#FAFBFB';
   const nearness = (d: number) => (d - depthRange.min) / (depthRange.max - depthRange.min);
   const fade = (c: string, d: number) => mix(c, haze, 0.42 * (1 - nearness(d)));
-
-  const od = dragging && grabbed === null ? 9 : 16;
-
-  // The compass goes in whichever corner the spool has least business in.
-  // Fixed in one corner it lands on the drawing about a quarter of the time,
-  // and a compass on top of a leg costs more than it gives.
-  const corner = useMemo(() => {
-    const spots: Box[] = [
-      { x: W - GIZMO - GIZMO_EDGE, y: H - GIZMO - GIZMO_EDGE, w: GIZMO, h: GIZMO },
-      { x: GIZMO_EDGE, y: H - GIZMO - GIZMO_EDGE, w: GIZMO, h: GIZMO },
-      { x: W - GIZMO - GIZMO_EDGE, y: GIZMO_EDGE, w: GIZMO, h: GIZMO },
-      { x: GIZMO_EDGE, y: GIZMO_EDGE, w: GIZMO, h: GIZMO },
-    ];
-    const pts = geom.current.pts;
-    const pipes: Seg[] = [];
-    for (let i = 0; i < pts.length - 1; i += 1)
-      pipes.push({ ax: pts[i]!.x, ay: pts[i]!.y, bx: pts[i + 1]!.x, by: pts[i + 1]!.y });
-    // Ties go to the first spot, which is the corner a drawing usually has it in.
-    let best = spots[0]!;
-    let bestHit = Infinity;
-    for (const spot of spots) {
-      const hit = pipes.filter((s) => segmentHitsBox(s, spot)).length;
-      if (hit < bestHit) {
-        bestHit = hit;
-        best = spot;
-      }
-    }
-    return best;
-  }, [scene]);
-
-  // The figures. A leg square on to the viewer has no length on the page, so
-  // its dimension is the only thing that says how long it is — which is how a
-  // riser has been drawn on a plan since drawings were drawn.
-  const labels = useMemo(() => {
-    if (!showLabels || dragging || !spool.valid) return [];
-    const pts = geom.current.pts;
-    if (pts.length < 2) return [];
-
-    const wants: LabelWant[] = [];
-    spool.runs.forEach((r, i) => {
-      const a = pts[i]!;
-      const b = pts[i + 1]!;
-      const l = Math.hypot(b.x - a.x, b.y - a.y);
-      const flat = scene.collapsed[i] ?? false;
-      const lines = legText?.(i) ?? [`${r.centerToCenter}`];
-      wants.push({
-        key: `leg${i}`,
-        ax: (a.x + b.x) / 2,
-        ay: (a.y + b.y) / 2,
-        ux: l > 1e-6 ? (b.x - a.x) / l : 1,
-        uy: l > 1e-6 ? (b.y - a.y) / l : 0,
-        collapsed: flat || l < od,
-        lines,
-        weight: 1000 + r.centerToCenter,
-        tone: 'leg',
-      });
-    });
-
-    spool.elbows.forEach((e, i) => {
-      const lines = elbowText?.(i) ?? [`${e.angle.toFixed(0)}°`];
-      const at = pts[e.index];
-      if (!at) return;
-      const into = pts[e.index - 1];
-      const outOf = pts[e.index + 1];
-      // Off the outside of the turn: away from both legs at once.
-      let ux = 1;
-      let uy = 0;
-      if (into && outOf) {
-        const vx = at.x - (into.x + outOf.x) / 2;
-        const vy = at.y - (into.y + outOf.y) / 2;
-        const l = Math.hypot(vx, vy);
-        if (l > 1e-6) {
-          ux = -vy / l;
-          uy = vx / l;
-        }
-      }
-      wants.push({ key: `elb${i}`, ax: at.x, ay: at.y, ux, uy, collapsed: false, lines, weight: 10 + i, tone: 'elbow' });
-    });
-
-    const pipes: Seg[] = [];
-    for (let i = 0; i < pts.length - 1; i += 1)
-      pipes.push({ ax: pts[i]!.x, ay: pts[i]!.y, bx: pts[i + 1]!.x, by: pts[i + 1]!.y });
-
-    return placeLabels(wants, pipes, W, H, 2, [corner]);
-  }, [showLabels, dragging, spool, scene, legText, elbowText, od, corner]);
 
   const axes = useMemo(() => {
     const o = { x: 0, y: 0, z: 0 };
@@ -500,7 +323,7 @@ export function SpoolView({
       );
     });
 
-  const perpOf = (p: Extract<Piece, { kind: 'run' }>) => {
+  const perpOf = (p: Extract<ScenePiece, { kind: 'run' }>) => {
     const dx = p.b.x - p.a.x;
     const dy = p.b.y - p.a.y;
     const l = Math.hypot(dx, dy) || 1;
@@ -667,8 +490,21 @@ export function SpoolView({
                 {/* The two joints the fitting is welded at. A bought elbow and
                     the pipe either side are the same steel, so the joint is
                     what tells them apart, exactly as it does on the iron. */}
-                {jointMark(p.path, od / 2, 0, rim)}
-                {jointMark(p.path, od / 2, p.path.length - 1, rim)}
+                {[0, p.path.length - 1].map((at) => {
+                  const w = weldTick(p.path, od / 2, at);
+                  return w ? (
+                    <Line
+                      key={at}
+                      x1={w.x1}
+                      y1={w.y1}
+                      x2={w.x2}
+                      y2={w.y2}
+                      stroke={rim}
+                      strokeWidth={0.9}
+                      strokeOpacity={0.75}
+                    />
+                  ) : null;
+                })}
               </G>
             );
           })}

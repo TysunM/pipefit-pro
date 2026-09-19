@@ -10,6 +10,8 @@ import { AccentButton, ControlRow, GhostButton, SelectorButton } from '../compon
 import { FooterNote, MetaBar, ResultBanner, SpoolBar, StatGrid, WarningBanner } from '../components/Results';
 import { PipeSheet } from '../components/PipeSheet';
 import { CutList } from '../components/CutList';
+import { buildSpoolSheet } from '../print/spoolSheet';
+import { shareSheet } from '../print/share';
 import { SpoolView } from '../components/spool3d/SpoolView';
 import { Theme, useTheme } from '../theme/ThemeProvider';
 import { useUnits } from '../hooks/useUnits';
@@ -37,7 +39,7 @@ import {
   solveDirections,
   turnDeg,
 } from '../calc/direction';
-import { parseNumber } from '../calc/format';
+import { parseNumber, toFraction } from '../calc/format';
 import { fromInches } from '../calc/units';
 
 let counter = 0;
@@ -232,7 +234,59 @@ export function SpoolBuilderScreen() {
     [valid, spool.runs, settings.stockLength, settings.cutAllowance]
   );
 
+  const [sharing, setSharing] = useState(false);
+  const [shareNote, setShareNote] = useState<string | null>(null);
+
   const odd = turns.ok ? turns.legs.filter((l, i) => i > 0 && !fittingFor(l.bend).stock).length : 0;
+
+  /** A date a man can read, in the one form every phone agrees on. */
+  const printedOn = () => {
+    const d = new Date();
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return `Printed ${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
+  };
+
+  /**
+   * The weld gap, at full precision.
+   *
+   * Everywhere else a length is shown to whatever fraction the reader set, and
+   * at sixteenths a 3/32 gap reads as 1/8. On a sheet somebody cuts from, the
+   * spec has to be the spec: sixty-fourths hold every standard root gap
+   * exactly, and reduce to the fraction it is called by.
+   */
+  const gapLabel = () =>
+    u.system === 'imperial' ? toFraction(gapInches, 64) : `${u.num(gapInches)} ${u.unitName}`;
+
+  const share = async () => {
+    if (!valid || sharing) return;
+    setSharing(true);
+    setShareNote(null);
+    const name = loaded?.name ?? 'Spool';
+    const html = buildSpoolSheet({
+      name,
+      place: loaded?.place ?? '',
+      spec: `${pipe.label} ${pipe.kind} · SCH ${pipe.schedule} · Gap ${gapLabel()}`,
+      dateLine: printedOn(),
+      spool,
+      cuts,
+      text: { legText, elbowText },
+      legDir: (i) => (legs[i] ? dirLabel(legs[i]!.dir) : ''),
+      length: (v) => `${u.num(v)} ${u.unitName}`,
+      angle: (d) => u.angle(d, 1),
+      fitting: (d) => fittingFor(d).label,
+      footer:
+        'Lengths are centre-to-centre. Each cut deducts the takeoff at both ends plus the weld gap. ' +
+        'Check every figure against the job before cutting.',
+      // Worth printing at the top of a sheet somebody is about to order from.
+      problem:
+        odd > 0
+          ? `${odd} turn${odd === 1 ? '' : 's'} on this spool ${odd === 1 ? 'is' : 'are'} not a stock elbow — see the elbow schedule before ordering.`
+          : undefined,
+    });
+    const out = await shareSheet(html, name);
+    setSharing(false);
+    if (!out.ok) setShareNote(out.why);
+  };
 
   return (
     <Screen>
@@ -474,7 +528,15 @@ export function SpoolBuilderScreen() {
           onPress={() => setSaveOpen(true)}
           style={{ flex: 1 }}
         />
+        <GhostButton
+          label={sharing ? 'Making the sheet…' : 'Share drawing'}
+          icon="print-outline"
+          onPress={share}
+          style={{ flex: 1, opacity: valid && !sharing ? 1 : 0.4 }}
+        />
       </ControlRow>
+      <HintRow text="Share drawing makes a one-page sheet — the spool in three dimensioned views, the cut list, the elbows and what to pull off the rack — and sends it to a printer, a chat or the phone's files." />
+      {shareNote ? <WarningBanner text={shareNote} /> : null}
 
       {shelf.spools.map((s) => {
         const here = s.id === loadedId;

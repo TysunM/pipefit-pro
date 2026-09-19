@@ -228,6 +228,14 @@ On a finished joint, under **Re-torque**.
 - Same name updates it; a **new name keeps both**. Delete takes two taps.
 - A shelf written by a newer app version is never overwritten by an older one.
 
+**Share drawing** — next to Save.
+
+- One page: the spool in three dimensioned views, the cut list, the elbows, and the sticks to pull.
+- Phone → PDF to the share sheet. Browser → the print dialog.
+- A line drawing, not the shaded screen picture: hairlines, black on white, weld ticks, open ends capped.
+- The isometric is the corner it reads best from; a leg drawn as a circle is coming at you — read its figure.
+- Unsaved spools print as *Spool*. Save it first to get its name on the sheet.
+
 **Cut list** — under the elbows. How many sticks to pull, what comes off each, and what is left.
 
 - Packed onto **Settings → Stock length**, with **Settings → Saw cut** charged on every piece.

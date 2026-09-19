@@ -217,6 +217,43 @@ loaded spool; a new name with no edits renames it; a new name **with** edits
 keeps both, because renaming would silently destroy the version deliberately
 diverged from.
 
+## The printable sheet
+
+A spool gets drawn twice — shaded on screen, as a line drawing on paper — and
+the difference between them is ink, not geometry. So the geometry moved into
+`src/components/spool3d/scene.ts`: what the pieces are, which is in front,
+where they cross, where the figures go, and which corner the compass can have.
+`SpoolView` and `src/print/spoolSvg.ts` both read that one scene, which is the
+only way the sheet in a man's hand can be trusted to be the spool on his
+screen. The refactor is behaviour-preserving: canvas-use measurements across
+all nine views are identical to the decimal.
+
+Paper gets its own conventions. No gradients, no depth haze, hairlines throughout,
+a tick at each weld, and a cap across the spool's two free ends — a rail pair
+that just stops reads as pipe running on past the page. `src/print/sheet.ts`
+lays the page out and escapes every value on the way in, since a spool called
+`Riser <3" & up` is a reasonable thing to type and must not be able to break
+the page. The sheet is self-contained: its own style, no scripts, nothing to
+fetch, because a site office has no network.
+
+Three views, chosen rather than fixed: the isometric from `bestCorner`, plus
+the plan and whichever elevation scores clearest. The layout puts the isometric
+beside a stacked plan and elevation, because three views down the page runs
+onto a second sheet — and a spool sheet that is two sheets is one somebody
+loses half of. A four-leg spool measures 998px against A4's ~1123px.
+
+**`expo-print`'s web build ignores the HTML it is handed** and calls
+`window.print()` on whatever page is on screen, which would put the app's own
+buttons on paper. So `src/print/share.ts` owns the browser path itself: the
+sheet goes into an iframe of its own and that iframe prints. An iframe rather
+than a new window, because a pop-up blocker would eat the window and there is
+nothing to warn about if nothing was blocked. Verified in a browser: zero
+print calls on the main window, one on the sheet's frame.
+
+This is the first change that moves the runtime fingerprint
+(`b85c84f2` → `d9be8fba`), because `expo-print` and `expo-sharing` are native
+modules. It needs a new APK, not an OTA push.
+
 ## The cut list
 
 `src/calc/cutList.ts` packs the solved cuts onto sticks of the configured stock
