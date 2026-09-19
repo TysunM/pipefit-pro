@@ -1,0 +1,124 @@
+# Build and publish from a phone.
+#
+# Everything here runs on GitHub's machines, so a build needs nothing installed
+# and nothing left plugged in. Open the Actions tab in a browser, pick this
+# workflow, press Run workflow. That is the whole procedure.
+#
+# One secret makes it work: EXPO_TOKEN, from expo.dev under Account settings,
+# Access tokens. Put it in Settings, Secrets and variables, Actions.
+
+name: Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      what:
+        description: What to send
+        required: true
+        default: update
+        type: choice
+        options:
+          - update
+          - apk
+      profile:
+        description: Which build profile
+        required: true
+        default: preview
+        type: choice
+        options:
+          - preview
+          - production
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  send:
+    name: ${{ inputs.what == 'apk' && 'Build an APK' || 'Push an update' }}
+    runs-on: ubuntu-latest
+    steps:
+      # The secrets context is not readable from a step's `if`, so the check
+      # is a step that reads it through the environment instead.
+      - name: Refuse early if the token is missing
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          if [ -z "$EXPO_TOKEN" ]; then
+            echo "::error title=No EXPO_TOKEN::Add an Expo access token as the repository secret EXPO_TOKEN. Make one at https://expo.dev under Account settings, Access tokens, then add it under Settings, Secrets and variables, Actions."
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      # The same gate the CI workflow runs. A broken build is worse on a phone
+      # than on a desk, because the phone is where it gets noticed last.
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Unit tests
+        run: npm test -- --ci
+
+      - uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      # An update only reaches a phone whose installed APK carries the same
+      # runtime version. Recorded here so the log says which one it went to.
+      #
+      # This is the project's own script, which asks expo-updates to resolve
+      # it. That is the number the app compares against, and it is not the one
+      # a bare `@expo/fingerprint` run prints.
+      - name: Runtime version
+        id: rv
+        run: echo "hash=$(npm run runtime-version --silent | tail -1)" >> "$GITHUB_OUTPUT"
+
+      # The message is the commit, through the environment rather than
+      # interpolated into the command. This workflow only runs on dispatch, so
+      # a commit message never reaches the shell today — but it would the day
+      # someone adds a push trigger, and that is a bad day to find out.
+      - name: Push an update
+        if: ${{ inputs.what == 'update' }}
+        env:
+          MESSAGE: ${{ github.sha }}
+        run: eas update --branch "${{ inputs.profile }}" --message "$MESSAGE" --non-interactive
+
+      # --no-wait returns as soon as the build is queued. Waiting would hold an
+      # Actions runner for the length of an Android build, and the queue page
+      # already shows the progress better than a log does.
+      - name: Build an APK
+        if: ${{ inputs.what == 'apk' }}
+        run: eas build --platform android --profile "${{ inputs.profile }}" --non-interactive --no-wait
+
+      - name: Where to look
+        run: |
+          {
+            echo "### ${{ inputs.what == 'apk' && 'APK queued' || 'Update pushed' }}"
+            echo
+            echo "| | |"
+            echo "|-|-|"
+            echo "| Profile | \`${{ inputs.profile }}\` |"
+            echo "| Commit | \`${GITHUB_SHA:0:7}\` |"
+            echo "| Runtime version | \`${{ steps.rv.outputs.hash }}\` |"
+            echo
+            if [ "${{ inputs.what }}" = "apk" ]; then
+              echo "The build is queued, not finished. Watch it, and scan its QR when it is done, at:"
+              echo
+              echo "<https://expo.dev/accounts/[account]/projects/pipefit-pro/builds>"
+              echo
+              echo "An APK is only needed when the runtime version above differs from the one your installed app was built with. Otherwise an update is enough, and is instant."
+            else
+              echo "The update is live. Reopen the app to take it."
+              echo
+              echo "It reaches only phones whose installed APK carries the runtime version above. If yours does not, build an APK instead."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
