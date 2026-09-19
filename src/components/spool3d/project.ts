@@ -176,7 +176,16 @@ export function legDirections(points: Vec3[]): Vec3[] {
 // started at as a ceiling: the drawing may shrink to stay inside the canvas
 // while it turns and never swells, and it refits the moment the thumb lifts.
 
-export type Fitted = { map: (p: Vec3) => Projected; scale: number };
+/**
+ * The whole mapping from spool to page, in four numbers.
+ *
+ * Kept separate from the mapper so a caller can take one, hold on to it, and
+ * hand it back later to get the identical drawing — which is what a drag that
+ * must not rescale under a thumb needs.
+ */
+export type Transform = { scale: number; midX: number; midY: number; midDepth: number };
+
+export type Fitted = { map: (p: Vec3) => Projected; scale: number; transform: Transform };
 
 export function fitView(
   points: Vec3[],
@@ -184,11 +193,34 @@ export function fitView(
   width: number,
   height: number,
   pad: number,
-  maxScale = Infinity
+  maxScale = Infinity,
+  /**
+   * A transform to use instead of working one out.
+   *
+   * Handed one, the drawing is pinned exactly where it was: same scale, same
+   * centre. That is what a resize drag wants — a picture that rescales while a
+   * finger is on it fights the finger, and can shrink a leg on the page at the
+   * same moment its length is going up.
+   */
+  hold?: Transform | null
 ): Fitted {
   const cx = width / 2;
   const cy = height / 2;
-  if (!points.length) return { map: () => ({ x: cx, y: cy, depth: 0 }), scale: 1 };
+  const mapper = (t: Transform): Fitted => ({
+    scale: t.scale,
+    transform: t,
+    map: (p: Vec3) => {
+      const pr = project(p, cam);
+      return {
+        x: (pr.x - t.midX) * t.scale + cx,
+        y: (pr.y - t.midY) * t.scale + cy,
+        depth: (pr.depth - t.midDepth) * t.scale,
+      };
+    },
+  });
+
+  if (hold) return mapper(hold);
+  if (!points.length) return mapper({ scale: 1, midX: 0, midY: 0, midDepth: 0 });
 
   const flat = points.map((p) => project(p, cam));
   const xs = flat.map((p) => p.x);
@@ -219,17 +251,7 @@ export function fitView(
     cam
   ).depth;
 
-  return {
-    scale,
-    map: (p: Vec3) => {
-      const pr = project(p, cam);
-      return {
-        x: (pr.x - midX) * scale + cx,
-        y: (pr.y - midY) * scale + cy,
-        depth: (pr.depth - midDepth) * scale,
-      };
-    },
-  };
+  return mapper({ scale, midX, midY, midDepth });
 }
 
 // Which corner to open on

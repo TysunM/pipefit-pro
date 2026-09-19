@@ -218,7 +218,8 @@ On a finished joint, under **Re-torque**.
 - It **opens on the corner this spool reads best from** — the one with no legs crossing and nothing lost end-on.
 - **Drag** to turn it: pull right and it goes right, pull down and the top comes over. Nothing is fenced off.
 - A leg drawn as a **circle** is coming straight at you. Read its figure — that is what a plan is.
-- **Hold a leg** in the picture and drag along it to stretch or shorten it.
+- **Hold a leg** in the picture and drag along it to stretch or shorten it. Pull the way it runs for longer.
+- While you pull, the drawing **holds its scale and its place** — the leg follows your thumb, its neighbours stay put. Letting go refits the whole run.
 - **Mirror** gives the opposite hand; **Turn over** swaps every rise for a drop; **Swing 90°** points the whole spool elsewhere. None of the three changes a cut.
 
 **Saved spools** — under the handing buttons.
@@ -228,7 +229,7 @@ On a finished joint, under **Re-torque**.
 - Same name updates it; a **new name keeps both**. Delete takes two taps.
 - A shelf written by a newer app version is never overwritten by an older one.
 
-**Share drawing** — next to Save.
+**Share drawing** — under the picture, next to Save.
 
 - One page: the spool in three dimensioned views, the cut list, the elbows, and the sticks to pull.
 - Phone → PDF to the share sheet. Browser → the print dialog.

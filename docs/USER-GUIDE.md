@@ -527,7 +527,12 @@ before you order.
 3. Set the first leg's **Length** and where it **Runs**.
 4. **Add leg**, then give it a length and a direction.
 5. Read the turn the app worked out under each leg.
-6. **Hold a leg in the picture and drag along it** to stretch or shorten it.
+6. **Hold a leg in the picture and drag along it** to stretch or shorten it. Pull
+   the way the leg runs and it gets longer; pull back the other way and it gets
+   shorter. **The drawing holds still while you pull** — same scale, same
+   place — so the leg follows your thumb one for one and the legs either side
+   of it do not move. Let go and the whole run rescales to fit the canvas, the
+   same as redrawing at a smaller scale when a run outgrows the sheet.
 7. Read **TOTAL PIPE** and the per-leg cuts.
 
 ### The drawing
@@ -622,7 +627,8 @@ phone, and every update.
 
 ### Share drawing — the sheet you hand somebody
 
-**Share drawing** turns what is on screen into a **one-page sheet**: the spool
+**Share drawing** sits under the picture, beside **Save this spool**. It turns
+what is on screen into a **one-page sheet**: the spool
 in three dimensioned views, the cut list, the elbow schedule and what to pull
 off the rack. On a phone it becomes a PDF and goes to the share sheet — a
 printer, a chat, an email, or the phone's own files. In a browser it opens the

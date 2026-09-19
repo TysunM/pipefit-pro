@@ -217,6 +217,33 @@ loaded spool; a new name with no edits renames it; a new name **with** edits
 keeps both, because renaming would silently destroy the version deliberately
 diverged from.
 
+## Pulling a leg holds the drawing still
+
+The drawing refits on every change, which is right when the spool changes under
+you and wrong when *you* are the one changing it. A refit mid-pull costs three
+things at once, all of them measured on the shipped build before the fix:
+
+* the leg being pulled **shrank on the page while its length went up** — 40.8"
+  drawn 168px, 53.3" drawn 139px — so pulling further looked like pulling back;
+* its **neighbours appeared to shorten** though nothing about them changed —
+  leg 3 went 142px to 114px at a constant 30";
+* the length **ran away**, because the thumb's travel was divided by
+  `geom.current.scale` read live: the same 54px of drag added 8.4" early and
+  12.4" later.
+
+`fitView` now takes an optional `Transform` — scale and centre in four numbers —
+and a resize drag pins the one it started with (`SpoolView`'s `hold` state),
+dividing by the scale captured at grab time rather than the live one. Measured
+after: the scale holds to 5.249 px/in across the whole pull, the length moves a
+constant 3.12" per 20px, and letting go refits 5.249 → 4.706 so the whole run
+scales down together. That last step is the point — on isometric paper you pick
+a scale, draw, and redraw the run smaller once it outgrows the sheet; you do not
+rescale while the pencil is moving.
+
+Rotation keeps its shrink-only ceiling instead: turning does not change any
+length, so there is nothing for a scale to fight, and pinning the centre would
+let the silhouette wander off the canvas.
+
 ## The printable sheet
 
 A spool gets drawn twice — shaded on screen, as a line drawing on paper — and
