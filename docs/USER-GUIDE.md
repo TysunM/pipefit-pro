@@ -620,6 +620,32 @@ phone, and every update.
 > store written by a newer version of the app is never overwritten by an older
 > one — the older one tells you to update instead.
 
+### Share drawing — the sheet you hand somebody
+
+**Share drawing** turns what is on screen into a **one-page sheet**: the spool
+in three dimensioned views, the cut list, the elbow schedule and what to pull
+off the rack. On a phone it becomes a PDF and goes to the share sheet — a
+printer, a chat, an email, or the phone's own files. In a browser it opens the
+print dialog, where print-to-PDF lives.
+
+The sheet is a line drawing, not the shaded picture on screen: hairlines, no
+fills, black on white, because that is what a site-office printer can hold and
+what reads in bad light. Every fitting carries a tick at each weld, and the
+spool's two open ends are closed off square, the way pipe cut to length is.
+
+**Three views, chosen not fixed.** The isometric comes from the corner the
+spool reads best from; the plan and the elevation are the two square-on views
+that show it clearest. A leg square on to the viewer draws as a circle — a
+bore looked down — and its length is the figure beside it.
+
+The sheet carries nothing that has to be looked up anywhere else: the name, the
+place, the pipe spec, the totals, every leg's centre-to-centre and cut, every
+elbow's angle and arcs, and the sticks. If a turn is not a stock elbow, it says
+so across the top before anybody orders anything.
+
+> **Name it first if you want the name on it.** An unsaved spool prints as
+> *Spool*. Save it and the sheet carries its name and where it goes.
+
 ### The cut list — what to pull off the rack
 
 Knowing every cut is not the same as knowing what to go and get. Four pieces
