@@ -217,6 +217,33 @@ loaded spool; a new name with no edits renames it; a new name **with** edits
 keeps both, because renaming would silently destroy the version deliberately
 diverged from.
 
+## How far the drag may tilt
+
+PR #12 tore out the old camera fence because it walled off the yaw and, with
+it, the plan and every elevation — the views a dimension is read off. That was
+right, but it replaced *too constrained* with *no constraint at all*: the pitch
+ran the full ±90°, so a drag could go under the spool and sit there against the
+stop. Measured on that build, dragging up from the opening view:
+
+```
+NW (opening)   E (-28.8,-16.6)  UP ( 0,-33.3)  N (-28.8, 16.7)
+after 120px    E (-25.6, 25.0)  UP ( 0, -7.4)  N (-25.6,-25.0)   up down to 21%
+after 200px    E (-25.0, 25.0)  UP (-25,-25)   N (-25.0,-25.0)   up and north as one
+after 300px    E (-25.0, 25.0)  UP (-25,-25)   N (-25.0,-25.0)   stuck
+```
+
+The drag now stays between 15° and 75° above level, and the band is arithmetic
+rather than taste: world up keeps `cos(pitch)` of its length and a horizontal
+axis at the worst bearing keeps `sin(pitch)`, so holding both to a quarter puts
+the floor at 14.5° and the ceiling at 75.5°. True isometric, 35.264°, sits in
+the middle. Measured after, dragging 300px each way: no principal axis falls
+below 56%, none coincide, nothing inverts.
+
+The yaw is still free the whole way round — the thing that made the old fence
+feel broken. And the square-on views keep their exact pitches (elevations at 0,
+plan at 90) because `goTo` does not clamp: they are buttons, chosen
+deliberately, where a collapsed leg is expected and the figure carries it.
+
 ## Pulling a leg holds the drawing still
 
 The drawing refits on every change, which is right when the spool changes under

@@ -557,7 +557,17 @@ Change the shape and it picks again; turn it by hand or pick a plan and it
 leaves your view alone.
 
 **Drag anywhere to turn it.** Pull right and it goes right, pull down and the
-top comes over. Every angle is reachable, right over to looking straight down.
+top comes over. The compass turns the whole way round — there is no direction
+you cannot look from.
+
+**The tilt has a floor and a ceiling, and they are there on purpose.** Turning
+by hand stays between 15° and 75° above level, which is the band where all
+three directions still show enough of their length to read. Below it you end up
+under the spool looking up at it, which is a view no drawing has ever been made
+from; above it the risers vanish while your thumb is still moving. **The square-on
+views are not lost** — the plan and the four elevations are on the buttons,
+where you choose them deliberately and the figures carry whatever has gone
+end-on.
 
 > **A leg drawn as a circle is a leg coming at you.** In a plan a riser has no
 > length on the page, and in an elevation neither does a leg running toward
