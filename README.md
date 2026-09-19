@@ -121,23 +121,109 @@ The drawing is a schematic, not a scale model. The saddle view truncates the str
 
 ## The 3D spool
 
-The spool view is a true isometric projection, not a tilted one: yaw −45° and
-pitch `atan(1/√2)` = 35.264°, the only orientation where the three axes project
-the same length and 120° apart. That is what iso paper enforces and what makes
-a drawing read as solid. Tests measure it rather than assert it, and the view it
-replaced is kept as a test showing its axes differ by a quarter in length.
+### A leg is a direction, not a turn
+
+The geometry engine walks a spool by turning each leg off the last one — a bend
+angle and a roll. That is the right parameterisation for a machine and the
+wrong one for a man, so it is no longer what anyone types. A leg is entered as
+a **bearing off the compass and a slope off level**, plus a length; the bend
+and the roll are solved from consecutive directions in closed form
+(`src/calc/direction.ts`). Nothing about the pipe changes: property tests
+assert that a spool built from directions comes out pointing exactly where it
+was aimed, to 1e-8, and that mirroring, turning over and swinging it round the
+compass leave every cut length and every bend identical.
+
+Every derived bend is checked against what comes off a shelf, so a turn that
+needs cutting to suit is named before anything is ordered.
+
+### The projection, and a handedness bug it had
+
+The view is a true isometric projection, not a tilted one: yaw −45° and pitch
+`atan(1/√2)` = 35.264°, the only orientation where the three axes project the
+same length and 120° apart.
+
+A camera is three vectors — page-right, page-up and the view axis — and fixing
+any two settles the third. The projection this replaced wrote them out
+separately and had the sign of page-right inverted, so `right × up` came to
+**−view**: the layout was the view from the opposite corner while the depth
+sort was the view from the named one. The drawing was the spool's mirror image
+with the near and far pipes resolved for the unmirrored one. On a spool that is
+not cosmetic — a spool reflected is the other hand, and the other hand does not
+fit. The three are now derived from each other, and a test asserts
+`up × right = view` from every camera, named and hand-turned.
+
+The roll frame had the same fault: its binormal was `d × n`, which put roll 90°
+to the *west* of a leg heading north while the label said "right". It is `n × d`
+now, so roll reads the way a man standing behind the pipe reads it.
+
+### The drawing carries its dimensions
+
+Every leg is labelled with its centre-to-centre length and where it runs; every
+fitting with its angle. Placement is a pure module (`spool3d/dimension.ts`):
+each figure tries the places a draughtsman would try first — off either side of
+what it labels, sliding along it, then further out — and falls back to a sweep
+of the page for the nearest clear spot. Tests assert that no two figures
+overlap, none sits on the pipe, none leaves the canvas, none is ever dropped,
+and none lands on the compass.
+
+### Views, and why none of them is blocked
+
+Four isometric corners, a plan, and four square-on elevations. The camera used
+to be fenced out of any yaw where a leg would go edge-on — a sweep of about
+260° with invisible walls. That fence forbade the plan and every elevation,
+which are precisely the views a dimension is read off. A leg square-on to the
+viewer is not a failure; it is a riser on a plan, and the trade has answered it
+the same way since drawings were drawn: draw it as a circle and write its
+length beside it. So the constraint machinery is gone. Yaw is free, pitch runs
+to straight down, and a collapsed leg is detected and carries its figure.
+
+The opening view is chosen rather than fixed. The same spool reads as a clean L
+from one corner and a closed triangle from another, so `bestCorner` scores the
+four on crossings between unjoined legs, legs lost end-on, and how much of the
+canvas the drawing would take, and opens on the winner. Changing the shape picks
+again; a view turned to by hand is left alone.
+
+### Filling the page
+
+Scale used to come from the bounding sphere, which never changes as the spool
+turns and costs about a quarter of the canvas — the sphere has to hold the
+spool from its worst angle, and no angle you look from is the worst one. It now
+fits the projected bounding box, so one axis fills to the padding in every
+view. A drag carries the scale it began with as a ceiling, so the picture gives
+ground rather than swelling under a thumb, and refits on release.
 
 Legs are drawn from where the pipe starts to where it stops, a takeoff short of
 each corner, and the corner itself is drawn as the elbow that fills it — an arc
 on the bend radius, with a weld line at each end. Where two pieces that are not
 joined cross, the one in front breaks the one behind, across its width only.
 
-The camera is held off anything that would go edge on: the pitch stays in a
-15°–75° band, the yaw is steered out of the plane a flat spool lies in, and off
-the direction of every individual leg. All three reduce to solving
-`d(yaw) · v = t` for yaw, so the camera is never searched for, only solved and
-snapped to the nearest answer. Scale comes from the bounding sphere so turning
-never resizes the drawing; centring comes from where it actually lands.
+## The cut list
+
+`src/calc/cutList.ts` packs the solved cuts onto sticks of the configured stock
+length. Two decisions in it are worth stating.
+
+**The kerf is charged on every piece, including the last.** A stick with *k*
+pieces takes *k* saw cuts when any drop is left and *k−1* when it is consumed
+exactly, and which of the two applies is not knowable before the packing is
+done. Charging *k* over-states the loss by one kerf on a stick used right to
+the end, which is the only direction it is safe to be wrong in when the output
+is a material order.
+
+**The packing is exact, not first-fit.** First-fit-decreasing is the usual
+answer and it is provably up to 11/9 of optimal: 7, 5, 4, 2, 2 on an 11 stick
+comes out as three bins and fits in two. A spool holds at most `MAX_LEGS` = 8
+pieces, so every grouping is enumerated with pruning (any branch already using
+more sticks than the best found is abandoned; bins with equal remaining space
+are the same choice and only one is tried), under a node budget that a full
+spool never reaches. Among packings using the fewest sticks it takes the one
+leaving the **longest single drop** — one long drop is material, the same
+footage in four short ones is scrap. Above `EXACT_UP_TO` = 9 pieces it falls
+back to first-fit-decreasing and says so in the output (`best: false`), which
+the screen repeats to the user.
+
+`settings.stockLength` was displayed on the cut length, simple offset and
+rolling offset screens and used by nothing. All three now check their cut
+against it and state the drop, so the figure means what it appears to mean.
 
 ## Data provenance
 

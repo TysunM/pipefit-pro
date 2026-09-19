@@ -19,6 +19,14 @@ export type Settings = {
   defaultSchedule: Schedule;
   defaultGap: number;
   stockLength: number;
+  /**
+   * What the saw takes off on every cut.
+   *
+   * It is not a rounding error. A stick that looks like it holds four sixty
+   * inch pieces holds three, and a cut list that ignores the blade is a cut
+   * list that comes up one piece short at the end of the day.
+   */
+  cutAllowance: number;
 };
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -31,6 +39,7 @@ export const DEFAULT_SETTINGS: Settings = {
   defaultSchedule: '40',
   defaultGap: 0.09375,
   stockLength: 240,
+  cutAllowance: 0.125,
 };
 
 const STORAGE_KEY = 'pipefit.settings.v1';

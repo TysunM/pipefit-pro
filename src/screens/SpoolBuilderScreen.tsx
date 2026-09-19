@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Screen } from '../components/Screen';
@@ -9,16 +9,46 @@ import { ChipRow } from '../components/ChipRow';
 import { AccentButton, ControlRow, GhostButton, SelectorButton } from '../components/Buttons';
 import { FooterNote, MetaBar, ResultBanner, SpoolBar, StatGrid, WarningBanner } from '../components/Results';
 import { PipeSheet } from '../components/PipeSheet';
+import { CutList } from '../components/CutList';
 import { SpoolView } from '../components/spool3d/SpoolView';
 import { useTheme } from '../theme/ThemeProvider';
 import { useUnits } from '../hooks/useUnits';
 import { usePipeConfig } from '../hooks/usePipeConfig';
 import { useSettings } from '../state/settings';
-import { BEND_PRESETS, MAX_LEGS, ROLL_PRESETS, SpoolLeg, flipAll, flipLeg, makeLeg, mirrorLegs, rollLabel, solveSpool } from '../calc/spool';
+import { MAX_LEGS, solveSpool } from '../calc/spool';
+import { planCuts } from '../calc/cutList';
+import {
+  COMPASS,
+  DirLeg,
+  LegDir,
+  SLOPE_PRESETS,
+  bearingLabel,
+  dirLabel,
+  dirShort,
+  fittingFor,
+  flipDirs,
+  isVertical,
+  mirrorDirs,
+  rotateDirs,
+  solveDirections,
+  turnDeg,
+} from '../calc/direction';
 import { parseNumber } from '../calc/format';
+import { fromInches } from '../calc/units';
 
 let counter = 0;
 const nextId = () => `leg${(counter += 1)}`;
+
+const dirLeg = (length: number, bearing: number, slope: number): DirLeg => ({
+  id: nextId(),
+  length,
+  dir: { bearing, slope },
+});
+
+/** Along, up, and across: the spool everybody draws first. */
+const START = (): DirLeg[] => [dirLeg(36, 90, 0), dirLeg(24, 0, 90), dirLeg(30, 0, 0)];
+
+const tidy = (n: number): string => (Math.abs(n - Math.round(n)) < 0.05 ? String(Math.round(n)) : n.toFixed(1));
 
 export function SpoolBuilderScreen() {
   const t = useTheme();
@@ -26,48 +56,121 @@ export function SpoolBuilderScreen() {
   const pipe = usePipeConfig();
   const { settings } = useSettings();
 
-  const [legs, setLegs] = useState<SpoolLeg[]>([
-    makeLeg(nextId(), 36, 0, 0),
-    makeLeg(nextId(), 24, 90, 0),
-    makeLeg(nextId(), 30, 90, 90),
-  ]);
+  const [legs, setLegs] = useState<DirLeg[]>(START);
   const [gap, setGap] = useState('');
   const [open, setOpen] = useState<number | null>(0);
-  // Roll is what handedness lives in, so a spool with none is flat and is its
-  // own mirror. Worth saying, or Mirror looks broken on the default spool.
-  const rolled = legs.some((l, i) => i > 0 && ((l.roll % 360) + 360) % 360 !== 0);
 
   const gapInches = Number.isFinite(u.parse(gap)) ? u.parse(gap) : settings.defaultGap;
 
-  const spool = useMemo(
-    () => solveSpool({ legs, nps: pipe.nps, kind: pipe.kind, schedule: pipe.schedule, gap: gapInches }),
-    [legs, pipe.nps, pipe.kind, pipe.schedule, gapInches]
-  );
+  // Each leg is aimed at the compass, and the bends and rolls the engine walks
+  // are worked out from where consecutive legs point. Nobody types a roll.
+  const turns = useMemo(() => solveDirections(legs), [legs]);
 
-  const patch = (id: string, next: Partial<SpoolLeg>) =>
+  const spool = useMemo(() => {
+    if (!turns.ok)
+      return solveSpool({ legs: [], nps: pipe.nps, kind: pipe.kind, schedule: pipe.schedule, gap: gapInches });
+    return solveSpool({
+      legs: turns.legs,
+      start: turns.start,
+      nps: pipe.nps,
+      kind: pipe.kind,
+      schedule: pipe.schedule,
+      gap: gapInches,
+    });
+  }, [turns, pipe.nps, pipe.kind, pipe.schedule, gapInches]);
+
+  const error = turns.ok ? spool.error : turns.error;
+  const valid = turns.ok && spool.valid;
+
+  const patch = (id: string, next: Partial<DirLeg>) =>
     setLegs((prev) => prev.map((l) => (l.id === id ? { ...l, ...next } : l)));
 
-  const setLength = (index: number, inches: number) =>
+  const aim = (id: string, next: Partial<LegDir>) =>
+    setLegs((prev) => prev.map((l) => (l.id === id ? { ...l, dir: { ...l.dir, ...next } } : l)));
+
+  const setLength = useCallback((index: number, inches: number) => {
     setLegs((prev) => prev.map((l, i) => (i === index ? { ...l, length: Math.round(inches * 16) / 16 } : l)));
+  }, []);
+
+  const reaim = (f: (dirs: LegDir[]) => LegDir[]) =>
+    setLegs((prev) => {
+      const next = f(prev.map((l) => l.dir));
+      return prev.map((l, i) => ({ ...l, dir: next[i] ?? l.dir }));
+    });
 
   const addLeg = () => {
     if (legs.length >= MAX_LEGS) return;
-    setLegs((prev) => [...prev, makeLeg(nextId(), 24, 90, 0)]);
+    // A new leg heads somewhere the last one does not, so it is a leg and not
+    // a continuation: square off it, level if the last one rose, up if it ran.
+    const last = legs[legs.length - 1]?.dir ?? { bearing: 0, slope: 0 };
+    const next: LegDir = isVertical(last) ? { bearing: 0, slope: 0 } : { bearing: last.bearing, slope: 90 };
+    setLegs((prev) => [...prev, { id: nextId(), length: 24, dir: next }]);
     setOpen(legs.length);
   };
 
   const removeLeg = (id: string) =>
-    setLegs((prev) => {
-      if (prev.length <= 1) return prev;
-      const next = prev.filter((l) => l.id !== id);
-      return next.map((l, i) => (i === 0 ? { ...l, bend: 0, roll: 0 } : l));
-    });
+    setLegs((prev) => (prev.length <= 1 ? prev : prev.filter((l) => l.id !== id)));
+
+  // What goes on the drawing. Centre to centre, the way a spool is dimensioned,
+  // and where the leg runs — which for a leg square on to the viewer is the
+  // only thing on the page that says anything about it at all.
+  // A drawing carries a figure, not a readout: 36", not 36.00 inch. Whole
+  // numbers stay whole, a fractional imperial figure is the fraction a tape
+  // has on it, and metric keeps the one decimal that means anything.
+  const figure = useCallback(
+    (inches: number) => {
+      // A fraction comes back carrying its own inch mark, so it takes no suffix.
+      const f = u.frac(inches);
+      if (f) return f;
+      const shown = fromInches(inches, u.system);
+      return `${u.num(inches, Math.abs(shown - Math.round(shown)) < 0.005 ? 0 : 1)}${u.suffix}`;
+    },
+    [u]
+  );
+
+  const legText = useCallback(
+    (i: number) => {
+      const r = spool.runs[i];
+      const leg = legs[i];
+      if (!r || !leg) return [''];
+      return [figure(r.centerToCenter), dirShort(leg.dir)];
+    },
+    [spool.runs, legs, figure]
+  );
+
+  const elbowText = useCallback(
+    (i: number) => {
+      const e = spool.elbows[i];
+      if (!e) return [''];
+      const f = fittingFor(e.angle);
+      return f.stock ? [`${tidy(e.angle)}°`] : [`${tidy(e.angle)}°`, 'cut to suit'];
+    },
+    [spool.elbows]
+  );
+
+  // The cuts are only half the answer. What a man actually needs to know at
+  // the rack is how many sticks to pull, and the two are not the same
+  // question: four pieces totalling 180 inches are one stick if they nest and
+  // two if they do not.
+  const cuts = useMemo(
+    () =>
+      planCuts(
+        valid
+          ? spool.runs.map((r, i) => ({ id: `leg${i}`, label: `Leg ${i + 1}`, tag: String(i + 1), length: r.cutLength }))
+          : [],
+        settings.stockLength,
+        settings.cutAllowance
+      ),
+    [valid, spool.runs, settings.stockLength, settings.cutAllowance]
+  );
+
+  const odd = turns.ok ? turns.legs.filter((l, i) => i > 0 && !fittingFor(l.bend).stock).length : 0;
 
   return (
     <Screen>
-      <HintRow text="Each leg turns off the last one by a bend angle and a roll. Hold a leg in the picture and drag along it to stretch or shorten it." />
+      <HintRow text="Say where each leg runs and how far — east, up, north. The app works out every bend for you and tells you what fitting it takes." />
 
-      {spool.valid ? (
+      {valid ? (
         <SpoolView
           spool={spool}
           showLabels
@@ -75,30 +178,40 @@ export function SpoolBuilderScreen() {
           onPickRun={setOpen}
           onResizeLeg={setLength}
           lengthLabel={(v) => `${u.num(v)} ${u.unitName}`}
+          legText={legText}
+          elbowText={elbowText}
         />
       ) : null}
 
       <ResultBanner
         label="Total pipe"
-        value={spool.valid ? `${u.num(spool.totalCut)} ${u.unitName}` : spool.error ?? '—'}
+        value={valid ? `${u.num(spool.totalCut)} ${u.unitName}` : error ?? '—'}
         hint={
-          spool.valid
+          valid
             ? `${spool.runs.length} leg${spool.runs.length === 1 ? '' : 's'} · ${spool.elbows.length} elbow${
                 spool.elbows.length === 1 ? '' : 's'
               } · C2C ${u.num(spool.totalCenterToCenter)} ${u.unitName}`
             : undefined
         }
-        tone={spool.valid ? 'default' : 'error'}
+        tone={valid ? 'default' : 'error'}
       />
 
       <MetaBar text={`${pipe.label} ${pipe.kind} · SCH ${pipe.schedule} · Gap ${u.num(gapInches)} ${u.unitName}`} />
       {gapInches <= 0 ? <WarningBanner text={`No weld gap set (0 ${u.unitName}).`} /> : null}
+      {odd > 0 ? (
+        <WarningBanner
+          text={`${odd} turn${odd === 1 ? '' : 's'} on this spool ${odd === 1 ? 'is' : 'are'} not a stock elbow. Check the Elbows list before you order.`}
+        />
+      ) : null}
 
       <SectionHeader title="Legs" meta={`${legs.length} of ${MAX_LEGS}`} />
 
       {legs.map((l, i) => {
-        const run = spool.valid ? spool.runs[i] : undefined;
+        const run = valid ? spool.runs[i] : undefined;
+        const turn = turns.ok ? turns.legs[i] : undefined;
         const expanded = open === i;
+        const vertical = isVertical(l.dir);
+        const fitting = turn && i > 0 ? fittingFor(turn.bend) : null;
         return (
           <View
             key={l.id}
@@ -135,25 +248,11 @@ export function SpoolBuilderScreen() {
                   {run ? `Cut ${u.num(run.cutLength)} ${u.unitName}` : `Leg ${i + 1}`}
                 </Text>
                 <Text style={[t.type.caption, { color: t.colors.textMuted, marginTop: 2 }]}>
-                  {i === 0
-                    ? `${u.num(l.length)} ${u.unitName} · start of the spool`
-                    : `${u.num(l.length)} ${u.unitName} · ${l.bend}° bend rolled ${rollLabel(l.roll)}`}
+                  {`${u.num(l.length)} ${u.unitName} ${dirLabel(l.dir)}`}
+                  {fitting ? ` · ${fitting.stock ? fitting.label : `${tidy(turn!.bend)}° turn`}` : ' · start of the spool'}
                 </Text>
               </View>
-              <Ionicons
-                name={expanded ? 'chevron-up' : 'chevron-down'}
-                size={16}
-                color={t.colors.textFaint}
-              />
-              {i > 0 ? (
-                <Pressable
-                  onPress={() => setLegs((ls) => flipLeg(ls, i))}
-                  hitSlop={12}
-                  accessibilityLabel={`Flip leg ${i + 1} the other way`}
-                >
-                  <Ionicons name="swap-vertical-outline" size={18} color={t.colors.textFaint} />
-                </Pressable>
-              ) : null}
+              <Ionicons name={expanded ? 'chevron-up' : 'chevron-down'} size={16} color={t.colors.textFaint} />
               {legs.length > 1 ? (
                 <Pressable onPress={() => removeLeg(l.id)} hitSlop={12} accessibilityLabel={`Remove leg ${i + 1}`}>
                   <Ionicons name="trash-outline" size={18} color={t.colors.textFaint} />
@@ -172,42 +271,53 @@ export function SpoolBuilderScreen() {
                     placeholder="0"
                     readout={u.frac(l.length)}
                   />
-                  {i > 0 ? (
-                    <>
-                      <DimensionInput
-                        label="Bend"
-                        value={String(l.bend)}
-                        onChangeText={(v) => patch(l.id, { bend: parseNumber(v) })}
-                        suffix="°"
-                        placeholder="90"
-                      />
-                      <DimensionInput
-                        label="Roll"
-                        value={String(l.roll)}
-                        onChangeText={(v) => patch(l.id, { roll: parseNumber(v) })}
-                        suffix="°"
-                        placeholder="0"
-                        readout={rollLabel(l.roll)}
-                      />
-                    </>
-                  ) : null}
+                  <DimensionInput
+                    label="Bearing"
+                    value={String(Math.round(turnDeg(l.dir.bearing)))}
+                    onChangeText={(v) => aim(l.id, { bearing: parseNumber(v) })}
+                    suffix="°"
+                    placeholder="0"
+                    readout={vertical ? 'not used' : bearingLabel(l.dir.bearing)}
+                  />
+                  <DimensionInput
+                    label="Slope"
+                    value={String(l.dir.slope)}
+                    onChangeText={(v) => aim(l.id, { slope: Math.max(-90, Math.min(90, parseNumber(v))) })}
+                    suffix="°"
+                    placeholder="0"
+                    readout={l.dir.slope === 0 ? 'level' : l.dir.slope > 0 ? 'rising' : 'falling'}
+                  />
                 </FieldRow>
 
-                {i > 0 ? (
-                  <>
-                    <ChipRow
-                      label="Bend"
-                      options={BEND_PRESETS.map((b) => ({ value: b, label: `${b}°` }))}
-                      selected={l.bend}
-                      onSelect={(b) => patch(l.id, { bend: b })}
-                    />
-                    <ChipRow
-                      label="Roll"
-                      options={ROLL_PRESETS.map((r) => ({ value: r, label: `${r}°` }))}
-                      selected={((l.roll % 360) + 360) % 360}
-                      onSelect={(r) => patch(l.id, { roll: r })}
-                    />
-                  </>
+                <ChipRow
+                  label="Runs"
+                  options={COMPASS.map((c) => ({ value: c.bearing, label: c.id }))}
+                  selected={vertical ? null : turnDeg(l.dir.bearing)}
+                  onSelect={(b) => aim(l.id, { bearing: b, slope: vertical ? 0 : l.dir.slope })}
+                />
+                <ChipRow
+                  label="Rise"
+                  options={SLOPE_PRESETS.map((s) => ({ value: s.slope, label: s.label }))}
+                  selected={l.dir.slope}
+                  onSelect={(s) => aim(l.id, { slope: s })}
+                />
+
+                {/* The bend is a result here, not an entry. It is shown because
+                    it is what gets ordered, and because a number nobody typed
+                    is a number somebody should be able to see. */}
+                {turn && i > 0 && fitting ? (
+                  <View
+                    style={{
+                      marginHorizontal: t.layout.screenPadding,
+                      padding: t.space.md,
+                      borderRadius: t.radius.sm,
+                      backgroundColor: fitting.stock ? t.colors.dataSoft : t.colors.accentSoft,
+                    }}
+                  >
+                    <Text style={[t.type.captionStrong, { color: fitting.stock ? t.colors.data : t.colors.accent }]}>
+                      {`Turns ${tidy(turn.bend)}° off leg ${i} — ${fitting.label}`}
+                    </Text>
+                  </View>
                 ) : null}
               </View>
             ) : null}
@@ -226,36 +336,36 @@ export function SpoolBuilderScreen() {
           label="Reset"
           icon="refresh-outline"
           onPress={() => {
-            setLegs([makeLeg(nextId(), 36, 0, 0), makeLeg(nextId(), 24, 90, 0), makeLeg(nextId(), 30, 90, 90)]);
+            setLegs(START());
             setOpen(0);
           }}
           style={{ flex: 1 }}
         />
       </ControlRow>
 
-      {/* Turning the spool over. Neither of these changes a cut — the cut comes
-          from the leg length and the bend, and both are left alone. */}
+      {/* Turning a spool over is a reflection, and a reflection keeps every
+          angle it finds — so none of these changes a single cut. */}
       <ControlRow>
         <GhostButton
           label="Mirror"
           icon="git-compare-outline"
-          onPress={() => setLegs(mirrorLegs)}
+          onPress={() => reaim(mirrorDirs)}
           style={{ flex: 1 }}
         />
         <GhostButton
-          label="Flip all"
+          label="Turn over"
           icon="swap-vertical-outline"
-          onPress={() => setLegs(flipAll)}
+          onPress={() => reaim(flipDirs)}
+          style={{ flex: 1 }}
+        />
+        <GhostButton
+          label="Swing 90°"
+          icon="refresh-circle-outline"
+          onPress={() => reaim((d) => rotateDirs(d, 90))}
           style={{ flex: 1 }}
         />
       </ControlRow>
-      <HintRow
-        text={
-          rolled
-            ? 'Mirror gives the opposite hand — same lengths, same bends, every roll reversed. Flip all turns every leg the other way. Neither changes a cut.'
-            : 'This spool lies flat, so it is already its own mirror — use Flip all to fold it the other way, or the arrows on a leg to turn just that one.'
-        }
-      />
+      <HintRow text="Mirror gives the opposite hand. Turn over swaps every rise for a drop. Swing turns the whole spool a quarter round the compass. None of the three changes a cut." />
 
       <ControlRow>
         <SelectorButton primary={pipe.label} badge={pipe.kind} onPress={pipe.openSheet} style={{ flex: 1 }} />
@@ -269,63 +379,85 @@ export function SpoolBuilderScreen() {
         />
       </ControlRow>
 
-      {spool.valid && spool.elbows.length ? (
+      {valid && spool.elbows.length ? (
         <>
           <SectionHeader title="Elbows" meta="In order along the spool" />
-          {spool.elbows.map((e, i) => (
-            <View
-              key={i}
-              style={{
-                flexDirection: 'row',
-                gap: t.space.md,
-                paddingHorizontal: t.layout.screenPadding,
-                paddingVertical: t.space.lg,
-                borderBottomWidth: t.hairline,
-                borderBottomColor: t.colors.border,
-              }}
-            >
-              <View style={{ flex: 1 }}>
-                <Text style={[t.type.label, { color: t.colors.textMuted }]}>
-                  {`Joint ${e.legIndex} → leg ${e.legIndex + 1}`}
-                </Text>
-                <Text style={[t.type.statValue, { color: t.colors.text, marginTop: 2 }]}>{u.angle(e.angle, 1)}</Text>
-                <Text style={[t.type.caption, { color: t.colors.textMuted, marginTop: 2 }]}>
-                  {`Rolled ${e.roll.toFixed(0)}° — ${rollLabel(e.roll)}`}
-                </Text>
+          {spool.elbows.map((e, i) => {
+            const f = fittingFor(e.angle);
+            const from = legs[e.legIndex - 1];
+            const to = legs[e.legIndex];
+            return (
+              <View
+                key={i}
+                style={{
+                  flexDirection: 'row',
+                  gap: t.space.md,
+                  paddingHorizontal: t.layout.screenPadding,
+                  paddingVertical: t.space.lg,
+                  borderBottomWidth: t.hairline,
+                  borderBottomColor: t.colors.border,
+                }}
+              >
+                <View style={{ flex: 1 }}>
+                  <Text style={[t.type.label, { color: t.colors.textMuted }]}>
+                    {`Joint ${e.legIndex} → leg ${e.legIndex + 1}`}
+                  </Text>
+                  <Text style={[t.type.statValue, { color: t.colors.text, marginTop: 2 }]}>{u.angle(e.angle, 1)}</Text>
+                  <Text
+                    style={[t.type.caption, { color: f.stock ? t.colors.data : t.colors.text, marginTop: 2 }]}
+                  >
+                    {f.label}
+                  </Text>
+                  {from && to ? (
+                    <Text style={[t.type.caption, { color: t.colors.textMuted, marginTop: 2 }]}>
+                      {`${dirLabel(from.dir)} → ${dirLabel(to.dir)}`}
+                    </Text>
+                  ) : null}
+                </View>
+                <View style={{ alignItems: 'flex-end' }}>
+                  <Text style={[t.type.caption, { color: t.colors.textMuted }]}>{`Takeoff ${u.num(e.takeoff)}`}</Text>
+                  <Text style={[t.type.caption, { color: t.colors.data, marginTop: 2 }]}>{`Throat ${u.num(e.throatArc)}`}</Text>
+                  <Text style={[t.type.caption, { color: t.colors.textMuted, marginTop: 2 }]}>{`Back ${u.num(e.backArc)}`}</Text>
+                </View>
               </View>
-              <View style={{ alignItems: 'flex-end' }}>
-                <Text style={[t.type.caption, { color: t.colors.textMuted }]}>{`Takeoff ${u.num(e.takeoff)}`}</Text>
-                <Text style={[t.type.caption, { color: t.colors.data, marginTop: 2 }]}>{`Throat ${u.num(e.throatArc)}`}</Text>
-                <Text style={[t.type.caption, { color: t.colors.textMuted, marginTop: 2 }]}>{`Back ${u.num(e.backArc)}`}</Text>
-              </View>
-            </View>
-          ))}
+            );
+          })}
         </>
+      ) : null}
+
+      {valid ? (
+        <CutList plan={cuts} stock={settings.stockLength} length={(v) => `${u.num(v)} ${u.unitName}`} short={figure} />
       ) : null}
 
       <StatGrid
         stats={[
-          { label: 'Total cut', note: 'Pipe to buy', value: spool.valid ? u.dual(spool.totalCut) : '—' },
-          { label: 'Centre to centre', value: spool.valid ? u.dual(spool.totalCenterToCenter) : '—' },
+          { label: 'Total cut', note: 'Pipe in the job', value: valid ? u.dual(spool.totalCut) : '—' },
+          {
+            label: 'Sticks to pull',
+            note: `${u.num(settings.stockLength, 0)} ${u.unitName} stock`,
+            value: cuts.ok ? String(cuts.count) : '—',
+          },
+          { label: 'Longest drop', note: 'Worth keeping', value: cuts.ok ? u.dual(cuts.longestDrop) : '—' },
+          { label: 'Centre to centre', value: valid ? u.dual(spool.totalCenterToCenter) : '—' },
           { label: 'Legs', value: String(legs.length) },
-          { label: 'Elbows', value: spool.valid ? String(spool.elbows.length) : '—' },
+          { label: 'Elbows', value: valid ? String(spool.elbows.length) : '—' },
           {
             label: 'Envelope',
-            note: 'Bounding box',
-            value: spool.valid
+            note: 'E × UP × N',
+            value: valid
               ? `${u.num(spool.bounds.size.x, 0)}×${u.num(spool.bounds.size.y, 0)}×${u.num(spool.bounds.size.z, 0)}`
               : '—',
           },
-          { label: 'Longest leg', value: spool.valid ? u.dual(Math.max(...spool.runs.map((r) => r.cutLength))) : '—' },
+          { label: 'Longest leg', value: valid ? u.dual(Math.max(...spool.runs.map((r) => r.cutLength))) : '—' },
         ]}
       />
 
       <SpoolBar
         badge={`SCH ${pipe.schedule}`}
-        text={spool.valid ? `Pipe weight ${u.weight(spool.weight, 2)} for ${u.num(spool.totalCut)} ${u.unitName}` : 'Weight unavailable'}
+        text={valid ? `Pipe weight ${u.weight(spool.weight, 2)} for ${u.num(spool.totalCut)} ${u.unitName}` : 'Weight unavailable'}
       />
 
-      <FooterNote text="Bend is how far the leg turns off the one before it. Roll is which way that turn points around the pipe: 0 is up, 90 right, 180 down, 270 left. Lengths are centre-to-centre; each cut deducts the takeoff at both ends plus the weld gap." />
+      <FooterNote text="A leg is where it runs and how far: a bearing off the compass and a slope off level, so straight up is a slope of 90 and the bearing stops mattering. Lengths on the drawing are centre-to-centre; each cut deducts the takeoff at both ends plus the weld gap." />
 
       <PipeSheet
         visible={pipe.sheetOpen}

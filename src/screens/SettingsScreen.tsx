@@ -25,11 +25,18 @@ export function SettingsScreen() {
   const [sheetOpen, setSheetOpen] = React.useState(false);
   const [gapText, setGapText] = React.useState(String(fromInches(settings.defaultGap, settings.unitSystem)));
   const [stockText, setStockText] = React.useState(String(fromInches(settings.stockLength, settings.unitSystem)));
+  const [kerfText, setKerfText] = React.useState(String(fromInches(settings.cutAllowance, settings.unitSystem)));
 
   React.useEffect(() => {
     setGapText(fromInches(settings.defaultGap, settings.unitSystem).toFixed(settings.unitSystem === 'metric' ? 1 : 5).replace(/0+$/, '').replace(/\.$/, ''));
     setStockText(fromInches(settings.stockLength, settings.unitSystem).toFixed(settings.unitSystem === 'metric' ? 0 : 2));
-  }, [settings.unitSystem, settings.defaultGap, settings.stockLength]);
+    setKerfText(
+      fromInches(settings.cutAllowance, settings.unitSystem)
+        .toFixed(settings.unitSystem === 'metric' ? 1 : 5)
+        .replace(/0+$/, '')
+        .replace(/\.$/, '')
+    );
+  }, [settings.unitSystem, settings.defaultGap, settings.stockLength, settings.cutAllowance]);
 
   return (
     <Screen>
@@ -105,6 +112,16 @@ export function SettingsScreen() {
             setStockText(text);
             const parsed = u.parse(text);
             if (Number.isFinite(parsed) && parsed > 0) update({ stockLength: parsed });
+          }}
+          suffix={u.suffix}
+        />
+        <DimensionInput
+          label="Saw cut"
+          value={kerfText}
+          onChangeText={(text) => {
+            setKerfText(text);
+            const parsed = u.parse(text);
+            if (Number.isFinite(parsed) && parsed >= 0) update({ cutAllowance: parsed });
           }}
           suffix={u.suffix}
         />
