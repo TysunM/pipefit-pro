@@ -82,16 +82,22 @@ jobs:
         id: rv
         run: echo "hash=$(npm run runtime-version --silent | tail -1)" >> "$GITHUB_OUTPUT"
 
+      # The message is the commit, through the environment rather than
+      # interpolated into the command. This workflow only runs on dispatch, so
+      # a commit message never reaches the shell today — but it would the day
+      # someone adds a push trigger, and that is a bad day to find out.
       - name: Push an update
         if: ${{ inputs.what == 'update' }}
-        run: eas update --branch ${{ inputs.profile }} --message "${{ github.event.head_commit.message || github.sha }}" --non-interactive
+        env:
+          MESSAGE: ${{ github.sha }}
+        run: eas update --branch "${{ inputs.profile }}" --message "$MESSAGE" --non-interactive
 
       # --no-wait returns as soon as the build is queued. Waiting would hold an
       # Actions runner for the length of an Android build, and the queue page
       # already shows the progress better than a log does.
       - name: Build an APK
         if: ${{ inputs.what == 'apk' }}
-        run: eas build --platform android --profile ${{ inputs.profile }} --non-interactive --no-wait
+        run: eas build --platform android --profile "${{ inputs.profile }}" --non-interactive --no-wait
 
       - name: Where to look
         run: |
