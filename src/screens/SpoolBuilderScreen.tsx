@@ -318,6 +318,26 @@ export function SpoolBuilderScreen() {
         tone={valid ? 'default' : 'error'}
       />
 
+      {/* Keeping and printing both belong with the drawing they are about. Put
+          them under the leg list and a man with five legs on screen has to
+          scroll past all of them, the handing buttons and the whole shelf to
+          find the thing he opened the screen to do. */}
+      <ControlRow>
+        <AccentButton
+          label={loaded ? (dirty ? `Update ${loaded.name}` : 'Rename or copy') : 'Save this spool'}
+          icon={loaded && !dirty ? 'create-outline' : 'save-outline'}
+          onPress={() => setSaveOpen(true)}
+          style={{ flex: 1 }}
+        />
+        <GhostButton
+          label={sharing ? 'Making the sheet…' : 'Share drawing'}
+          icon="print-outline"
+          onPress={share}
+          style={{ flex: 1, opacity: valid && !sharing ? 1 : 0.4 }}
+        />
+      </ControlRow>
+      {shareNote ? <WarningBanner text={shareNote} /> : null}
+
       <MetaBar text={`${pipe.label} ${pipe.kind} · SCH ${pipe.schedule} · Gap ${u.num(gapInches)} ${u.unitName}`} />
       {gapInches <= 0 ? <WarningBanner text={`No weld gap set (0 ${u.unitName}).`} /> : null}
       {odd > 0 ? (
@@ -496,6 +516,7 @@ export function SpoolBuilderScreen() {
         title="Saved spools"
         meta={loaded ? (dirty ? `Editing ${loaded.name} — unsaved changes` : `Editing ${loaded.name} — saved`) : `${shelf.spools.length} on this phone`}
       />
+      <HintRow text="Tap one to open it. Save and Share drawing are up under the picture." />
 
       {spoolsCtx.saveError ? (
         <WarningBanner text="The phone refused the last write. What is on screen is ahead of what is saved; the next change retries it." />
@@ -521,22 +542,6 @@ export function SpoolBuilderScreen() {
         </Pressable>
       ) : null}
 
-      <ControlRow>
-        <AccentButton
-          label={loaded ? (dirty ? `Update ${loaded.name}` : 'Rename or copy') : 'Save this spool'}
-          icon={loaded && !dirty ? 'create-outline' : 'save-outline'}
-          onPress={() => setSaveOpen(true)}
-          style={{ flex: 1 }}
-        />
-        <GhostButton
-          label={sharing ? 'Making the sheet…' : 'Share drawing'}
-          icon="print-outline"
-          onPress={share}
-          style={{ flex: 1, opacity: valid && !sharing ? 1 : 0.4 }}
-        />
-      </ControlRow>
-      <HintRow text="Share drawing makes a one-page sheet — the spool in three dimensioned views, the cut list, the elbows and what to pull off the rack — and sends it to a printer, a chat or the phone's files." />
-      {shareNote ? <WarningBanner text={shareNote} /> : null}
 
       {shelf.spools.map((s) => {
         const here = s.id === loadedId;

@@ -16,6 +16,7 @@ import {
   NamedView,
   PLAN_VIEW,
   Projected,
+  Transform,
   bestCorner,
   clampPitch,
   distanceToSegment,
@@ -109,15 +110,21 @@ export function SpoolView({
     const s = viewScale();
     return { x: (x - (box.current.w - W * s) / 2) / s, y: (y - (box.current.h - H * s) / 2) / s };
   };
-  const geom = useRef<{ pts: Projected[]; scale: number }>({ pts: [], scale: 1 });
+  const geom = useRef<{ pts: Projected[]; scale: number; transform: Transform }>({
+    pts: [],
+    scale: 1,
+    transform: { scale: 1, midX: 0, midY: 0, midDepth: 0 },
+  });
   const grab = useRef<{
     leg: number | null;
     timer: ReturnType<typeof setTimeout> | null;
     startLength: number;
     ux: number;
     uy: number;
+    /** The scale the pull began at. Frozen, so the pull stays one to one. */
+    scale: number;
     moved: boolean;
-  }>({ leg: null, timer: null, startLength: 0, ux: 1, uy: 0, moved: false });
+  }>({ leg: null, timer: null, startLength: 0, ux: 1, uy: 0, scale: 1, moved: false });
   const spoolRef = useRef(spool);
   spoolRef.current = spool;
 
@@ -129,6 +136,17 @@ export function SpoolView({
   const [ceiling, setCeiling] = useState(Infinity);
   const ceilingRef = useRef(Infinity);
   ceilingRef.current = ceiling;
+
+  // Pulling a leg is a different thing from turning the spool, and it wants the
+  // opposite of a refit. On isometric paper you pick a scale, draw, and redraw
+  // the whole thing smaller if the run outgrows the sheet — you do not rescale
+  // while the pencil is moving. Rescaling under a thumb costs three things at
+  // once: a leg can shrink on the page while its length is going up, its
+  // neighbours appear to shorten though nothing about them changed, and the
+  // length runs away because the finger's travel is divided by a scale that is
+  // itself moving. So the drawing is pinned for the whole pull and refits on
+  // release.
+  const [hold, setHold] = useState<Transform | null>(null);
 
   const resizeRef = useRef(onResizeLeg);
   resizeRef.current = onResizeLeg;
@@ -152,6 +170,10 @@ export function SpoolView({
     grab.current.timer = null;
     grab.current.leg = null;
     setGrabbed(null);
+    // Letting go is where the whole drawing rescales to fit what the spool has
+    // become — the one moment it should, and the paper equivalent of redrawing
+    // the run at a smaller scale once it has outgrown the sheet.
+    setHold(null);
   };
 
   const pan = useMemo(
@@ -177,6 +199,8 @@ export function SpoolView({
               grab.current.ux = (b.x - a.x) / l;
               grab.current.uy = (b.y - a.y) / l;
               grab.current.startLength = spoolRef.current.runs[hit]?.centerToCenter ?? 0;
+              grab.current.scale = geom.current.scale || 1;
+              setHold(geom.current.transform);
               setGrabbed(hit);
               onPickRun?.(hit);
               void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -191,7 +215,9 @@ export function SpoolView({
           if (grab.current.leg !== null) {
             const s = viewScale();
             const along = (g.dx / s) * grab.current.ux + (g.dy / s) * grab.current.uy;
-            const next = grab.current.startLength + along / (geom.current.scale || 1);
+            // Divided by the scale the pull began at, not the live one, so the
+            // same inch of thumb is always the same inch of pipe.
+            const next = grab.current.startLength + along / grab.current.scale;
             resizeRef.current?.(grab.current.leg, Math.max(0.5, next));
             return;
           }
@@ -268,15 +294,16 @@ export function SpoolView({
         pad: PAD,
         od,
         maxScale: ceiling,
+        hold,
         gizmo: { size: GIZMO, edge: GIZMO_EDGE },
         // A drag carries no figures: they cannot be placed faster than a thumb
         // moves, and a figure in the wrong place reads worse than none.
         text: showLabels && !dragging ? { legText, elbowText } : null,
       }),
-    [spool, view, ceiling, od, showLabels, dragging, legText, elbowText]
+    [spool, view, ceiling, hold, od, showLabels, dragging, legText, elbowText]
   );
 
-  geom.current = { pts: scene.pts, scale: scene.scale };
+  geom.current = { pts: scene.pts, scale: scene.scale, transform: scene.transform };
   const pieces = scene.pieces;
   const corner = scene.gizmo;
   const labels = scene.labels;

@@ -448,3 +448,86 @@ describe('the view opens on the corner the spool reads best from', () => {
     expect(bestCorner(riser.points).id).toBe(first.id);
   });
 });
+
+describe('a pull holds the drawing still', () => {
+  // On isometric paper you pick a scale, draw, and redraw the whole run
+  // smaller if it outgrows the sheet. You do not rescale while the pencil is
+  // moving. Rescaling under a thumb costs three things at once: the leg being
+  // pulled can shrink on the page while its length goes up, its neighbours
+  // appear to shorten though nothing about them changed, and the length runs
+  // away because the thumb's travel is divided by a moving scale. These are
+  // the measurements that hold the fix.
+  const riser = (up: number) =>
+    solveSpool({
+      ...BASE,
+      legs: [makeLeg('a', 36, 0, 0), makeLeg('b', up, 90, 0), makeLeg('c', 30, 90, 90)],
+    });
+
+  const W = 360;
+  const H = 360;
+  const PAD = 30;
+  const draw = (spool: ReturnType<typeof riser>, hold?: ReturnType<typeof fitView>['transform']) =>
+    fitView(spool.points, ISO_VIEW, W, H, PAD, Infinity, hold);
+
+  test('a held transform is used exactly, whatever the spool has become', () => {
+    const before = draw(riser(24));
+    const after = draw(riser(60), before.transform);
+    expect(after.transform).toEqual(before.transform);
+    expect(after.scale).toBe(before.scale);
+  });
+
+  test('the legs nobody touched do not move a pixel', () => {
+    const small = riser(24);
+    const big = riser(60);
+    const held = draw(small).transform;
+    const a = draw(small, held);
+    const b = draw(big, held);
+    // Points 0 and 1 are the first leg, ahead of the one being pulled, so the
+    // pull cannot have moved them.
+    for (const i of [0, 1]) {
+      expect(b.map(big.points[i]!).x).toBeCloseTo(a.map(small.points[i]!).x, 9);
+      expect(b.map(big.points[i]!).y).toBeCloseTo(a.map(small.points[i]!).y, 9);
+    }
+  });
+
+  test('the leg being pulled grows on the page in step with its length', () => {
+    const held = draw(riser(24)).transform;
+    const drawn = (up: number) => {
+      const s = riser(up);
+      const f = draw(s, held);
+      const a = f.map(s.points[1]!);
+      const b = f.map(s.points[2]!);
+      return Math.hypot(b.x - a.x, b.y - a.y);
+    };
+    // Twice the length is twice the drawn length, to the pixel. Pull further,
+    // it gets longer — never shorter, which is what the scale used to do.
+    expect(drawn(48) / drawn(24)).toBeCloseTo(2, 9);
+    let last = 0;
+    for (const up of [24, 30, 36, 42, 48, 60, 90]) {
+      const now = drawn(up);
+      expect(now).toBeGreaterThan(last);
+      last = now;
+    }
+  });
+
+  test('without the hold the scale moves, which is the whole reason for it', () => {
+    // Kept as a measurement so the reason for the hold is a number and not a
+    // matter of taste: the same pull, unpinned, shrinks the drawing.
+    expect(draw(riser(90)).scale).toBeLessThan(draw(riser(24)).scale * 0.85);
+  });
+
+  test('letting go refits, so the whole run scales down together', () => {
+    const big = riser(90);
+    const held = draw(riser(24)).transform;
+    const pinned = draw(big, held);
+    const released = draw(big);
+    expect(released.scale).toBeLessThan(pinned.scale);
+    // And the refit puts the whole spool back inside the padding.
+    for (const p of big.points.map(released.map)) {
+      expect(p.x).toBeGreaterThanOrEqual(PAD - 1e-9);
+      expect(p.x).toBeLessThanOrEqual(W - PAD + 1e-9);
+      expect(p.y).toBeGreaterThanOrEqual(PAD - 1e-9);
+      expect(p.y).toBeLessThanOrEqual(H - PAD + 1e-9);
+    }
+  });
+});

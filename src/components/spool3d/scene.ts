@@ -17,6 +17,7 @@ import {
   Crossing,
   LOST,
   Projected,
+  Transform,
   fitView,
   polylineCrossings,
   projectedFraction,
@@ -64,6 +65,8 @@ export type Scene = {
   gizmo: Box;
   /** The figures, placed clear of the pipe, each other, and the compass. */
   labels: Placed[];
+  /** The mapping this scene was drawn with, so a drag can pin it and reuse it. */
+  transform: Transform;
 };
 
 export type SceneText = {
@@ -84,6 +87,13 @@ export type SceneOpts = {
   od: number;
   /** A ceiling on the scale, for a drag that must not let the picture swell. */
   maxScale?: number;
+  /**
+   * Pin the drawing to a mapping taken earlier rather than fitting it again.
+   *
+   * A resize drag holds one: while a leg is being pulled, its drawn length has
+   * to follow the finger, and it cannot do that if the scale is moving too.
+   */
+  hold?: Transform | null;
   gizmo?: { size: number; edge: number };
   /** Left out, the drawing carries no figures — which is what a drag wants. */
   text?: SceneText | null;
@@ -97,9 +107,18 @@ export function buildScene(opts: SceneOpts): Scene {
   const gizmoEdge = opts.gizmo?.edge ?? 0;
 
   if (!spool.valid || spool.points.length < 2)
-    return { pts: [], scale: 1, pieces: [], breaks: [], collapsed: [], gizmo: EMPTY_BOX, labels: [] };
+    return {
+      pts: [],
+      scale: 1,
+      pieces: [],
+      breaks: [],
+      collapsed: [],
+      gizmo: EMPTY_BOX,
+      labels: [],
+      transform: opts.hold ?? { scale: 1, midX: 0, midY: 0, midDepth: 0 },
+    };
 
-  const fitted = fitView(spool.points, cam, width, height, pad, opts.maxScale ?? Infinity);
+  const fitted = fitView(spool.points, cam, width, height, pad, opts.maxScale ?? Infinity, opts.hold);
   const pts = spool.points.map(fitted.map);
 
   const pieces: ScenePiece[] = [];
@@ -187,7 +206,7 @@ export function buildScene(opts: SceneOpts): Scene {
       )
     : [];
 
-  return { pts, scale: fitted.scale, pieces, breaks, collapsed, gizmo, labels };
+  return { pts, scale: fitted.scale, pieces, breaks, collapsed, gizmo, labels, transform: fitted.transform };
 }
 
 /**
