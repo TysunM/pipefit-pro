@@ -15,6 +15,7 @@ import {
   saveSpool,
   serialiseShelf,
   sortSpools,
+  spoolToOrder,
   validSpool,
 } from '../state/spoolStore';
 
@@ -227,5 +228,60 @@ describe('knowing whether the screen matches the shelf', () => {
     expect(sameSpool(saved, edited)).toBe(false);
     const restored = { ...edited, legs: saved.legs.map((l) => ({ ...l })) };
     expect(sameSpool(saved, restored)).toBe(true);
+  });
+});
+
+describe('a saved spool becomes an order line', () => {
+  const saved = (over: Partial<SavedSpool> = {}): SavedSpool => ({
+    id: 'a',
+    name: 'Ridge',
+    place: 'Level 3',
+    nps: 2,
+    kind: 'LR',
+    schedule: '40',
+    gap: 0.09375,
+    legs: [
+      { length: 96, bearing: 0, slope: 0 },
+      { length: 84, bearing: 90, slope: 0 },
+    ],
+    createdAt: 1,
+    updatedAt: 2,
+    ...over,
+  });
+
+  test('its cuts are the solved cuts, one per leg', () => {
+    const o = spoolToOrder(saved());
+    expect(o.problem).toBeUndefined();
+    expect(o.cuts).toHaveLength(2);
+    // Centre to centre less the takeouts and the gaps, so shorter than typed.
+    expect(o.cuts[0]!).toBeLessThan(96);
+    expect(o.cuts[1]!).toBeLessThan(84);
+  });
+
+  test('the pipe comes across unchanged, because it decides what is bought', () => {
+    const o = spoolToOrder(saved({ nps: 6, schedule: '80', kind: 'SR' }));
+    expect(o.nps).toBe(6);
+    expect(o.schedule).toBe('80');
+    expect(o.kind).toBe('SR');
+  });
+
+  test('a spool too short for its fittings comes back with the reason, not empty', () => {
+    // Silently contributing nothing is how a spool turns up missing at the
+    // bench. It has to say why.
+    const o = spoolToOrder(saved({ legs: [{ length: 1, bearing: 0, slope: 0 }, { length: 1, bearing: 90, slope: 0 }] }));
+    expect(o.cuts).toHaveLength(0);
+    expect(o.problem).toBeTruthy();
+  });
+
+  test('a one-leg spool is a straight piece, and orders fine', () => {
+    const o = spoolToOrder(saved({ legs: [{ length: 120, bearing: 0, slope: 0 }] }));
+    expect(o.problem).toBeUndefined();
+    expect(o.cuts).toEqual([120]);
+  });
+
+  test('the same saved spool always gives the same cuts', () => {
+    // The shelf keeps the input, so this has to be deterministic or a saved
+    // spool would order differently than it printed.
+    expect(spoolToOrder(saved()).cuts).toEqual(spoolToOrder(saved()).cuts);
   });
 });

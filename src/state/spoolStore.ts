@@ -16,7 +16,9 @@
 // lives in these functions so it can be tested without a device.
 
 import { ElbowRadius, Schedule } from '../calc/pipe';
-import { MAX_LEGS } from '../calc/spool';
+import { MAX_LEGS, solveSpool } from '../calc/spool';
+import { solveDirections } from '../calc/direction';
+import { OrderSpool } from '../calc/orderSheet';
 
 /**
  * Bumped only when the stored shape changes in a way an older app would read
@@ -248,4 +250,41 @@ export function sameSpool(a: SavedSpool, b: Pick<SavedSpool, 'nps' | 'kind' | 's
   return a.legs.every(
     (l, i) => l.length === b.legs[i]!.length && l.bearing === b.legs[i]!.bearing && l.slope === b.legs[i]!.slope
   );
+}
+
+// ------------------------------------------------------------- ordering
+
+/**
+ * A saved spool, solved to the cut lengths an order is built from.
+ *
+ * The shelf keeps the input rather than the answer, so this runs the same two
+ * solvers the spool screen runs — the directions to turns, the turns to a
+ * spool — and takes the cuts off the result. Anything that stops it solving
+ * comes back as a reason rather than as an empty list, because a spool left
+ * off an order silently is a spool that turns up missing at the bench.
+ */
+export function spoolToOrder(s: SavedSpool): OrderSpool {
+  const base = {
+    id: s.id,
+    name: s.name,
+    place: s.place,
+    nps: s.nps,
+    kind: s.kind,
+    schedule: s.schedule,
+  };
+
+  const turns = solveDirections(s.legs.map((l, i) => ({ id: `${s.id}:${i}`, length: l.length, dir: { bearing: l.bearing, slope: l.slope } })));
+  if (!turns.ok) return { ...base, cuts: [], problem: turns.error };
+
+  const solved = solveSpool({
+    legs: turns.legs,
+    start: turns.start,
+    nps: s.nps,
+    kind: s.kind,
+    schedule: s.schedule,
+    gap: s.gap,
+  });
+  if (!solved.valid) return { ...base, cuts: [], problem: solved.error ?? 'It will not build as saved.' };
+
+  return { ...base, cuts: solved.runs.map((r) => r.cutLength) };
 }

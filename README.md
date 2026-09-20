@@ -308,6 +308,49 @@ This is the first change that moves the runtime fingerprint
 (`b85c84f2` → `d9be8fba`), because `expo-print` and `expo-sharing` are native
 modules. It needs a new APK, not an OTA push.
 
+## The order sheet
+
+A cut list answers one spool. An order answers a job, and they give different
+numbers for the same pipe.
+
+The reason is the rounding. Every spool ordered on its own rounds up to a whole
+stick, and the unused part of that last stick is bought and thrown away. Six
+spools ordered separately round up six times. Ordered together they round up
+once, because a stick does not care which spool its pieces belong to.
+
+So every cut from every chosen spool goes into one pile, and the pile is
+packed. Measured over generated jobs of two to twelve spools, against the same
+spools packed one at a time:
+
+```
+ 2 spools   1091 sticks apart ->   953 together    12.6% fewer   46% of jobs saved
+ 3 spools   1637              ->  1375             16.0%         77%
+ 4 spools   2181              ->  1782             18.3%         92%
+ 6 spools   3254              ->  2576             20.8%         99%
+ 8 spools   4339              ->  3381             22.1%        100%
+12 spools   6539              ->  5010             23.4%        100%
+```
+
+Two things keep it honest.
+
+**Pipe does not pool across what you buy.** Two inch schedule forty and two
+inch schedule eighty are different sticks on the rack, so the pile is split by
+size and schedule and each is packed on its own. Radius is deliberately left
+out of that split: long and short radius elbows change the takeouts and so the
+cut lengths, but the pipe those cuts come off is the same pipe.
+
+**Every piece stays named.** Each spool takes a mark — A, B, C — and every
+piece off it is that mark and its leg number, so `C3` is leg three of the third
+spool on the sheet. The marks are on the pick list, on the bars of every stick,
+and in a key on the printed page.
+
+The pick list re-plans on every tap, because the saving is the thing being
+shown and a saving you have to press a button to see is a saving nobody sees.
+
+A spool that will not build is listed with its reason rather than dropped, and
+a piece longer than a stick fails its group by name — the message carries the
+mark, so the spool to fix is two taps away.
+
 ## The cut list
 
 `src/calc/cutList.ts` packs the solved cuts onto sticks of the configured stock
@@ -329,8 +372,32 @@ are the same choice and only one is tried), under a node budget that a full
 spool never reaches. Among packings using the fewest sticks it takes the one
 leaving the **longest single drop** — one long drop is material, the same
 footage in four short ones is scrap. Above `EXACT_UP_TO` = 9 pieces it falls
-back to first-fit-decreasing and says so in the output (`best: false`), which
-the screen repeats to the user.
+back to first-fit-decreasing.
+
+**Above the search limit, a floor does the proving.** The pieces plus their
+kerfs are a length, and no packing fits that length on fewer sticks than that
+length over a stick, rounded up. A packing that reaches the floor is therefore
+provably the fewest sticks, whether it was searched for or arrived at — and
+first-fit usually arrives at it:
+
+```
+random 12-39 pieces       proven  81%
+a few repeated lengths    proven  35%
+long pieces, 2-3 a stick  proven  45%
+many shorts               proven  97%
+```
+
+Before the floor, every list over the search limit was told it might be
+wasteful, and most of them were not.
+
+**Two better packers were written, measured, and deleted.** Best-fit-decreasing
+and a pass that empties the least-full stick into the others and drops it when
+every piece lands, both measured against plain first-fit over 30,000 generated
+jobs — random lengths, a few repeated lengths as a real job has, long pieces
+two to a stick, many shorts, four stock lengths, four kerfs. **Neither saved a
+single stick in any of them.** So neither is in the file. For lists this shape
+first-fit is as good as the clever answers, and it is the one that can be
+read.
 
 `settings.stockLength` was displayed on the cut length, simple offset and
 rolling offset screens and used by nothing. All three now check their cut

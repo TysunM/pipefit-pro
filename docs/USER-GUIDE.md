@@ -707,6 +707,74 @@ canvas in every view** rather than leaving a quarter of it empty. While your
 thumb is down the scale is held so the picture cannot swell under you; it
 refits the moment you let go.
 
+## Order sheet
+
+**One order for the whole job, instead of one order per spool.**
+
+### Why it is not just the cut lists added up
+
+Every spool ordered on its own rounds up to a whole stick. The part of that
+last stick it does not use is bought and thrown away, and six spools ordered
+separately round up six times.
+
+Ordered together they round up once. A stick does not care which spool its
+pieces belong to — the saw cannot tell the difference — so every cut from
+every spool goes into one pile and the pile is packed. You buy fewer sticks
+for exactly the same job.
+
+On a job of six spools that is typically **one stick in five**. It grows with
+the job: the more spools in the same pipe, the more of that rounding
+disappears.
+
+### What is on the screen
+
+It opens with **every saved spool ticked**, because the whole job is the case
+worth seeing. The three figures across the top are what to buy, what ordering
+one at a time would have cost, and the difference.
+
+Tap a spool to take it off the order and every figure moves at once. That is
+the way to see what one spool is worth to the order — put it in, take it out,
+watch the stick count.
+
+### Marks
+
+Pooling is only useful if the man at the saw can still tell what he is
+cutting, so each spool gets a **letter** and every piece off it is stamped
+with that letter and its leg number.
+
+> **A3** is leg three of spool A.
+
+The letters are on the pick list, on the bars of every stick, and in a key on
+the printed sheet. Nothing on a stick is anonymous.
+
+### What does not pool
+
+**Pipe does not pool across sizes or schedules.** Two inch schedule forty and
+two inch schedule eighty are different sticks on the rack, so they are packed
+separately and listed separately. You will see one section per kind of stick,
+biggest pipe first.
+
+**Radius does pool.** Long and short radius elbows change the takeouts, and so
+the cut lengths — but the pipe those cuts come off is the same pipe. A long
+radius spool and a short radius spool of the same size and schedule share
+sticks, and the key says which is which.
+
+### Sharing it
+
+**Share order sheet** makes one page: what to buy at the top, the mark key
+under it, then every stick and the pieces that come off it. The top half is
+what goes to whoever buys the pipe — size, schedule, stick count, total
+length. The bottom half goes to the saw.
+
+Anything that could not be ordered is listed at the bottom with the reason,
+never silently left off.
+
+### When it saves nothing
+
+If every spool already fills its own sticks, ordering them together buys no
+fewer, and the screen says so rather than showing a blank. That is a real
+answer: it means there is nothing being wasted to recover.
+
 ## Calculator
 
 A trade calculator that understands feet, inches and fractions — and **stays in inches**.

@@ -20,10 +20,29 @@
 //
 // First fit is not good enough. Packing biggest first and dropping each piece
 // in the first stick it fits is the usual answer and it is not the right one:
-// it can call for a stick nobody needs. For the sizes this deals with the best
-// packing is found outright, by trying every way the pieces can be grouped,
-// and among the ways that use the fewest sticks it takes the one that leaves
-// the longest single drop.
+// it can call for a stick nobody needs. For one spool the best packing is
+// found outright, by trying every way the pieces can be grouped, and among the
+// ways that use the fewest sticks it takes the one that leaves the longest
+// single drop.
+//
+// A whole job is too long a list for that, and it is also the list where being
+// one stick out costs the most, so first fit carries it — but first fit was
+// made to earn that. Best fit, and a pass that empties the least-full stick
+// into the others and drops it when every piece lands, were both written and
+// both measured against it over thirty thousand generated jobs: random
+// lengths, a few repeated lengths as a real job has, long pieces two to a
+// stick, many shorts, four stock lengths, four kerfs. Neither saved a single
+// stick in any of them. So neither is here. Packing biggest first into the
+// first stick that takes it is, for lists this shape, as good as the clever
+// answers, and it is the one that can be read.
+//
+// What the long case does get is a floor. The pieces plus their kerfs are a
+// length, and no packing fits that length on fewer sticks than that length
+// over a stick, rounded up. Reaching the floor is proof of the fewest sticks,
+// so a packing that reaches it is called best whether it was searched for or
+// arrived at — which, for most jobs, first fit does. Without that, every list
+// over the search limit was told it might be wasteful, and most of them were
+// not.
 
 export type CutPiece = {
   id: string;
@@ -66,6 +85,10 @@ export type CutPlan =
       offcutPct: number;
       /** True when the packing is provably the fewest sticks, not merely a good one. */
       best: boolean;
+      /** The fewest sticks the lengths could possibly fit on. */
+      fewestPossible: number;
+      /** The stick it was packed on, so a reader need not be told twice. */
+      stockLength: number;
     };
 
 /** Above this many pieces the search is dropped for a good-enough packing. */
@@ -133,6 +156,26 @@ function packExactly(pieces: CutPiece[], stock: number, kerf: number): Packing |
   return budget > 0 ? best : (best ?? null);
 }
 
+const longestDropOf = (used: number[], stock: number): number =>
+  used.length ? Math.max(...used.map((u) => stock - u)) : 0;
+
+/**
+ * The fewest sticks these lengths could possibly go on.
+ *
+ * Every piece costs its length plus a kerf wherever it ends up, so the total is
+ * fixed before any packing is chosen, and no arrangement fits more than a
+ * stick's worth on a stick. The total over a stick, rounded up, is therefore a
+ * floor no packing can go under — which makes it a proof when one reaches it.
+ *
+ * It is a floor and not a promise. Pieces that will not divide evenly leave it
+ * unreachable, and a packing above it may still be the best there is.
+ */
+export function fewestPossible(pieces: readonly CutPiece[], stock: number, kerf: number): number {
+  if (!(stock > 0)) return 0;
+  const need = pieces.reduce((t, p) => t + p.length + kerf, 0);
+  return Math.max(0, Math.ceil(need / stock - EPS));
+}
+
 /** Biggest first into the first stick that takes it. Quick, and usually close. */
 function packFirstFit(pieces: CutPiece[], stock: number, kerf: number): Packing {
   const items = [...pieces].sort((a, b) => b.length - a.length);
@@ -149,7 +192,7 @@ function packFirstFit(pieces: CutPiece[], stock: number, kerf: number): Packing 
       used.push(need);
     }
   }
-  return { bins, used, longest: used.length ? Math.max(...used.map((u) => stock - u)) : 0 };
+  return { bins, used, longest: longestDropOf(used, stock) };
 }
 
 /**
@@ -172,8 +215,14 @@ export function planCuts(pieces: CutPiece[], stock: number, kerf: number): CutPl
       error: `${tooLong.label} is ${tooLong.length.toFixed(2)} long and a stick is ${stock.toFixed(2)}. It has to be joined, or bought longer.`,
     };
 
-  const exact = real.length <= EXACT_UP_TO;
-  const packing = (exact ? packExactly(real, stock, k) : null) ?? packFirstFit(real, stock, k);
+  const searched = real.length <= EXACT_UP_TO ? packExactly(real, stock, k) : null;
+  const packing = searched ?? packFirstFit(real, stock, k);
+
+  // Best means provably the fewest sticks. The search proves it by having
+  // looked at every grouping; a heuristic proves it by landing on the floor,
+  // which nothing can go under. Neither proof is worth more than the other.
+  const floor = fewestPossible(real, stock, k);
+  const proven = searched !== null || packing.bins.length <= floor;
 
   // Fullest stick first, so the one with the drop worth keeping is last and
   // reads as the odd one — which is how it gets treated on the rack.
@@ -204,6 +253,8 @@ export function planCuts(pieces: CutPiece[], stock: number, kerf: number): CutPl
     longestDrop: drops[0] ?? 0,
     offcut: bought - inTheJob,
     offcutPct: bought > 0 ? ((bought - inTheJob) / bought) * 100 : 0,
-    best: exact,
+    best: proven,
+    fewestPossible: floor,
+    stockLength: stock,
   };
 }
