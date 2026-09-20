@@ -75,45 +75,36 @@ export function project(p: Vec3, cam: Camera): Projected {
 /** The pitch at which the three axes project equal and 120° apart: 35.264°. */
 export const ISO_PITCH = Math.atan(Math.SQRT1_2);
 
-// How far the drag may tilt
-// -------------------------
-// Hand rotation is for looking at the picture. The square-on drawings — the
-// plan and the four elevations — are on the buttons, where they are chosen
-// deliberately, named, and their collapsed legs are expected and carried by
-// the figures. So the drag stays in the band where the drawing is still a
-// picture: every principal axis showing enough of its length to be read.
+// What the drag does
+// ------------------
+// It swings the viewer round the spool. It does not tilt them.
 //
-// The band falls out of the arithmetic rather than out of taste. World up
-// shows `cos(pitch)` of its length, and a horizontal axis at the worst bearing
-// shows `sin(pitch)`. Holding both to at least a quarter puts the floor at
-// 14.5 degrees and the ceiling at 75.5, so 15 and 75 are the round numbers
-// just inside. True isometric, at 35.264, sits comfortably in the middle.
+// This used to be a hold of the model under the thumb — pull down and the top
+// comes over — fenced into a band of tilt where the drawing was still legible.
+// The fence worked. The gesture was the problem: a spool is read on iso paper,
+// at thirty degrees, and any drag with a vertical component in it took the
+// view off thirty and left it there. You could not get back except by knowing
+// a button existed, so in practice the drawing was never at the angle a fitter
+// reads, and the one way to look at a spool squarely became the one thing hard
+// to reach.
 //
-// This is not the old fence returning. That one walled off the yaw and, with
-// it, the plan and every elevation — the views a dimension is read off. The
-// yaw is still free the whole way round. What is fenced is only the tilt, and
-// only where the drawing stops being one.
+// So the tilt is off the thumb and on the buttons, where it is chosen by name
+// — Plan, the four elevations — and the drag does the one thing that wants to
+// be continuous: walking round the job to see the far side. The pitch it walks
+// at is whatever the current view set, so swinging from an isometric stays
+// isometric and swinging in a plan stays a plan.
+//
+// The band of legible tilt went with it. Nothing reaches a pitch between the
+// named views any more, so there was nothing left to clamp.
 
-/** How much of its length the shortest principal axis must keep. */
-const LEGIBLE = 0.25;
-
-/**
- * Level and below is under the spool, looking up at it.
- *
- * Nobody has ever drawn a spool from underneath: the riser runs down the page,
- * the compass turns over, and two axes that are square to each other draw as
- * one. The drag could also sit down there against the stop, which is what it
- * did.
- */
-export const MIN_PITCH = (15 * Math.PI) / 180;
-
-/** Near enough straight down that the risers vanish while a thumb is moving. */
-export const MAX_PITCH = (75 * Math.PI) / 180;
+/** The viewer walked round the spool by a drag, keeping the tilt they had. */
+export const swing = (from: Camera, dx: number): Camera => ({
+  yaw: from.yaw - dx * 0.011,
+  pitch: from.pitch,
+});
 
 /** Straight down, which the Plan button reaches deliberately. */
 export const STRAIGHT_DOWN = Math.PI / 2;
-
-export const clampPitch = (v: number): number => Math.max(MIN_PITCH, Math.min(MAX_PITCH, v));
 
 /** Where the view starts: true isometric, looking down from the north east. */
 export const ISO_VIEW: Camera = { yaw: -Math.PI / 4, pitch: ISO_PITCH };
@@ -432,4 +423,42 @@ export function polylineCrossings(a: Pt[], b: Pt[]): Crossing[] {
     }
   }
   return out;
+}
+
+// Where a direction goes on the page
+// ----------------------------------
+// A pad that sends a leg up-and-to-the-right has to sit up-and-to-the-right,
+// or it is a puzzle rather than a control. Which screen direction that is
+// depends on where the viewer stands: from the north east corner, north draws
+// up-left; swing to the north west and the same north draws up-right.
+//
+// So the button positions are read off the same projection that draws the
+// pipe, not written down beside it. Swing the view and the pad turns with it,
+// and it cannot drift out of agreement with the drawing because there is only
+// one source for both.
+
+/**
+ * The angle a world direction draws at, in radians, measured the way a screen
+ * measures: 0 to the right, and growing clockwise because y counts downward.
+ *
+ * Returns null for a direction pointing at the viewer, which draws as a point
+ * and has no angle on the page. A riser in a plan view is the everyday case.
+ */
+export function screenAngle(dir: Vec3, cam: Camera): number | null {
+  const p = project(dir, cam);
+  if (Math.hypot(p.x, p.y) < 1e-6) return null;
+  return Math.atan2(p.y, p.x);
+}
+
+/**
+ * How much of its length a direction keeps on the page.
+ *
+ * One for a direction square to the viewer, nothing for one pointing at them.
+ * The pad uses it to dim a button whose leg would draw foreshortened into
+ * almost nothing, which is the honest thing to do about a view where that
+ * direction cannot be seen rather than pretending it can.
+ */
+export function screenScale(dir: Vec3, cam: Camera): number {
+  const p = project(dir, cam);
+  return Math.hypot(p.x, p.y) / Math.max(1e-12, Math.hypot(dir.x, dir.y, dir.z));
 }

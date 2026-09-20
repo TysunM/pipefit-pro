@@ -18,7 +18,7 @@ import {
   Projected,
   Transform,
   bestCorner,
-  clampPitch,
+  swing,
   distanceToSegment,
   fitProjection,
   project,
@@ -79,6 +79,7 @@ export function SpoolView({
   lengthLabel,
   legText,
   elbowText,
+  onCamera,
 }: {
   spool: SpoolResult;
   showLabels: boolean;
@@ -90,14 +91,29 @@ export function SpoolView({
   legText?: (index: number) => string[];
   /** What goes against elbow `index`: its angle, then the fitting it needs. */
   elbowText?: (index: number) => string[];
+  /**
+   * Where the viewer is standing, whenever that changes.
+   *
+   * The aim pad lays its buttons out at the angles its directions draw at, so
+   * it has to be told when the drawing turns or it starts pointing at places
+   * the pipe no longer goes.
+   */
+  onCamera?: (cam: Camera) => void;
 }) {
   const t = useTheme();
   const sh = pipeShades(t);
+  // Held in a ref so a caller passing a fresh closure each render does not
+  // make this fire on every render instead of on every turn of the view.
+  const onCameraRef = useRef(onCamera);
+  onCameraRef.current = onCamera;
   // The view opens on the corner this spool reads best from, not on a fixed
   // one. Which corner that is depends only on the shape, so it is worked out
   // from the shape.
   const [cam, setCam] = useState<Camera>(() => bestCorner(spool.points).cam);
   const [dragging, setDragging] = useState(false);
+  useEffect(() => {
+    onCameraRef.current?.(cam);
+  }, [cam]);
   const start = useRef<Camera>(ISO_VIEW);
   const camRef = useRef<Camera>(ISO_VIEW);
   camRef.current = cam;
@@ -227,15 +243,11 @@ export function SpoolView({
             clearTimeout(grab.current.timer);
             grab.current.timer = null;
           }
-          // Straight hold of the model under the thumb: pull it right and it
-          // goes right, pull it down and the top comes over. Nothing is fenced
-          // off — every yaw and every tilt from straight down to straight up
-          // is somewhere the drag can reach, because every one of them is a
-          // view a fitter asks for.
-          setCam({
-            yaw: start.current.yaw - g.dx * 0.011,
-            pitch: clampPitch(start.current.pitch + g.dy * 0.011),
-          });
+          // Walking round the job, and nothing else. The tilt the view was
+          // opened at is the tilt it keeps, so an isometric stays at the
+          // thirty degrees it is read at however far the thumb travels. Plan
+          // and the elevations are on the buttons, chosen by name.
+          setCam(swing(start.current, g.dx));
         },
         onPanResponderRelease: () => {
           clearGrab();
