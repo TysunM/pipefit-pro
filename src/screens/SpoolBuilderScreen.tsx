@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Modal, Pressable, Text, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Screen } from '../components/Screen';
@@ -34,6 +34,7 @@ import {
   fittingFor,
   flipDirs,
   isVertical,
+  lerpDirs,
   mirrorDirs,
   rotateDirs,
   solveDirections,
@@ -56,6 +57,9 @@ const START = (): DirLeg[] => [dirLeg(36, 90, 0), dirLeg(24, 0, 90), dirLeg(30, 
 
 /** The pipe size the way it is said: 2", 3/4". */
 const findLabel = (nps: number): string => findSize(nps).label;
+
+/** How long a handing change takes to sweep. Long enough to watch, short enough not to wait on. */
+const MORPH_MS = 460;
 
 const tidy = (n: number): string => (Math.abs(n - Math.round(n)) < 0.05 ? String(Math.round(n)) : n.toFixed(1));
 
@@ -132,6 +136,17 @@ export function SpoolBuilderScreen() {
     setConfirmDelete(null);
   };
 
+  const [morph, setMorph] = useState<{ from: LegDir[]; to: LegDir[]; t: number } | null>(null);
+  const [handed, setHanded] = useState<string | null>(null);
+  const morphFrame = useRef<number | null>(null);
+
+  useEffect(
+    () => () => {
+      if (morphFrame.current !== null) cancelAnimationFrame(morphFrame.current);
+    },
+    []
+  );
+
   // Each leg is aimed at the compass, and the bends and rolls the engine walks
   // are worked out from where consecutive legs point. Nobody types a roll.
   const turns = useMemo(() => solveDirections(legs), [legs]);
@@ -152,6 +167,32 @@ export function SpoolBuilderScreen() {
   const error = turns.ok ? spool.error : turns.error;
   const valid = turns.ok && spool.valid;
 
+  /**
+   * The spool as drawn, which during a handing change is a frame of the sweep.
+   *
+   * Only the picture uses this. A part-way spool has part-way bends, and a
+   * part-way bend is not a fitting anybody can buy — so the elbow list, the
+   * cuts, the sheet and the shelf all stay on the committed spool, which is
+   * already correct. A frame that will not solve at all, which a sweep can
+   * pass through, falls back to that same committed spool rather than
+   * blanking the canvas mid-movement.
+   */
+  const shown = useMemo(() => {
+    if (!morph) return spool;
+    const dirs = lerpDirs(morph.from, morph.to, morph.t);
+    const t = solveDirections(legs.map((l, i) => ({ ...l, dir: dirs[i] ?? l.dir })));
+    if (!t.ok) return spool;
+    const s = solveSpool({
+      legs: t.legs,
+      start: t.start,
+      nps: pipe.nps,
+      kind: pipe.kind,
+      schedule: pipe.schedule,
+      gap: gapInches,
+    });
+    return s.valid ? s : spool;
+  }, [morph, legs, spool, pipe.nps, pipe.kind, pipe.schedule, gapInches]);
+
   const patch = (id: string, next: Partial<DirLeg>) =>
     setLegs((prev) => prev.map((l) => (l.id === id ? { ...l, ...next } : l)));
 
@@ -162,11 +203,39 @@ export function SpoolBuilderScreen() {
     setLegs((prev) => prev.map((l, i) => (i === index ? { ...l, length: Math.round(inches * 16) / 16 } : l)));
   }, []);
 
-  const reaim = (f: (dirs: LegDir[]) => LegDir[]) =>
-    setLegs((prev) => {
-      const next = f(prev.map((l) => l.dir));
-      return prev.map((l, i) => ({ ...l, dir: next[i] ?? l.dir }));
-    });
+  // Watching a spool change hands
+  // -----------------------------
+  // Mirror, turn over and swing rearrange a spool without moving a single
+  // figure on the screen, so the drawing is the only evidence any of them did
+  // anything — and a drawing that changes between two frames is not evidence,
+  // it is a memory test. Reported from the job: pressing Mirror two or three
+  // times just to be sure something happened.
+  //
+  // So the change is swept through instead of jumped. The legs commit at once,
+  // which keeps every figure, every save and every printed sheet honest from
+  // the first frame; only the picture takes the long way, and it is the
+  // picture that was being doubted.
+  const reaim = (f: (dirs: LegDir[]) => LegDir[], said: string) => {
+    const from = legs.map((l) => l.dir);
+    const to = f(from);
+    setLegs((prev) => prev.map((l, i) => ({ ...l, dir: to[i] ?? l.dir })));
+    setHanded(said);
+
+    if (morphFrame.current !== null) cancelAnimationFrame(morphFrame.current);
+    const started = Date.now();
+    const step = () => {
+      const t = Math.min(1, (Date.now() - started) / MORPH_MS);
+      // Ease out: it leaves quickly enough to be obviously caused by the tap,
+      // and arrives slowly enough to be read.
+      setMorph({ from, to, t: 1 - (1 - t) ** 3 });
+      if (t < 1) morphFrame.current = requestAnimationFrame(step);
+      else {
+        morphFrame.current = null;
+        setMorph(null);
+      }
+    };
+    morphFrame.current = requestAnimationFrame(step);
+  };
 
   const addLeg = () => {
     if (legs.length >= MAX_LEGS) return;
@@ -294,7 +363,7 @@ export function SpoolBuilderScreen() {
 
       {valid ? (
         <SpoolView
-          spool={spool}
+          spool={shown}
           showLabels
           selectedRun={open}
           onPickRun={setOpen}
@@ -303,6 +372,36 @@ export function SpoolBuilderScreen() {
           legText={legText}
           elbowText={elbowText}
         />
+      ) : null}
+
+      {/* Anything that reshapes the drawing sits against the drawing. Down
+          under the leg list these were a button you pressed and then scrolled
+          up to see the result of, which is how you end up pressing Mirror
+          three times because you cannot tell whether it took. */}
+      {valid ? (
+        <>
+          <ControlRow>
+            <GhostButton
+              label="Mirror"
+              icon="git-compare-outline"
+              onPress={() => reaim(mirrorDirs, 'Mirrored — opposite hand')}
+              style={{ flex: 1 }}
+            />
+            <GhostButton
+              label="Turn over"
+              icon="swap-vertical-outline"
+              onPress={() => reaim(flipDirs, 'Turned over — rises are drops')}
+              style={{ flex: 1 }}
+            />
+            <GhostButton
+              label="Swing 90°"
+              icon="refresh-circle-outline"
+              onPress={() => reaim((d) => rotateDirs(d, 90), 'Swung 90° round the compass')}
+              style={{ flex: 1 }}
+            />
+          </ControlRow>
+          <HintRow text={handed ? `${handed}. Not one cut changed.` : 'Mirror, turn over and swing rearrange the spool. None of the three changes a cut.'} />
+        </>
       ) : null}
 
       <ResultBanner
@@ -485,30 +584,6 @@ export function SpoolBuilderScreen() {
           style={{ flex: 1 }}
         />
       </ControlRow>
-
-      {/* Turning a spool over is a reflection, and a reflection keeps every
-          angle it finds — so none of these changes a single cut. */}
-      <ControlRow>
-        <GhostButton
-          label="Mirror"
-          icon="git-compare-outline"
-          onPress={() => reaim(mirrorDirs)}
-          style={{ flex: 1 }}
-        />
-        <GhostButton
-          label="Turn over"
-          icon="swap-vertical-outline"
-          onPress={() => reaim(flipDirs)}
-          style={{ flex: 1 }}
-        />
-        <GhostButton
-          label="Swing 90°"
-          icon="refresh-circle-outline"
-          onPress={() => reaim((d) => rotateDirs(d, 90))}
-          style={{ flex: 1 }}
-        />
-      </ControlRow>
-      <HintRow text="Mirror gives the opposite hand. Turn over swaps every rise for a drop. Swing turns the whole spool a quarter round the compass. None of the three changes a cut." />
 
       {/* The shelf. Saving keeps the input — the legs, the pipe, the gap — so
           a saved spool always rebuilds to exactly the cuts it showed. */}

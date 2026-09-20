@@ -237,6 +237,30 @@ export function rotateDirs(dirs: LegDir[], byDeg: number): LegDir[] {
   return dirs.map((d) => ({ bearing: turnDeg(d.bearing + byDeg), slope: d.slope }));
 }
 
+/**
+ * Part of the way from one set of directions to another.
+ *
+ * Mirror, turn over and swing all rearrange a spool without changing a single
+ * cut, which is exactly what makes them hard to trust: the numbers do not
+ * move, so the only evidence anything happened is the picture. A picture that
+ * changes between one frame and the next is not evidence — it is a thing you
+ * have to remember the old state of. Swept through instead, it is watched.
+ *
+ * Bearings take the short way round, so a leg going from 350 to 10 sweeps
+ * twenty degrees rather than three hundred and forty. Half a turn has no short
+ * way, and those go clockwise by convention — a choice, but a consistent one,
+ * so mirroring twice sweeps out and back rather than wandering.
+ */
+export function lerpDirs(from: LegDir[], to: LegDir[], t: number): LegDir[] {
+  const k = Math.max(0, Math.min(1, t));
+  return from.map((a, i) => {
+    const b = to[i] ?? a;
+    let d = turnDeg(b.bearing - a.bearing);
+    if (d > 180) d -= 360;
+    return { bearing: turnDeg(a.bearing + d * k), slope: a.slope + (b.slope - a.slope) * k };
+  });
+}
+
 // What you have to buy for a turn
 // -------------------------------
 // Ninety and forty five come out of a box. Everything else is a cut, a mitre
