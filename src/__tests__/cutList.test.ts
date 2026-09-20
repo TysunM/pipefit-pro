@@ -1,8 +1,8 @@
-import { CutPiece, EXACT_UP_TO, planCuts } from '../calc/cutList';
+import { CutPiece, EXACT_UP_TO, fewestPossible, planCuts } from '../calc/cutList';
 
 const piece = (label: string, length: number): CutPiece => ({ id: label, label, length });
-const plan = (lengths: number[], stock = 240, kerf = 0) =>
-  planCuts(lengths.map((l, i) => piece(`Leg ${i + 1}`, l)), stock, kerf);
+const pieces = (lengths: number[]): CutPiece[] => lengths.map((l, i) => piece(`Leg ${i + 1}`, l));
+const plan = (lengths: number[], stock = 240, kerf = 0) => planCuts(pieces(lengths), stock, kerf);
 
 const ok = (p: ReturnType<typeof plan>) => {
   if (!p.ok) throw new Error(p.error);
@@ -156,14 +156,62 @@ describe('the search stays inside its budget', () => {
     const started = Date.now();
     const p = ok(plan(many, 240, 0.125));
     expect(Date.now() - started).toBeLessThan(2000);
-    expect(p.best).toBe(false);
     expect(p.sticks.flatMap((s) => s.pieces)).toHaveLength(40);
     for (const s of p.sticks) expect(s.used).toBeLessThanOrEqual(240 + 1e-9);
+    // This one lands a stick above the floor, so it cannot be called best.
+    // That is a fact about these lengths, not about the list being long.
+    expect(p.count).toBeGreaterThan(p.fewestPossible);
+    expect(p.best).toBe(false);
   });
 
   test('it is quick enough to sit in a screen', () => {
     const started = Date.now();
     for (let i = 0; i < 40; i += 1) plan([36, 24, 30, 91, 140, 60, 44, 22], 240, 0.125);
     expect(Date.now() - started).toBeLessThan(1500);
+  });
+});
+
+describe('the floor proves what the search cannot reach', () => {
+  test('the floor is the pieces and their kerfs over a stick, rounded up', () => {
+    // Four 59s and their kerfs are 236.5, which is one stick and a bit under.
+    expect(fewestPossible(pieces([59, 59, 59, 59]), 240, 0.125)).toBe(1);
+    // Five will not go: 295.625 needs two.
+    expect(fewestPossible(pieces([59, 59, 59, 59, 59]), 240, 0.125)).toBe(2);
+  });
+
+  test('pieces that exactly fill sticks give a floor of exactly that many', () => {
+    expect(fewestPossible(pieces([120, 120, 120, 120]), 240, 0)).toBe(2);
+  });
+
+  test('no packing ever comes back under the floor', () => {
+    for (let n = 1; n <= 30; n += 1) {
+      const ls = Array.from({ length: n }, (_, i) => 20 + ((i * 17) % 100));
+      const p = ok(plan(ls, 240, 0.125));
+      expect(p.count).toBeGreaterThanOrEqual(p.fewestPossible);
+      expect(p.fewestPossible).toBe(fewestPossible(pieces(ls), 240, 0.125));
+    }
+  });
+
+  test('a long list that reaches the floor is called best, though nothing searched it', () => {
+    // Twenty 47s: each stick takes five (235.625), so four sticks is the floor
+    // and first fit finds it. Before the floor existed this said "good enough"
+    // about a packing that could not be improved on.
+    const twenty = Array.from({ length: 20 }, () => 47);
+    const p = ok(plan(twenty, 240, 0.125));
+    expect(twenty.length).toBeGreaterThan(EXACT_UP_TO);
+    expect(p.count).toBe(4);
+    expect(p.count).toBe(p.fewestPossible);
+    expect(p.best).toBe(true);
+  });
+
+  test('a searched list is best whether or not it reaches the floor', () => {
+    // Three 130s: no two share a 240 stick, so it is three sticks however it
+    // is packed. The floor says two, because 390 of pipe is under two sticks
+    // of it — which is exactly what a floor cannot know. The search does, so
+    // this is called best while sitting a stick above the floor.
+    const p = ok(plan([130, 130, 130], 240, 0.125));
+    expect(p.count).toBe(3);
+    expect(p.fewestPossible).toBe(2);
+    expect(p.best).toBe(true);
   });
 });

@@ -19,6 +19,8 @@ export function CutList({
   stock,
   length,
   short,
+  title = 'Cut list',
+  meta,
 }: {
   plan: CutPlan;
   stock: number;
@@ -26,13 +28,21 @@ export function CutList({
   length: (inches: number) => string;
   /** A length on its own, for the figures that are only glanced at. */
   short: (inches: number) => string;
+  /**
+   * What the section is called. Left alone on a screen showing one list; set
+   * where the list is one of several and already has a name above it, so the
+   * screen does not announce the same block twice.
+   */
+  title?: string;
+  /** Said beside the title, in place of the stick count. */
+  meta?: string;
 }) {
   const t = useTheme();
 
   if (!plan.ok)
     return (
       <>
-        <SectionHeader title="Cut list" meta="What to pull" />
+        <SectionHeader title={title} meta={meta ?? 'What to pull'} />
         <WarningBanner text={plan.error} />
       </>
     );
@@ -44,8 +54,8 @@ export function CutList({
   return (
     <>
       <SectionHeader
-        title="Cut list"
-        meta={`${plan.count} stick${plan.count === 1 ? '' : 's'} of ${short(stock)}`}
+        title={title}
+        meta={meta ?? `${plan.count} stick${plan.count === 1 ? '' : 's'} of ${short(stock)}`}
       />
 
       {plan.sticks.map((stick) => (

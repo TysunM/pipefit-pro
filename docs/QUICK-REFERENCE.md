@@ -244,3 +244,17 @@ On a finished joint, under **Re-torque**.
 - It finds the **fewest** sticks, and among those the one that leaves the **longest single drop**.
 - A cut longer than a stick is named, not quietly planned around.
 - Cut length, simple offset and rolling offset now say whether their one cut comes off one stick, and what is left.
+
+## The order sheet
+
+**Order sheet** → one order across every saved spool, instead of one order per spool.
+
+- Every spool ordered alone rounds up to a whole stick. Ordered together they round up **once**. On six spools that is typically **one stick in five**.
+- It opens with **every saved spool ticked**. Tap one off and every figure moves — that is how to see what a spool is worth to the order.
+- Three figures up top: **what to buy**, what **one at a time** would cost, and the **difference**.
+- Each spool takes a **letter**, and every piece is stamped letter-and-leg: `A3` is leg three of spool A. The letters are on the pick list, on the sticks, and in the key on the sheet.
+- **Pipe does not pool across sizes or schedules** — 2" SCH 40 and 2" SCH 80 are different sticks, packed and listed separately, biggest pipe first.
+- **Radius does pool.** LR and SR change the cuts, not the pipe the cuts come off. The key says which is which.
+- **Share order sheet** — top half for whoever buys the pipe (size, schedule, sticks, total length), bottom half for the saw.
+- A spool that will not build is **listed with its reason**, never silently left off. A piece longer than a stick names its mark, so you know which spool to fix.
+- If everything already fills its own sticks it says so. Nothing wasted means nothing to recover.

@@ -20,6 +20,7 @@ const CALCULATORS: {
   { route: 'Calculator', title: 'Calculator', subtitle: 'Feet, inches and fractions with pipe keys', icon: 'calculator-outline' },
   { route: 'Reference', title: 'Handbook', subtitle: 'Every table, searchable, with its page', icon: 'book-outline' },
   { route: 'SpoolBuilder', title: '3D spool', subtitle: 'Build a run and spin it in 3D', icon: 'cube-outline' },
+  { route: 'OrderSheet', title: 'Order sheet', subtitle: 'One order across every saved spool', icon: 'receipt-outline' },
   { route: 'FlangeBoltUp', title: 'Flange bolt-up', subtitle: 'Tap each bolt through the cross pattern', icon: 'sync-circle-outline' },
   { route: 'Joints', title: 'Joint register', subtitle: 'Every bolt-up saved, bolt by bolt', icon: 'pricetags-outline' },
   { route: 'SimpleOffset', title: 'Simple offset', subtitle: 'Travel, run and shrink in one plane', icon: 'git-branch-outline' },
