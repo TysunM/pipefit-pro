@@ -1,4 +1,4 @@
-# PipeFit Pro — finding the common measurements
+# The Pipe Fitter App — finding the common measurements
 
 Every screen is reached from the home list. Type what you measured; read what you cut.
 

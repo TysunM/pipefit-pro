@@ -1,4 +1,4 @@
-# PipeFit Pro
+# The Pipe Fitter App
 
 Field calculators for pipe, tube and conduit. Expo SDK 57 / React Native 0.86 / TypeScript.
 

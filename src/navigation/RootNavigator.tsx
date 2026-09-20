@@ -67,7 +67,7 @@ export function RootNavigator() {
             route.name === 'Settings' ? undefined : () => <HeaderActions onSettings={() => navigation.navigate('Settings')} />,
         })}
       >
-        <Stack.Screen name="Home" component={HomeScreen} options={{ title: 'PipeFit Pro' }} />
+        <Stack.Screen name="Home" component={HomeScreen} options={{ title: 'The Pipe Fitter App' }} />
         <Stack.Screen name="SimpleOffset" component={SimpleOffsetScreen} options={{ title: 'Simple offset' }} />
         <Stack.Screen name="RollingOffset" component={RollingOffsetScreen} options={{ title: 'Rolling offset' }} />
         <Stack.Screen name="CutLength" component={CutLengthScreen} options={{ title: 'Cut length' }} />

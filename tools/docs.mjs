@@ -19,8 +19,8 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const DOCS = join(ROOT, 'docs');
 
 const JOBS = [
-  { md: 'USER-GUIDE.md', pdf: 'PipeFit-Pro-User-Guide.pdf' },
-  { md: 'QUICK-REFERENCE.md', pdf: 'PipeFit-Pro-Quick-Reference.pdf' },
+  { md: 'USER-GUIDE.md', pdf: 'The-Pipe-Fitter-App-User-Guide.pdf' },
+  { md: 'QUICK-REFERENCE.md', pdf: 'The-Pipe-Fitter-App-Quick-Reference.pdf' },
 ];
 
 /** Stands in for a code span while the other inline marks are applied. */

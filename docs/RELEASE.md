@@ -1,4 +1,4 @@
-# PipeFit Pro — Release Runbook
+# The Pipe Fitter App — Release Runbook
 
 How to build, sign, install and update the Android app. Written so a future
 you with no memory of this session can ship a release in ten minutes.

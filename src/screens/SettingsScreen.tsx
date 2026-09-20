@@ -191,7 +191,7 @@ export function SettingsScreen() {
         </Text>
       )}
 
-      <FooterNote text={`PipeFit Pro ${appVersion()} \u00b7 Settings are stored on this device only.`} />
+      <FooterNote text={`The Pipe Fitter App ${appVersion()} \u00b7 Settings are stored on this device only.`} />
 
       <PipeSheet
         visible={sheetOpen}

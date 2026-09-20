@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "PipeFit Pro",
+    "name": "The Pipe Fitter App",
     "slug": "pipefit-pro",
     "version": "1.1.0",
     "orientation": "portrait",
@@ -19,7 +19,10 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.pipefitpro.app",
-      "buildNumber": "2"
+      "buildNumber": "2",
+      "infoPlist": {
+        "CFBundleDisplayName": "Pipe Fitter"
+      }
     },
     "android": {
       "package": "com.pipefitpro.app",
@@ -46,6 +49,12 @@
           "dark": {
             "backgroundColor": "#0F1318"
           }
+        }
+      ],
+      [
+        "./plugins/withLauncherLabel.js",
+        {
+          "label": "Pipe Fitter"
         }
       ]
     ],
