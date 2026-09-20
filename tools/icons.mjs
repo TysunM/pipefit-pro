@@ -1,5 +1,5 @@
 import { chromium } from '/opt/node22/lib/node_modules/playwright/index.mjs';
-import { MARK, FRAMED } from './mark.js';
+import { MARK, FRAMED, INK } from './mark.js';
 import fs from 'node:fs';
 
 const OUT = new URL('../assets', import.meta.url).pathname;
@@ -24,9 +24,9 @@ async function render(svg, size, file, transparent) {
 // that gets cropped to an arc.
 const SQUARE_BG = FRAMED;
 // android masks the adaptive foreground to ~66% of the canvas — keep the art inside it
-await render(MARK(SQUARE_BG, 1.0), 1024, 'icon.png', false);
-await render(MARK('', 0.62), 1024, 'adaptive-icon.png', true);
-await render(MARK('', 0.86), 1024, 'splash-icon.png', true);
-await render(MARK(SQUARE_BG, 1.0), 64, 'favicon.png', false);
+await render(MARK(SQUARE_BG, 1.0, INK.onWhite), 1024, 'icon.png', false);
+await render(MARK('', 0.62, INK.onBlue), 1024, 'adaptive-icon.png', true);
+await render(MARK('', 0.86, INK.onEither), 1024, 'splash-icon.png', true);
+await render(MARK(SQUARE_BG, 1.0, INK.onWhite), 64, 'favicon.png', false);
 
 await browser.close();
