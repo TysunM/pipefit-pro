@@ -29,10 +29,6 @@ const W = 360;
 const H = 360;
 /** Room round the drawing for the figures that hang off it. */
 const PAD = 30;
-/** How big the compass is, and how close to the edge it sits. */
-const GIZMO = 80;
-const GIZMO_EDGE = 4;
-
 const hex = (c: string) => [
   parseInt(c.slice(1, 3), 16),
   parseInt(c.slice(3, 5), 16),
@@ -62,13 +58,6 @@ function chordNormal(ps: Projected[], half: number) {
 const GRAB_MS = 260;
 const GRAB_SLOP = 10;
 const HIT_PAD = 22;
-
-/** The compass arms, and where a collapsed one puts its name. */
-const AXES = [
-  { key: 'X' as const, label: 'E', colour: '#C0553F', away: { x: 1, y: 0.6 } },
-  { key: 'Y' as const, label: 'UP', colour: '#3E8F5B', away: { x: 0, y: -1 } },
-  { key: 'Z' as const, label: 'N', colour: '#2E6C9C', away: { x: -1, y: 0.6 } },
-];
 
 export function SpoolView({
   spool,
@@ -307,7 +296,6 @@ export function SpoolView({
         od,
         maxScale: ceiling,
         hold,
-        gizmo: { size: GIZMO, edge: GIZMO_EDGE },
         // A drag carries no figures: they cannot be placed faster than a thumb
         // moves, and a figure in the wrong place reads worse than none.
         text: showLabels && !dragging ? { legText, elbowText } : null,
@@ -317,7 +305,6 @@ export function SpoolView({
 
   geom.current = { pts: scene.pts, scale: scene.scale, transform: scene.transform };
   const pieces = scene.pieces;
-  const corner = scene.gizmo;
   const labels = scene.labels;
 
   const depthRange = useMemo(() => {
@@ -332,35 +319,49 @@ export function SpoolView({
   const nearness = (d: number) => (d - depthRange.min) / (depthRange.max - depthRange.min);
   const fade = (c: string, d: number) => mix(c, haze, 0.42 * (1 - nearness(d)));
 
-  const axes = useMemo(() => {
-    const o = { x: 0, y: 0, z: 0 };
-    const L = 1;
-    const mk = (v: Vec3) => project(v, view);
-    const raw = [mk(o), mk({ x: L, y: 0, z: 0 }), mk({ x: 0, y: L, z: 0 }), mk({ x: 0, y: 0, z: L })];
-    const map = fitProjection(raw, 74, 74, 12);
-    const [O, X, Y, Z] = raw.map(map) as Projected[];
-    return { O: O!, X: X!, Y: Y!, Z: Z! };
-  }, [view]);
 
-  const breakMarks = (i: number) =>
-    (scene.breaks[i] ?? []).map((c, k) => {
-      // Along the near piece, the one behind spans its own width divided by the
-      // sine of the angle they meet at. Shallow crossings are capped rather
-      // than run off to a break the length of the drawing.
-      const reach = (od + 6) / 2 / Math.max(c.sin, 0.3);
-      return (
-        <Line
-          key={`b${i}_${k}`}
-          x1={c.x - c.ax * reach}
-          y1={c.y - c.ay * reach}
-          x2={c.x + c.ax * reach}
-          y2={c.y + c.ay * reach}
-          stroke={haze}
-          strokeWidth={od + 6}
-          strokeLinecap="butt"
-        />
-      );
-    });
+  // Knocking out what is behind
+  // ---------------------------
+  // A piece in front has to cut the one behind it, or a drawing of a spool is
+  // a heap of overlapping tubes. This used to be done by finding where the
+  // outlines crossed and painting a background-coloured bar through each
+  // crossing, along the near piece's direction, reaching its own width over
+  // the sine of the angle the two met at.
+  //
+  // Three things were wrong with that and all three showed on a phone. The
+  // reach was capped at a sine of 0.3, so a shallow crossing erased about
+  // ninety points of a three hundred and sixty point canvas — enough to take a
+  // whole short leg out and leave it floating unattached. The bar ran along a
+  // single chord of the near piece, which on an elbow points somewhere the
+  // elbow does not go, so the knockout landed off the pipe and left a wedge.
+  // And nothing tied the bar's length to how much of the far piece the near
+  // one actually covered, so it was guesswork either way.
+  //
+  // A piece is already drawn as a stroke. So it knocks out its own silhouette:
+  // the same geometry, in the background colour, painted immediately before
+  // the body. It cannot reach past where the piece is, because it is where the
+  // piece is. No crossings to find, no angle to divide by, nothing to cap.
+  const knockout = (piece: ScenePiece) =>
+    piece.kind === 'run' ? (
+      <Line
+        x1={piece.a.x}
+        y1={piece.a.y}
+        x2={piece.b.x}
+        y2={piece.b.y}
+        stroke={haze}
+        strokeWidth={od}
+        strokeLinecap="round"
+      />
+    ) : (
+      <Path
+        d={polyline(piece.path)}
+        fill="none"
+        stroke={haze}
+        strokeWidth={od}
+        strokeLinecap="butt"
+        strokeLinejoin="round"
+      />
+    );
 
   const perpOf = (p: Extract<ScenePiece, { kind: 'run' }>) => {
     const dx = p.b.x - p.a.x;
@@ -468,7 +469,7 @@ export function SpoolView({
               const rimW = selected ? 2.2 : 1;
               return (
                 <G key={i}>
-                  {breakMarks(i)}
+                  {knockout(p)}
                   <Line
                     x1={p.a.x}
                     y1={p.a.y}
@@ -515,7 +516,7 @@ export function SpoolView({
             const rim = fade(sh.rim, p.depth);
             return (
               <G key={i}>
-                {breakMarks(i)}
+                {knockout(p)}
                 <Path
                   d={spine}
                   fill="none"
@@ -594,51 +595,6 @@ export function SpoolView({
             );
           })}
 
-          <G transform={`translate(${corner.x} ${corner.y})`}>
-            {/* The drawing now uses the whole canvas, so the compass needs its
-                own ground to stay readable when a leg runs under it. An axis
-                square on to the viewer has no arm to draw, and gets the same
-                treatment the pipe does: a dot, with its name set off it, so a
-                plan does not stack three labels on one point. */}
-            <Rect x={2} y={2} width={GIZMO - 4} height={GIZMO - 4} rx={10} fill={haze} opacity={0.93} />
-            {AXES.map((a) => {
-              const end = axes[a.key];
-              const dx = end.x - axes.O.x;
-              const dy = end.y - axes.O.y;
-              const l = Math.hypot(dx, dy);
-              if (l < 5)
-                return (
-                  <G key={a.key}>
-                    <Circle cx={axes.O.x} cy={axes.O.y} r={2.6} fill={a.colour} />
-                    <SvgText
-                      x={axes.O.x + a.away.x * 11}
-                      y={axes.O.y + a.away.y * 11}
-                      fontSize={9}
-                      fontWeight="700"
-                      fill={a.colour}
-                      textAnchor="middle"
-                    >
-                      {a.label}
-                    </SvgText>
-                  </G>
-                );
-              return (
-                <G key={a.key}>
-                  <Line x1={axes.O.x} y1={axes.O.y} x2={end.x} y2={end.y} stroke={a.colour} strokeWidth={1.6} />
-                  <SvgText
-                    x={end.x + (dx / l) * 5}
-                    y={end.y + (dy / l) * 5 + 3}
-                    fontSize={9}
-                    fontWeight="700"
-                    fill={a.colour}
-                    textAnchor="middle"
-                  >
-                    {a.label}
-                  </SvgText>
-                </G>
-              );
-            })}
-          </G>
         </Svg>
         <View style={StyleSheet.absoluteFill} {...pan.panHandlers} />
       </View>

@@ -401,7 +401,10 @@ describe('picking a leg off the page', () => {
   });
 });
 
-describe('breaking the line behind at a crossing', () => {
+// Crossings are no longer what hides one pipe behind another — each piece
+// knocks out its own silhouette instead. The arithmetic is still used to
+// score which corner a spool reads best from, where a crossing is a cost.
+describe('finding where two drawn pipes cross', () => {
   const Hz = (y: number) => [{ x: 0, y }, { x: 10, y }];
   const V = (x: number) => [{ x, y: 0 }, { x, y: 10 }];
 
