@@ -1,4 +1,4 @@
-# The Pipe Fitter App — User Guide
+# PipeFit Pro — User Guide
 
 Everything in this app does one job: turn what you can **measure** into what you have to **cut**.
 
@@ -1158,4 +1158,4 @@ Three seconds, and you will never wonder whether the number is good.
 
 ---
 
-*The Pipe Fitter App. Built for the job, tested against the book.*
+*PipeFit Pro. Built for the job, tested against the book.*
