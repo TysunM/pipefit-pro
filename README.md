@@ -459,7 +459,36 @@ A full audit was run against the first build. Five defects were found and fixed:
 
 ## Theming
 
-Tokens live in `src/theme/tokens.ts`. Light and dark palettes are complete and independent; every screen reads colours from `useTheme()` and hard-codes none. Theme preference (light / dark / system) persists per device.
+Tokens live in `src/theme/tokens.ts`. Light and dark palettes are complete and
+independent; every screen reads colours from `useTheme()` and hard-codes none.
+Theme preference (light / dark / system) persists per device.
+
+**Emerald and brass on the chrome, contrast on the instrument.** The headers,
+tiles, buttons and rules are drawn in deep emerald and gold, because a trade
+tool that looks like it cost something is a trade tool somebody opens. The
+drawing surface stays near-white in light and near-black in dark, the pipe
+stays steel, and the figures stay near-black or near-white — because the same
+app gets read on a roof at eleven in the morning.
+
+Gold is the colour that makes this hard, and it is worth saying why: it is a
+mid-tone. On white it is barely darker than the paper; on black it glows. So
+it shifts value between the themes while keeping its hue — a deep bronze on
+light, a bright leaf on dark. The same colour to the eye, opposite ends of the
+ramp.
+
+Two tokens exist only because of that. `onAccent` and `onData` are the text on
+a gold fill and on a cut-list bar, which in the dark theme are the two fills
+*lighter* than the text that sits on them. One `onPrimary` could not serve all
+three.
+
+**Every pair is measured, not eyeballed.** `src/__tests__/contrast.test.ts`
+runs the WCAG formula over every foreground/background pair in both palettes
+and holds all of them to 4.5:1 — the body-text bar, applied regardless of
+size, because a figure read wrong is worse than a label read slowly. It also
+checks borders are visible and that both palettes define the same tokens.
+
+The palette this replaced **failed eleven of those checks**, among them the
+orange Save button on white. That was not found by looking at it.
 
 ## Units
 

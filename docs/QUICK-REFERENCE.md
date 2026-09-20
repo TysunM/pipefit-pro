@@ -222,6 +222,7 @@ On a finished joint, under **Re-torque**.
 - **Hold a leg** in the picture and drag along it to stretch or shorten it. Pull the way it runs for longer.
 - While you pull, the drawing **holds its scale and its place** — the leg follows your thumb, its neighbours stay put. Letting go refits the whole run.
 - **Mirror** gives the opposite hand; **Turn over** swaps every rise for a drop; **Swing 90°** points the whole spool elsewhere. None of the three changes a cut.
+- All three sit **under the drawing**, and the spool **swings into place over half a second** so you can watch it. The line below names what just happened.
 
 **Saved spools** — under the handing buttons.
 

@@ -592,6 +592,17 @@ other side of a rack. **Turn over** is the one you want when the whole run
 should fold the other way. **Swing** is for when the shape is right and it is
 simply pointing the wrong way on the drawing.
 
+All three sit **directly under the drawing**, so the thing they change is on
+the same screen as the button that changes it. Press one and the spool
+**swings into its new position over about half a second** rather than
+switching between one frame and the next — and the line underneath names what
+just happened: *Mirrored — opposite hand. Not one cut changed.*
+
+That matters more here than anywhere else in the app, because these are the
+only three controls that move no figure at all. The total, the cuts, the
+elbows and the weight are identical before and after. The drawing is the only
+evidence any of them ran, so you get to watch it happen.
+
 ### Worked example
 
 **2" schedule 40 LR, 36" east then 24" straight up then 30" north, 3/32" gap:**

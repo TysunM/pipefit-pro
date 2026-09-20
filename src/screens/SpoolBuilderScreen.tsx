@@ -658,7 +658,7 @@ export function SpoolBuilderScreen() {
                   backgroundColor: t.colors.accent,
                 }}
               >
-                <Text style={[t.type.captionStrong, { color: t.colors.onPrimary }]}>Delete?</Text>
+                <Text style={[t.type.captionStrong, { color: t.colors.onAccent }]}>Delete?</Text>
               </Pressable>
             ) : (
               <Pressable

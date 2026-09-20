@@ -6,7 +6,7 @@ import { KEYPAD, type Key, type KeyAction } from '../../calc/keys';
 
 function toneColours(t: ReturnType<typeof useTheme>, tone: Key['tone'], armed: boolean) {
   const c = t.colors;
-  if (armed) return { bg: c.accent, fg: c.onPrimary, border: c.accent };
+  if (armed) return { bg: c.accent, fg: c.onAccent, border: c.accent };
   switch (tone) {
     case 'trade':
       return { bg: c.primary, fg: c.onPrimary, border: c.primary };
