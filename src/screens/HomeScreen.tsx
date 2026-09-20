@@ -73,10 +73,11 @@ export function HomeScreen({ navigation }: Props) {
         </Pressable>
       </View>
 
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: t.space.md }}>
+      <View style={{ paddingHorizontal: t.space.md }}>
         {CALCULATORS.map((c) => (
           <CalculatorCard
             key={c.route}
+            route={c.route}
             title={c.title}
             subtitle={c.subtitle}
             icon={c.icon}

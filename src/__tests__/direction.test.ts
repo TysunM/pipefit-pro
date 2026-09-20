@@ -12,6 +12,7 @@ import {
   flipDirs,
   isLevel,
   isVertical,
+  lerpDirs,
   mirrorDirs,
   rotateDirs,
   solveDirections,
@@ -306,5 +307,58 @@ describe('what a bend needs buying', () => {
   test('a hair off ninety is still a cut, because a hair off does not weld up', () => {
     expect(fittingFor(90.4).stock).toBe(false);
     expect(fittingFor(90.01).stock).toBe(true);
+  });
+});
+
+describe('a handing change can be swept through rather than jumped', () => {
+  const d = (bearing: number, slope = 0): LegDir => ({ bearing, slope });
+
+  test('the ends are the ends', () => {
+    const from = [d(0), d(90, 10)];
+    const to = [d(180), d(270, -10)];
+    expect(lerpDirs(from, to, 0)).toEqual(from);
+    expect(lerpDirs(from, to, 1)).toEqual(to);
+  });
+
+  test('halfway is halfway', () => {
+    expect(lerpDirs([d(0)], [d(90)], 0.5)[0]!.bearing).toBeCloseTo(45, 9);
+    expect(lerpDirs([d(0, -20)], [d(0, 20)], 0.5)[0]!.slope).toBeCloseTo(0, 9);
+  });
+
+  test('a bearing takes the short way round, not the long one', () => {
+    // 350 to 10 is twenty degrees forward, not three hundred and forty back.
+    expect(lerpDirs([d(350)], [d(10)], 0.5)[0]!.bearing).toBeCloseTo(0, 9);
+    expect(lerpDirs([d(10)], [d(350)], 0.5)[0]!.bearing).toBeCloseTo(0, 9);
+  });
+
+  test('half a turn always goes the same way round, so the motion is predictable', () => {
+    // There is no short way round half a circle, so it goes forward both
+    // times: out through ninety, back through two seventy. Mirroring twice
+    // therefore carries a leg all the way round rather than reversing, which
+    // reads as one continuous movement instead of a flinch.
+    expect(lerpDirs([d(0)], [d(180)], 0.5)[0]!.bearing).toBeCloseTo(90, 9);
+    expect(lerpDirs([d(180)], [d(0)], 0.5)[0]!.bearing).toBeCloseTo(270, 9);
+  });
+
+  test('t is clamped, so a late frame cannot overshoot', () => {
+    expect(lerpDirs([d(0)], [d(90)], 1.4)[0]!.bearing).toBeCloseTo(90, 9);
+    expect(lerpDirs([d(0)], [d(90)], -0.3)[0]!.bearing).toBeCloseTo(0, 9);
+  });
+
+  test('every bearing it produces is a real compass bearing', () => {
+    for (let i = 0; i <= 20; i += 1) {
+      const out = lerpDirs([d(300)], [d(60)], i / 20)[0]!;
+      expect(out.bearing).toBeGreaterThanOrEqual(0);
+      expect(out.bearing).toBeLessThan(360);
+    }
+  });
+
+  test('a real mirror sweeps each leg to its mirrored bearing', () => {
+    const from = [d(0), d(90), d(45)];
+    const to = mirrorDirs(from);
+    const mid = lerpDirs(from, to, 0.5);
+    expect(mid).toHaveLength(3);
+    // Leg one is the axis of the mirror, so it never moves.
+    expect(mid[0]!.bearing).toBeCloseTo(from[0]!.bearing, 9);
   });
 });

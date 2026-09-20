@@ -102,7 +102,10 @@ export function CutList({
                   borderRightColor: t.colors.bg,
                 }}
               >
-                <Text numberOfLines={1} style={[t.type.caption, { color: t.colors.onPrimary, fontSize: 9 }]}>
+                <Text
+                  numberOfLines={1}
+                  style={[t.type.caption, { color: i % 2 === 0 ? t.colors.onPrimary : t.colors.onData, fontSize: 9 }]}
+                >
                   {piece.tag ?? piece.label}
                 </Text>
               </View>
