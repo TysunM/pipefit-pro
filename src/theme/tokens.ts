@@ -33,78 +33,77 @@ export type Colors = {
 // -----------
 // Two jobs, and they pull opposite ways.
 //
-// The chrome has to make a man want to open the app. Deep emerald, gold and
-// black is a trade tool that looks like it cost something, and that is what
-// the headers, the buttons, the tiles and the rules are drawn in.
+// The chrome has to make a man want to open the app. Cobalt, steel and a
+// burnt-orange action colour is what a trade instrument looks like — the blue
+// carries the structure, the orange carries the one thing on each screen that
+// is worth pressing.
 //
 // The instrument has to be read on a roof at eleven in the morning. So the
-// drawing surface stays near-white, the figures stay near-black, and nothing
-// that carries a number is asked to do it in gold on green.
+// drawing surface stays near-white in light and near-black in dark, the pipe
+// stays steel, and nothing carrying a number is asked to do it in mid-blue on
+// mid-blue.
 //
-// Gold is the problem colour and it is worth saying why. It is a mid-tone: on
-// white it is barely darker than the paper, on black it glows. So it shifts
-// value between the themes while keeping its hue — a deep bronze on light, a
-// bright leaf on dark. Same colour to the eye, opposite ends of the ramp.
+// Orange is the problem colour and it is worth saying why. It is a mid-tone:
+// on white it is barely darker than the paper, on black it glows. So it shifts
+// value between the themes while keeping its hue, a burnt rust on light and a
+// bright amber on dark. Same colour to the eye, opposite ends of the ramp.
 //
 // Every pair here is checked by contrast.test.ts against the WCAG formula, at
-// 4.5:1, which is the body-text bar and not the large-text one. The palette
-// this replaced failed eleven of those checks.
+// 4.5:1, which is the body-text bar and not the large-text one.
 
 export const palette: Record<Mode, Colors> = {
   light: {
-    bg: '#FCFCFA',
-    bgSubtle: '#EDF1EB',
-    bgSunken: '#F5F7F3',
+    bg: '#FCFCFD',
+    bgSubtle: '#EBF0F6',
+    bgSunken: '#F4F7FA',
     bgRaised: '#FFFFFF',
-    border: '#D7DDD3',
-    borderStrong: '#98A69A',
-    text: '#0B1F1A',
-    textMuted: '#42544D',
-    textFaint: '#5C6E67',
-    primary: '#0E3B32',
-    primaryPressed: '#072520',
-    onPrimary: '#FAF6E9',
-    accent: '#7A5A12',
-    accentSoft: '#F6EFD9',
-    onAccent: '#FAF6E9',
-    data: '#0A4F66',
-    dataSoft: '#E2EDF1',
-    onData: '#FAF6E9',
-    warnBg: '#FAF2DC',
-    warnBorder: '#E0CB98',
-    warnText: '#6F5008',
-    danger: '#A5301F',
-    success: '#115A49',
-    overlay: 'rgba(7,31,27,0.45)',
+    border: '#D3DCE7',
+    borderStrong: '#8C9DB1',
+    text: '#0C1A28',
+    textMuted: '#3D5168',
+    textFaint: '#566B82',
+    primary: '#11447E',
+    primaryPressed: '#0A2E58',
+    onPrimary: '#F6FAFF',
+    accent: '#9E4515',
+    accentSoft: '#FAEDE3',
+    onAccent: '#FFF7F1',
+    data: '#08536F',
+    dataSoft: '#E1EDF3',
+    onData: '#F6FBFE',
+    warnBg: '#FAF2DB',
+    warnBorder: '#DFCC9B',
+    warnText: '#6C520B',
+    danger: '#9C2D1C',
+    success: '#0F5A45',
+    overlay: 'rgba(12,26,40,0.45)',
   },
   dark: {
-    bg: '#071A16',
-    bgSubtle: '#0D2A23',
-    bgSunken: '#04110E',
-    bgRaised: '#0F3128',
-    border: '#1D4739',
-    borderStrong: '#3A7563',
-    text: '#EDF3EF',
-    textMuted: '#A8BEB5',
-    textFaint: '#8AA39A',
-    primary: '#1A7A63',
-    primaryPressed: '#125A49',
-    // The same cream as the light theme. Text on a primary fill is one idea,
-    // and a fill dark enough to carry it in one theme is dark enough in both.
-    onPrimary: '#FAF6E9',
-    accent: '#D8B863',
-    accentSoft: '#2A2210',
-    // Gold and this blue are the two fills that are lighter than their text in
-    // the dark theme, which is the whole reason these tokens exist.
-    onAccent: '#08201A',
-    data: '#6FC0D8',
-    dataSoft: '#0B2A33',
-    onData: '#08201A',
-    warnBg: '#2B2411',
-    warnBorder: '#4A3D1C',
+    bg: '#0F1318',
+    bgSubtle: '#171D25',
+    bgSunken: '#080A0E',
+    bgRaised: '#1A222B',
+    border: '#28323E',
+    borderStrong: '#54687E',
+    text: '#EEF3F9',
+    textMuted: '#AABCCE',
+    textFaint: '#93A7BA',
+    primary: '#2C6CB4',
+    primaryPressed: '#1F5091',
+    onPrimary: '#F6FAFF',
+    accent: '#F2954E',
+    accentSoft: '#2A1C10',
+    // Orange and this blue are the two fills lighter than the text that sits
+    // on them in the dark theme, which is the whole reason these tokens exist.
+    onAccent: '#1A0D05',
+    data: '#72B9DE',
+    dataSoft: '#0C2531',
+    onData: '#06161F',
+    warnBg: '#2A2412',
+    warnBorder: '#483F1E',
     warnText: '#DCC07A',
-    danger: '#F0857A',
-    success: '#4FBE9E',
+    danger: '#F2867A',
+    success: '#47C098',
     overlay: 'rgba(0,0,0,0.62)',
   },
 };

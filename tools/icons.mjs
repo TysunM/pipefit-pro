@@ -1,5 +1,5 @@
 import { chromium } from '/opt/node22/lib/node_modules/playwright/index.mjs';
-import { MARK } from './mark.js';
+import { MARK, FRAMED } from './mark.js';
 import fs from 'node:fs';
 
 const OUT = new URL('../assets', import.meta.url).pathname;
@@ -18,9 +18,11 @@ async function render(svg, size, file, transparent) {
   console.log(`${file.padEnd(22)} ${size}x${size}  ${(bytes/1024).toFixed(1)} KB`);
 }
 
-// The square icon carries the near-black field the mark was designed on. A
-// phone that draws its own light tile leaves a white icon with no edge at all.
-const SQUARE_BG = `<rect width="1024" height="1024" fill="url(#ink)"/>`;
+// The square icon carries the blue frame and the white field it was drawn
+// with. The adaptive foreground and the splash get none — Android and the
+// splash plugin paint their own grounds, and a frame inside a mask is a frame
+// that gets cropped to an arc.
+const SQUARE_BG = FRAMED;
 // android masks the adaptive foreground to ~66% of the canvas — keep the art inside it
 await render(MARK(SQUARE_BG, 1.0), 1024, 'icon.png', false);
 await render(MARK('', 0.62), 1024, 'adaptive-icon.png', true);

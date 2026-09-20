@@ -1,69 +1,83 @@
 // The mark
 // --------
-// What a man sees on his home screen before he has any reason to care. It has
-// one job: look like a tool somebody paid for, at the size of a thumbnail.
+// A P built out of pipe: the bowl turns through half a circle, the stem comes
+// up from a flange and elbows into it, with couplings where a fitter would put
+// them. A letterform and a spool at the same time, which is the only way to
+// say what the app is in one glyph.
 //
-// Three runs of pipe, each turning ninety and flanged at both open ends,
-// staggered down the diagonal so they overlap and read as a rack rather than
-// as one part. Three and not two: two bends read as a plumbing fixture, three
-// reads as pipework. Drawn square-on rather than isometric, because at forty
-// eight pixels an isometric run has no vertical to anchor it and the three
-// collapse into one gold smear — measured, not assumed.
+// Three things about how it is drawn.
 //
-// Brass on a near-black field. The field is nearly black rather than emerald
-// so the brass separates at small sizes, where a mid-green ground and a gold
-// glyph start to share a value. The emerald survives as the top of the field
-// gradient, which keeps the icon and the app the same family without costing
-// the contrast.
+// The outline is the frame blue rather than black. Black would make it a
+// pictogram; the blue makes the outline part of the same object as the border,
+// so the tile reads as one piece of work rather than a drawing pasted onto a
+// background.
 //
-// Every fill is a gradient across the brass ramp, and every run carries a dark
-// outline under it. That outline is what stops the three runs merging where
-// they overlap, and it is the whole of the "machined" impression.
+// The bore is one gradient across the whole mark, lit from the top left. A
+// highlight stroke down the centre of a pipe is the obvious way to suggest a
+// cylinder and it is the wrong one — it reads as a second, thinner pipe inside
+// the first. One catch along the lit edge, offset rather than centred, does
+// the job without the artefact.
+//
+// And the whole outline carries a soft drop shadow, so the pipework sits above
+// the white field rather than printed on it. That is the embossing, and it is
+// four lines.
 
-const SW = 132;
-const COUNT = 3;
-const STEP_X = 186;
-const STEP_Y = 164;
-const X0 = 196;
-const Y0 = 232;
-const REACH = 300;
-const DROP = 640;
+const BLUE = '#0A4FBE';
+/** The bore. */
+const SW = 136;
+/** The outline either side of it. */
+const OUT = 30;
 
-/** One run: up the page, turning ninety to the right, flanged at both ends. */
-const run = (x, y, drop) => `
-  <g>
-    <path d="M${x},${y + drop} L${x},${y + SW * 0.9} Q${x},${y} ${x + SW * 0.9},${y} L${x + REACH},${y}"
-          fill="none" stroke="#06231C" stroke-width="${SW + 26}"/>
-    <path d="M${x},${y + drop} L${x},${y + SW * 0.9} Q${x},${y} ${x + SW * 0.9},${y} L${x + REACH},${y}"
-          fill="none" stroke="url(#brass)" stroke-width="${SW}"/>
-    <ellipse cx="${x}" cy="${y + drop}" rx="${SW / 2 + 32}" ry="38"
-             fill="url(#flange)" stroke="#06231C" stroke-width="10"/>
-    <ellipse cx="${x + REACH}" cy="${y}" rx="32" ry="${SW / 2 + 28}"
-             fill="url(#flange)" stroke="#06231C" stroke-width="10"/>
+const BOWL = 'M300,262 L640,262 Q826,262 826,436 Q826,610 640,610 L516,610';
+const STEM = 'M292,856 L292,628 Q292,498 422,498 L556,498';
+
+const coupV = (cx, cy, w = 92, h = 196) => ({ x: cx - w / 2, y: cy - h / 2, w, h });
+const coupH = (cx, cy, w = 196, h = 92) => ({ x: cx - w / 2, y: cy - h / 2, w, h });
+const FITTINGS = [coupV(300, 262), coupV(512, 498), coupH(292, 856)];
+
+const rect = (r, fill) => `<rect x="${r.x}" y="${r.y}" width="${r.w}" height="${r.h}" rx="26" fill="${fill}"/>`;
+const grown = (r, by) => ({ x: r.x - by, y: r.y - by, w: r.w + by * 2, h: r.h + by * 2 });
+const run = (d, stroke, w) =>
+  `<path d="${d}" fill="none" stroke="${stroke}" stroke-width="${w}" stroke-linejoin="round" stroke-linecap="round"/>`;
+
+/** The pipework, without the field it sits on. */
+const GLYPH = `
+  <g filter="url(#emboss)">
+    ${run(BOWL, BLUE, SW + OUT * 2)}
+    ${run(STEM, BLUE, SW + OUT * 2)}
+    ${FITTINGS.map((r) => rect(grown(r, OUT), BLUE)).join('')}
+  </g>
+  ${run(BOWL, 'url(#sheen)', SW)}
+  ${run(STEM, 'url(#sheen)', SW)}
+  ${FITTINGS.map((r) => rect(r, 'url(#sheen)')).join('')}
+  <g opacity="0.75" transform="translate(-14,-16)">
+    ${run(BOWL, '#FFFFFF', 18)}
+    ${run(STEM, '#FFFFFF', 18)}
   </g>`;
 
-const ART = Array.from({ length: COUNT }, (_, i) =>
-  run(X0 + i * STEP_X, Y0 + i * STEP_Y, DROP - i * STEP_Y)
-).join('');
+const DEFS = `
+  <linearGradient id="sheen" x1="180" y1="120" x2="600" y2="980" gradientUnits="userSpaceOnUse">
+    <stop offset="0" stop-color="#FFFFFF"/>
+    <stop offset="0.30" stop-color="#F7FAFE"/>
+    <stop offset="0.62" stop-color="#DCE7F6"/>
+    <stop offset="1" stop-color="#BACDE8"/>
+  </linearGradient>
+  <filter id="emboss" x="-14%" y="-14%" width="128%" height="128%">
+    <feDropShadow dx="0" dy="7" stdDeviation="6" flood-color="#062F79" flood-opacity="0.22"/>
+  </filter>`;
 
+/**
+ * `bg` is the field behind the glyph, which the caller supplies because the
+ * three places this is used want three different ones: the square icon wants
+ * the framed white, the adaptive foreground wants nothing at all because
+ * Android paints its own, and the splash wants nothing for the same reason.
+ */
 export const MARK = (bg, artScale = 1) => `
 <svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
-  <defs>
-    <linearGradient id="ink" x1="512" y1="0" x2="512" y2="1024" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#0A2018"/>
-      <stop offset="1" stop-color="#010806"/>
-    </linearGradient>
-    <linearGradient id="brass" x1="150" y1="150" x2="900" y2="900" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#F6E9C2"/>
-      <stop offset="0.38" stop-color="#DCBC68"/>
-      <stop offset="0.72" stop-color="#B08F32"/>
-      <stop offset="1" stop-color="#E0C176"/>
-    </linearGradient>
-    <linearGradient id="flange" x1="0" y1="0" x2="0" y2="1024" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#FCF5DC"/>
-      <stop offset="1" stop-color="#BB9740"/>
-    </linearGradient>
-  </defs>
+  <defs>${DEFS}</defs>
   ${bg}
-  <g transform="translate(512,512) scale(${artScale}) translate(-512,-512)">${ART}</g>
+  <g transform="translate(512,512) scale(${artScale}) translate(-512,-512)">${GLYPH}</g>
 </svg>`;
+
+/** The blue border with the white field inside it, as drawn. */
+export const FRAMED = `<rect width="1024" height="1024" fill="${BLUE}"/><rect x="46" y="46" width="932" height="932" fill="#FFFFFF"/>`;

@@ -463,23 +463,23 @@ Tokens live in `src/theme/tokens.ts`. Light and dark palettes are complete and
 independent; every screen reads colours from `useTheme()` and hard-codes none.
 Theme preference (light / dark / system) persists per device.
 
-**Emerald and brass on the chrome, contrast on the instrument.** The headers,
-tiles, buttons and rules are drawn in deep emerald and gold, because a trade
-tool that looks like it cost something is a trade tool somebody opens. The
-drawing surface stays near-white in light and near-black in dark, the pipe
-stays steel, and the figures stay near-black or near-white — because the same
-app gets read on a roof at eleven in the morning.
+**Cobalt on the chrome, contrast on the instrument.** The headers, cards,
+buttons and rules are drawn in cobalt and steel, with a burnt-orange action
+colour carrying the one thing on each screen worth pressing. The drawing
+surface stays near-white in light and near-black in dark, the pipe stays
+steel, and the figures stay near-black or near-white — because the same app
+gets read on a roof at eleven in the morning.
 
-Gold is the colour that makes this hard, and it is worth saying why: it is a
+Orange is the colour that makes this hard, and it is worth saying why: it is a
 mid-tone. On white it is barely darker than the paper; on black it glows. So
-it shifts value between the themes while keeping its hue — a deep bronze on
-light, a bright leaf on dark. The same colour to the eye, opposite ends of the
-ramp.
+it shifts value between the themes while keeping its hue — a burnt rust on
+light, a bright amber on dark. The same colour to the eye, opposite ends of
+the ramp.
 
 Two tokens exist only because of that. `onAccent` and `onData` are the text on
-a gold fill and on a cut-list bar, which in the dark theme are the two fills
-*lighter* than the text that sits on them. One `onPrimary` could not serve all
-three.
+an orange fill and on a cut-list bar, which in the dark theme are the two
+fills *lighter* than the text that sits on them. One `onPrimary` could not
+serve all three, and the cut-list bars had been drawing cream on pale blue.
 
 **Every pair is measured, not eyeballed.** `src/__tests__/contrast.test.ts`
 runs the WCAG formula over every foreground/background pair in both palettes
@@ -488,7 +488,25 @@ size, because a figure read wrong is worse than a label read slowly. It also
 checks borders are visible and that both palettes define the same tokens.
 
 The palette this replaced **failed eleven of those checks**, among them the
-orange Save button on white. That was not found by looking at it.
+Save button at 3.1:1 on white. That was not found by looking at it.
+
+## What each tool looks like before you open it
+
+`src/components/TileArt.tsx` draws a schematic for every tool on the home
+screen, and `CalculatorCard` lays them out one to a row with the drawing
+beside the words.
+
+Thirteen tools whose names are trade phrases that mean nearly the same thing
+— *simple offset*, *rolling offset*, *pipe bend*, *miter bend* — are not told
+apart by reading, and a home screen gets a glance rather than a read. A saddle
+going over an obstruction and a segmented elbow cannot be confused by anybody,
+at any speed.
+
+They are line art on purpose: no fills, no shading, two weights and a dashed
+guide. At eighty pixels a rendered pipe is a grey smudge, and a drawing that
+has to be squinted at is worse than the icon it replaced. A tool with no
+schematic keeps its icon in the same panel at the same size, so the column
+still reads as one column.
 
 ## Units
 
