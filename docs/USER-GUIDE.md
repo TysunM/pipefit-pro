@@ -1,5 +1,7 @@
 # PipeFit Pro — User Guide
 
+*The only one an industrial fitter needs.*
+
 Everything in this app does one job: turn what you can **measure** into what you have to **cut**.
 
 This guide goes module by module. For each one: what it is for, what to measure, what to type, what comes back, **why it comes back that way**, and how to check it against your own head before you cut steel.

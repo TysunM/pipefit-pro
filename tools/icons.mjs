@@ -18,6 +18,11 @@
 // the regions, take the biggest as the pipe, and everything else is annotation.
 // No coordinates are hard-coded, so redrawing the source does not break this.
 //
+// The web icons come from here too. They had been a different mark entirely —
+// a ringed glyph from an early pass that nothing else in the app still used —
+// so anyone opening the web build or installing the PWA got artwork the phone
+// app had not carried for months. One source now feeds both.
+//
 // And the adaptive foreground is drawn at 0.60 of the canvas, not filling it.
 // Android composites a 108dp foreground and shows 72dp of it — a third of the
 // canvas is cropped away before anyone sees it, and the amount varies with the
@@ -142,12 +147,23 @@ const out = await page.evaluate(async ({ data, steel, blue }) => {
     'adaptive-icon.png': await cut(1024, 0.60, null),
     'splash-icon.png': await cut(1024, 0.66, '#FFFFFF', 0.90),
     'favicon.png': await cut(64, 0.82, '#FFFFFF'),
+    // The web set. `apple-touch-icon` and the two `any` icons carry the white
+    // field, because iOS composites a transparent touch icon onto black.
+    'web/icon-192.png': await cut(192, 0.78, '#FFFFFF'),
+    'web/icon-512.png': await cut(512, 0.78, '#FFFFFF'),
+    'web/apple-touch-icon.png': await cut(180, 0.78, '#FFFFFF'),
+    // A maskable icon is cropped to a circle of 80% of its width, so the art
+    // sits at 0.58 — its diagonal then measures 0.75 and clears the cut.
+    'web/icon-maskable-512.png': await cut(512, 0.58, '#FFFFFF'),
   };
 }, { data: src, steel: STEEL, blue: BLUE });
 
 for (const [name, data] of Object.entries(out)) {
-  writeFileSync(`${HERE}assets/${name}`, Buffer.from(data, 'base64'));
-  console.log(`${name.padEnd(22)} ${(statSync(`${HERE}assets/${name}`).size / 1024).toFixed(1)} KB`);
+  const path = name.startsWith('web/')
+    ? `${HERE}public/${name.slice(4)}`
+    : `${HERE}assets/${name}`;
+  writeFileSync(path, Buffer.from(data, 'base64'));
+  console.log(`${path.replace(HERE, '').padEnd(34)} ${(statSync(path).size / 1024).toFixed(1)} KB`);
 }
 
 await browser.close();

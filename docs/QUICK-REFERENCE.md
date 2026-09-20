@@ -1,5 +1,7 @@
 # PipeFit Pro — finding the common measurements
 
+*The only one an industrial fitter needs.*
+
 Every screen is reached from the home list. Type what you measured; read what you cut.
 
 ---

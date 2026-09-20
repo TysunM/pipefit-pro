@@ -5,8 +5,10 @@
 //
 //  1. Rewrite the absolute paths Expo emits to relative ones, so the app works
 //     from a subfolder — which is where GitHub Pages serves it.
-//  2. Inject the manifest link and the meta tags iOS needs before Safari will
-//     put it on a home screen as an app rather than a bookmark.
+//  2. Inject the manifest link, the meta tags iOS needs before Safari will put
+//     it on a home screen as an app rather than a bookmark, and the description
+//     and Open Graph tags a shared link needs before it shows as anything but
+//     a bare URL.
 //  3. Write a service worker that precaches every file in the build, so it
 //     opens with no signal. A calculator that needs a bar of service is no use
 //     in a basement, and basements are where the pipe is.
@@ -15,6 +17,12 @@ import { readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { join, posix, relative, sep } from 'node:path';
 
 const dist = process.argv[2] ?? 'dist';
+
+// One line, in the three places somebody meets the app before they open it:
+// the install prompt, a shared link's card, and a search result. It is not put
+// on a screen inside the app — a tagline shown to somebody who already
+// installed it is an advertisement they cannot act on.
+const TAGLINE = 'The only one an industrial fitter needs.';
 
 const walk = (dir) =>
   readdirSync(dir).flatMap((name) => {
@@ -60,12 +68,18 @@ html = html.replace(/(src|href)="\/(?!\/)/g, '$1="./');
 const head = `
     <base href="./" />
     <link rel="manifest" href="./manifest.webmanifest" />
-    <meta name="theme-color" content="#2B4552" />
+    <meta name="theme-color" content="#11447E" />
+    <meta name="description" content="${TAGLINE} Calculators, spools and the handbook, offline." />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="PipeFit Pro" />
     <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="PipeFit Pro" />
+    <meta property="og:description" content="${TAGLINE} Calculators, spools and the handbook, offline." />
+    <meta property="og:image" content="./icon-512.png" />
+    <meta name="twitter:card" content="summary" />
   `;
 html = html.replace('</head>', `${head}</head>`);
 
