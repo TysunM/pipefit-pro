@@ -244,3 +244,84 @@ if (process.env.SHEET_OUT) {
     expect(true).toBe(true);
   });
 }
+
+describe('a piece in front hides what it covers by being where it is', () => {
+  // The bug this locks out: one pipe in front used to cut the one behind with
+  // a bar painted through each detected crossing, reaching its own width over
+  // the sine of the angle the two met at, capped at a sine of 0.3. On a
+  // shallow crossing that bar was about ninety points long on a canvas three
+  // hundred and sixty wide, aimed along a single chord of the near piece — so
+  // on an elbow it pointed somewhere the elbow did not go. It erased whole
+  // short legs and left them floating, and it left wedges beside the bends.
+  //
+  // Nothing replaces it, because each piece already fills its own silhouette
+  // in paper before drawing its rails. What is checked here is that the bars
+  // are gone and that the covering still happens.
+  const folded = () => {
+    // A run that doubles back through itself, so pieces genuinely overlap.
+    const dirs = [
+      { bearing: 90, slope: 0 },
+      { bearing: 0, slope: 90 },
+      { bearing: 270, slope: 0 },
+      { bearing: 0, slope: -90 },
+      { bearing: 90, slope: 0 },
+    ];
+    const turns = solveDirections(dirs.map((d, i) => ({ id: `l${i}`, length: 24, dir: d })));
+    if (!turns.ok) throw new Error(turns.error);
+    return solveSpool({ legs: turns.legs, start: turns.start, nps: 2, kind: 'LR', schedule: '40', gap: 0.09 });
+  };
+
+  const sheetFor = (cam: typeof ISO_VIEW) =>
+    spoolSvg(buildScene({ spool: folded(), cam, width: 400, height: 300, pad: 30, od: 14, text: {} }), {
+      width: 400,
+      height: 300,
+      od: 14,
+      cam,
+    });
+
+  test('the scene carries no crossing bars for anything to draw', () => {
+    const scene = buildScene({
+      spool: folded(),
+      cam: ISO_VIEW,
+      width: 400,
+      height: 300,
+      pad: 30,
+      od: 14,
+      text: {},
+    });
+    expect('breaks' in scene).toBe(false);
+  });
+
+  test('every paper-filled shape in the sheet belongs to a piece, none is a loose bar', () => {
+    // The bars were the only <line> drawn in the paper colour. Rails, caps and
+    // weld ticks are all ink; bodies are paths and circles.
+    const svg = sheetFor(ISO_VIEW);
+    const paperLines = svg.match(/<line[^>]*stroke="#(?:FFFFFF|FFF)"[^>]*\/>/gi) ?? [];
+    expect(paperLines).toEqual([]);
+  });
+
+  test('each piece still fills itself, so it covers what is behind it', () => {
+    const svg = sheetFor(ISO_VIEW);
+    const scene = buildScene({
+      spool: folded(),
+      cam: ISO_VIEW,
+      width: 400,
+      height: 300,
+      pad: 30,
+      od: 14,
+      text: {},
+    });
+    // One paper fill per piece: a quad for a straight run, a stroked spine for
+    // an elbow, a disc for a leg seen end on.
+    const fills = (svg.match(/fill="#FFFFFF"|stroke="#FFFFFF"/g) ?? []).length;
+    expect(fills).toBeGreaterThanOrEqual(scene.pieces.length);
+  });
+
+  test('it holds from every corner, including the ones with the most overlap', () => {
+    for (const cam of [ISO_VIEW, PLAN_VIEW.cam]) {
+      const svg = sheetFor(cam);
+      expect(svg.match(/<line[^>]*stroke="#(?:FFFFFF|FFF)"[^>]*\/>/gi) ?? []).toEqual([]);
+      expect(svg.length).toBeGreaterThan(200);
+    }
+  });
+});

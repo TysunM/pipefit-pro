@@ -5,7 +5,6 @@ import { Screen } from '../components/Screen';
 import { HintRow } from '../components/HintRow';
 import { SectionHeader } from '../components/SectionHeader';
 import { DimensionInput, FieldRow } from '../components/DimensionInput';
-import { ChipRow } from '../components/ChipRow';
 import { AccentButton, ControlRow, GhostButton, SelectorButton } from '../components/Buttons';
 import { FooterNote, MetaBar, ResultBanner, SpoolBar, StatGrid, WarningBanner } from '../components/Results';
 import { PipeSheet } from '../components/PipeSheet';
@@ -23,11 +22,12 @@ import { sinceLabel } from '../state/register';
 import { MAX_LEGS, solveSpool } from '../calc/spool';
 import { findSize } from '../calc/pipe';
 import { planCuts } from '../calc/cutList';
+import { AimPad } from '../components/AimPad';
+import { AXES, aimRun, flatAxes, flattenDirs, isFlat, planeOf, sameAim } from '../calc/aim';
+import { Camera, ISO_VIEW } from '../components/spool3d/project';
 import {
-  COMPASS,
   DirLeg,
   LegDir,
-  SLOPE_PRESETS,
   bearingLabel,
   dirLabel,
   dirShort,
@@ -137,7 +137,15 @@ export function SpoolBuilderScreen() {
   };
 
   const [morph, setMorph] = useState<{ from: LegDir[]; to: LegDir[]; t: number } | null>(null);
-  const [handed, setHanded] = useState<string | null>(null);
+  // What the last rearrangement did, and whether it held every cut.
+  //
+  // Mirror, turn over, swing and pointing the run are rotations and
+  // reflections: they keep every angle, so they cannot move a cut, and saying
+  // so is the whole point of the line. Flattening is not one of those. It
+  // swings a leg onto a new heading, which can change the bend at each end of
+  // it, which changes what gets cut — so the claim has to be earned rather
+  // than printed, or the app is lying to somebody about to cut steel.
+  const [handed, setHanded] = useState<{ text: string; held: boolean } | null>(null);
   const morphFrame = useRef<number | null>(null);
 
   useEffect(
@@ -199,6 +207,27 @@ export function SpoolBuilderScreen() {
   const aim = (id: string, next: Partial<LegDir>) =>
     setLegs((prev) => prev.map((l) => (l.id === id ? { ...l, dir: { ...l.dir, ...next } } : l)));
 
+  // The pad lays its buttons out at the angles its directions draw at, so it
+  // has to know where the viewer is standing. The drawing owns that and says
+  // when it changes.
+  const [cam, setCam] = useState<Camera>(ISO_VIEW);
+
+  // Whether the run is held to one vertical plane.
+  //
+  // Not stored on the spool, because the spool already knows: a run whose legs
+  // all lie in one plane is a flat run, and asking the legs is one less thing
+  // to keep in step with them or to migrate in saved files. `null` means
+  // follow the legs, which is what a spool opens on; pressing either button
+  // pins it, so a flat run can still be taken into the third dimension and a
+  // spatial one can be worked on flat before it is flattened.
+  const [flatPref, setFlatPref] = useState<boolean | null>(null);
+
+  // The run pad is behind a button rather than always on screen. Everything
+  // that reshapes the drawing has to sit against the drawing to be watched,
+  // and a pad left open costs a hundred and fifty points of the height that
+  // keeps the total above the fold. Open it, aim the run, close it.
+  const [pointRun, setPointRun] = useState(false);
+
   const setLength = useCallback((index: number, inches: number) => {
     setLegs((prev) => prev.map((l, i) => (i === index ? { ...l, length: Math.round(inches * 16) / 16 } : l)));
   }, []);
@@ -215,11 +244,11 @@ export function SpoolBuilderScreen() {
   // which keeps every figure, every save and every printed sheet honest from
   // the first frame; only the picture takes the long way, and it is the
   // picture that was being doubted.
-  const reaim = (f: (dirs: LegDir[]) => LegDir[], said: string) => {
+  const reaim = (f: (dirs: LegDir[]) => LegDir[], said: string, held = true) => {
     const from = legs.map((l) => l.dir);
     const to = f(from);
     setLegs((prev) => prev.map((l, i) => ({ ...l, dir: to[i] ?? l.dir })));
-    setHanded(said);
+    setHanded({ text: said, held });
 
     if (morphFrame.current !== null) cancelAnimationFrame(morphFrame.current);
     const started = Date.now();
@@ -235,6 +264,60 @@ export function SpoolBuilderScreen() {
       }
     };
     morphFrame.current = requestAnimationFrame(step);
+  };
+
+  // Which plane a flat run lies in, whether it is flat, and therefore which
+  // pad to offer: eight directions inside the plane, or the six axes of the
+  // world. Derived, never stored, so it cannot disagree with the pipe.
+  const plane = planeOf(legs.map((l) => l.dir));
+  const flat = flatPref ?? isFlat(legs.map((l) => l.dir), plane);
+  const padAxes = flat ? flatAxes(plane) : AXES;
+
+  /**
+   * Press the run flat into the plane it is already mostly in.
+   *
+   * Unlike every other rearrangement on this screen, this one can change what
+   * gets cut: a leg swung onto a new heading changes the bend at each end of
+   * it. So whether it did is measured rather than assumed — the flattened run
+   * is solved and its total compared — and the line underneath says which it
+   * was.
+   */
+  const flatten = () => {
+    const { dirs, guessed } = flattenDirs(legs.map((l) => l.dir), plane);
+    const after = solveDirections(legs.map((l, i) => ({ ...l, dir: dirs[i] ?? l.dir })));
+    const held =
+      after.ok &&
+      valid &&
+      Math.abs(
+        solveSpool({
+          legs: after.legs,
+          start: after.start,
+          nps: pipe.nps,
+          kind: pipe.kind,
+          schedule: pipe.schedule,
+          gap: gapInches,
+        }).totalCut - spool.totalCut,
+      ) < 0.005;
+
+    // What moved, not what had to be guessed. A leg can be swung a long way
+    // into the plane without ever having been square out of it, and counting
+    // only the square ones reported "every leg was already in the plane" over
+    // a cut list that had just changed.
+    const moved = legs.filter((l, i) => !sameAim(l.dir, dirs[i] ?? l.dir)).length;
+    const leg = (n: number) => `${n} leg${n > 1 ? 's' : ''}`;
+
+    setFlatPref(true);
+    reaim(
+      (d) => flattenDirs(d, plane).dirs,
+      moved === 0
+        ? 'Flattened — every leg was already in the plane'
+        : guessed === 0
+          ? `Flattened — ${leg(moved)} swung into the plane`
+          : guessed === moved
+            ? `Flattened — ${leg(moved)} ran square out of the plane and now ${moved > 1 ? 'run' : 'runs'} along it`
+            : `Flattened — ${leg(moved)} swung into the plane, ${guessed} of them square out of it`,
+      held,
+    );
   };
 
   const addLeg = () => {
@@ -364,6 +447,7 @@ export function SpoolBuilderScreen() {
       {valid ? (
         <SpoolView
           spool={shown}
+          onCamera={setCam}
           showLabels
           selectedRun={open}
           onPickRun={setOpen}
@@ -380,6 +464,16 @@ export function SpoolBuilderScreen() {
           three times because you cannot tell whether it took. */}
       {valid ? (
         <>
+          {pointRun ? (
+            <AimPad
+              label="Point the whole run — every leg turns together"
+              axes={padAxes}
+              cam={cam}
+              value={legs[0]?.dir ?? { bearing: 0, slope: 0 }}
+              onAim={(dir) => reaim((d) => aimRun(d, dir), 'Run pointed — every angle between the legs held')}
+            />
+          ) : null}
+
           <ControlRow>
             <GhostButton
               label="Mirror"
@@ -400,7 +494,30 @@ export function SpoolBuilderScreen() {
               style={{ flex: 1 }}
             />
           </ControlRow>
-          <HintRow text={handed ? `${handed}. Not one cut changed.` : 'Mirror, turn over and swing rearrange the spool. None of the three changes a cut.'} />
+
+          <ControlRow>
+            <GhostButton
+              label={pointRun ? 'Hide pad' : 'Point run'}
+              icon="move-outline"
+              onPress={() => setPointRun((v) => !v)}
+              style={{ flex: 1 }}
+            />
+            <GhostButton
+              label={flat ? 'Go 3D' : 'Flatten'}
+              icon={flat ? 'cube-outline' : 'document-outline'}
+              onPress={() => (flat ? setFlatPref(false) : flatten())}
+              style={{ flex: 1 }}
+            />
+          </ControlRow>
+          <HintRow
+            text={
+              handed
+                ? `${handed.text}. ${handed.held ? 'Not one cut changed.' : 'Check the cut list — this one moves pipe.'}`
+                : flat
+                  ? 'Held to one plane: eight directions, every turn between them a stock elbow. Go 3D to leave the plane.'
+                  : 'Mirror, turn over, swing and pointing the run all rearrange the spool. None of them changes a cut.'
+            }
+          />
         </>
       ) : null}
 
@@ -530,17 +647,18 @@ export function SpoolBuilderScreen() {
                   />
                 </FieldRow>
 
-                <ChipRow
-                  label="Runs"
-                  options={COMPASS.map((c) => ({ value: c.bearing, label: c.id }))}
-                  selected={vertical ? null : turnDeg(l.dir.bearing)}
-                  onSelect={(b) => aim(l.id, { bearing: b, slope: vertical ? 0 : l.dir.slope })}
-                />
-                <ChipRow
-                  label="Rise"
-                  options={SLOPE_PRESETS.map((s) => ({ value: s.slope, label: s.label }))}
-                  selected={l.dir.slope}
-                  onSelect={(s) => aim(l.id, { slope: s })}
+                {/* One control instead of two rows. The compass row and the
+                    slope row were two coordinates to combine in your head to
+                    point a leg somewhere you could already see, and the slope
+                    row was the one nobody found — which is why a leg could
+                    only be sent left or right. Here the buttons sit where the
+                    leg will draw. */}
+                <AimPad
+                  label={flat ? 'Send this leg' : 'Send this leg — six ways pipe runs'}
+                  axes={padAxes}
+                  cam={cam}
+                  value={l.dir}
+                  onAim={(dir) => aim(l.id, dir)}
                 />
 
                 {/* The bend is a result here, not an entry. It is shown because

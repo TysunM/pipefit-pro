@@ -30,25 +30,6 @@ export const esc = (s: string): string =>
 
 const n = (v: number): string => (Number.isFinite(v) ? v.toFixed(2) : '0');
 
-/**
- * A break across the piece behind, where the one in front crosses it.
- *
- * Drawn in the paper colour, along the near piece, reaching far enough to
- * clear the width of the one behind — its own width divided by the sine of the
- * angle they meet at. Shallow crossings are capped rather than run off to a
- * break the length of the drawing.
- */
-function breaks(scene: Scene, i: number, od: number): string {
-  return (scene.breaks[i] ?? [])
-    .map((c) => {
-      const reach = (od + 5) / 2 / Math.max(c.sin, 0.3);
-      return `<line x1="${n(c.x - c.ax * reach)}" y1="${n(c.y - c.ay * reach)}" x2="${n(c.x + c.ax * reach)}" y2="${n(
-        c.y + c.ay * reach
-      )}" stroke="${PAPER}" stroke-width="${n(od + 5)}" stroke-linecap="butt" />`;
-    })
-    .join('');
-}
-
 function piecePaths(p: ScenePiece, od: number): string {
   const half = od / 2;
   if (p.kind === 'run') {
@@ -181,7 +162,12 @@ export type SvgOpts = {
  */
 export function spoolSvg(scene: Scene, opts: SvgOpts): string {
   const { width, height, od, cam } = opts;
-  const body = scene.pieces.map((p, i) => `${breaks(scene, i, od)}${piecePaths(p, od)}`).join('');
+  // Each piece fills its own silhouette in paper before it draws its rails, so
+  // a piece in front hides what it covers by being where it is. There used to
+  // be a second mechanism on top of that — bars painted through every detected
+  // crossing — which covered the same ground when it worked and erased whole
+  // legs when it did not.
+  const body = scene.pieces.map((p) => piecePaths(p, od)).join('');
   const frame = opts.frame
     ? `<rect x="0.5" y="0.5" width="${n(width - 1)}" height="${n(height - 1)}" fill="none" stroke="${INK}" stroke-width="${HAIR * 0.6}" />`
     : '';

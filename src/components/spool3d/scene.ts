@@ -42,13 +42,7 @@ export type ScenePiece =
     }
   | { kind: 'elbow'; depth: number; path: Projected[]; index: number; joints: [number, number] };
 
-export const outline = (p: ScenePiece): Projected[] => (p.kind === 'run' ? [p.a, p.b] : p.path);
 
-const joined = (a: ScenePiece, b: ScenePiece) =>
-  a.joints[0] === b.joints[0] ||
-  a.joints[0] === b.joints[1] ||
-  a.joints[1] === b.joints[0] ||
-  a.joints[1] === b.joints[1];
 
 export type Scene = {
   /** The corners of the spool, on the page. */
@@ -57,8 +51,6 @@ export type Scene = {
   scale: number;
   /** Far to near: everything before a piece in this list is behind it. */
   pieces: ScenePiece[];
-  /** Per piece, where it crosses something behind it that it is not joined to. */
-  breaks: Crossing[][];
   /** Per leg, whether it is square on to the viewer and has no length on the page. */
   collapsed: boolean[];
   /** Where the compass goes: the corner the spool has least business in. */
@@ -111,7 +103,6 @@ export function buildScene(opts: SceneOpts): Scene {
       pts: [],
       scale: 1,
       pieces: [],
-      breaks: [],
       collapsed: [],
       gizmo: EMPTY_BOX,
       labels: [],
@@ -157,17 +148,9 @@ export function buildScene(opts: SceneOpts): Scene {
   pieces.sort((p, q) => p.depth - q.depth);
 
   // Painted far to near, so everything before a piece in this list is behind
-  // it. Where it crosses one of those and is not joined to it, it breaks it.
-  const breaks: Crossing[][] = pieces.map((near, i) => {
-    const marks: Crossing[] = [];
-    for (let j = 0; j < i; j += 1) {
-      const far = pieces[j]!;
-      if (joined(near, far)) continue;
-      marks.push(...polylineCrossings(outline(near), outline(far)));
-    }
-    return marks;
-  });
-
+  // it. Each piece knocks out its own silhouette before it draws itself, which
+  // is how one in front hides what it covers — see the knockout in SpoolView
+  // and the paper fill in spoolSvg. There is nothing to work out here.
   const pipes: Seg[] = [];
   for (let i = 0; i < pts.length - 1; i += 1)
     pipes.push({ ax: pts[i]!.x, ay: pts[i]!.y, bx: pts[i + 1]!.x, by: pts[i + 1]!.y });
@@ -206,7 +189,7 @@ export function buildScene(opts: SceneOpts): Scene {
       )
     : [];
 
-  return { pts, scale: fitted.scale, pieces, breaks, collapsed, gizmo, labels, transform: fitted.transform };
+  return { pts, scale: fitted.scale, pieces, collapsed, gizmo, labels, transform: fitted.transform };
 }
 
 /**
