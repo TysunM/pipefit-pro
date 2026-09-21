@@ -23,6 +23,7 @@ import { MAX_LEGS, solveSpool } from '../calc/spool';
 import { findSize } from '../calc/pipe';
 import { planCuts } from '../calc/cutList';
 import { AimPad } from '../components/AimPad';
+import { SightSheet } from '../components/SightSheet';
 import { AXES, aimRun, flatAxes, flattenDirs, isFlat, planeOf, sameAim } from '../calc/aim';
 import { Camera, ISO_VIEW } from '../components/spool3d/project';
 import {
@@ -227,6 +228,9 @@ export function SpoolBuilderScreen() {
   // and a pad left open costs a hundred and fifty points of the height that
   // keeps the total above the fold. Open it, aim the run, close it.
   const [pointRun, setPointRun] = useState(false);
+
+  // Which leg is being read off the phone, if any.
+  const [sighting, setSighting] = useState<{ id: string; number: number } | null>(null);
 
   const setLength = useCallback((index: number, inches: number) => {
     setLegs((prev) => prev.map((l, i) => (i === index ? { ...l, length: Math.round(inches * 16) / 16 } : l)));
@@ -661,6 +665,18 @@ export function SpoolBuilderScreen() {
                   onAim={(dir) => aim(l.id, dir)}
                 />
 
+                {/* The pad is for a leg that runs square. Pipe on a job does
+                    not always, and a slope read off gravity beats one guessed
+                    at from the floor. */}
+                <ControlRow>
+                  <GhostButton
+                    label="Sight it off the pipe"
+                    icon="compass-outline"
+                    onPress={() => setSighting({ id: l.id, number: i + 1 })}
+                    style={{ flex: 1 }}
+                  />
+                </ControlRow>
+
                 {/* The bend is a result here, not an entry. It is shown because
                     it is what gets ordered, and because a number nobody typed
                     is a number somebody should be able to see. */}
@@ -900,6 +916,15 @@ export function SpoolBuilderScreen() {
         }
         onCancel={() => setSaveOpen(false)}
         onSave={commitSave}
+      />
+
+      <SightSheet
+        visible={sighting !== null}
+        legNumber={sighting?.number ?? 1}
+        onClose={() => setSighting(null)}
+        onUse={(dir) => {
+          if (sighting) aim(sighting.id, dir);
+        }}
       />
 
       <PipeSheet
