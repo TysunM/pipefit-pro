@@ -217,32 +217,77 @@ loaded spool; a new name with no edits renames it; a new name **with** edits
 keeps both, because renaming would silently destroy the version deliberately
 diverged from.
 
-## How far the drag may tilt
+## The drag swings, it never tilts
 
-PR #12 tore out the old camera fence because it walled off the yaw and, with
-it, the plan and every elevation — the views a dimension is read off. That was
-right, but it replaced *too constrained* with *no constraint at all*: the pitch
-ran the full ±90°, so a drag could go under the spool and sit there against the
-stop. Measured on that build, dragging up from the opening view:
+PR #12 tore out an old camera fence, PR #16 replaced it with a band of legible
+tilt between 15° and 75°, and PR #20 deleted the band. The band worked. The
+gesture was the problem.
+
+A spool is read on iso paper, at thirty degrees. Any drag with a vertical
+component in it took the view off thirty and left it there, and getting back
+meant knowing a view button existed. So in practice the drawing was never at
+the angle a fitter reads, and the one way to look at a spool squarely became
+the one thing hard to reach.
+
+The drag now does the single thing that wants to be continuous — walking round
+the job to see the far side — and carries whatever tilt the current view was
+set to:
 
 ```
-NW (opening)   E (-28.8,-16.6)  UP ( 0,-33.3)  N (-28.8, 16.7)
-after 120px    E (-25.6, 25.0)  UP ( 0, -7.4)  N (-25.6,-25.0)   up down to 21%
-after 200px    E (-25.0, 25.0)  UP (-25,-25)   N (-25.0,-25.0)   up and north as one
-after 300px    E (-25.0, 25.0)  UP (-25,-25)   N (-25.0,-25.0)   stuck
+swing(cam, dx) = { yaw: cam.yaw - dx * 0.011, pitch: cam.pitch }
 ```
 
-The drag now stays between 15° and 75° above level, and the band is arithmetic
-rather than taste: world up keeps `cos(pitch)` of its length and a horizontal
-axis at the worst bearing keeps `sin(pitch)`, so holding both to a quarter puts
-the floor at 14.5° and the ceiling at 75.5°. True isometric, 35.264°, sits in
-the middle. Measured after, dragging 300px each way: no principal axis falls
-below 56%, none coincide, nothing inverts.
+Tilt lives on the buttons, chosen by name: the four isometric corners at
+35.264°, the four elevations at 0, the plan at 90. Nothing reaches a pitch
+between them any more, so `clampPitch`, `MIN_PITCH` and `MAX_PITCH` were
+deleted rather than left as dead code.
 
-The yaw is still free the whole way round — the thing that made the old fence
-feel broken. And the square-on views keep their exact pitches (elevations at 0,
-plan at 90) because `goTo` does not clamp: they are buttons, chosen
-deliberately, where a collapsed leg is expected and the figure carries it.
+## Sighting a leg, and why it does not measure one
+
+A leg can be read off the phone's sensors rather than typed: lay the top edge
+along the pipe, or aim the back camera down it, and the bearing and slope come
+back. `src/calc/sight.ts` holds the arithmetic and nothing else knows about
+sensors.
+
+The feature was asked for as AR spatial measuring — trace a route with the
+camera and get centre-to-centre lengths before pulling a tape. The direction
+half of that is built. **The measuring half is deliberately not**, and this is
+the record of why so nobody builds it later without knowing.
+
+The published figures for phone AR distance:
+
+| Source | Error | On a 10 ft run | Against a 1/16" cut |
+|---|---|---|---|
+| Research, average position error | 0.16 m (6.3") | — | 100× out |
+| Research, range | 1–7.5% | 1.2" – 9" | 19–144× out |
+| Best commercial claim, ideal conditions | 0.53–3% @ 25 ft | 0.6" – 3.6" | 10–58× out |
+
+Even the marketing best case is ten times the tolerance a fitter cuts to, and
+an industrial plant is the worst case for the technique: bare and galvanised
+pipe is specular and featureless, plant lighting is poor, grating and block
+walls are repetitive texture, and a stable baseline cannot be walked off a
+ladder. A number that looks certain and is four inches out is worse than no
+number, because the tape gets pulled either way and only one of the two costs
+a stick of pipe.
+
+Direction is a different instrument, and the two halves of it are not equal:
+
+* **Slope comes off gravity.** It does not care about light, reflectivity,
+  texture, vibration or the steel in a rack. It is the figure the screen
+  leads with.
+* **Bearing comes off the earth's magnetic field**, which structural steel
+  bends badly, and a phone reports a distorted heading as confidently as a
+  true one. The magnetometer does report field *strength*, and a strength
+  outside the earth's 25–65 µT proves something else is in the way — so the
+  screen says when a bearing is certainly wrong. It never claims one is right:
+  steel can pull the direction while leaving the strength inside the band, and
+  the clean note says so.
+
+A reading is a burst over 1.2 s rather than one sample, averaged as vectors
+rather than angles — a hand wobbling either side of north reads 359 and 1, and
+the mean of those angles is south. The widest stray from the mean is reported
+as the spread, and a spread over 2° says the hand moved instead of averaging
+the shake into a confident wrong answer.
 
 ## Pulling a leg holds the drawing still
 
