@@ -1,9 +1,9 @@
-import React, { useId } from 'react';
+import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/ThemeProvider';
-import { Bezel, Grain } from './metal';
+import { Bezel, Grain, useSvgIds } from './metal';
 
 /**
  * The bar across the top of every screen: a bronze plate with the title set in
@@ -22,7 +22,7 @@ export function BronzeHeader({
 }) {
   const t = useTheme();
   const insets = useSafeAreaInsets();
-  const id = 'hdr' + useId().replace(/[^A-Za-z0-9]/g, '');
+  const gid = useSvgIds('hdr');
   const c = t.colors;
   const bar = 60;
 
@@ -30,17 +30,17 @@ export function BronzeHeader({
     <View style={{ paddingTop: insets.top, backgroundColor: c.headerLo }}>
       <Svg width="100%" height="100%" style={StyleSheet.absoluteFill} pointerEvents="none">
         <Defs>
-          <LinearGradient id={id} x1="0" y1="0" x2="0" y2="1">
+          <LinearGradient id={gid('a')} x1="0" y1="0" x2="0" y2="1">
             <Stop offset="0" stopColor={c.headerHi} />
             <Stop offset="1" stopColor={c.headerLo} />
           </LinearGradient>
-          <LinearGradient id={`${id}t`} x1="0" y1="0" x2="1" y2="0">
+          <LinearGradient id={gid('b')} x1="0" y1="0" x2="1" y2="0">
             <Stop offset="0" stopColor={c.copper} stopOpacity={0.15} />
             <Stop offset="0.5" stopColor={c.copperHi} stopOpacity={0.95} />
             <Stop offset="1" stopColor={c.copper} stopOpacity={0.15} />
           </LinearGradient>
         </Defs>
-        <Rect x="0" y="0" width="100%" height="100%" fill={`url(#${id})`} />
+        <Rect x="0" y="0" width="100%" height="100%" fill={`url(#${gid('a')})`} />
       </Svg>
       <Grain strength={1.4} />
 
@@ -63,7 +63,7 @@ export function BronzeHeader({
       {/* The trim: a copper rule along the foot, brightest in the middle. */}
       <Svg height={2} width="100%" pointerEvents="none">
         <Rect x="0" y="0" width="100%" height="1" fill={c.copperLo} />
-        <Rect x="0" y="1" width="100%" height="1" fill={`url(#${id}t)`} />
+        <Rect x="0" y="1" width="100%" height="1" fill={`url(#${gid('b')})`} />
       </Svg>
     </View>
   );
