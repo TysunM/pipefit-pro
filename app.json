@@ -47,6 +47,15 @@
             "backgroundColor": "#0F1318"
           }
         }
+      ],
+      "expo-mlkit-ocr",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "PipeFit Pro reads heat numbers off stencils and mill certs with the camera. Nothing leaves the phone.",
+          "recordAudioAndroid": false,
+          "microphonePermission": false
+        }
       ]
     ],
     "extra": {

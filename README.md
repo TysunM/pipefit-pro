@@ -86,17 +86,54 @@ what went in but what can be proved went in, and it counts the two failures
 apart: a joint with no heat recorded is a note nobody made, a joint whose heat
 has no cert is a cert nobody chased. Those go to different people.
 
-**What it does not do is read a camera.** That was the shape of the original
-request — OCR the stencils and the MTRs through Google Cloud Vision or AWS
-Textract — and the register came first for three reasons. A cloud key has to
-live somewhere, and with no backend that somewhere is the shipped APK, where
-anyone who unzips it can spend it. Cloud OCR needs signal, and heat stencils
-are read in racks, pits and vaults; the service worker exists precisely
-because this app has to work where there is none. And the hard part is not
-turning pixels into a string: an MTR has heat, lot, PO, yield and tensile on
-it, heat numbers have no common format across mills, and knowing which string
-is the heat is the problem. On-device ML Kit and a confirm-the-candidate flow
-answer all three, on top of a register that already works.
+### Reading it off the steel
+
+The camera is on the heat book now, and the three reasons the cloud route was
+turned down still hold, so it is on-device: `expo-mlkit-ocr`, ML Kit Text
+Recognition v2, no network request and no key in the APK. `CAMERA` is the only
+permission it added — `expo-camera` pulls in `RECORD_AUDIO` for video by
+default, and `recordAudioAndroid: false` takes it back out, because an app that
+asks for the microphone to read a stencil is asking for something it does not
+need.
+
+**The camera does the typing and the fitter does the deciding.** Nothing is
+entered by a read. OCR on a stencil sprayed round a curve in a dark rack is
+going to be wrong sometimes, and the way a heat number goes wrong is that it
+still looks like a heat number — so a scanner that filled the field by itself
+would turn a bad read into a record nobody questions, which is the exact
+failure the book exists to stop. A scanned number lands in the entry field,
+where the same clash check a typed one gets runs on it.
+
+`scanForHeats` decides which of the strings on the page is the heat, and uses
+three things in order of what they are worth.
+
+**A label beats everything.** A cert saying `HEAT NO. E7Z419` has told you
+outright, and no shape reasoning is better than being told. `HT`, `CAST` and
+`HEAT/LOT` are read too, and the parser steps over the `NO.` that sits between
+the label and the number.
+
+**The book is next**, and this is where it stops guessing and starts
+recognising. A token already in the book is almost certainly that heat read
+again. A token that only *shape*-matches an entry is **the camera making the
+same O-for-zero misread a person makes** — which is worth surfacing loudly,
+because it is the one case where the machine is about to write a number that
+looks right and is not.
+
+**Shape is last and only a tie-break**: length, a mix of letters and digits,
+not a word anybody prints on a cert.
+
+The false positives are the difference between a feature and an annoyance, and
+the awkward ones are not words:
+
+```
+SCH40  SCH160  CL150  DN50  NPS4  PN16  REV2  QTY12
+```
+
+Every one is four to six characters of mixed letters and digits, which is
+exactly the shape of a heat number, so shape cannot tell them apart and the
+prefix has to. A material designation — `A106`, `TP316L`, `F316` — is marked
+down rather than thrown away, because on a stencil where little else read the
+spec still beats nothing.
 
 ## The joint register
 

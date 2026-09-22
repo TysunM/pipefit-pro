@@ -30,6 +30,7 @@ import { useJoints } from '../state/joints';
 import { putHeat, removeHeat } from '../state/heatBook';
 import { HEAT_FORMS, Heat, differingAt, findClash, newHeat, traceability } from '../calc/heat';
 import { isScratch } from '../state/register';
+import { HeatScanSheet } from '../components/HeatScanSheet';
 
 export function HeatsScreen() {
   const t = useTheme();
@@ -38,6 +39,7 @@ export function HeatsScreen() {
 
   const [entry, setEntry] = useState('');
   const [open, setOpen] = useState<string | null>(null);
+  const [scanning, setScanning] = useState(false);
 
   const clash = useMemo(() => findClash(entry, book.heats), [entry, book.heats]);
   const differs = clash && !clash.identical ? differingAt(entry, clash.existing) : [];
@@ -151,6 +153,12 @@ export function HeatsScreen() {
       ) : null}
 
       <ControlRow>
+        <GhostButton
+          label="Read it off the steel"
+          icon="scan-outline"
+          onPress={() => setScanning(true)}
+          style={{ flex: 1 }}
+        />
         <GhostButton
           label={clash?.identical ? 'Open that heat' : 'Add to the book'}
           icon={clash?.identical ? 'open-outline' : 'add-outline'}
@@ -290,6 +298,16 @@ export function HeatsScreen() {
       })}
 
       <FooterNote text="A cert marked in hand is a claim by whoever tapped it. Nothing on a phone can prove a mill cert exists — this records that somebody checked, and which joints depend on them having been right." />
+      {/* A scanned number lands in the entry field rather than in the book,
+          so the same clash check a typed one gets runs on it — and a camera
+          misreads the same character pairs a person does. */}
+      <HeatScanSheet
+        visible={scanning}
+        onClose={() => setScanning(false)}
+        book={book.heats}
+        onPick={(heat) => setEntry(heat)}
+      />
+
     </Screen>
   );
 }
