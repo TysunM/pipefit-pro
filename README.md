@@ -289,6 +289,39 @@ the mean of those angles is south. The widest stray from the mean is reported
 as the spread, and a spread over 2° says the hand moved instead of averaging
 the shake into a confident wrong answer.
 
+## Reading a fitting angle off the iron
+
+The angle field on the offset, bend and mitre screens has always been a number
+you decided, and most of the time it is 45 because 45 is what is on the truck.
+Tying into a line somebody else hung, it is not a decision — it is a fact about
+the pipe in front of you, and `Off the pipe` measures it.
+
+**Two readings, not one.** A fitting angle is not a slope. It is the difference
+between where the pipe comes from and where it goes:
+
+```
+angleFromSlopes(run, travel) = |travel − run|
+```
+
+Reading only the piece leaving the fitting buys the wrong elbow the moment the
+run is not level: a line already falling 10° with a piece leaving it at 35°
+needs a 45° fitting, not a 35° one. A level run makes the second reading the
+whole answer, which is the common case, so there is a button that says so and
+skips the first.
+
+Every term comes off gravity, so nothing here is bent by the steel around you.
+The price is that both legs must lie in one vertical plane — which is the
+definition of a simple offset rather than a restriction added to it.
+
+**Which is why the rolling offset does not get the button.** A rolling offset
+is two planes by definition; its elbow angle needs the bearing as well as the
+slope, and the bearing is the half of a phone's sense of direction that a pipe
+rack ruins. Offering it there would be offering a figure that reads true in a
+car park and lies on a job.
+
+The sheet also names the nearest stock fitting and how far off it the reading
+is, signed, because that difference is what gets cut.
+
 ## Pulling a leg holds the drawing still
 
 The drawing refits on every change, which is right when the spool changes under

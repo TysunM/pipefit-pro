@@ -4,6 +4,7 @@ import { HintRow } from '../components/HintRow';
 import { SectionHeader } from '../components/SectionHeader';
 import { DerivedField, DimensionInput, FieldRow } from '../components/DimensionInput';
 import { ChipRow } from '../components/ChipRow';
+import { AngleFromPipe } from '../components/AngleFromPipe';
 import { AccentButton, ControlRow, GhostButton, SelectorButton } from '../components/Buttons';
 import { FooterNote, MetaBar, ResultBanner, SpoolBar, StatGrid, WarningBanner } from '../components/Results';
 import { PipeSheet } from '../components/PipeSheet';
@@ -17,6 +18,7 @@ import { solveOffset } from '../calc/offset';
 import { parseNumber } from '../calc/format';
 
 export function SimpleOffsetScreen() {
+  const [readAngle, setReadAngle] = useState(false);
   const u = useUnits();
   const pipe = usePipeConfig();
   const { settings } = useSettings();
@@ -136,6 +138,12 @@ export function SimpleOffsetScreen() {
           onPress={() => setLockRun((v) => !v)}
           style={{ flex: 1 }}
         />
+        <GhostButton
+          label="Off the pipe"
+          icon="compass-outline"
+          onPress={() => setReadAngle(true)}
+          style={{ flex: 1 }}
+        />
         <GhostButton label="Clear all" icon="refresh-outline" onPress={clear} style={{ flex: 1 }} />
       </ControlRow>
 
@@ -222,6 +230,16 @@ export function SimpleOffsetScreen() {
         schedule={pipe.schedule}
         onChange={pipe.change}
       />
+      <AngleFromPipe
+        visible={readAngle}
+        onClose={() => setReadAngle(false)}
+        title="Fitting angle"
+        onUse={(deg) => {
+          setLockRun(false);
+          setAngleText(deg.toFixed(1));
+        }}
+      />
+
     </Screen>
   );
 }
