@@ -35,7 +35,7 @@ export function MiterBendScreen() {
 
   return (
     <Screen>
-      <HintRow text="Fabricate an elbow from straight pipe. Enter the total turn and how many segments you want; get the cut angle and the throat and back lengths for each segment." />
+      <HintRow text="An elbow cut out of straight pipe when the fitting you need is not in the rack. The end segments are half cuts and the ones between them are full, so the angle falls with every segment you add." />
       <SectionHeader title="Bend" meta="Centreline geometry" />
 
       <FieldRow>

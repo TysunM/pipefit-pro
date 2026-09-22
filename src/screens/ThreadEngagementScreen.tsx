@@ -35,7 +35,7 @@ export function ThreadEngagementScreen() {
 
   return (
     <Screen>
-      <HintRow text="Work out how far a threaded joint pulls up. Pick the size, set your wrench turns; get engagement, the deduction per end and the pipe length to cut." />
+      <HintRow text="How far a threaded joint pulls up is what you lose off the pipe at each end. Two ends, two deductions, and the cut length has both already taken out." />
       <SectionHeader title="Thread" meta="NPT — ASME B1.20.1" />
 
       <ChipRow label="Size" options={NPT_TABLE.map((s) => ({ value: s.nps, label: s.label }))} selected={nps} onSelect={setNps} />

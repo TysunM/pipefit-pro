@@ -28,7 +28,7 @@ const CALCULATORS: {
   { route: 'SimpleOffset', title: 'Simple offset', subtitle: 'Travel, run and shrink in one plane', icon: 'git-branch-outline' },
   { route: 'RollingOffset', title: 'Rolling offset', subtitle: 'True offset and roll angle in two planes', icon: 'sync-outline' },
   { route: 'CutLength', title: 'Cut length', subtitle: 'Centre-to-centre minus fitting takeouts', icon: 'cut-outline' },
-  { route: 'SaddleBend', title: 'Saddle bend', subtitle: 'Three and four point conduit saddles', icon: 'trending-up-outline' },
+  { route: 'SaddleBend', title: 'Saddle bend', subtitle: 'Three and four point saddles over an obstruction', icon: 'trending-up-outline' },
   { route: 'MiterBend', title: 'Miter bend', subtitle: 'Segmented elbow cuts, code checked', icon: 'triangle-outline' },
   { route: 'ThreadEngagement', title: 'Thread engagement', subtitle: 'NPT makeup, takeout and tap drill', icon: 'options-outline' },
   { route: 'HandBender', title: 'Pipe bend', subtitle: 'Setback, arc length and gain', icon: 'analytics-outline' },
