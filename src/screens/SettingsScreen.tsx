@@ -10,7 +10,7 @@ import { FooterNote } from '../components/Results';
 import { PipeSheet } from '../components/PipeSheet';
 import { useTheme } from '../theme/ThemeProvider';
 import { useSettings } from '../state/settings';
-import { appVersion, runningBuild, useOtaUpdate } from '../state/updates';
+import { appVersion, buildId, runningBuild, useOtaUpdate } from '../state/updates';
 import { useUnits } from '../hooks/useUnits';
 import { findSize } from '../calc/pipe';
 import { FractionDenominator } from '../calc/format';
@@ -191,7 +191,11 @@ export function SettingsScreen() {
         </Text>
       )}
 
-      <FooterNote text={`PipeFit Pro ${appVersion()} \u00b7 Settings are stored on this device only.`} />
+      {/* The build, because "have I got the new one" was unanswerable from
+          inside the app: the version string had not moved in six releases. */}
+      <FooterNote
+        text={`PipeFit Pro ${appVersion()} · build ${buildId()} · ${runningBuild()} · Settings are stored on this device only.`}
+      />
 
       <PipeSheet
         visible={sheetOpen}

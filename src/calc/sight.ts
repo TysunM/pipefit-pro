@@ -186,3 +186,39 @@ export function checkField(m: Vec3): FieldCheck {
     note: 'Field reads like the earth’s. Steel can still pull a bearing without changing its strength.',
   };
 }
+
+// Saying a slope out loud
+// -----------------------
+// A level reads a number, but nobody on a job says "one point one nine
+// degrees". They say a quarter to the foot, or they say it is level, or they
+// say it is falling the wrong way. These two turn the angle into both.
+
+/** Within this of level or plumb, a run is called it. */
+export const CLOSE_DEG = 0.5;
+
+/**
+ * What a slope is, said the way it would be said on the job.
+ *
+ * `exact` is the claim that a run is truly level or truly plumb, and it is the
+ * one worth being careful with: it lights the screen up and buzzes the phone,
+ * so it has to mean within half a degree and nothing looser.
+ */
+export function levelWord(slope: number): { word: string; exact: boolean } {
+  const a = Math.abs(slope);
+  if (a < CLOSE_DEG) return { word: 'Level', exact: true };
+  if (a > 90 - CLOSE_DEG) return { word: 'Plumb', exact: true };
+  if (a < 5) return { word: slope > 0 ? 'Rising, barely' : 'Falling, barely', exact: false };
+  return { word: slope > 0 ? 'Rising' : 'Falling', exact: false };
+}
+
+/**
+ * Fall over a run, the way a drain is specified.
+ *
+ * A quarter inch to the foot is the rule everybody knows, and it is checked
+ * against a spec sheet far more often than an angle is. Tangent rather than a
+ * scaled angle, because the two part company well before any slope a line is
+ * actually hung at.
+ */
+export function inchesPerFoot(slope: number): number {
+  return Math.tan((slope * Math.PI) / 180) * 12;
+}

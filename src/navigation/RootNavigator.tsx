@@ -20,6 +20,7 @@ import { JointsScreen } from '../screens/JointsScreen';
 import { SpoolBuilderScreen } from '../screens/SpoolBuilderScreen';
 import { OrderSheetScreen } from '../screens/OrderSheetScreen';
 import { CalculatorScreen } from '../screens/CalculatorScreen';
+import { LevelScreen } from '../screens/LevelScreen';
 import { ReferenceScreen } from '../screens/ReferenceScreen';
 import { ReferenceTableScreen } from '../screens/ReferenceTableScreen';
 
@@ -78,6 +79,7 @@ export function RootNavigator() {
         <Stack.Screen name="FlangeBoltUp" component={FlangeBoltUpScreen} options={{ title: 'Flange bolt-up' }} />
         <Stack.Screen name="Joints" component={JointsScreen} options={{ title: 'Joint register' }} />
         <Stack.Screen name="Calculator" component={CalculatorScreen} options={{ title: 'Calculator' }} />
+        <Stack.Screen name="Level" component={LevelScreen} options={{ title: 'Level' }} />
         <Stack.Screen name="SpoolBuilder" component={SpoolBuilderScreen} options={{ title: '3D spool' }} />
         <Stack.Screen name="OrderSheet" component={OrderSheetScreen} options={{ title: 'Order sheet' }} />
         <Stack.Screen name="Reference" component={ReferenceScreen} options={{ title: 'Handbook' }} />

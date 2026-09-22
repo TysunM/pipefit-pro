@@ -53,6 +53,21 @@ export function appVersion(): string {
   return Constants.expoConfig?.version ?? '—';
 }
 
+/**
+ * The build this install actually is, short enough to read out loud.
+ *
+ * The version string in app.json has not moved in six releases, so it answered
+ * "have I got the new one" with the same four characters every time. The
+ * runtime version does move: it is the fingerprint of everything native, so a
+ * build carrying a new module has a new one and a build that does not, does
+ * not. Eight characters is enough to tell two apart at a glance and matches
+ * what the build log prints.
+ */
+export function buildId(): string {
+  const rv = Updates.runtimeVersion;
+  return rv ? rv.slice(0, 8) : 'dev';
+}
+
 /** What the app is actually running, for the settings screen. */
 export function runningBuild(): string {
   if (!Updates.isEnabled) return 'Development build';

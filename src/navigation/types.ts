@@ -12,6 +12,7 @@ export type RootStackParamList = {
   Joints: undefined;
   OrderSheet: undefined;
   Calculator: undefined;
+  Level: undefined;
   SpoolBuilder: undefined;
   Reference: undefined;
   ReferenceTable: { id: string };

@@ -122,6 +122,18 @@ const art: Record<string, (k: Ink) => React.ReactNode> = {
     </G>
   ),
 
+  // A phone laid on a falling run, and the angle it reads off it.
+  Level: (k) => (
+    <G>
+      <Path d="M8 46 L80 32" fill="none" stroke={k.line} strokeWidth={3} strokeLinecap="round" />
+      <Path d="M8 46 L80 46" fill="none" stroke={k.guide} strokeWidth={1.2} strokeDasharray="4 3" />
+      <Path d="M24 26 L60 19 L62 29 L26 36 Z" fill="none" stroke={k.line} strokeWidth={2}
+            strokeLinejoin="round" />
+      <Circle cx={43} cy={27.5} r={3} fill={k.accent} />
+      <Path d="M22 46 L22 41" fill="none" stroke={k.guide} strokeWidth={1.2} />
+    </G>
+  ),
+
   // The offset itself, with the right triangle it is solved from.
   SimpleOffset: (k) => (
     <G>
