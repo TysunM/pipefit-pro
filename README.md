@@ -45,6 +45,59 @@ Face geometry is sized from the bolt count rather than the other way round, so
 no two touch targets ever overlap — a 68 hole flange grows the face and scrolls
 sideways instead of shrinking the bolts into each other.
 
+## The heat book, and the mistake it exists to catch
+
+Every piece of pressure pipe carries a heat number, and the mill cert ties
+that number to the chemistry and the mechanical test that make the piece legal
+to weld. Proving it is the paperwork: heats pencilled on a weld map,
+transcribed into a spreadsheet, matched by hand against a folder of certs.
+Three copies of the same string, written out by three people.
+
+The failure is not the filing. It is that a heat number is a meaningless
+string stamped into curved steel, and the characters people get wrong are
+always the same ones:
+
+```
+O 0 D Q     I 1 L T     S 5     B 8     Z 2     G 6     U V
+```
+
+Heat `E7Z419` written down as `E72419` still looks like a heat number. It
+passes every check except the one that matters, and it is found at turnover
+with the piece already in the rack. So `findClash` folds every confusable
+character onto one of its group and says when a number about to be entered
+could be one already held — at the keyboard, before it is anywhere else.
+
+Deliberately not edit distance or a phonetic scheme. Those call `A106` and
+`A105` near neighbours, and those are two different heats from two different
+mills; a register that questioned every one of them would be switched off
+inside a shift. Only the shapes a stamp and a stencil actually blur are folded
+together, and `A12346` against `A12345` raises nothing.
+
+Heats are held once, in their own separately versioned store, and a joint
+carries the numbers alone. One length of A106 gets cut into six spools and
+welded into thirty joints; copying the mill and the cert reference onto each
+of them would be thirty places to correct when the cert turns up filed under
+something else. It also means adding heats to a register written by an older
+app cannot break it — an absent list reads as an empty one, and a joint with
+no heats is a true statement about a job.
+
+`traceability` answers the question a turnover package is for, which is not
+what went in but what can be proved went in, and it counts the two failures
+apart: a joint with no heat recorded is a note nobody made, a joint whose heat
+has no cert is a cert nobody chased. Those go to different people.
+
+**What it does not do is read a camera.** That was the shape of the original
+request — OCR the stencils and the MTRs through Google Cloud Vision or AWS
+Textract — and the register came first for three reasons. A cloud key has to
+live somewhere, and with no backend that somewhere is the shipped APK, where
+anyone who unzips it can spend it. Cloud OCR needs signal, and heat stencils
+are read in racks, pits and vaults; the service worker exists precisely
+because this app has to work where there is none. And the hard part is not
+turning pixels into a string: an MTR has heat, lot, PO, yield and tensile on
+it, heat numbers have no common format across mills, and knowing which string
+is the heat is the problem. On-device ML Kit and a confirm-the-candidate flow
+answer all three, on top of a register that already works.
+
 ## The joint register
 
 A bolt-up is written to AsyncStorage on every bolt, not on leaving the screen,

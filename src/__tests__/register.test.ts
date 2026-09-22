@@ -32,6 +32,8 @@ import {
   validState,
   withFlange,
   withState,
+  withHeat,
+  withoutHeat,
 } from '../state/register';
 import { PASSES, expectedBolt, isFinished, startBoltUp, tapBolt } from '../calc/boltUpSequence';
 import { BOLT_UP_125, BOLT_UP_250 } from '../calc/boltUp';
@@ -694,5 +696,79 @@ describe('a check that does not hold up is refused', () => {
     const out = [{ ...ok, at: T0 + 300, note: 'c' }, { ...ok, at: T0 + 100, note: 'a' }, { ...ok, at: T0 + 200, note: 'b' }];
     const loaded = validJoint({ ...done, checks: out });
     expect(loaded!.checks.map((c) => c.note)).toEqual(['a', 'b', 'c']);
+  });
+});
+
+describe('heats recorded against a joint', () => {
+  const at = 1_000;
+  const base = () => newJoint('j1', { cls: '125', nps: 4, bolts: 8 }, at);
+
+  test('a joint starts with none, which is a true statement about it', () => {
+    expect(base().heats).toEqual([]);
+  });
+
+  test('a store written before heats existed reads as a joint with none', () => {
+    // The whole migration. An absent list is an empty one, and the joint is
+    // not dropped over it.
+    const j = base();
+    const { heats, ...withoutTheField } = j;
+    const back = validJoint(withoutTheField);
+    expect(back).not.toBeNull();
+    expect(back!.heats).toEqual([]);
+  });
+
+  test('records a heat and moves the joint on, because material is part of its record', () => {
+    const j = withHeat(base(), 'E7Z419', at + 5);
+    expect(j.heats).toEqual(['E7Z419']);
+    expect(j.updatedAt).toBe(at + 5);
+  });
+
+  test('will not record the same heat twice, however it is spelled', () => {
+    let j = withHeat(base(), 'E7Z419', at + 1);
+    j = withHeat(j, 'e7z-419', at + 2);
+    expect(j.heats).toEqual(['E7Z419']);
+    // Nothing changed, so the joint did not move either.
+    expect(j.updatedAt).toBe(at + 1);
+  });
+
+  test('records two genuinely different heats', () => {
+    let j = withHeat(base(), 'E7Z419', at + 1);
+    j = withHeat(j, '0M2947', at + 2);
+    expect(j.heats).toEqual(['E7Z419', '0M2947']);
+  });
+
+  test('ignores a blank rather than storing an empty row', () => {
+    expect(withHeat(base(), '   ', at + 1).heats).toEqual([]);
+    expect(withHeat(base(), '--', at + 1).heats).toEqual([]);
+  });
+
+  test('takes a heat off through spelling, and leaves the joint alone if it had none', () => {
+    const j = withHeat(base(), 'E7Z419', at + 1);
+    expect(withoutHeat(j, 'e7z-419', at + 2).heats).toEqual([]);
+    const untouched = withoutHeat(j, 'NOTTHERE', at + 9);
+    expect(untouched.heats).toEqual(['E7Z419']);
+    expect(untouched.updatedAt).toBe(at + 1);
+  });
+
+  test('a stored list is cleaned rather than allowed to fail the joint', () => {
+    // Losing a whole bolt-up over a stray heat row would be worse than losing
+    // the row, so bad entries are dropped and the joint survives.
+    const j = { ...base(), heats: ['E7Z419', 'e7z-419', '', '  ', 7, null, '0M2947'] };
+    const back = validJoint(j)!;
+    expect(back).not.toBeNull();
+    expect(back.heats).toEqual(['E7Z419', '0M2947']);
+  });
+
+  test('a heats field that is not a list at all reads as none, not as a failure', () => {
+    expect(validJoint({ ...base(), heats: 'E7Z419' })?.heats).toEqual([]);
+    expect(validJoint({ ...base(), heats: 42 })?.heats).toEqual([]);
+  });
+
+  test('survives the round trip through the store', () => {
+    let j = withHeat(base(), 'E7Z419', at + 1);
+    j = withHeat(j, '0M2947', at + 2);
+    const back = parseRegister(serialiseRegister(putJoint(emptyRegister(), j)));
+    expect(back.joints[0]!.heats).toEqual(['E7Z419', '0M2947']);
+    expect(back.dropped).toBe(0);
   });
 });

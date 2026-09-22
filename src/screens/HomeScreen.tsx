@@ -24,6 +24,7 @@ const CALCULATORS: {
   { route: 'OrderSheet', title: 'Order sheet', subtitle: 'One order across every saved spool', icon: 'receipt-outline' },
   { route: 'FlangeBoltUp', title: 'Flange bolt-up', subtitle: 'Tap each bolt through the cross pattern', icon: 'sync-circle-outline' },
   { route: 'Joints', title: 'Joint register', subtitle: 'Every bolt-up saved, bolt by bolt', icon: 'pricetags-outline' },
+  { route: 'Heats', title: 'Heat book', subtitle: 'Heat numbers, certs, and what the job can prove', icon: 'shield-checkmark-outline' },
   { route: 'SimpleOffset', title: 'Simple offset', subtitle: 'Travel, run and shrink in one plane', icon: 'git-branch-outline' },
   { route: 'RollingOffset', title: 'Rolling offset', subtitle: 'True offset and roll angle in two planes', icon: 'sync-outline' },
   { route: 'CutLength', title: 'Cut length', subtitle: 'Centre-to-centre minus fitting takeouts', icon: 'cut-outline' },

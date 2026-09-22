@@ -5,6 +5,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { SettingsProvider } from "./src/state/settings";
 import { UpdatesProvider, useOtaUpdate } from "./src/state/updates";
 import { JointsProvider } from "./src/state/joints";
+import { HeatsProvider } from "./src/state/heats";
 import { SpoolsProvider } from "./src/state/spools";
 import { ThemeProvider, useTheme } from "./src/theme/ThemeProvider";
 import { useAppFonts } from "./src/theme/useFonts";
@@ -51,11 +52,13 @@ export default function App() {
     <SafeAreaProvider>
       <SettingsProvider>
         <JointsProvider>
-        <SpoolsProvider>
-          <UpdatesProvider>
-            <Gate />
-          </UpdatesProvider>
-        </SpoolsProvider>
+          <HeatsProvider>
+            <SpoolsProvider>
+              <UpdatesProvider>
+                <Gate />
+              </UpdatesProvider>
+            </SpoolsProvider>
+          </HeatsProvider>
         </JointsProvider>
       </SettingsProvider>
     </SafeAreaProvider>
