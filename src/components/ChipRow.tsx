@@ -1,6 +1,7 @@
 import React from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useTheme } from '../theme/ThemeProvider';
+import { Plate } from './metal';
 
 export type ChipOption<T> = { value: T; label: string };
 
@@ -45,26 +46,48 @@ export function ChipRow<T extends string | number>({
               onPress={() => onSelect(opt.value)}
               accessibilityRole="button"
               accessibilityState={{ selected: active }}
-              style={({ pressed }) => ({
-                height: t.layout.chipHeight,
-                minWidth: 74,
-                paddingHorizontal: t.space.lg,
-                borderRadius: t.radius.md,
-                borderWidth: 1,
-                borderColor: active ? t.colors.primary : t.colors.border,
-                backgroundColor: active ? t.colors.primary : pressed ? t.colors.bgSubtle : t.colors.bgRaised,
-                alignItems: 'center',
-                justifyContent: 'center',
-              })}
             >
-              <Text
-                style={[
-                  t.type.bodyStrong,
-                  { color: active ? t.colors.onPrimary : t.colors.text, fontWeight: active ? '700' : '600' },
-                ]}
-              >
-                {opt.label}
-              </Text>
+              {({ pressed }) => {
+                const face = {
+                  height: t.layout.chipHeight,
+                  minWidth: 74,
+                  paddingHorizontal: t.space.lg,
+                  alignItems: 'center' as const,
+                  justifyContent: 'center' as const,
+                };
+                const label = (
+                  <Text
+                    style={[
+                      t.type.bodyStrong,
+                      { color: active ? t.colors.onPrimary : t.colors.text },
+                      active ? { fontFamily: t.font.serif } : null,
+                    ]}
+                  >
+                    {opt.label}
+                  </Text>
+                );
+                // The chosen one is lit blue, flat — it is a state, not a
+                // plate — so it can never be mistaken for one more button.
+                return active ? (
+                  <View
+                    style={[
+                      face,
+                      {
+                        borderRadius: t.radius.md,
+                        backgroundColor: pressed ? t.colors.primaryPressed : t.colors.primary,
+                        borderWidth: 1,
+                        borderColor: t.colors.data,
+                      },
+                    ]}
+                  >
+                    {label}
+                  </View>
+                ) : (
+                  <Plate sunk={pressed} radius={t.radius.md} style={face}>
+                    {label}
+                  </Plate>
+                );
+              }}
             </Pressable>
           );
         })}

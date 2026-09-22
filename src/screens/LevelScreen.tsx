@@ -20,6 +20,7 @@ import { Text, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { DeviceMotion } from 'expo-sensors';
 import { Screen } from '../components/Screen';
+import { GlowBar, Well } from '../components/metal';
 import { HintRow } from '../components/HintRow';
 import { FooterNote } from '../components/Results';
 import { ControlRow, GhostButton } from '../components/Buttons';
@@ -85,33 +86,34 @@ export function LevelScreen() {
         <FooterNote text="The motion sensors are not reachable on this device, so it cannot be used as a level." />
       ) : (
         <>
-          <View
-            style={{
-              marginHorizontal: t.layout.screenPadding,
-              marginBottom: t.space.lg,
-              paddingVertical: t.space.xl,
-              borderRadius: t.radius.lg,
-              borderWidth: 2,
-              borderColor: word?.exact ? t.colors.data : t.colors.border,
-              backgroundColor: word?.exact ? t.colors.dataSoft : t.colors.bgSunken,
-              alignItems: 'center',
-              gap: t.space.xs,
-            }}
-          >
-            <Text style={[t.type.label, { color: t.colors.textMuted }]}>
-              {held !== null ? 'HELD' : 'SLOPE OFF LEVEL'}
-            </Text>
-            <Text style={[t.type.display, { color: word?.exact ? t.colors.data : t.colors.text }]}>
-              {shown === null ? '—' : `${tidy(shown)}°`}
-            </Text>
-            <Text style={[t.type.bodyStrong, { color: word?.exact ? t.colors.data : t.colors.textMuted }]}>
-              {word?.word ?? 'Reading…'}
-            </Text>
-            {shown !== null && Math.abs(shown) < 85 ? (
-              <Text style={[t.type.caption, { color: t.colors.textFaint }]}>
-                {`${inchesPerFoot(shown) >= 0 ? '' : '−'}${Math.abs(inchesPerFoot(shown)).toFixed(2)} inch per foot of run`}
+          {/* The readout, let into the plate and trimmed in copper. On the
+              mark it turns blue, the one change a glance at arm's length
+              catches before the words are read. */}
+          <View style={{ marginHorizontal: t.layout.screenPadding, marginBottom: t.space.lg }}>
+            <Well
+              trim
+              radius={t.radius.lg}
+              style={[
+                { paddingVertical: t.space.xl, alignItems: 'center', gap: t.space.xs },
+                word?.exact ? { borderColor: t.colors.data, borderWidth: 2 } : {},
+              ]}
+            >
+              <Text style={[t.type.label, { color: t.colors.textMuted }]}>
+                {held !== null ? 'HELD' : 'SLOPE OFF LEVEL'}
               </Text>
-            ) : null}
+              <Text style={[t.type.display, { fontSize: 56, color: word?.exact ? t.colors.data : t.colors.text }]}>
+                {shown === null ? '—' : `${tidy(shown)}°`}
+              </Text>
+              <Text style={[t.type.bodyStrong, { fontSize: 19, color: word?.exact ? t.colors.data : t.colors.textMuted }]}>
+                {word?.word ?? 'Reading…'}
+              </Text>
+              {shown !== null && Math.abs(shown) < 85 ? (
+                <Text style={[t.type.caption, { color: t.colors.textMuted }]}>
+                  {`${inchesPerFoot(shown) >= 0 ? '' : '−'}${Math.abs(inchesPerFoot(shown)).toFixed(2)} inch per foot of run`}
+                </Text>
+              ) : null}
+            </Well>
+            <GlowBar width={140} style={{ marginTop: -6 }} />
           </View>
 
           <ControlRow>

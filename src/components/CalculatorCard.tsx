@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { RootStackParamList } from '../navigation/types';
 import { useTheme } from '../theme/ThemeProvider';
 import { TileArt, hasTileArt } from './TileArt';
+import { GlowBar, Plate, Well } from './metal';
 
 /**
  * One tool on the home screen.
@@ -17,6 +18,9 @@ import { TileArt, hasTileArt } from './TileArt';
  *
  * Tools with no schematic keep their icon, in the same panel, at the same
  * size, so the column still reads as one column.
+ *
+ * The card is a bronze plate with the drawing let into it, and a lit strip
+ * under the drawing. Pressed, the plate sinks.
  */
 export function CalculatorCard({
   route,
@@ -38,55 +42,49 @@ export function CalculatorCard({
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
-      style={({ pressed }) => ({
-        paddingHorizontal: t.space.sm,
-        paddingVertical: t.space.xs,
-        opacity: pressed ? 0.75 : 1,
-      })}
+      accessibilityLabel={`${title}. ${subtitle}`}
+      style={{ paddingHorizontal: t.space.sm, paddingVertical: 5 }}
     >
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'stretch',
-          borderRadius: t.radius.lg,
-          borderWidth: 1,
-          borderColor: t.colors.border,
-          backgroundColor: t.colors.bgRaised,
-          overflow: 'hidden',
-        }}
-      >
-        {/* The drawing sits on its own ground, the way it does on the screen
-            it belongs to, so the card reads as a window onto that tool. */}
-        <View
-          style={{
-            width: 108,
-            alignItems: 'center',
-            justifyContent: 'center',
-            backgroundColor: t.mode === 'dark' ? t.colors.bgSunken : t.colors.bgSubtle,
-            borderRightWidth: t.hairline,
-            borderRightColor: t.colors.border,
-            paddingVertical: t.space.lg,
-          }}
-        >
-          {drawn ? <TileArt route={route} /> : <Ionicons name={icon} size={26} color={t.colors.primary} />}
-        </View>
+      {({ pressed }) => (
+        <Plate sunk={pressed} style={{ flexDirection: 'row', alignItems: 'stretch', minHeight: 96 }}>
+          <View style={{ padding: t.space.sm, paddingRight: 0, justifyContent: 'center' }}>
+            <Well style={{ width: 100, flex: 1, minHeight: 76, alignItems: 'center', justifyContent: 'center' }}>
+              {drawn ? <TileArt route={route} /> : <Ionicons name={icon} size={28} color={t.colors.text} />}
+            </Well>
+            <GlowBar width={52} style={{ position: 'absolute', bottom: -4, left: t.space.sm + 24 }} />
+          </View>
 
-        <View style={{ flex: 1, padding: t.space.lg, justifyContent: 'center' }}>
-          <Text
-            style={[t.type.bodyStrong, { color: t.colors.text, fontFamily: t.font.serif, fontSize: 17 }]}
-            numberOfLines={1}
+          <View style={{ flex: 1, paddingHorizontal: 14, paddingVertical: t.space.md, justifyContent: 'center' }}>
+            <Text
+              style={[t.type.sectionTitle, { color: t.colors.text, fontFamily: t.font.serif, fontSize: 19 }]}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.8}
+            >
+              {title}
+            </Text>
+            <Text style={[t.type.caption, { color: t.colors.textMuted, marginTop: 3, fontSize: 14 }]} numberOfLines={2}>
+              {subtitle}
+            </Text>
+          </View>
+
+          {/* The chevron sits in its own channel, cut off from the words by a
+              groove — a dark line with a lit one beside it. */}
+          <View
+            style={{
+              width: 44,
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderLeftWidth: 1,
+              borderLeftColor: t.colors.edgeLo,
+              backgroundColor: t.mode === 'dark' ? 'rgba(0,0,0,0.22)' : 'rgba(90,70,48,0.06)',
+            }}
           >
-            {title}
-          </Text>
-          <Text style={[t.type.caption, { color: t.colors.textMuted, marginTop: 3 }]} numberOfLines={2}>
-            {subtitle}
-          </Text>
-        </View>
-
-        <View style={{ justifyContent: 'center', paddingRight: t.space.lg }}>
-          <Ionicons name="chevron-forward" size={18} color={t.colors.textFaint} />
-        </View>
-      </View>
+            <View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 1, backgroundColor: t.colors.edgeHi, opacity: 0.35 }} />
+            <Ionicons name="chevron-forward" size={22} color={t.colors.textMuted} />
+          </View>
+        </Plate>
+      )}
     </Pressable>
   );
 }

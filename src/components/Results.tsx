@@ -2,6 +2,7 @@ import React from 'react';
 import { Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../theme/ThemeProvider';
+import { GlowBar, Well } from './metal';
 
 export function ResultBanner({
   label,
@@ -19,48 +20,50 @@ export function ResultBanner({
   const t = useTheme();
   const isError = tone === 'error';
   const isIdle = tone === 'idle';
+  // The answer is the instrument's readout: let into the plate, trimmed in
+  // copper, and lit underneath when there is a figure in it to read.
   return (
-    <View
-      style={{
-        backgroundColor: t.colors.bgSubtle,
-        paddingHorizontal: t.layout.screenPadding,
-        paddingTop: t.space.lg,
-        paddingBottom: t.space.md,
-      }}
-    >
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.sm }}>
-        <Ionicons
-          name={isError ? 'alert-circle-outline' : isIdle ? 'ellipsis-horizontal-outline' : 'cut-outline'}
-          size={18}
-          color={t.colors.textMuted}
-        />
-        <Text style={[t.type.label, { color: t.colors.textMuted }]}>{label}</Text>
-      </View>
-      <Text
-        style={[
-          isError ? t.type.displaySmall : t.type.display,
-          { color: isError ? t.colors.danger : isIdle ? t.colors.textFaint : t.colors.text, marginTop: t.space.xs },
-        ]}
-        numberOfLines={2}
-        adjustsFontSizeToFit
-        minimumFontScale={0.6}
+    <View style={{ paddingHorizontal: t.space.md, paddingTop: t.space.sm, paddingBottom: t.space.md }}>
+      <Well
+        trim
+        radius={t.radius.lg}
+        style={{ paddingHorizontal: t.space.lg, paddingTop: t.space.lg, paddingBottom: t.space.lg }}
       >
-        {value}
-      </Text>
-      {hint ? (
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.sm, marginTop: t.space.sm }}>
-          <Ionicons name="resize-outline" size={16} color={isIdle ? t.colors.textMuted : t.colors.data} />
-          <Text
-            style={[t.type.bodyStrong, { color: isIdle ? t.colors.textMuted : t.colors.data, flexShrink: 1 }]}
-            numberOfLines={2}
-          >
-            {hint}
-          </Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.sm }}>
+          <Ionicons
+            name={isError ? 'alert-circle-outline' : isIdle ? 'ellipsis-horizontal-outline' : 'cut-outline'}
+            size={18}
+            color={t.colors.textMuted}
+          />
+          <Text style={[t.type.label, { color: t.colors.textMuted }]}>{label}</Text>
         </View>
-      ) : null}
-      {meta ? (
-        <Text style={[t.type.caption, { color: t.colors.textMuted, marginTop: t.space.sm }]}>{meta}</Text>
-      ) : null}
+        <Text
+          style={[
+            isError ? t.type.displaySmall : t.type.display,
+            { color: isError ? t.colors.danger : isIdle ? t.colors.textMuted : t.colors.text, marginTop: t.space.xs },
+          ]}
+          numberOfLines={2}
+          adjustsFontSizeToFit
+          minimumFontScale={0.6}
+        >
+          {value}
+        </Text>
+        {hint ? (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.sm, marginTop: t.space.sm }}>
+            <Ionicons name="resize-outline" size={16} color={isIdle ? t.colors.textMuted : t.colors.data} />
+            <Text
+              style={[t.type.bodyStrong, { color: isIdle ? t.colors.textMuted : t.colors.data, flexShrink: 1 }]}
+              numberOfLines={2}
+            >
+              {hint}
+            </Text>
+          </View>
+        ) : null}
+        {meta ? (
+          <Text style={[t.type.caption, { color: t.colors.textMuted, marginTop: t.space.sm }]}>{meta}</Text>
+        ) : null}
+      </Well>
+      {isIdle || isError ? null : <GlowBar width={120} style={{ marginTop: -6 }} />}
     </View>
   );
 }

@@ -44,9 +44,9 @@ export function SettingsScreen() {
       <ChipRow
         label="Theme"
         options={[
-          { value: 'light', label: 'Light' },
-          { value: 'dark', label: 'Dark' },
-          { value: 'system', label: 'System' },
+          { value: 'dark', label: 'Bronze' },
+          { value: 'light', label: 'Daylight' },
+          { value: 'system', label: 'Match phone' },
         ]}
         selected={settings.themePreference}
         onSelect={(v) => update({ themePreference: v })}

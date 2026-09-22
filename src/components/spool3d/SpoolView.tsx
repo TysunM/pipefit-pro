@@ -315,7 +315,9 @@ export function SpoolView({
     return { min, max: max - min < 1e-6 ? min + 1 : max };
   }, [pieces]);
 
-  const haze = t.mode === 'dark' ? '#0C1216' : '#FAFBFB';
+  // The canvas colour, exactly. The knockout strokes each piece in it, so any
+  // difference between the two shows as a halo round every tube.
+  const haze = t.mode === 'dark' ? t.colors.bgSunken : t.colors.bgRaised;
   const nearness = (d: number) => (d - depthRange.min) / (depthRange.max - depthRange.min);
   const fade = (c: string, d: number) => mix(c, haze, 0.42 * (1 - nearness(d)));
 
@@ -400,7 +402,7 @@ export function SpoolView({
   return (
     <View
       style={{
-        backgroundColor: t.mode === 'dark' ? t.colors.bgSunken : '#FAFBFB',
+        backgroundColor: haze,
         borderTopWidth: t.hairline,
         borderBottomWidth: t.hairline,
         borderColor: t.colors.border,

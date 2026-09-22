@@ -4,6 +4,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { RootStackParamList } from '../navigation/types';
 import { Screen } from '../components/Screen';
+import { Plate } from '../components/metal';
 import { SectionHeader } from '../components/SectionHeader';
 import { AccentButton, ControlRow, GhostButton } from '../components/Buttons';
 import { HintRow } from '../components/HintRow';
@@ -104,16 +105,11 @@ function JointRow({
   const [confirming, setConfirming] = useState(false);
 
   return (
-    <View
-      style={{
-        marginHorizontal: t.layout.screenPadding,
-        marginBottom: t.space.md,
-        borderRadius: t.radius.md,
-        borderWidth: t.hairline,
-        borderColor: confirming ? t.colors.danger : t.colors.border,
-        backgroundColor: t.colors.bgRaised,
-        overflow: 'hidden',
-      }}
+    <Plate
+      style={[
+        { marginHorizontal: t.layout.screenPadding, marginBottom: t.space.md },
+        confirming ? { borderColor: t.colors.danger } : {},
+      ]}
     >
       <Pressable
         onPress={onOpen}
@@ -124,7 +120,7 @@ function JointRow({
           alignItems: 'center',
           gap: t.space.md,
           padding: t.space.lg,
-          backgroundColor: pressed ? t.colors.bgSubtle : 'transparent',
+          backgroundColor: pressed ? (t.mode === 'dark' ? 'rgba(0,0,0,0.25)' : 'rgba(90,70,48,0.08)') : 'transparent',
         })}
       >
         <View style={{ flex: 1, gap: 5 }}>
@@ -185,7 +181,7 @@ function JointRow({
           paddingVertical: t.space.md,
           borderTopWidth: t.hairline,
           borderTopColor: t.colors.border,
-          backgroundColor: pressed ? t.colors.bgSubtle : 'transparent',
+          backgroundColor: pressed ? (t.mode === 'dark' ? 'rgba(0,0,0,0.25)' : 'rgba(90,70,48,0.08)') : 'transparent',
         })}
       >
         <Ionicons
@@ -249,7 +245,7 @@ function JointRow({
           <Ionicons name="trash-outline" size={16} color={t.colors.textFaint} />
         </Pressable>
       )}
-    </View>
+    </Plate>
   );
 }
 
