@@ -122,6 +122,19 @@ const art: Record<string, (k: Ink) => React.ReactNode> = {
     </G>
   ),
 
+  // A cert behind a stencilled length of pipe: the number and the paper that
+  // proves it, which is the whole job of the screen.
+  Heats: (k) => (
+    <G>
+      <Path d="M40 8 L80 8 L80 44 L40 44 Z" fill="none" stroke={k.guide} strokeWidth={1.4} />
+      <Path d="M46 17 L72 17 M46 25 L72 25 M46 33 L64 33" fill="none" stroke={k.guide} strokeWidth={1.2} />
+      <Path d="M6 34 L58 34 M6 54 L58 54" fill="none" stroke={k.line} strokeWidth={2.4} strokeLinecap="round" />
+      <Path d="M6 34 L6 54 M58 34 L58 54" fill="none" stroke={k.line} strokeWidth={1.4} />
+      <Path d="M14 40 L14 48 M20 40 L20 48 M17 44 L23 44 M26 40 L26 48 L32 48" fill="none"
+            stroke={k.accent} strokeWidth={1.8} strokeLinecap="round" />
+    </G>
+  ),
+
   // A phone laid on a falling run, and the angle it reads off it.
   Level: (k) => (
     <G>

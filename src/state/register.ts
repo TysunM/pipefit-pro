@@ -87,6 +87,18 @@ export type Joint = {
    * bolt-up that has not been finished once.
    */
   checks: ReCheck[];
+  /**
+   * The heat numbers welded or bolted into this joint, as entered.
+   *
+   * Numbers alone: the material, mill and cert reference live once in the heat
+   * book, because one heat covers many pieces and thirty copies of a cert
+   * reference is thirty places to correct when the cert is filed elsewhere.
+   *
+   * An absent list reads as an empty one, which is the whole migration from a
+   * store written before this existed — and an empty list is a true statement
+   * about that joint: no heat was recorded against it.
+   */
+  heats: string[];
 };
 
 export type Register = {
@@ -223,6 +235,25 @@ export function validJoint(v: unknown): Joint | null {
   // Order is presentation, not a claim, so it is sorted rather than refused.
   checks.sort((a, b) => a.at - b.at);
 
+  // Stores written before heats existed have no list, and an absent list is
+  // an empty one. Blanks are dropped and spellings de-duplicated so a joint
+  // cannot point at the same heat twice; a bad row does not fail the joint,
+  // because losing a whole bolt-up over a stray heat entry would be worse
+  // than losing the entry.
+  const rawHeats = v.heats === undefined ? [] : v.heats;
+  const heats: string[] = [];
+  if (Array.isArray(rawHeats)) {
+    const seenHeat = new Set<string>();
+    for (const x of rawHeats) {
+      if (!isStr(x)) continue;
+      const trimmed = x.trim();
+      const key = trimmed.toUpperCase().replace(/[^0-9A-Z]/g, '');
+      if (!key || seenHeat.has(key)) continue;
+      seenHeat.add(key);
+      heats.push(trimmed);
+    }
+  }
+
   return {
     id,
     tag,
@@ -236,6 +267,7 @@ export function validJoint(v: unknown): Joint | null {
     updatedAt,
     completedAt: completedAt as number | null,
     checks,
+    heats,
   };
 }
 
@@ -357,6 +389,7 @@ export function newJoint(id: string, spec: JointSpec, now: number): Joint {
     updatedAt: now,
     completedAt: null,
     checks: [],
+    heats: [],
   };
 }
 
@@ -470,3 +503,25 @@ export const needsCheckJoints = (r: Register): Joint[] => listed(r).filter(needs
 
 /** Finished, checked, and nothing moved the last time. */
 export const settledJoints = (r: Register): Joint[] => listed(r).filter(isSettled);
+
+/**
+ * A joint with a heat recorded against it, or with one taken off.
+ *
+ * Spelling-insensitive on the way in, so a heat entered twice with different
+ * dashes does not appear twice on one joint. `updatedAt` moves, because what
+ * material went into a joint is part of the joint's record and a turnover
+ * package is read by date.
+ */
+export function withHeat(joint: Joint, heat: string, now: number): Joint {
+  const trimmed = heat.trim();
+  const key = trimmed.toUpperCase().replace(/[^0-9A-Z]/g, '');
+  if (!key) return joint;
+  if (joint.heats.some((h) => h.toUpperCase().replace(/[^0-9A-Z]/g, '') === key)) return joint;
+  return { ...joint, heats: [...joint.heats, trimmed], updatedAt: now };
+}
+
+export function withoutHeat(joint: Joint, heat: string, now: number): Joint {
+  const key = heat.toUpperCase().replace(/[^0-9A-Z]/g, '');
+  const heats = joint.heats.filter((h) => h.toUpperCase().replace(/[^0-9A-Z]/g, '') !== key);
+  return heats.length === joint.heats.length ? joint : { ...joint, heats, updatedAt: now };
+}

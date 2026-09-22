@@ -12,6 +12,7 @@ export function DimensionInput({
   readout,
   style,
   keyboardType,
+  autoCapitalize,
 }: {
   label: string;
   value: string;
@@ -22,6 +23,11 @@ export function DimensionInput({
   readout?: string;
   style?: ViewStyle;
   keyboardType?: 'decimal-pad' | 'numbers-and-punctuation' | 'default';
+  /**
+   * For the fields that are not numbers. A heat number is stamped in capitals
+   * and compared character by character, so it is shown the way it is read.
+   */
+  autoCapitalize?: 'none' | 'characters' | 'words' | 'sentences';
 }) {
   const t = useTheme();
   const [focused, setFocused] = useState(false);
@@ -55,6 +61,7 @@ export function DimensionInput({
           placeholder={placeholder}
           placeholderTextColor={t.colors.textFaint}
           keyboardType={kb}
+          autoCapitalize={autoCapitalize}
           inputMode={kb === 'decimal-pad' ? 'decimal' : 'text'}
           selectTextOnFocus
           style={[t.type.fieldValue, { color: t.colors.text, flex: 1, padding: 0 }, WEB_INPUT_RESET]}

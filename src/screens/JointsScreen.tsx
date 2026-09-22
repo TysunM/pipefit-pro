@@ -25,6 +25,10 @@ import {
   sinceLabel,
 } from '../state/register';
 import { useJoints } from '../state/joints';
+import { useHeats } from '../state/heats';
+import { JointHeatsSheet } from '../components/JointHeatsSheet';
+import { putJoint, withHeat, withoutHeat } from '../state/register';
+import { normaliseHeat } from '../calc/heat';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Joints'>;
 
@@ -83,12 +87,17 @@ function JointRow({
   now,
   onOpen,
   onDelete,
+  onHeats,
+  heatsOwed,
 }: {
   t: Theme;
   joint: Joint;
   now: number;
   onOpen: () => void;
   onDelete: () => void;
+  onHeats: () => void;
+  /** How many heats on this joint have no cert in hand. */
+  heatsOwed: number;
 }) {
   // Deleting confirms in the row rather than in an alert, because an alert is
   // one mis-tap from gone and because react-native-web does not show one at all.
@@ -160,6 +169,53 @@ function JointRow({
           </Text>
         </View>
         <Ionicons name="chevron-forward" size={18} color={t.colors.textFaint} />
+      </Pressable>
+
+      {/* What this joint is made of, which is the half of a turnover package
+          the register could not answer before. */}
+      <Pressable
+        onPress={onHeats}
+        accessibilityRole="button"
+        accessibilityLabel={`Heats in ${joint.tag || 'untitled joint'}`}
+        style={({ pressed }) => ({
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: t.space.sm,
+          paddingHorizontal: t.space.lg,
+          paddingVertical: t.space.md,
+          borderTopWidth: t.hairline,
+          borderTopColor: t.colors.border,
+          backgroundColor: pressed ? t.colors.bgSubtle : 'transparent',
+        })}
+      >
+        <Ionicons
+          name={
+            joint.heats.length === 0
+              ? 'shield-outline'
+              : heatsOwed
+                ? 'alert-circle-outline'
+                : 'shield-checkmark-outline'
+          }
+          size={17}
+          color={joint.heats.length === 0 ? t.colors.textFaint : heatsOwed ? t.colors.accent : t.colors.data}
+        />
+        <Text
+          numberOfLines={1}
+          style={[
+            t.type.caption,
+            {
+              flex: 1,
+              color: joint.heats.length === 0 ? t.colors.textFaint : heatsOwed ? t.colors.accent : t.colors.data,
+            },
+          ]}
+        >
+          {joint.heats.length === 0
+            ? 'No heat recorded'
+            : heatsOwed
+              ? `${joint.heats.join(', ')} · ${heatsOwed} cert${heatsOwed > 1 ? 's' : ''} owed`
+              : joint.heats.join(', ')}
+        </Text>
+        <Ionicons name="chevron-forward" size={15} color={t.colors.textFaint} />
       </Pressable>
 
       {confirming ? (
@@ -243,7 +299,17 @@ export function JointsScreen({ navigation }: Props) {
   const t = useTheme();
   const { register, hydrated, saveError, apply, clearDropped, takeOver } = useJoints();
   const [clearing, setClearing] = useState(false);
+  const [heatsFor, setHeatsFor] = useState<string | null>(null);
+  const { book } = useHeats();
   const now = Date.now();
+
+  const owedOn = (j: Joint) => {
+    const owed = new Set(book.heats.filter((h) => !h.certified).map((h) => normaliseHeat(h.heat)));
+    const known = new Set(book.heats.map((h) => normaliseHeat(h.heat)));
+    // A heat the book has never seen cannot be proved either, so it counts.
+    return j.heats.filter((h) => !known.has(normaliseHeat(h)) || owed.has(normaliseHeat(h))).length;
+  };
+  const showingHeats = heatsFor ? getJoint(register, heatsFor) : undefined;
 
   const open = openJoints(register);
   const done = doneJoints(register);
@@ -316,7 +382,8 @@ export function JointsScreen({ navigation }: Props) {
         <>
           <SectionHeader title="Part done" meta={`${open.length} ${open.length === 1 ? 'joint' : 'joints'}`} />
           {open.map((j) => (
-            <JointRow key={j.id} t={t} joint={j} now={now} onOpen={() => go(j.id)} onDelete={() => drop(j.id)} />
+            <JointRow key={j.id} t={t} joint={j} now={now} onOpen={() => go(j.id)} onDelete={() => drop(j.id)}
+              onHeats={() => setHeatsFor(j.id)} heatsOwed={owedOn(j)} />
           ))}
         </>
       ) : null}
@@ -331,7 +398,8 @@ export function JointsScreen({ navigation }: Props) {
             </Text>
           </View>
           {due.map((j) => (
-            <JointRow key={j.id} t={t} joint={j} now={now} onOpen={() => go(j.id)} onDelete={() => drop(j.id)} />
+            <JointRow key={j.id} t={t} joint={j} now={now} onOpen={() => go(j.id)} onDelete={() => drop(j.id)}
+              onHeats={() => setHeatsFor(j.id)} heatsOwed={owedOn(j)} />
           ))}
         </>
       ) : null}
@@ -343,7 +411,8 @@ export function JointsScreen({ navigation }: Props) {
             meta={`${settled.length} ${settled.length === 1 ? 'joint' : 'joints'}`}
           />
           {settled.map((j) => (
-            <JointRow key={j.id} t={t} joint={j} now={now} onOpen={() => go(j.id)} onDelete={() => drop(j.id)} />
+            <JointRow key={j.id} t={t} joint={j} now={now} onOpen={() => go(j.id)} onDelete={() => drop(j.id)}
+              onHeats={() => setHeatsFor(j.id)} heatsOwed={owedOn(j)} />
           ))}
         </>
       ) : null}
@@ -384,6 +453,22 @@ export function JointsScreen({ navigation }: Props) {
           )}
         </ControlRow>
       ) : null}
+      <JointHeatsSheet
+        visible={showingHeats !== undefined}
+        onClose={() => setHeatsFor(null)}
+        tag={showingHeats?.tag ?? ''}
+        heats={showingHeats?.heats ?? []}
+        book={book.heats}
+        onToggle={(heat, on) =>
+          apply((r) => {
+            const j = getJoint(r, heatsFor ?? '');
+            if (!j) return r;
+            const next = on ? withHeat(j, heat, Date.now()) : withoutHeat(j, heat, Date.now());
+            return next === j ? r : putJoint(r, next);
+          })
+        }
+      />
+
     </Screen>
   );
 }

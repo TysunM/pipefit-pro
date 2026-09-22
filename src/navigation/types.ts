@@ -10,6 +10,7 @@ export type RootStackParamList = {
   /** Which joint in the register is being worked. Absent means the unnamed one. */
   FlangeBoltUp: { jointId?: string } | undefined;
   Joints: undefined;
+  Heats: undefined;
   OrderSheet: undefined;
   Calculator: undefined;
   Level: undefined;
