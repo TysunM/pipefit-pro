@@ -5,6 +5,7 @@ import { SectionHeader } from '../components/SectionHeader';
 import { DimensionInput, FieldRow } from '../components/DimensionInput';
 import { ChipRow } from '../components/ChipRow';
 import { ControlRow, GhostButton } from '../components/Buttons';
+import { AngleFromPipe } from '../components/AngleFromPipe';
 import { FooterNote, MetaBar, ResultBanner, StatGrid } from '../components/Results';
 import { useUnits } from '../hooks/useUnits';
 import { BenderDiagram } from '../components/diagram/BenderDiagram';
@@ -13,6 +14,7 @@ import { PIPE_SIZES, findSize } from '../calc/pipe';
 import { parseNumber } from '../calc/format';
 
 export function HandBenderScreen() {
+  const [readAngle, setReadAngle] = useState(false);
   const u = useUnits();
   const [nps, setNps] = useState(2);
   const [ruleId, setRuleId] = useState(RADIUS_RULES[1]!.id);
@@ -126,6 +128,12 @@ export function HandBenderScreen() {
 
       <ControlRow>
         <GhostButton
+          label="Off the pipe"
+          icon="compass-outline"
+          onPress={() => setReadAngle(true)}
+          style={{ flex: 1 }}
+        />
+        <GhostButton
           label="Clear all"
           icon="refresh-outline"
           onPress={() => {
@@ -206,6 +214,13 @@ export function HandBenderScreen() {
       />
 
       <FooterNote text="Setback is R·tan(θ/2); arc length is R·θ. Radius rules are multiples of nominal size — confirm the die you are using and the minimum radius the line spec allows. Springback varies with material, wall and temperature; enter what your own test bend gave you." />
+      <AngleFromPipe
+        visible={readAngle}
+        onClose={() => setReadAngle(false)}
+        title="Bend angle"
+        onUse={(deg) => setAngleText(deg.toFixed(1))}
+      />
+
     </Screen>
   );
 }

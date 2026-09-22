@@ -5,6 +5,7 @@ import { SectionHeader } from '../components/SectionHeader';
 import { DerivedField, DimensionInput, FieldRow } from '../components/DimensionInput';
 import { ChipRow } from '../components/ChipRow';
 import { ControlRow, GhostButton, SelectorButton } from '../components/Buttons';
+import { AngleFromPipe } from '../components/AngleFromPipe';
 import { FooterNote, MetaBar, ResultBanner, StatGrid, WarningBanner } from '../components/Results';
 import { PipeSheet } from '../components/PipeSheet';
 import { MiterDiagram } from '../components/diagram/MiterDiagram';
@@ -15,6 +16,7 @@ import { solveMiter } from '../calc/miter';
 import { parseNumber } from '../calc/format';
 
 export function MiterBendScreen() {
+  const [readAngle, setReadAngle] = useState(false);
   const u = useUnits();
   const pipe = usePipeConfig();
 
@@ -73,6 +75,12 @@ export function MiterBendScreen() {
       </FieldRow>
 
       <ControlRow>
+        <GhostButton
+          label="Off the pipe"
+          icon="compass-outline"
+          onPress={() => setReadAngle(true)}
+          style={{ flex: 1 }}
+        />
         <SelectorButton primary={pipe.label} badge={pipe.kind} onPress={pipe.openSheet} style={{ flex: 1 }} />
         <GhostButton
           label="Clear all"
@@ -134,6 +142,13 @@ export function MiterBendScreen() {
         schedule={pipe.schedule}
         onChange={pipe.change}
       />
+      <AngleFromPipe
+        visible={readAngle}
+        onClose={() => setReadAngle(false)}
+        title="Total turn"
+        onUse={(deg) => setAngleText(deg.toFixed(1))}
+      />
+
     </Screen>
   );
 }

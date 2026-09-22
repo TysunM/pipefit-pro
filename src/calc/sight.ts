@@ -222,3 +222,48 @@ export function levelWord(slope: number): { word: string; exact: boolean } {
 export function inchesPerFoot(slope: number): number {
   return Math.tan((slope * Math.PI) / 180) * 12;
 }
+
+// The angle between two pieces you can both reach
+// -----------------------------------------------
+// A fitting angle is not a slope. It is the angle a fitting turns through, and
+// that is the difference between where the pipe came from and where it goes.
+// So it takes two readings: the run, then the piece leaving it.
+//
+// Both readings have to be in one vertical plane, and that is not a caveat
+// bolted on — it is the definition of a simple offset. Two legs in one plane
+// is what makes it simple rather than rolling. Inside that plane the arithmetic
+// is a subtraction, and every term in it came off gravity, so the answer is as
+// good as the phone's accelerometer and owes nothing to the compass.
+//
+// This is also why a rolling offset does not get this button. A rolling offset
+// is two planes by definition; its elbow angle needs the bearing as well as
+// the slope, and the bearing is the half of a phone's sense of direction that
+// steel ruins. Offering it there would be offering a figure that reads true in
+// a car park and lies in a pipe rack.
+
+/**
+ * The angle a fitting turns through, from a reading on each side of it.
+ *
+ * `run` is the slope of the pipe coming in, `travel` the slope of the piece
+ * leaving. A level run makes this the travel's own slope, which is the common
+ * case and why one reading is often enough.
+ *
+ * Both are slopes off level, so both are signed, and the answer is the size of
+ * the turn rather than its direction: a piece rising 45 off a level run and one
+ * falling 45 off it are both 45 degree fittings.
+ */
+export function angleFromSlopes(run: number, travel: number): number {
+  return Math.min(180, Math.abs(travel - run));
+}
+
+/**
+ * Whether a turn comes out of a box, and what to say if it does not.
+ *
+ * A measured angle almost never lands on a stock elbow, and the useful thing
+ * to say is not the four decimal places — it is which fitting is nearest and
+ * how far off it the reading is, because that difference is what gets cut.
+ */
+export function nearestFitting(angle: number, stock: readonly number[]): { at: number; offBy: number } {
+  const at = stock.reduce((a, b) => (Math.abs(b - angle) < Math.abs(a - angle) ? b : a), stock[0] ?? 0);
+  return { at, offBy: angle - at };
+}
