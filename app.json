@@ -2,7 +2,7 @@
   "expo": {
     "name": "PipeFit Pro",
     "slug": "pipefit-pro",
-    "version": "1.1.0",
+    "version": "1.2.0",
     "orientation": "portrait",
     "scheme": "pipefitpro",
     "userInterfaceStyle": "automatic",
@@ -19,11 +19,11 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.pipefitpro.app",
-      "buildNumber": "2"
+      "buildNumber": "3"
     },
     "android": {
       "package": "com.pipefitpro.app",
-      "versionCode": 2,
+      "versionCode": 3,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#FFFFFF"
@@ -42,10 +42,7 @@
           "image": "./assets/splash-icon.png",
           "imageWidth": 220,
           "resizeMode": "contain",
-          "backgroundColor": "#FFFFFF",
-          "dark": {
-            "backgroundColor": "#0F1318"
-          }
+          "backgroundColor": "#13110E"
         }
       ],
       "expo-mlkit-ocr",
