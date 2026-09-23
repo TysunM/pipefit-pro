@@ -44,7 +44,7 @@ export function HomeScreen({ navigation }: Props) {
     <Screen>
       <View style={{ paddingHorizontal: t.layout.screenPadding, paddingTop: t.space.lg, paddingBottom: t.space.lg }}>
         <Text style={[t.type.body, { color: t.colors.textMuted }]}>
-          Field calculations for pipe, tube and conduit. Every result is centre-to-centre with fitting takeouts deducted.
+          Field calculations for pipe and tube. Every result is centre-to-centre with fitting takeouts deducted.
         </Text>
       </View>
 
