@@ -53,12 +53,37 @@ const PAIRS: { fg: keyof Colors; bg: keyof Colors; min: number; what: string }[]
   { fg: 'warnText', bg: 'warnBg', min: 4.5, what: 'a warning' },
   { fg: 'danger', bg: 'bg', min: 4.5, what: 'a danger message' },
   { fg: 'success', bg: 'bg', min: 4.5, what: 'a success message' },
+  // The metal. A plate has a sheen, so text on it is checked at both ends of it.
+  { fg: 'text', bg: 'metalHi', min: 4.5, what: 'a card title at the lit top of its plate' },
+  { fg: 'text', bg: 'metalLo', min: 4.5, what: 'a card title at the shadowed foot of its plate' },
+  { fg: 'textMuted', bg: 'metalHi', min: 4.5, what: 'a card subtitle at the top of its plate' },
+  { fg: 'textMuted', bg: 'metalLo', min: 4.5, what: 'a card subtitle at the foot of its plate' },
+  { fg: 'textMuted', bg: 'bgRaised', min: 4.5, what: 'secondary text on a card' },
+  { fg: 'textFaint', bg: 'metalHi', min: 4.5, what: 'a note on a joint card, top of the plate' },
+  { fg: 'textFaint', bg: 'metalLo', min: 4.5, what: 'a note on a joint card, foot of the plate' },
+  { fg: 'accent', bg: 'metalLo', min: 4.5, what: 'a cert owed, on a joint card' },
+  { fg: 'data', bg: 'metalLo', min: 4.5, what: 'a pass in progress, on a joint card' },
+  { fg: 'success', bg: 'metalLo', min: 4.5, what: 'a settled joint, on its card' },
+  { fg: 'accent', bg: 'metalHi', min: 4.5, what: 'a cert owed, top of the plate' },
+  { fg: 'data', bg: 'metalHi', min: 4.5, what: 'a pass in progress, top of the plate' },
+  { fg: 'success', bg: 'metalHi', min: 4.5, what: 'a settled joint, top of the plate' },
+  { fg: 'text', bg: 'well', min: 4.5, what: 'a figure down in its recess' },
+  { fg: 'textMuted', bg: 'well', min: 4.5, what: 'a label down in a recess' },
+  { fg: 'data', bg: 'well', min: 4.5, what: 'a blue figure down in its recess' },
+  { fg: 'onCopper', bg: 'copperFill', min: 4.5, what: 'text on a copper button' },
+  { fg: 'onCopper', bg: 'copperFillHi', min: 4.5, what: 'text at the lit top of a copper button' },
+  { fg: 'onCopper', bg: 'copperFillLo', min: 4.5, what: 'text at the foot of a copper button' },
+  { fg: 'onSlate', bg: 'slateHi', min: 4.5, what: 'a function key at the lit top' },
+  { fg: 'onSlate', bg: 'slateLo', min: 4.5, what: 'a function key at its foot' },
+  { fg: 'chrome', bg: 'headerHi', min: 4.5, what: 'the screen title at the top of the header' },
+  { fg: 'chrome', bg: 'headerLo', min: 4.5, what: 'the screen title at the foot of the header' },
 ];
 
 /** Borders carry no text, but an invisible edge is a control nobody finds. */
 const EDGES: { fg: keyof Colors; bg: keyof Colors; min: number }[] = [
   { fg: 'border', bg: 'bg', min: 1.2 },
   { fg: 'borderStrong', bg: 'bg', min: 1.9 },
+  { fg: 'wellEdge', bg: 'well', min: 1.2 },
 ];
 
 describe.each(['light', 'dark'] as Mode[])('the %s palette is readable', (mode) => {

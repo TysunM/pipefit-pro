@@ -41,8 +41,8 @@ export function SaddleBendScreen() {
 
   return (
     <Screen>
-      <HintRow text="Jump a pipe or beam without changing the conduit line. Enter the obstruction depth and how far it sits from your end; get every bend mark in order." />
-      <SectionHeader title="Obstruction" meta="Measured from conduit end" />
+      <HintRow text="Go over an obstruction and come back down on the same line. Marks come out in the order you bend them, measured from the end in your hand." />
+      <SectionHeader title="Obstruction" meta="Measured from the pipe end" />
 
       <ChipRow
         label="Saddle"
@@ -132,9 +132,9 @@ export function SaddleBendScreen() {
         value={pristine ? '—' : result.error ? result.error : `${u.num(result.marks[0]?.position ?? NaN)} ${u.unitName}`}
         hint={
           pristine
-            ? 'Enter the obstruction depth and its distance from the conduit end'
+            ? 'Enter the obstruction depth and its distance from the pipe end'
             : result.valid
-              ? `Measure from the conduit end · ${result.marks.length} marks · Shrink ${u.num(result.shrink)} ${u.unitName}`
+              ? `Measure from the pipe end · ${result.marks.length} marks · Shrink ${u.num(result.shrink)} ${u.unitName}`
               : undefined
         }
         tone={pristine ? 'idle' : result.error ? 'error' : 'default'}
@@ -191,13 +191,13 @@ export function SaddleBendScreen() {
           { label: 'Multiplier', note: '1 / sin of bend angle', value: Number.isFinite(result.multiplier) ? result.multiplier.toFixed(3) : '—' },
           { label: 'Total shrink', note: 'Run lost across both ends', value: result.valid ? u.dual(result.shrink) : '—' },
           { label: 'Shrink per bend pair', value: result.valid ? u.dual(result.shrinkPerBend) : '—' },
-          { label: 'Developed length', note: 'Conduit inside the marks', value: result.valid ? u.dual(result.developedLength) : '—' },
+          { label: 'Developed length', note: 'Pipe inside the marks', value: result.valid ? u.dual(result.developedLength) : '—' },
           { label: 'Bend angle', value: Number.isFinite(result.sideAngle) ? u.angle(result.sideAngle, 2) : '—' },
           { label: 'Min. clearance', note: 'Obstruction must sit past this', value: Number.isFinite(result.minimumDistance) ? u.dual(result.minimumDistance) : '—' },
         ]}
       />
 
-      <FooterNote text="Marks are centre-of-bend positions measured along the conduit from the end you start your tape on. Multiplier is 1/sin(angle) and shrink is tan(angle/2) per bend pair — exact centreline geometry, not the rounded field table." />
+      <FooterNote text="Marks are centre-of-bend positions measured along the pipe from the end you start your tape on. Multiplier is 1/sin(angle) and shrink is tan(angle/2) per bend pair — exact centreline geometry, not the rounded field table." />
     </Screen>
   );
 }

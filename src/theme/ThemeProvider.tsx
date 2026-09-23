@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useMemo } from 'react';
 import { useColorScheme } from 'react-native';
-import { Colors, Mode, hairline, layout, palette, radius, space } from './tokens';
-import { fontFamily, type } from './typography';
+import { Colors, Mode, finish, hairline, layout, palette, radius, space } from './tokens';
+import { cutFor, fontFamily, type } from './typography';
 import { useSettings } from '../state/settings';
 
 export type Theme = {
@@ -12,6 +12,7 @@ export type Theme = {
   layout: typeof layout;
   type: typeof type;
   font: typeof fontFamily;
+  finish: (typeof finish)[Mode];
   hairline: number;
 };
 
@@ -24,19 +25,23 @@ export function ThemeProvider({ children, serifLoaded = false }: { children: Rea
   const mode: Mode =
     settings.themePreference === 'system' ? (system === 'dark' ? 'dark' : 'light') : settings.themePreference;
 
-  const value = useMemo<Theme>(
-    () => ({
-      mode,
-      colors: palette[mode],
-      space,
-      radius,
-      layout,
-      type,
-      font: { ...fontFamily, serif: serifLoaded ? fontFamily.serif : fontFamily.serifFallback },
-      hairline,
-    }),
-    [mode, serifLoaded]
-  );
+  const value = useMemo<Theme>(() => {
+    // Every cut falls back to the phone's own serif until the font is in, so
+    // nothing ever renders in a sans for a frame and then jumps.
+    const font = serifLoaded
+      ? fontFamily
+      : {
+          ...fontFamily,
+          serif: fontFamily.serifFallback,
+          serifMedium: fontFamily.serifFallback,
+          serifRegular: fontFamily.serifFallback,
+          serifItalic: fontFamily.serifFallback,
+        };
+    const typed = Object.fromEntries(
+      Object.entries(type).map(([k, s]) => [k, { ...s, fontFamily: font[cutFor(s)] }])
+    ) as typeof type;
+    return { mode, colors: palette[mode], space, radius, layout, type: typed, font, finish: finish[mode], hairline };
+  }, [mode, serifLoaded]);
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }

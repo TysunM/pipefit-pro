@@ -54,7 +54,7 @@ export function solveSaddle(input: SaddleInput): SaddleResult {
   if (!Number.isFinite(depth) || depth <= 0) return { ...EMPTY, error: 'Enter an obstruction depth greater than zero.' };
   if (!(centerAngle > 0 && centerAngle < 90)) return { ...EMPTY, error: 'Bend angle must be between 0° and 90°.' };
   if (!Number.isFinite(distanceToObstruction) || distanceToObstruction <= 0)
-    return { ...EMPTY, error: 'Enter the distance from the conduit end to the obstruction.' };
+    return { ...EMPTY, error: 'Enter the distance from the pipe end to the obstruction.' };
 
   if (input.type === 'three') {
     const sideAngle = centerAngle / 2;
@@ -71,7 +71,7 @@ export function solveSaddle(input: SaddleInput): SaddleResult {
         sideAngle,
         multiplier,
         minimumDistance,
-        error: 'Obstruction is too close to the conduit end for this depth and angle.',
+        error: 'Obstruction is too close to the pipe end for this depth and angle.',
       };
 
     return {
@@ -106,7 +106,7 @@ export function solveSaddle(input: SaddleInput): SaddleResult {
       sideAngle: centerAngle,
       multiplier,
       minimumDistance,
-      error: 'Obstruction is too close to the conduit end for this depth and angle.',
+      error: 'Obstruction is too close to the pipe end for this depth and angle.',
     };
 
   const second = first + spacing;

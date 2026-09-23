@@ -73,7 +73,7 @@ export function SimpleOffsetScreen() {
 
   return (
     <Screen>
-      <HintRow text="Get around an obstruction in one plane. Enter the run and the offset; get the pipe length to cut, weld gaps deducted." />
+      <HintRow text="Step the line sideways round an obstruction and pick the same heading back up. The figure is the piece between the two fittings with the weld gaps already out — mark it straight onto the pipe." />
       <SectionHeader title="Dimensions" meta="Centre-to-centre" />
 
       <FieldRow>

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Platform, StyleSheet, Text, TextInput, TextStyle, View, ViewStyle } from 'react-native';
 import { useTheme } from '../theme/ThemeProvider';
+import { Well } from './metal';
 
 export function DimensionInput({
   label,
@@ -39,16 +40,17 @@ export function DimensionInput({
       <Text style={[t.type.label, { color: t.colors.textMuted, marginBottom: t.space.sm }]} numberOfLines={1}>
         {label}
       </Text>
-      <View
+      {/* A field you type into is a recess in the plate; one the app works
+          out for you is flat, so the two are told apart before either is read. */}
+      <Well
         style={[
           styles.box,
           {
             height: t.layout.fieldHeight,
-            borderRadius: t.radius.md,
-            borderColor: focused ? t.colors.data : t.colors.border,
+            borderColor: focused ? t.colors.data : t.colors.wellEdge,
             borderWidth: focused ? 2 : 1,
-            backgroundColor: editable ? t.colors.bgRaised : t.colors.bgSubtle,
             paddingHorizontal: focused ? t.space.md - 1 : t.space.md,
+            opacity: editable ? 1 : 0.7,
           },
         ]}
       >
@@ -66,8 +68,8 @@ export function DimensionInput({
           selectTextOnFocus
           style={[t.type.fieldValue, { color: t.colors.text, flex: 1, padding: 0 }, WEB_INPUT_RESET]}
         />
-        {suffix ? <Text style={[t.type.body, { color: t.colors.textFaint }]}>{suffix}</Text> : null}
-      </View>
+        {suffix ? <Text style={[t.type.body, { color: t.colors.textMuted }]}>{suffix}</Text> : null}
+      </Well>
       {readout ? (
         <Text style={[t.type.caption, { color: t.colors.data, marginTop: 6 }]} numberOfLines={1}>
           {readout}

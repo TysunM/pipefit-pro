@@ -75,7 +75,7 @@ export function RollingOffsetScreen() {
 
   return (
     <Screen>
-      <HintRow text="Get around an obstruction that shifts in two planes at once. Enter rise and roll; get the true offset and the pipe length to cut." />
+      <HintRow text="An offset that moves sideways and up at the same time. The true travel is longer than either figure on its own, so a run measured as a plain offset comes up short." />
       <SectionHeader title="Dimensions" meta="Centre-to-centre" />
 
       <FieldRow>

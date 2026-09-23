@@ -1,9 +1,8 @@
 import React from 'react';
-import { Pressable, View } from 'react-native';
 import { DarkTheme, DefaultTheme, NavigationContainer, Theme as NavTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { Ionicons } from '@expo/vector-icons';
 import { RootStackParamList } from './types';
+import { BronzeHeader } from '../components/BronzeHeader';
 import { useTheme } from '../theme/ThemeProvider';
 import { referenceTable } from '../calc/reference';
 import { HomeScreen } from '../screens/HomeScreen';
@@ -27,17 +26,6 @@ import { ReferenceTableScreen } from '../screens/ReferenceTableScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
-function HeaderActions({ onSettings }: { onSettings: () => void }) {
-  const t = useTheme();
-  return (
-    <View style={{ flexDirection: 'row', gap: t.space.xl, alignItems: 'center' }}>
-      <Pressable hitSlop={10} accessibilityRole="button" accessibilityLabel="Settings" onPress={onSettings}>
-        <Ionicons name="settings-outline" size={22} color={t.colors.text} />
-      </Pressable>
-    </View>
-  );
-}
-
 export function RootNavigator() {
   const t = useTheme();
 
@@ -58,15 +46,14 @@ export function RootNavigator() {
     <NavigationContainer theme={navTheme}>
       <Stack.Navigator
         screenOptions={({ navigation, route }) => ({
-          headerShadowVisible: false,
-          headerTintColor: t.colors.text,
-          headerStyle: { backgroundColor: t.colors.bg },
-          headerTitleAlign: 'center',
-          headerTitleStyle: { fontFamily: t.font.serif, fontSize: 20, color: t.colors.text },
-          headerBackButtonDisplayMode: 'minimal',
           contentStyle: { backgroundColor: t.colors.bg },
-          headerRight:
-            route.name === 'Settings' ? undefined : () => <HeaderActions onSettings={() => navigation.navigate('Settings')} />,
+          header: ({ options, back }) => (
+            <BronzeHeader
+              title={typeof options.title === 'string' ? options.title : route.name}
+              onBack={back ? () => navigation.goBack() : undefined}
+              onSettings={route.name === 'Settings' ? undefined : () => navigation.navigate('Settings')}
+            />
+          ),
         })}
       >
         <Stack.Screen name="Home" component={HomeScreen} options={{ title: 'PipeFit Pro' }} />

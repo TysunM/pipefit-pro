@@ -68,7 +68,7 @@ html = html.replace(/(src|href)="\/(?!\/)/g, '$1="./');
 const head = `
     <base href="./" />
     <link rel="manifest" href="./manifest.webmanifest" />
-    <meta name="theme-color" content="#11447E" />
+    <meta name="theme-color" content="#15120F" />
     <meta name="description" content="${TAGLINE} Calculators, spools and the handbook, offline." />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />

@@ -2,81 +2,54 @@ import React from 'react';
 import { Pressable, Text, View, ViewStyle } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../theme/ThemeProvider';
+import { Plate } from './metal';
 
-export function GhostButton({
-  label,
-  onPress,
-  icon,
-  style,
-}: {
+// Buttons are plates. A plain one is bronze-dark metal; the one thing on a
+// screen worth pressing is copper. Pressed, either one sinks — the sheen turns
+// over — so a thumb in a glove can feel by eye that it landed.
+
+type Props = {
   label: string;
   onPress: () => void;
   icon?: keyof typeof Ionicons.glyphMap;
   style?: ViewStyle;
-}) {
+};
+
+function PlateButton({ label, onPress, icon, style, tone }: Props & { tone: 'metal' | 'copper' }) {
   const t = useTheme();
+  const ink = tone === 'copper' ? t.colors.onCopper : t.colors.text;
   return (
-    <Pressable
-      onPress={onPress}
-      accessibilityRole="button"
-      style={({ pressed }) => [
-        {
-          height: t.layout.controlHeight,
-          borderRadius: t.radius.md,
-          borderWidth: 1,
-          borderColor: t.colors.border,
-          backgroundColor: pressed ? t.colors.bgSubtle : t.colors.bgRaised,
-          alignItems: 'center',
-          justifyContent: 'center',
-          flexDirection: 'row',
-          gap: t.space.sm,
-          paddingHorizontal: t.space.lg,
-        },
-        style,
-      ]}
-    >
-      {icon ? <Ionicons name={icon} size={18} color={t.colors.textMuted} /> : null}
-      <Text style={[t.type.button, { color: t.colors.text }]}>{label}</Text>
+    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={label} style={style}>
+      {({ pressed }) => (
+        <Plate
+          tone={tone}
+          sunk={pressed}
+          radius={t.radius.md}
+          style={{
+            height: t.layout.controlHeight,
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexDirection: 'row',
+            gap: t.space.sm,
+            paddingHorizontal: t.space.lg,
+          }}
+        >
+          {icon ? <Ionicons name={icon} size={19} color={tone === 'copper' ? ink : t.colors.textMuted} /> : null}
+          <Text style={[t.type.button, { color: ink, flexShrink: 1 }]} numberOfLines={2}>
+            {label}
+          </Text>
+        </Plate>
+      )}
     </Pressable>
   );
 }
 
-export function AccentButton({
-  label,
-  onPress,
-  icon,
-  style,
-}: {
-  label: string;
-  onPress: () => void;
-  icon?: keyof typeof Ionicons.glyphMap;
-  style?: ViewStyle;
-}) {
-  const t = useTheme();
-  return (
-    <Pressable
-      onPress={onPress}
-      accessibilityRole="button"
-      style={({ pressed }) => [
-        {
-          height: t.layout.controlHeight,
-          borderRadius: t.radius.md,
-          borderWidth: 1.5,
-          borderColor: t.colors.accent,
-          backgroundColor: pressed ? t.colors.accentSoft : 'transparent',
-          alignItems: 'center',
-          justifyContent: 'center',
-          flexDirection: 'row',
-          gap: t.space.sm,
-          paddingHorizontal: t.space.lg,
-        },
-        style,
-      ]}
-    >
-      {icon ? <Ionicons name={icon} size={18} color={t.colors.accent} /> : null}
-      <Text style={[t.type.button, { color: t.colors.accent }]}>{label}</Text>
-    </Pressable>
-  );
+export function GhostButton(props: Props) {
+  return <PlateButton {...props} tone="metal" />;
+}
+
+export function AccentButton(props: Props) {
+  return <PlateButton {...props} tone="copper" />;
 }
 
 export function SelectorButton({
@@ -94,39 +67,43 @@ export function SelectorButton({
 }) {
   const t = useTheme();
   return (
-    <Pressable
-      onPress={onPress}
-      accessibilityRole="button"
-      style={({ pressed }) => [
-        {
-          height: t.layout.controlHeight,
-          borderRadius: t.radius.md,
-          borderWidth: 1,
-          borderColor: t.colors.border,
-          backgroundColor: pressed ? t.colors.bgSubtle : t.colors.bgRaised,
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: t.space.sm,
-          paddingHorizontal: t.space.lg,
-        },
-        style,
-      ]}
-    >
-      <Ionicons name={icon} size={18} color={t.colors.textMuted} />
-      <Text style={[t.type.sectionTitle, { color: t.colors.text }]}>{primary}</Text>
-      {badge ? (
-        <View
+    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={`${primary}${badge ? ` ${badge}` : ''}`} style={style}>
+      {({ pressed }) => (
+        <Plate
+          sunk={pressed}
+          radius={t.radius.md}
           style={{
-            backgroundColor: t.colors.bgSubtle,
-            borderRadius: t.radius.sm,
-            paddingHorizontal: t.space.sm,
-            paddingVertical: 3,
+            height: t.layout.controlHeight,
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: t.space.sm,
+            paddingHorizontal: t.space.lg,
           }}
         >
-          <Text style={[t.type.captionStrong, { color: t.colors.textMuted }]}>{badge}</Text>
-        </View>
-      ) : null}
-      <Ionicons name="chevron-down" size={14} color={t.colors.textFaint} style={{ marginLeft: 'auto' }} />
+          <Ionicons name={icon} size={18} color={t.colors.textMuted} />
+          <Text
+            style={[t.type.bodyStrong, { color: t.colors.text, fontSize: 18, fontFamily: t.font.serif, flexShrink: 1 }]}
+            numberOfLines={1}
+          >
+            {primary}
+          </Text>
+          {badge ? (
+            <View
+              style={{
+                backgroundColor: t.colors.well,
+                borderRadius: t.radius.sm,
+                borderWidth: 1,
+                borderColor: t.colors.wellEdge,
+                paddingHorizontal: t.space.sm,
+                paddingVertical: 2,
+              }}
+            >
+              <Text style={[t.type.captionStrong, { color: t.colors.textMuted }]}>{badge}</Text>
+            </View>
+          ) : null}
+          <Ionicons name="chevron-down" size={15} color={t.colors.textMuted} style={{ marginLeft: 'auto' }} />
+        </Plate>
+      )}
     </Pressable>
   );
 }

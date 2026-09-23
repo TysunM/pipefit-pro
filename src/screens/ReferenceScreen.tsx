@@ -4,6 +4,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { RootStackParamList } from '../navigation/types';
 import { Screen } from '../components/Screen';
+import { Plate } from '../components/metal';
 import { SectionHeader } from '../components/SectionHeader';
 import { useTheme } from '../theme/ThemeProvider';
 import { REFERENCE_TABLES, ReferenceGroup, searchReference } from '../calc/reference';
@@ -83,25 +84,23 @@ export function ReferenceScreen({ navigation }: Props) {
                 onPress={() => navigation.navigate('ReferenceTable', { id: x.id })}
                 accessibilityRole="button"
                 accessibilityLabel={`${x.title}, handbook page ${x.page}`}
-                style={({ pressed }) => ({
-                  marginHorizontal: t.layout.screenPadding,
-                  marginBottom: t.space.sm,
-                  padding: t.space.lg,
-                  borderRadius: t.radius.lg,
-                  backgroundColor: pressed ? t.colors.bgSubtle : t.colors.bgSunken,
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: t.space.md,
-                })}
+                style={{ marginHorizontal: t.layout.screenPadding, marginBottom: t.space.sm }}
               >
-                <Ionicons name={GROUP_ICON[x.group]} size={19} color={t.colors.textMuted} />
-                <View style={{ flex: 1 }}>
-                  <Text style={[t.type.bodyStrong, { color: t.colors.text }]}>{x.title}</Text>
-                  <Text style={[t.type.caption, { color: t.colors.textFaint, marginTop: 2 }]}>
-                    {`Page ${x.page} · ${x.rows().length} rows`}
-                  </Text>
-                </View>
-                <Ionicons name="chevron-forward" size={17} color={t.colors.textFaint} />
+                {({ pressed }) => (
+                  <Plate
+                    sunk={pressed}
+                    style={{ padding: t.space.lg, flexDirection: 'row', alignItems: 'center', gap: t.space.md }}
+                  >
+                    <Ionicons name={GROUP_ICON[x.group]} size={19} color={t.colors.textMuted} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={[t.type.bodyStrong, { color: t.colors.text }]}>{x.title}</Text>
+                      <Text style={[t.type.caption, { color: t.colors.textMuted, marginTop: 2 }]}>
+                        {`Page ${x.page} · ${x.rows().length} rows`}
+                      </Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={18} color={t.colors.textMuted} />
+                  </Plate>
+                )}
               </Pressable>
             ))}
           </View>

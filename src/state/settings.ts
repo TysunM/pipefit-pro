@@ -3,6 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { UnitSystem } from '../calc/units';
 import { FractionDenominator } from '../calc/format';
 import { ElbowRadius, Schedule } from '../calc/pipe';
+import { LOOK, readSettings } from './readSettings';
 
 export type ThemePreference = 'light' | 'dark' | 'system';
 
@@ -27,10 +28,14 @@ export type Settings = {
    * list that comes up one piece short at the end of the day.
    */
   cutAllowance: number;
+  /** Which look these were written under — see readSettings. */
+  look: number;
 };
 
 export const DEFAULT_SETTINGS: Settings = {
-  themePreference: 'light',
+  // The bronze look is the app. Daylight is there for direct sun, where a
+  // dark screen shows you your own face.
+  themePreference: 'dark',
   unitSystem: 'imperial',
   fractionDenominator: 16,
   lengthReadout: 'inches',
@@ -40,6 +45,7 @@ export const DEFAULT_SETTINGS: Settings = {
   defaultGap: 0.09375,
   stockLength: 240,
   cutAllowance: 0.125,
+  look: LOOK,
 };
 
 const STORAGE_KEY = 'pipefit.settings.v1';
@@ -62,13 +68,9 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     AsyncStorage.getItem(STORAGE_KEY)
       .then((raw) => {
         if (!alive) return;
-        if (raw) {
-          try {
-            setSettings({ ...DEFAULT_SETTINGS, ...(JSON.parse(raw) as Partial<Settings>) });
-          } catch {
-            setSettings(DEFAULT_SETTINGS);
-          }
-        }
+        const { settings: read, migrated } = readSettings(raw, DEFAULT_SETTINGS);
+        setSettings(read);
+        if (migrated) void AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(read));
       })
       .finally(() => alive && setHydrated(true));
     return () => {

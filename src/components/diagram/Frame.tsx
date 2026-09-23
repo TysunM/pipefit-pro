@@ -11,7 +11,7 @@ export function Frame({ children, height = DIAGRAM_H }: { children: React.ReactN
   return (
     <View
       style={{
-        backgroundColor: t.mode === 'dark' ? t.colors.bgSunken : '#FAFBFB',
+        backgroundColor: t.mode === 'dark' ? t.colors.bgSunken : t.colors.bgRaised,
         borderTopWidth: t.hairline,
         borderBottomWidth: t.hairline,
         borderColor: t.colors.border,

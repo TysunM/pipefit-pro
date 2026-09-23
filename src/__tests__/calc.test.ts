@@ -524,10 +524,10 @@ describe('saddle bend — three point geometry', () => {
     near(horizontalOfPeak, D, 1e-9);
   });
 
-  test('total shrink equals conduit length minus horizontal span', () => {
-    const conduit = r.marks[2]!.position - r.marks[0]!.position;
+  test('total shrink equals pipe length minus horizontal span', () => {
+    const pipeLength = r.marks[2]!.position - r.marks[0]!.position;
     const horizontal = (2 * H) / Math.tan(rad(r.sideAngle));
-    near(r.shrink, conduit - horizontal, 1e-9);
+    near(r.shrink, pipeLength - horizontal, 1e-9);
   });
 
   test('shrink is twice the per-bend figure', () => near(r.shrink, r.shrinkPerBend * 2, 1e-12));
@@ -559,7 +559,7 @@ describe('saddle bend — four point geometry', () => {
     expect(r.marks).toHaveLength(4);
   });
 
-  test('the conduit reaches full height exactly at the obstruction', () => {
+  test('the pipe reaches full height exactly at the obstruction', () => {
     const horizontalOfSecondMark = r.marks[0]!.position + H / Math.tan(rad(45));
     near(horizontalOfSecondMark, D, 1e-9);
   });
@@ -573,10 +573,10 @@ describe('saddle bend — four point geometry', () => {
     near(r.marks[1]!.position - r.marks[0]!.position, H * r.multiplier, 1e-9);
   });
 
-  test('total shrink equals conduit length minus horizontal span', () => {
-    const conduit = r.marks[3]!.position - r.marks[0]!.position;
+  test('total shrink equals pipe length minus horizontal span', () => {
+    const pipeLength = r.marks[3]!.position - r.marks[0]!.position;
     const horizontal = (2 * H) / Math.tan(rad(45)) + W;
-    near(r.shrink, conduit - horizontal, 1e-9);
+    near(r.shrink, pipeLength - horizontal, 1e-9);
   });
 
   test('clears the obstruction at every angle', () => {
@@ -592,7 +592,7 @@ describe('saddle bend — four point geometry', () => {
     for (let i = 1; i < r.marks.length; i += 1) expect(r.marks[i]!.position).toBeGreaterThan(r.marks[i - 1]!.position);
   });
 
-  test('no mark ever lands before the conduit end', () => {
+  test('no mark ever lands before the pipe end', () => {
     for (const angle of [22.5, 30, 45, 60])
       for (const depth of [1, 5, 12]) {
         const s = solveSaddle({ type: 'four', depth, width: 6, distanceToObstruction: 40, centerAngle: angle });

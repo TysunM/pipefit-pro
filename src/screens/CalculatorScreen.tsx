@@ -45,8 +45,9 @@ export function CalculatorScreen() {
             styles.lcd,
             {
               backgroundColor: t.mode === 'dark' ? '#101A16' : '#C9D4C2',
-              borderColor: t.colors.borderStrong,
-              borderRadius: t.radius.md,
+              // Trimmed in copper like every other readout in the app.
+              borderColor: t.colors.copper,
+              borderRadius: t.radius.lg,
               padding: t.space.md,
             },
           ]}
