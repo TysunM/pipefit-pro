@@ -16,3 +16,7 @@ web-build/
 credentials.json
 *.keystore
 *.jks
+
+# local development builds
+*.apk
+*.aab
