@@ -77,7 +77,12 @@ build() {
   cd "$REPO"
   npm run build:dev
   out="$REPO/pipefit-dev.apk"
-  dl="$(ls -d /mnt/c/Users/*/Downloads 2>/dev/null | grep -viE '/(Public|Default|All Users)/' | head -1 || true)"
+  # Windows tells us whose profile this is; guessing from /mnt/c/Users lands
+  # on "Default User" as often as not.
+  win="$(powershell.exe -NoProfile -Command 'Write-Output $env:USERPROFILE' 2>/dev/null | tr -d '\r' || true)"
+  dl=""
+  [ -n "$win" ] && dl="$(wslpath -u "$win" 2>/dev/null)/Downloads"
+  [ -d "$dl" ] || dl=""
   if [ -n "$dl" ]; then
     cp "$out" "$dl/pipefit-dev.apk"
     say "APK copied to $dl/pipefit-dev.apk"
