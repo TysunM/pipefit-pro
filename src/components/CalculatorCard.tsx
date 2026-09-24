@@ -17,26 +17,28 @@ import { GlowBar, Plate, Well } from './metal';
  * confused by anybody, at any speed.
  *
  * Tools with no schematic keep their icon, in the same panel, at the same
- * size, so the column still reads as one column.
+ * size, so the column still reads as one column. A card that stands for a
+ * group of tools wears the drawing of the one inside it a man opens first,
+ * which is what `art` is — the card's own route is not always a screen.
  *
  * The card is a bronze plate with the drawing let into it, and a lit strip
  * under the drawing. Pressed, the plate sinks.
  */
 export function CalculatorCard({
-  route,
+  art,
   title,
   subtitle,
   icon,
   onPress,
 }: {
-  route: keyof RootStackParamList;
+  art: keyof RootStackParamList;
   title: string;
   subtitle: string;
   icon: keyof typeof Ionicons.glyphMap;
   onPress: () => void;
 }) {
   const t = useTheme();
-  const drawn = hasTileArt(route);
+  const drawn = hasTileArt(art);
 
   return (
     <Pressable
@@ -49,7 +51,7 @@ export function CalculatorCard({
         <Plate sunk={pressed} style={{ flexDirection: 'row', alignItems: 'stretch', minHeight: 96 }}>
           <View style={{ padding: t.space.sm, paddingRight: 0, justifyContent: 'center' }}>
             <Well style={{ width: 100, flex: 1, minHeight: 76, alignItems: 'center', justifyContent: 'center' }}>
-              {drawn ? <TileArt route={route} /> : <Ionicons name={icon} size={28} color={t.colors.text} />}
+              {drawn ? <TileArt route={art} /> : <Ionicons name={icon} size={28} color={t.colors.text} />}
             </Well>
             <GlowBar width={52} style={{ position: 'absolute', bottom: -4, left: t.space.sm + 24 }} />
           </View>

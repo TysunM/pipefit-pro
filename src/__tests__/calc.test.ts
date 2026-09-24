@@ -3,7 +3,7 @@ import { solveRolling } from '../calc/rolling';
 import { END_FITTINGS, endTakeoff, solveCutLength } from '../calc/cutLength';
 import { offsetMultiplier, offsetShrinkPerUnit, solveSaddle } from '../calc/saddle';
 import { solveMiter } from '../calc/miter';
-import { NPT_TABLE, findThread, solveThread } from '../calc/thread';
+import { NPT_TABLE } from '../calc/thread';
 import { screwedFitting } from '../calc/screwedFitting';
 import { RADIUS_RULES, radiusFromRule, solveBender } from '../calc/bender';
 import {
@@ -703,103 +703,6 @@ describe('miter bend', () => {
     expect(solveMiter({ totalAngle: 0, segments: 3, nps: 6, schedule: '40', centerlineRadius: 9 }).valid).toBe(false));
   test('rejects beyond 90 degrees', () =>
     expect(solveMiter({ totalAngle: 120, segments: 3, nps: 6, schedule: '40', centerlineRadius: 9 }).valid).toBe(false));
-});
-
-describe('thread engagement', () => {
-  const r = solveThread({ nps: 2, turnsPastHandTight: 3, centerToCenter: NaN, centerToFace: NaN });
-
-  test('pitch is one over TPI', () => near(r.pitch, 1 / 11.5, 1e-9));
-  test('wrench makeup is turns times pitch', () => near(r.wrenchMakeup, 3 / 11.5, 1e-9));
-  test('total engagement adds hand tight', () => near(r.totalEngagement, 0.436 + 3 / 11.5, 1e-9));
-  test('deduction is fitting face minus engagement', () => near(r.deductionPerEnd, 2.25 - r.totalEngagement, 1e-9));
-
-  test('cut plus both deductions reconstructs the C2C', () => {
-    for (const nps of NPT_TABLE.map((t) => t.nps)) {
-      const s = solveThread({ nps, turnsPastHandTight: 3, centerToCenter: 48, centerToFace: NaN });
-      if (!Number.isFinite(s.pipeCut)) continue;
-      near(s.pipeCut + 2 * s.deductionPerEnd, 48, 1e-9);
-    }
-  });
-
-  test('more wrench turns leaves a longer pipe', () => {
-    const a = solveThread({ nps: 2, turnsPastHandTight: 2, centerToCenter: 48, centerToFace: NaN });
-    const b = solveThread({ nps: 2, turnsPastHandTight: 4, centerToCenter: 48, centerToFace: NaN });
-    expect(b.pipeCut).toBeGreaterThan(a.pipeCut);
-  });
-
-  test('a custom fitting face overrides the table', () => {
-    const s = solveThread({ nps: 2, turnsPastHandTight: 3, centerToCenter: 48, centerToFace: 4 });
-    near(s.centerToFace, 4, 1e-9);
-    near(s.pipeCut, 48 - 2 * (4 - s.totalEngagement), 1e-9);
-  });
-
-  test('every size with a threaded elbow has a positive deduction at default turns', () => {
-    for (const t of NPT_TABLE) {
-      if (!Number.isFinite(t.elbowCenterToFace)) continue;
-      const s = solveThread({ nps: t.nps, turnsPastHandTight: t.wrenchTurns, centerToCenter: NaN, centerToFace: NaN });
-      expect(s.deductionPerEnd).toBeGreaterThan(0);
-    }
-  });
-
-  test('screwed elbows run to twelve inch, so every size carries one', () => {
-    // 125 lb cast iron goes to 12 inch. An earlier version of this test
-    // assumed the range stopped at 6; the printed table says otherwise.
-    for (const t of NPT_TABLE) {
-      expect(Number.isFinite(t.elbowCenterToFace)).toBe(true);
-      expect(t.elbowCenterToFace).toBeGreaterThan(0);
-    }
-  });
-
-  test('the thread table and the fitting table agree on centre to end', () => {
-    for (const t of NPT_TABLE) {
-      const f = screwedFitting(t.nps);
-      if (!f) continue;
-      expect(t.elbowCenterToFace).toBeCloseTo(f.centerToEnd, 10);
-    }
-  });
-
-  test('engagement when tight always sits between hand tight and the full thread', () => {
-    for (const t of NPT_TABLE) {
-      expect(t.engagementWhenTight).toBeGreaterThan(t.handTight);
-      expect(t.engagementWhenTight).toBeLessThan(t.totalThread);
-    }
-  });
-
-  test('every size carries a bore size and threads per inch', () => {
-    for (const t of NPT_TABLE) {
-      expect(t.boreSize.length).toBeGreaterThan(2);
-      expect([27, 18, 14, 11.5, 8]).toContain(t.tpi);
-    }
-  });
-
-  test('the eighteen printed sizes are all present, in order', () => {
-    expect(NPT_TABLE.length).toBe(18);
-    for (let i = 1; i < NPT_TABLE.length; i++) {
-      expect(NPT_TABLE[i]!.nps).toBeGreaterThan(NPT_TABLE[i - 1]!.nps);
-      expect(NPT_TABLE[i]!.effective).toBeGreaterThan(NPT_TABLE[i - 1]!.effective);
-    }
-  });
-
-  test('every listed size keeps thread in reserve at default turns', () => {
-    for (const t of NPT_TABLE) {
-      const s = solveThread({ nps: t.nps, turnsPastHandTight: t.wrenchTurns, centerToCenter: NaN, centerToFace: NaN });
-      expect(s.overThreaded).toBe(false);
-    }
-  });
-
-  test('flags over-threading', () => {
-    const over = solveThread({ nps: 2, turnsPastHandTight: 20, centerToCenter: NaN, centerToFace: NaN });
-    expect(over.overThreaded).toBe(true);
-    expect(over.error).toMatch(/exceeds/i);
-  });
-
-  test('rejects a C2C shorter than the deductions', () => {
-    const s = solveThread({ nps: 6, turnsPastHandTight: 3, centerToCenter: 2, centerToFace: NaN });
-    expect(s.cutError).toMatch(/exceed/i);
-    expect(Number.isFinite(s.pipeCut)).toBe(false);
-  });
-
-  test('findThread falls back rather than throwing', () => expect(findThread(999).label).toBe('2"'));
 });
 
 describe('pipe bend', () => {

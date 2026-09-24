@@ -3,8 +3,10 @@ import { Pressable, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { RootStackParamList } from '../navigation/types';
+import { HOME } from '../navigation/groups';
 import { Screen } from '../components/Screen';
 import { CalculatorCard } from '../components/CalculatorCard';
+import { RecentRow } from '../components/RecentRow';
 import { Plate, Well } from '../components/metal';
 import { useTheme } from '../theme/ThemeProvider';
 import { useSettings } from '../state/settings';
@@ -12,29 +14,14 @@ import { findSize } from '../calc/pipe';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
 
-const CALCULATORS: {
-  route: keyof RootStackParamList;
-  title: string;
-  subtitle: string;
-  icon: keyof typeof Ionicons.glyphMap;
-}[] = [
-  { route: 'Calculator', title: 'Calculator', subtitle: 'Feet, inches and fractions with pipe keys', icon: 'calculator-outline' },
-  { route: 'Level', title: 'Level', subtitle: 'Lay the phone on the pipe and read the fall', icon: 'git-commit-outline' },
-  { route: 'Reference', title: 'Handbook', subtitle: 'Every table, searchable, with its page', icon: 'book-outline' },
-  { route: 'SpoolBuilder', title: '3D spool', subtitle: 'Build a run and spin it in 3D', icon: 'cube-outline' },
-  { route: 'OrderSheet', title: 'Order sheet', subtitle: 'One order across every saved spool', icon: 'receipt-outline' },
-  { route: 'FlangeBoltUp', title: 'Flange bolt-up', subtitle: 'Tap each bolt through the cross pattern', icon: 'sync-circle-outline' },
-  { route: 'Joints', title: 'Joint register', subtitle: 'Every bolt-up saved, bolt by bolt', icon: 'pricetags-outline' },
-  { route: 'Heats', title: 'Heat book', subtitle: 'Heat numbers, certs, and what the job can prove', icon: 'shield-checkmark-outline' },
-  { route: 'SimpleOffset', title: 'Simple offset', subtitle: 'Travel, run and shrink in one plane', icon: 'git-branch-outline' },
-  { route: 'RollingOffset', title: 'Rolling offset', subtitle: 'True offset and roll angle in two planes', icon: 'sync-outline' },
-  { route: 'CutLength', title: 'Cut length', subtitle: 'Centre-to-centre minus fitting takeouts', icon: 'cut-outline' },
-  { route: 'SaddleBend', title: 'Saddle bend', subtitle: 'Three and four point saddles over an obstruction', icon: 'trending-up-outline' },
-  { route: 'MiterBend', title: 'Miter bend', subtitle: 'Segmented elbow cuts, code checked', icon: 'triangle-outline' },
-  { route: 'ThreadEngagement', title: 'Thread engagement', subtitle: 'NPT makeup, takeout and tap drill', icon: 'options-outline' },
-  { route: 'HandBender', title: 'Pipe bend', subtitle: 'Setback, arc length and gain', icon: 'analytics-outline' },
-];
-
+/**
+ * The front page.
+ *
+ * What is on it, and in what order, is in navigation/groups.ts — this screen
+ * only draws it. A card is either a tool or a group of them, and both look the
+ * same on purpose: a man taps the picture of the thing he wants and gets
+ * either the tool or the short list of the ones that answer the same question.
+ */
 export function HomeScreen({ navigation }: Props) {
   const t = useTheme();
   const { settings } = useSettings();
@@ -90,17 +77,30 @@ export function HomeScreen({ navigation }: Props) {
         </Pressable>
       </Plate>
 
+      <RecentRow onOpen={(route) => navigation.navigate(route as never)} />
+
       <View style={{ paddingHorizontal: t.space.md }}>
-        {CALCULATORS.map((c) => (
-          <CalculatorCard
-            key={c.route}
-            route={c.route}
-            title={c.title}
-            subtitle={c.subtitle}
-            icon={c.icon}
-            onPress={() => navigation.navigate(c.route as never)}
-          />
-        ))}
+        {HOME.map((entry) =>
+          entry.kind === 'tool' ? (
+            <CalculatorCard
+              key={entry.tool.route}
+              art={entry.tool.route}
+              title={entry.tool.title}
+              subtitle={entry.tool.subtitle}
+              icon={entry.tool.icon}
+              onPress={() => navigation.navigate(entry.tool.route as never)}
+            />
+          ) : (
+            <CalculatorCard
+              key={entry.id}
+              art={entry.art}
+              title={entry.title}
+              subtitle={entry.subtitle}
+              icon={entry.icon}
+              onPress={() => navigation.navigate('Group', { id: entry.id })}
+            />
+          )
+        )}
       </View>
     </Screen>
   );

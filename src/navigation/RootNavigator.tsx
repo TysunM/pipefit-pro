@@ -1,18 +1,26 @@
-import React from 'react';
-import { DarkTheme, DefaultTheme, NavigationContainer, Theme as NavTheme } from '@react-navigation/native';
+import React, { useCallback } from 'react';
+import {
+  DarkTheme,
+  DefaultTheme,
+  NavigationContainer,
+  type NavigationState,
+  type Theme as NavTheme,
+} from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { RootStackParamList } from './types';
 import { BronzeHeader } from '../components/BronzeHeader';
 import { useTheme } from '../theme/ThemeProvider';
+import { group } from './groups';
+import { useRecents } from '../state/recents';
 import { referenceTable } from '../calc/reference';
 import { HomeScreen } from '../screens/HomeScreen';
+import { GroupScreen } from '../screens/GroupScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
 import { SimpleOffsetScreen } from '../screens/SimpleOffsetScreen';
 import { RollingOffsetScreen } from '../screens/RollingOffsetScreen';
 import { CutLengthScreen } from '../screens/CutLengthScreen';
 import { SaddleBendScreen } from '../screens/SaddleBendScreen';
 import { MiterBendScreen } from '../screens/MiterBendScreen';
-import { ThreadEngagementScreen } from '../screens/ThreadEngagementScreen';
 import { HandBenderScreen } from '../screens/HandBenderScreen';
 import { FlangeBoltUpScreen } from '../screens/FlangeBoltUpScreen';
 import { JointsScreen } from '../screens/JointsScreen';
@@ -28,6 +36,19 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export function RootNavigator() {
   const t = useTheme();
+  const { remember } = useRecents();
+
+  // What the last-used strip is built from. Taken here rather than in each
+  // screen so a tool cannot be added later and quietly not count: every way
+  // into a screen — a card, the strip itself, the back stack — comes through
+  // this one listener. groups.ts decides which routes are worth recording.
+  const record = useCallback(
+    (state: NavigationState | undefined) => {
+      const name = state?.routes[state.index ?? state.routes.length - 1]?.name;
+      if (name) remember(name);
+    },
+    [remember]
+  );
 
   const navTheme: NavTheme = {
     ...(t.mode === 'dark' ? DarkTheme : DefaultTheme),
@@ -43,7 +64,7 @@ export function RootNavigator() {
   };
 
   return (
-    <NavigationContainer theme={navTheme}>
+    <NavigationContainer theme={navTheme} onStateChange={record}>
       <Stack.Navigator
         screenOptions={({ navigation, route }) => ({
           contentStyle: { backgroundColor: t.colors.bg },
@@ -57,12 +78,16 @@ export function RootNavigator() {
         })}
       >
         <Stack.Screen name="Home" component={HomeScreen} options={{ title: 'PipeFit Pro' }} />
+        <Stack.Screen
+          name="Group"
+          component={GroupScreen}
+          options={({ route }) => ({ title: group(route.params.id)?.title ?? 'Tools' })}
+        />
         <Stack.Screen name="SimpleOffset" component={SimpleOffsetScreen} options={{ title: 'Simple offset' }} />
         <Stack.Screen name="RollingOffset" component={RollingOffsetScreen} options={{ title: 'Rolling offset' }} />
         <Stack.Screen name="CutLength" component={CutLengthScreen} options={{ title: 'Cut length' }} />
         <Stack.Screen name="SaddleBend" component={SaddleBendScreen} options={{ title: 'Saddle bend' }} />
         <Stack.Screen name="MiterBend" component={MiterBendScreen} options={{ title: 'Miter bend' }} />
-        <Stack.Screen name="ThreadEngagement" component={ThreadEngagementScreen} options={{ title: 'Thread engagement' }} />
         <Stack.Screen name="HandBender" component={HandBenderScreen} options={{ title: 'Pipe bend' }} />
         <Stack.Screen name="FlangeBoltUp" component={FlangeBoltUpScreen} options={{ title: 'Flange bolt-up' }} />
         <Stack.Screen name="Joints" component={JointsScreen} options={{ title: 'Joint register' }} />

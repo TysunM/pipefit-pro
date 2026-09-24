@@ -1,11 +1,12 @@
 export type RootStackParamList = {
   Home: undefined;
+  /** One card's worth of tools — see navigation/groups.ts. */
+  Group: { id: 'offsets' | 'flanges' | 'spool' };
   SimpleOffset: undefined;
   RollingOffset: undefined;
   CutLength: undefined;
   SaddleBend: undefined;
   MiterBend: undefined;
-  ThreadEngagement: undefined;
   HandBender: undefined;
   /** Which joint in the register is being worked. Absent means the unnamed one. */
   FlangeBoltUp: { jointId?: string } | undefined;
