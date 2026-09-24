@@ -20,7 +20,7 @@
  */
 
 /** Every prefix used for an SVG id in this app. */
-export const SVG_PREFIXES = ['bezel', 'glow', 'hdr', 'sheen', 'well'] as const;
+export const SVG_PREFIXES = ['glow', 'sheen', 'well'] as const;
 
 export type SvgPrefix = (typeof SVG_PREFIXES)[number];
 

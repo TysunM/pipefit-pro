@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useMemo } from 'react';
-import { useColorScheme } from 'react-native';
+import { type TextStyle, useColorScheme } from 'react-native';
 import { Colors, Mode, finish, hairline, layout, palette, radius, space } from './tokens';
-import { cutFor, fontFamily, type } from './typography';
+import { cutFor, fontFamily, type, type TypeKey, type TypeStyle } from './typography';
 import { useSettings } from '../state/settings';
 
 export type Theme = {
@@ -10,7 +10,7 @@ export type Theme = {
   space: typeof space;
   radius: typeof radius;
   layout: typeof layout;
-  type: typeof type;
+  type: Record<TypeKey, TextStyle>;
   font: typeof fontFamily;
   finish: (typeof finish)[Mode];
   hairline: number;
@@ -18,7 +18,7 @@ export type Theme = {
 
 const ThemeContext = createContext<Theme | null>(null);
 
-export function ThemeProvider({ children, serifLoaded = false }: { children: React.ReactNode; serifLoaded?: boolean }) {
+export function ThemeProvider({ children, fontsLoaded = false }: { children: React.ReactNode; fontsLoaded?: boolean }) {
   const system = useColorScheme();
   const { settings } = useSettings();
 
@@ -26,22 +26,30 @@ export function ThemeProvider({ children, serifLoaded = false }: { children: Rea
     settings.themePreference === 'system' ? (system === 'dark' ? 'dark' : 'light') : settings.themePreference;
 
   const value = useMemo<Theme>(() => {
-    // Every cut falls back to the phone's own serif until the font is in, so
-    // nothing ever renders in a sans for a frame and then jumps.
-    const font = serifLoaded
+    // Every cut falls back to the phone's own face of the same kind until the
+    // fonts are in, so nothing renders in a substitute for a frame and jumps.
+    const font = fontsLoaded
       ? fontFamily
       : {
           ...fontFamily,
+          sans: fontFamily.sansFallback,
+          sansMedium: fontFamily.sansFallback,
+          sansRegular: fontFamily.sansFallback,
           serif: fontFamily.serifFallback,
           serifMedium: fontFamily.serifFallback,
           serifRegular: fontFamily.serifFallback,
           serifItalic: fontFamily.serifFallback,
         };
+    // `face` is how a style says which family it wants; it is resolved here
+    // and never reaches a <Text>, which would not know what to do with it.
     const typed = Object.fromEntries(
-      Object.entries(type).map(([k, s]) => [k, { ...s, fontFamily: font[cutFor(s)] }])
-    ) as typeof type;
+      Object.entries(type).map(([k, s]) => {
+        const { face: _face, ...rest } = s as TypeStyle;
+        return [k, { ...rest, fontFamily: font[cutFor(s)] }];
+      })
+    ) as Record<TypeKey, TextStyle>;
     return { mode, colors: palette[mode], space, radius, layout, type: typed, font, finish: finish[mode], hairline };
-  }, [mode, serifLoaded]);
+  }, [mode, fontsLoaded]);
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }

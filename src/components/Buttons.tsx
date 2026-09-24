@@ -82,7 +82,7 @@ export function SelectorButton({
         >
           <Ionicons name={icon} size={18} color={t.colors.textMuted} />
           <Text
-            style={[t.type.bodyStrong, { color: t.colors.text, fontSize: 18, fontFamily: t.font.serif, flexShrink: 1 }]}
+            style={[t.type.bodyStrong, { color: t.colors.text, fontSize: 18, flexShrink: 1 }]}
             numberOfLines={1}
           >
             {primary}

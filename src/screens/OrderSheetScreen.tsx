@@ -40,7 +40,7 @@ function Totals({ t, sheet, stick }: { t: Theme; sheet: OrderSheet; stick: strin
       <Text style={[t.type.caption, { color: t.colors.textFaint }]}>{label}</Text>
       <Text
         style={[
-          loud ? t.type.displaySmall ?? t.type.bodyStrong : t.type.bodyStrong,
+          loud ? t.type.displaySmall : t.type.bodyStrong,
           { color: loud ? t.colors.data : t.colors.text, marginTop: 2 },
         ]}
       >

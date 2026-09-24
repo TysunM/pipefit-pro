@@ -89,7 +89,7 @@ export function HeatsScreen() {
         gap: 2,
       }}
     >
-      <Text style={[t.type.h2, { color: tone === 'warn' ? t.colors.warnText : tone === 'good' ? t.colors.data : t.colors.text }]}>
+      <Text style={[t.type.statValue, { color: tone === 'warn' ? t.colors.warnText : tone === 'good' ? t.colors.data : t.colors.text }]}>
         {n}
       </Text>
       <Text numberOfLines={2} style={[t.type.caption, { color: t.colors.textMuted }]}>

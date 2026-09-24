@@ -144,7 +144,7 @@ export function AngleFromPipe({
         }}
       >
         <Text style={[t.type.label, { color: t.colors.textMuted }]}>{label}</Text>
-        <Text style={[t.type.h2, { color: value !== null ? t.colors.data : t.colors.textFaint }]}>
+        <Text style={[t.type.statValue, { color: value !== null ? t.colors.data : t.colors.textFaint }]}>
           {value !== null ? `${tidy(value)}°` : '—'}
         </Text>
         <Text numberOfLines={2} style={[t.type.caption, { color: t.colors.textFaint }]}>
@@ -195,7 +195,7 @@ export function AngleFromPipe({
             borderBottomColor: t.colors.border,
           }}
         >
-          <Text style={[t.type.h3, { color: t.colors.text, flex: 1 }]}>{`${title} off the pipe`}</Text>
+          <Text style={[t.type.sectionTitle, { color: t.colors.text, flex: 1 }]}>{`${title} off the pipe`}</Text>
           <Pressable onPress={onClose} accessibilityRole="button" accessibilityLabel="Close">
             <Ionicons name="close" size={24} color={t.colors.textMuted} />
           </Pressable>

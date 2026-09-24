@@ -54,7 +54,7 @@ export function CalculatorScreen() {
         >
           <View style={styles.annunciators}>
             {annunciators.map((a) => (
-              <Text key={a} style={[styles.annunciator, { color: t.mode === 'dark' ? '#7FA890' : '#4A5A44' }]}>
+              <Text key={a} style={[styles.annunciator, { fontFamily: t.font.sans, color: t.mode === 'dark' ? '#7FA890' : '#4A5A44' }]}>
                 {a}
               </Text>
             ))}
@@ -75,7 +75,7 @@ export function CalculatorScreen() {
             {shown}
           </Text>
 
-          <Text style={[styles.unitWord, { color: t.mode === 'dark' ? '#7FA890' : '#4A5A44' }]}>
+          <Text style={[styles.unitWord, { fontFamily: t.font.sans, color: t.mode === 'dark' ? '#7FA890' : '#4A5A44' }]}>
             {unitWord || ' '}
           </Text>
         </View>

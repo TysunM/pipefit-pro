@@ -58,9 +58,8 @@ export function ChipRow<T extends string | number>({
                 const label = (
                   <Text
                     style={[
-                      t.type.bodyStrong,
+                      t.type.button,
                       { color: active ? t.colors.onPrimary : t.colors.text },
-                      active ? { fontFamily: t.font.serif } : null,
                     ]}
                   >
                     {opt.label}

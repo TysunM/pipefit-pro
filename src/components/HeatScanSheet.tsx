@@ -321,7 +321,7 @@ export function HeatScanSheet({
             borderBottomColor: t.colors.border,
           }}
         >
-          <Text style={[t.type.h3, { color: t.colors.text, flex: 1 }]}>Read a heat number</Text>
+          <Text style={[t.type.sectionTitle, { color: t.colors.text, flex: 1 }]}>Read a heat number</Text>
           <Pressable onPress={close} accessibilityRole="button" accessibilityLabel="Close">
             <Ionicons name="close" size={24} color={t.colors.textMuted} />
           </Pressable>

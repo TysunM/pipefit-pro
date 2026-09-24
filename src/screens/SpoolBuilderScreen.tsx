@@ -986,6 +986,7 @@ function SaveSheet({
     backgroundColor: t.colors.bgRaised,
     color: t.colors.text,
     paddingHorizontal: t.space.lg,
+    fontFamily: t.font.sansMedium,
     fontSize: 17,
     fontWeight: '600' as const,
   };
@@ -1005,7 +1006,7 @@ function SaveSheet({
             gap: t.space.md,
           }}
         >
-          <Text style={[t.type.sectionTitle, { color: t.colors.text, fontFamily: t.font.serif }]}>
+          <Text style={[t.type.sectionTitle, { color: t.colors.text }]}>
             {initialName ? 'Keep this spool' : 'Name this spool'}
           </Text>
           <Text style={[t.type.caption, { color: t.colors.textMuted }]}>{hint}</Text>

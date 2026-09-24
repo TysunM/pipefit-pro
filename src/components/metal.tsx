@@ -179,7 +179,12 @@ export function GlowBar({ width = 56, style }: { width?: number; style?: ViewSty
   );
 }
 
-/** A round bronze bezel round an icon — the header's back and settings. */
+/**
+ * A header control: a plain icon in a forty-point hit box. The ring it used to
+ * sit in is gone — the reference draws them bare — but the box stays, because
+ * a gloved thumb finds forty points where it never found a twenty-two point
+ * glyph.
+ */
 export function Bezel({
   icon,
   onPress,
@@ -192,36 +197,20 @@ export function Bezel({
   size?: number;
 }) {
   const t = useTheme();
-  const gid = useSvgIds('bezel');
-  const c = t.colors;
-  const ring = 3;
   return (
     <Pressable onPress={onPress} hitSlop={8} accessibilityRole="button" accessibilityLabel={label}>
       {({ pressed }) => (
-        <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
-          <Svg width={size} height={size} style={StyleSheet.absoluteFill}>
-            <Defs>
-              <LinearGradient id={gid('a')} x1="0" y1="0" x2="1" y2="1">
-                <Stop offset="0" stopColor={pressed ? c.copperLo : c.copperHi} />
-                <Stop offset="0.55" stopColor={c.copper} />
-                <Stop offset="1" stopColor={pressed ? c.copperHi : c.copperLo} />
-              </LinearGradient>
-              <LinearGradient id={gid('b')} x1="0" y1="0" x2="0" y2="1">
-                <Stop offset="0" stopColor={pressed ? c.headerLo : c.metalHi} />
-                <Stop offset="1" stopColor={pressed ? c.metalHi : c.headerLo} />
-              </LinearGradient>
-            </Defs>
-            <Rect x={0} y={0} width={size} height={size} rx={size / 2} fill={`url(#${gid('a')})`} />
-            <Rect
-              x={ring}
-              y={ring}
-              width={size - ring * 2}
-              height={size - ring * 2}
-              rx={(size - ring * 2) / 2}
-              fill={`url(#${gid('b')})`}
-            />
-          </Svg>
-          <Ionicons name={icon} size={size * 0.5} color={c.chrome} />
+        <View
+          style={{
+            width: size,
+            height: size,
+            borderRadius: size / 2,
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: pressed ? t.colors.bgSubtle : 'transparent',
+          }}
+        >
+          <Ionicons name={icon} size={24} color={t.colors.chrome} />
         </View>
       )}
     </Pressable>

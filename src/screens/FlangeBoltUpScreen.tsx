@@ -2,11 +2,14 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Animated, Modal, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
-import Svg, { Circle, Line } from 'react-native-svg';
+import Svg, { Circle, Defs, Line, RadialGradient, Stop } from 'react-native-svg';
 import * as Haptics from 'expo-haptics';
 import { RootStackParamList } from '../navigation/types';
 import { Screen } from '../components/Screen';
-import { ChipRow } from '../components/ChipRow';
+import { Segmented } from '../components/Segmented';
+import { StopSlider } from '../components/StopSlider';
+import { FlangeIcon } from '../components/FlangeIcon';
+import { Well, useSvgIds } from '../components/metal';
 import { SectionHeader } from '../components/SectionHeader';
 import { AccentButton, ControlRow, GhostButton } from '../components/Buttons';
 import { HintRow } from '../components/HintRow';
@@ -282,6 +285,16 @@ function Bolting({
   const gasketIdR = flange ? (flange.gasketId / 2) * scale : bcR * 0.58;
 
   const angles = boltHoleAngles(bolts);
+  const gid = useSvgIds('glow');
+
+  // The bolt being asked for is lit, and a line runs from it to the one that
+  // follows, so the eye is already on the far side of the flange before the
+  // wrench is. Both are drawn under the markers, never over a number.
+  const angleOf = (bolt: number | undefined) => (bolt === undefined ? undefined : angles[bolt - 1]);
+  const atDeg = angleOf(expected);
+  const toDeg = angleOf(order[order.indexOf(expected) + 1]);
+  const at = atDeg === undefined ? null : boltCentre(L, atDeg);
+  const to = toDeg === undefined ? null : boltCentre(L, toDeg);
 
   return (
     <Screen>
@@ -317,7 +330,7 @@ function Bolting({
                 cx={c}
                 cy={c}
                 r={gasketOdR}
-                fill={t.colors.accentSoft}
+                fill={t.colors.dataSoft}
                 stroke={t.colors.borderStrong}
                 strokeWidth={1}
               />
@@ -342,6 +355,31 @@ function Bolting({
               />
               <Line x1={c} y1={c - odR} x2={c} y2={c + odR} stroke={t.colors.textFaint} strokeWidth={0.75} opacity={0.4} />
               <Line x1={c - odR} y1={c} x2={c + odR} y2={c} stroke={t.colors.textFaint} strokeWidth={0.75} opacity={0.4} />
+              {!done && at ? (
+                <>
+                  <Defs>
+                    <RadialGradient id={gid('a')} cx="50%" cy="50%" rx="50%" ry="50%">
+                      <Stop offset="0" stopColor={t.colors.primary} stopOpacity={0.75} />
+                      <Stop offset="0.55" stopColor={t.colors.primary} stopOpacity={0.28} />
+                      <Stop offset="1" stopColor={t.colors.primary} stopOpacity={0} />
+                    </RadialGradient>
+                  </Defs>
+                  {to ? (
+                    <Line
+                      x1={at.x}
+                      y1={at.y}
+                      x2={to.x}
+                      y2={to.y}
+                      stroke={t.colors.accent}
+                      strokeWidth={2}
+                      strokeDasharray="7 5"
+                      strokeLinecap="round"
+                      opacity={0.9}
+                    />
+                  ) : null}
+                  <Circle cx={at.x} cy={at.y} r={L.ring * 1.15} fill={`url(#${gid('a')})`} />
+                </>
+              ) : null}
             </Svg>
 
             {angles.map((deg, i) => {
@@ -404,8 +442,8 @@ function Bolting({
 
       <SectionHeader title="The joint" meta={flange ? `${flange.label} · class ${cls}` : `${bolts} bolts`} />
 
-      <ChipRow
-        label="CLASS"
+      <Segmented
+        label="Class"
         options={[
           { value: '125' as CastIronFlangeClass, label: '125 lb' },
           { value: '250' as CastIronFlangeClass, label: '250 lb' },
@@ -414,19 +452,14 @@ function Bolting({
         onSelect={pickClass}
       />
 
-      <ChipRow
-        label="SIZE"
-        options={sizes.map((s) => ({ value: s, label: boltUp(s, cls)?.label ?? `${s}"` }))}
+      <SizeRow
+        t={t}
+        sizes={sizes.map((s) => ({ nps: s, label: boltUp(s, cls)?.label ?? `${s}"`, bolts: boltUp(s, cls)?.bolts ?? 4 }))}
         selected={flange ? nps : null}
         onSelect={pickSize}
       />
 
-      <ChipRow
-        label="BOLTS"
-        options={COUNTS.map((n) => ({ value: n, label: String(n) }))}
-        selected={bolts}
-        onSelect={setBolts}
-      />
+      <StopSlider label="Bolts" stops={COUNTS} selected={bolts} onSelect={setBolts} />
 
       {flange ? (
         <View style={{ paddingHorizontal: t.layout.screenPadding, marginBottom: t.space.lg }}>
@@ -449,25 +482,17 @@ function Bolting({
       <Divider />
       <SectionHeader title="Torque" meta="from the job's bolting spec" />
       <View style={{ paddingHorizontal: t.layout.screenPadding, marginBottom: t.space.lg }}>
-        <TextInput
-          value={torque}
-          onChangeText={commitTorque}
-          keyboardType="decimal-pad"
-          placeholder="Final torque, ft-lb"
-          placeholderTextColor={t.colors.textFaint}
-          accessibilityLabel="Final torque in foot pounds"
-          style={{
-            height: t.layout.fieldHeight,
-            borderRadius: t.radius.md,
-            borderWidth: 1,
-            borderColor: t.colors.border,
-            backgroundColor: t.colors.bgRaised,
-            color: t.colors.text,
-            paddingHorizontal: t.space.lg,
-            fontSize: 23,
-            fontWeight: '700',
-          }}
-        />
+        <Well style={{ height: t.layout.fieldHeight, justifyContent: 'center' }}>
+          <TextInput
+            value={torque}
+            onChangeText={commitTorque}
+            keyboardType="decimal-pad"
+            placeholder="Final torque, ft-lb"
+            placeholderTextColor={t.colors.textFaint}
+            accessibilityLabel="Final torque in foot pounds"
+            style={[t.type.fieldValue, { color: t.colors.data, paddingHorizontal: t.space.lg, height: '100%' }]}
+          />
+        </Well>
         <Text style={[t.type.caption, { color: t.colors.textMuted, marginTop: t.space.md }]}>
           The app splits the figure into passes. It does not supply it: final torque depends on the gasket, the stud
           material and whether the threads are lubricated, and a guessed figure either crushes the gasket or leaves the
@@ -629,6 +654,59 @@ function PassBanner({
   );
 }
 
+/**
+ * The sizes as a row of flanges. Each one is drawn with its own bolt count,
+ * so a man who knows his flange has eight holes finds it by the picture.
+ */
+function SizeRow({
+  t,
+  sizes,
+  selected,
+  onSelect,
+}: {
+  t: Theme;
+  sizes: { nps: number; label: string; bolts: number }[];
+  selected: number | null;
+  onSelect: (nps: number) => void;
+}) {
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: t.space.lg }}>
+      <Text style={[t.type.label, { color: t.colors.textMuted, width: 64, marginLeft: t.layout.screenPadding }]}>Size</Text>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{ gap: t.space.sm, paddingRight: t.layout.screenPadding, paddingLeft: t.space.md }}
+      >
+        {sizes.map((s) => {
+          const on = s.nps === selected;
+          return (
+            <Pressable
+              key={s.nps}
+              onPress={() => onSelect(s.nps)}
+              accessibilityRole="button"
+              accessibilityState={{ selected: on }}
+              accessibilityLabel={`${s.label} flange, ${s.bolts} bolts`}
+              style={({ pressed }) => ({
+                width: 64,
+                paddingVertical: t.space.sm,
+                borderRadius: t.radius.md,
+                alignItems: 'center',
+                gap: 4,
+                borderWidth: 1,
+                borderColor: on ? t.colors.primary : t.colors.border,
+                backgroundColor: on ? (pressed ? t.colors.primaryPressed : t.colors.primary) : pressed ? t.colors.bgSubtle : t.colors.bgRaised,
+              })}
+            >
+              <FlangeIcon bolts={s.bolts} active={on} />
+              <Text style={[t.type.labelSmall, { color: on ? t.colors.onPrimary : t.colors.text }]}>{s.label}</Text>
+            </Pressable>
+          );
+        })}
+      </ScrollView>
+    </View>
+  );
+}
+
 function BoltMarker({
   t,
   bolt,
@@ -704,7 +782,7 @@ function BoltMarker({
           opacity: pressed ? 0.65 : 1,
         })}
       >
-        <Text style={{ color: skin.text, fontSize: Math.max(9, Math.min(15, size * 0.45)), fontWeight: '700' }}>
+        <Text style={{ fontFamily: t.font.sans, color: skin.text, fontSize: Math.max(9, Math.min(15, size * 0.45)), fontWeight: '700' }}>
           {bolt}
         </Text>
       </Pressable>
@@ -727,7 +805,7 @@ function DoneSheet({ t, visible, bolts, onClose }: { t: Theme; visible: boolean;
           }}
         >
           <Ionicons name="checkmark-circle" size={52} color={t.colors.success} />
-          <Text style={[t.type.sectionTitle, { color: t.colors.text, fontFamily: t.font.serif, textAlign: 'center' }]}>
+          <Text style={[t.type.sectionTitle, { color: t.colors.text, textAlign: 'center' }]}>
             Joint complete
           </Text>
           <Text style={[t.type.body, { color: t.colors.textMuted, textAlign: 'center' }]}>
@@ -828,6 +906,7 @@ function NameSheet({
     backgroundColor: t.colors.bgRaised,
     color: t.colors.text,
     paddingHorizontal: t.space.lg,
+    fontFamily: t.font.sansMedium,
     fontSize: 17,
     fontWeight: '600' as const,
   };
@@ -845,7 +924,7 @@ function NameSheet({
             gap: t.space.md,
           }}
         >
-          <Text style={[t.type.sectionTitle, { color: t.colors.text, fontFamily: t.font.serif }]}>
+          <Text style={[t.type.sectionTitle, { color: t.colors.text }]}>
             {isScratch(joint) ? 'Name this joint' : 'Rename this joint'}
           </Text>
           <Text style={[t.type.caption, { color: t.colors.textMuted }]}>
@@ -1060,6 +1139,7 @@ function CheckSheet({
     backgroundColor: t.colors.bgRaised,
     color: t.colors.text,
     paddingHorizontal: t.space.lg,
+    fontFamily: t.font.sansMedium,
     fontSize: 17,
     fontWeight: '600' as const,
   };
@@ -1104,7 +1184,7 @@ function CheckSheet({
             gap: t.space.md,
           }}
         >
-          <Text style={[t.type.sectionTitle, { color: t.colors.text, fontFamily: t.font.serif }]}>
+          <Text style={[t.type.sectionTitle, { color: t.colors.text }]}>
             Re-torque check
           </Text>
           <Text style={[t.type.caption, { color: t.colors.textMuted }]}>
