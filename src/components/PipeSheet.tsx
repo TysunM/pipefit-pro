@@ -45,7 +45,7 @@ export function PipeSheet({
             borderBottomColor: t.colors.border,
           }}
         >
-          <Text style={[t.type.sectionTitle, { color: t.colors.text, fontFamily: t.font.serif, flex: 1 }]}>
+          <Text style={[t.type.sectionTitle, { color: t.colors.text, flex: 1 }]}>
             Pipe &amp; fitting
           </Text>
           <Pressable onPress={onClose} hitSlop={12} accessibilityRole="button" accessibilityLabel="Close">

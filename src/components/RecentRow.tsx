@@ -5,13 +5,14 @@ import { useTheme } from '../theme/ThemeProvider';
 import { useRecents } from '../state/recents';
 import { tool } from '../navigation/groups';
 import { Plate } from './metal';
+import { GridLabel } from './ToolTile';
 
 /**
  * The tools you opened last, across the top.
  *
- * Grouping the rest behind cards costs a tap. This is where that tap comes
+ * Grouping the rest behind tiles costs a tap. This is where that tap comes
  * back: a man works two or three tools in a shift, and those are one tap from
- * the front page whatever card they live under.
+ * the front page whatever tile they live under.
  *
  * Nothing is shown until something has been opened. An empty strip with three
  * grey slots in it is furniture, and a home screen full of furniture is what
@@ -24,9 +25,9 @@ export function RecentRow({ onOpen }: { onOpen: (route: string) => void }) {
   if (tools.length === 0) return null;
 
   return (
-    <View style={{ paddingHorizontal: t.layout.screenPadding, paddingBottom: t.space.lg }}>
-      <Text style={[t.type.labelSmall, { color: t.colors.textMuted, marginBottom: t.space.sm }]}>Last used</Text>
-      <View style={{ flexDirection: 'row', gap: t.space.sm }}>
+    <View>
+      <GridLabel text="Last used" />
+      <View style={{ flexDirection: 'row', gap: t.space.sm, paddingHorizontal: t.layout.screenPadding }}>
         {tools.map((x) => (
           <Pressable
             key={x.route}
@@ -39,20 +40,10 @@ export function RecentRow({ onOpen }: { onOpen: (route: string) => void }) {
               <Plate
                 sunk={pressed}
                 radius={t.radius.md}
-                style={{
-                  height: 52,
-                  paddingHorizontal: t.space.sm,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexDirection: 'row',
-                  gap: 5,
-                }}
+                style={{ height: 52, paddingHorizontal: t.space.sm, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 6 }}
               >
-                <Ionicons name={x.icon} size={15} color={t.colors.textMuted} />
-                <Text
-                  style={[t.type.captionStrong, { color: t.colors.text, fontFamily: t.font.serifMedium, flexShrink: 1 }]}
-                  numberOfLines={2}
-                >
+                <Ionicons name={x.icon} size={16} color={t.colors.accent} />
+                <Text style={[t.type.captionStrong, { color: t.colors.text, fontSize: 14, flexShrink: 1 }]} numberOfLines={2}>
                   {x.title}
                 </Text>
               </Plate>

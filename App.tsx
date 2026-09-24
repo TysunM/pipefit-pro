@@ -37,7 +37,7 @@ function Gate() {
     );
   }
   return (
-    <ThemeProvider serifLoaded={fonts.serifLoaded}>
+    <ThemeProvider fontsLoaded={fonts.fontsLoaded}>
       <Shell />
     </ThemeProvider>
   );

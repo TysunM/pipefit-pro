@@ -1,49 +1,66 @@
 import { Platform, TextStyle } from 'react-native';
 
-// One serif, four cuts
-// --------------------
-// Source Serif 4 was drawn for screens: a tall lowercase, so a caption at
-// twelve points is still a caption on a roof, and lining figures by default,
-// so 1-1/2" never has a descending 4 in it. It was chosen over Crimson (too
-// small at the sizes a label is set in) and Baskerville (too wide — a figure
-// line wrapped on a phone) by setting all three against the same screen.
+// Two faces, one family
+// ---------------------
+// Source Sans 3 for anything that names or labels — screen titles, tile
+// titles, section headings, labels, buttons, chips and the big figures — and
+// Source Serif 4 for anything that explains: body copy, hints, captions, the
+// footnote under a result. They were drawn as a pair by the same hand, so the
+// x-heights and stroke weights agree and a label over a paragraph reads as
+// one voice, not two fonts.
 //
-// Android does not pick a weight out of a family by fontWeight, so each weight
-// is its own family name and every style below says which one it wants.
+// The sans was picked by setting four against the same screen. Inter, Barlow
+// and DM Sans all draw capital I and lowercase l as the same bar; on a screen
+// that reads heat numbers off steel, E7Z4l9 and E7Z4I9 must not look alike.
+// Source Sans tails its l and flags its 1, so all three are distinct.
+//
+// Android does not pick a weight out of a family by fontWeight, so every
+// weight is its own family name, and each style below says which face it is
+// set in. The theme resolves that to a family name once, at the top.
 
 export const fontFamily = {
+  sans: 'SourceSans3_700Bold',
+  sansMedium: 'SourceSans3_600SemiBold',
+  sansRegular: 'SourceSans3_400Regular',
   serif: 'SourceSerif4_700Bold',
   serifMedium: 'SourceSerif4_600SemiBold',
   serifRegular: 'SourceSerif4_400Regular',
   serifItalic: 'SourceSerif4_400Regular_Italic',
+  sansFallback: Platform.select({ ios: 'System', android: 'sans-serif', default: 'system-ui' }) as string,
   serifFallback: Platform.select({ ios: 'Georgia', android: 'serif', default: 'serif' }) as string,
-  sans: Platform.select({ ios: 'System', android: 'sans-serif', default: 'system-ui' }) as string,
-  sansMedium: Platform.select({ ios: 'System', android: 'sans-serif-medium', default: 'system-ui' }) as string,
   mono: Platform.select({ ios: 'Menlo', android: 'monospace', default: 'monospace' }) as string,
 };
 
-type T = TextStyle;
+export type Face = 'sans' | 'serif';
 
-export const type: Record<string, T> = {
-  screenTitle: { fontSize: 22, fontWeight: '700', letterSpacing: -0.2 },
-  display: { fontSize: 46, fontWeight: '700', letterSpacing: -1 },
-  displaySmall: { fontSize: 34, fontWeight: '700', letterSpacing: -0.6 },
-  sectionTitle: { fontSize: 20, fontWeight: '600', letterSpacing: -0.2 },
-  label: { fontSize: 12.5, fontWeight: '600', letterSpacing: 1.1, textTransform: 'uppercase' },
-  labelSmall: { fontSize: 11.5, fontWeight: '600', letterSpacing: 0.9, textTransform: 'uppercase' },
-  fieldValue: { fontSize: 24, fontWeight: '600', letterSpacing: -0.2 },
-  statValue: { fontSize: 22, fontWeight: '600', letterSpacing: -0.2 },
-  body: { fontSize: 16, fontWeight: '400', lineHeight: 23 },
-  bodyStrong: { fontSize: 16, fontWeight: '600', lineHeight: 23 },
-  caption: { fontSize: 13, fontWeight: '400', lineHeight: 18 },
-  captionStrong: { fontSize: 13, fontWeight: '600' },
-  italicNote: { fontSize: 13, fontStyle: 'italic' },
-  button: { fontSize: 16, fontWeight: '600', letterSpacing: 0.2 },
-};
+/** A text style plus which face it is set in. `face` never reaches a <Text>. */
+export type TypeStyle = TextStyle & { face: Face };
 
-/** The cut a style is set in, from its weight and slant. */
-export function cutFor(style: T): keyof typeof fontFamily {
-  if (style.fontStyle === 'italic') return 'serifItalic';
+export const type = {
+  screenTitle: { face: 'sans', fontSize: 22, fontWeight: '700', letterSpacing: -0.2 },
+  display: { face: 'sans', fontSize: 46, fontWeight: '700', letterSpacing: -1 },
+  displaySmall: { face: 'sans', fontSize: 34, fontWeight: '700', letterSpacing: -0.6 },
+  sectionTitle: { face: 'sans', fontSize: 20, fontWeight: '700', letterSpacing: -0.2 },
+  label: { face: 'sans', fontSize: 12.5, fontWeight: '600', letterSpacing: 1.1, textTransform: 'uppercase' },
+  labelSmall: { face: 'sans', fontSize: 11.5, fontWeight: '600', letterSpacing: 0.9, textTransform: 'uppercase' },
+  fieldValue: { face: 'sans', fontSize: 24, fontWeight: '600', letterSpacing: -0.2 },
+  statValue: { face: 'sans', fontSize: 22, fontWeight: '600', letterSpacing: -0.2 },
+  body: { face: 'serif', fontSize: 16, fontWeight: '400', lineHeight: 23 },
+  bodyStrong: { face: 'serif', fontSize: 16, fontWeight: '600', lineHeight: 23 },
+  caption: { face: 'serif', fontSize: 13, fontWeight: '400', lineHeight: 18 },
+  captionStrong: { face: 'sans', fontSize: 13, fontWeight: '600' },
+  italicNote: { face: 'serif', fontSize: 13, fontStyle: 'italic' },
+  button: { face: 'sans', fontSize: 16, fontWeight: '600', letterSpacing: 0.2 },
+} satisfies Record<string, TypeStyle>;
+
+export type TypeKey = keyof typeof type;
+
+/** The family a style is set in, from its face, weight and slant. */
+export function cutFor(style: TypeStyle): keyof typeof fontFamily {
   const w = Number(style.fontWeight ?? 400);
-  return w >= 700 ? 'serif' : w >= 600 ? 'serifMedium' : 'serifRegular';
+  if (style.face === 'serif') {
+    if (style.fontStyle === 'italic') return 'serifItalic';
+    return w >= 700 ? 'serif' : w >= 600 ? 'serifMedium' : 'serifRegular';
+  }
+  return w >= 700 ? 'sans' : w >= 600 ? 'sansMedium' : 'sansRegular';
 }

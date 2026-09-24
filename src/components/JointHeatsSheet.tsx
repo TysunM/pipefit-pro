@@ -62,7 +62,7 @@ export function JointHeatsSheet({
           }}
         >
           <View style={{ flex: 1 }}>
-            <Text style={[t.type.h3, { color: t.colors.text }]}>{`Heats in ${tag || 'this joint'}`}</Text>
+            <Text style={[t.type.sectionTitle, { color: t.colors.text }]}>{`Heats in ${tag || 'this joint'}`}</Text>
             <Text style={[t.type.caption, { color: owed ? t.colors.warnText : t.colors.textMuted }]}>
               {heats.length === 0
                 ? 'None recorded — this joint cannot be proved'

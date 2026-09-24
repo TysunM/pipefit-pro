@@ -16,7 +16,7 @@ export function SectionHeader({ title, meta }: { title: string; meta?: string })
         gap: t.space.md,
       }}
     >
-      <Text style={[t.type.sectionTitle, { color: t.colors.text, fontFamily: t.font.serif }]}>{title}</Text>
+      <Text style={[t.type.sectionTitle, { color: t.colors.text }]}>{title}</Text>
       {meta ? (
         <Text style={[t.type.labelSmall, { color: t.colors.textMuted, flexShrink: 1, textAlign: 'right' }]} numberOfLines={1}>
           {meta}

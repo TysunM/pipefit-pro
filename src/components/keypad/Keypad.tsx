@@ -84,8 +84,8 @@ export function Keypad({
                         style={[
                           styles.keyText,
                           {
+                            fontFamily: t.font.sans,
                             color: ink,
-                            fontFamily: t.font.serif,
                             fontSize: label.length > 6 ? 13.5 : label.includes('\n') ? 13.5 : 18,
                           },
                         ]}

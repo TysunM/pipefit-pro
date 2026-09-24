@@ -207,7 +207,7 @@ export function SightSheet({
             borderBottomColor: t.colors.border,
           }}
         >
-          <Text style={[t.type.h3, { color: t.colors.text, flex: 1 }]}>{`Sight leg ${legNumber}`}</Text>
+          <Text style={[t.type.sectionTitle, { color: t.colors.text, flex: 1 }]}>{`Sight leg ${legNumber}`}</Text>
           <Pressable onPress={onClose} accessibilityRole="button" accessibilityLabel="Close">
             <Ionicons name="close" size={24} color={t.colors.textMuted} />
           </Pressable>

@@ -8,7 +8,7 @@ import {
 } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { RootStackParamList } from './types';
-import { BronzeHeader } from '../components/BronzeHeader';
+import { AppHeader } from '../components/AppHeader';
 import { useTheme } from '../theme/ThemeProvider';
 import { group } from './groups';
 import { useRecents } from '../state/recents';
@@ -69,7 +69,7 @@ export function RootNavigator() {
         screenOptions={({ navigation, route }) => ({
           contentStyle: { backgroundColor: t.colors.bg },
           header: ({ options, back }) => (
-            <BronzeHeader
+            <AppHeader
               title={typeof options.title === 'string' ? options.title : route.name}
               onBack={back ? () => navigation.goBack() : undefined}
               onSettings={route.name === 'Settings' ? undefined : () => navigation.navigate('Settings')}

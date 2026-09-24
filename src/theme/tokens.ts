@@ -15,7 +15,7 @@ export type Colors = {
   onPrimary: string;
   accent: string;
   accentSoft: string;
-  /** Text on an accent fill. Copper is light on dark, so this is not onPrimary. */
+  /** Text on an accent fill. Orange is light on dark, so this is not onPrimary. */
   onAccent: string;
   data: string;
   dataSoft: string;
@@ -39,11 +39,11 @@ export type Colors = {
   /** A recess: the panel a figure or a drawing sits down inside. */
   well: string;
   wellEdge: string;
-  /** Bronze trim — the bezel round a header button, the frame on a display. */
+  /** The action colour as trim — the frame round the one display that matters. */
   copper: string;
   copperHi: string;
   copperLo: string;
-  /** A copper-filled button, and the text on it. */
+  /** An action-colour button fill, and the text on it. */
   copperFill: string;
   copperFillHi: string;
   copperFillLo: string;
@@ -64,123 +64,123 @@ export type Colors = {
 // -----------
 // Two jobs, and they pull opposite ways.
 //
-// The chrome has to make a man want to open the app. Dark bronze and copper
-// trim is what a good instrument looks like — the blue still carries whatever
-// is selected and whatever is a figure, and copper carries the one thing on
-// each screen worth pressing.
+// The chrome has to make a man want to open the app. Dark slate, white type
+// and one orange for the thing on each screen worth pressing is what a good
+// instrument looks like; blue is kept for what is selected and for figures,
+// so a state is never mistaken for a button.
 //
 // The instrument has to be read on a roof at eleven in the morning. So the
-// metal is all in the chrome — sheen, bevels, grain — and never in the ground a
-// number sits on. Every figure sits in a recess darker than the plate round
-// it, and nothing carrying a number is asked to do it in bronze on bronze.
+// sheen is all in the chrome — a card's top edge, a button — and never in the
+// ground a number sits on. Every figure sits in a recess darker than the plate
+// round it.
 //
-// Daylight is the same instrument for bright sun. A dark screen in direct
-// sunlight shows you your own face; that is not a taste, it is reflectance.
+// Daylight is the same instrument on cool paper for direct sun. A dark screen
+// in sunlight shows you your own face; that is reflectance, not taste.
 //
 // Every pair here is checked by contrast.test.ts against the WCAG formula, at
 // 4.5:1, which is the body-text bar and not the large-text one.
 
 export const palette: Record<Mode, Colors> = {
   light: {
-    bg: '#F6F2EA',
-    bgSubtle: '#EAE3D6',
-    bgSunken: '#E4DBCC',
-    bgRaised: '#FFFCF7',
-    border: '#D5C9B5',
-    borderStrong: '#98866B',
-    text: '#1D1711',
-    textMuted: '#4F4337',
-    textFaint: '#655747',
-    primary: '#1D5294',
-    primaryPressed: '#143D70',
-    onPrimary: '#F7FAFF',
-    accent: '#97461A',
-    accentSoft: '#F5E4D4',
-    onAccent: '#FFF7F0',
-    data: '#17528F',
-    dataSoft: '#E0E9F3',
+    bg: '#F3F5F8',
+    bgSubtle: '#E6EAF0',
+    bgSunken: '#DDE3EB',
+    bgRaised: '#FFFFFF',
+    border: '#CBD3DE',
+    borderStrong: '#8A99AB',
+    text: '#141C26',
+    textMuted: '#42505F',
+    textFaint: '#56657A',
+    primary: '#1F5FC4',
+    primaryPressed: '#17499A',
+    onPrimary: '#F6FAFF',
+    accent: '#A64A08',
+    accentSoft: '#FCEBDB',
+    onAccent: '#FFF6EC',
+    data: '#1A57B0',
+    dataSoft: '#DEE8F6',
     onData: '#F5F9FD',
-    warnBg: '#F6ECCC',
+    warnBg: '#F7EECF',
     warnBorder: '#D9C68A',
     warnText: '#634A09',
-    danger: '#9A2B1A',
-    success: '#0E5842',
-    overlay: 'rgba(29,23,17,0.45)',
-    metalHi: '#FFFDF9',
-    metalLo: '#EEE7DA',
+    danger: '#A8321F',
+    success: '#0F5E45',
+    overlay: 'rgba(20,28,38,0.45)',
+    metalHi: '#FFFFFF',
+    metalLo: '#EEF1F5',
     edgeHi: '#FFFFFF',
-    edgeLo: '#C7B9A2',
-    well: '#ECE4D7',
-    wellEdge: '#CBBDA6',
-    copper: '#B07742',
-    copperHi: '#E6C196',
-    copperLo: '#7C4A22',
-    copperFill: '#8C4C21',
-    copperFillHi: '#9F5629',
-    copperFillLo: '#773F1A',
-    onCopper: '#FFF6EC',
-    slateHi: '#586776',
-    slateLo: '#434F5B',
-    onSlate: '#F7F8FA',
-    glow: '#E0762B',
-    headerHi: '#FBF7F0',
-    headerLo: '#E8DFD0',
-    chrome: '#4A3420',
+    edgeLo: '#C2CBD6',
+    well: '#E9EDF2',
+    wellEdge: '#C5CED9',
+    copper: '#D9701C',
+    copperHi: '#F5A15C',
+    copperLo: '#9E4A0E',
+    copperFill: '#E8781E',
+    copperFillHi: '#F5841F',
+    copperFillLo: '#D26A15',
+    onCopper: '#1A1208',
+    slateHi: '#58687B',
+    slateLo: '#4A5869',
+    onSlate: '#F7F9FB',
+    glow: '#F5841F',
+    headerHi: '#FFFFFF',
+    headerLo: '#EAEEF3',
+    chrome: '#141C26',
   },
   dark: {
-    bg: '#13110E',
-    bgSubtle: '#1E1A15',
-    bgSunken: '#0B0A08',
-    bgRaised: '#25211C',
-    border: '#3A3229',
-    borderStrong: '#6E5F4B',
-    text: '#F2EADC',
-    textMuted: '#C9BDA9',
-    textFaint: '#A99C87',
-    primary: '#2F6DB8',
-    primaryPressed: '#22548F',
+    bg: '#1A2029',
+    bgSubtle: '#222A35',
+    bgSunken: '#11161D',
+    bgRaised: '#262F3B',
+    border: '#344050',
+    borderStrong: '#5B6B7F',
+    text: '#F1F4F8',
+    textMuted: '#B3BDC9',
+    textFaint: '#98A5B4',
+    primary: '#2F6FD6',
+    primaryPressed: '#255AB0',
     onPrimary: '#F6FAFF',
-    accent: '#E8904C',
-    accentSoft: '#2B1C10',
-    // Copper and this blue are the two fills lighter than the text that sits
-    // on them in the dark theme, which is the whole reason these tokens exist.
-    onAccent: '#1A0D05',
+    accent: '#F5841F',
+    accentSoft: '#3A2A1A',
+    // Orange and the selection blue are the two fills lighter than the text
+    // that sits on them in the dark theme, which is why these tokens exist.
+    onAccent: '#1A1208',
     data: '#7FB2EE',
-    dataSoft: '#10213A',
+    dataSoft: '#15243A',
     onData: '#06121F',
-    warnBg: '#2C2710',
+    warnBg: '#2E2A14',
     warnBorder: '#5A4E1C',
-    warnText: '#E3CB78',
-    danger: '#F2887B',
+    warnText: '#E6CF7A',
+    danger: '#F58A7C',
     success: '#5FC9A0',
     overlay: 'rgba(0,0,0,0.66)',
-    metalHi: '#2F2A24',
-    metalLo: '#1C1915',
-    edgeHi: '#4C4338',
-    edgeLo: '#050404',
-    well: '#0C0B09',
-    wellEdge: '#2E281F',
-    copper: '#A8693A',
-    copperHi: '#E2AA76',
-    copperLo: '#5A3217',
-    copperFill: '#8C4C21',
-    copperFillHi: '#9F5629',
-    copperFillLo: '#743F1B',
-    onCopper: '#FFF2E2',
-    slateHi: '#46525F',
-    slateLo: '#2F3842',
-    onSlate: '#F3EFE8',
-    glow: '#FF8C3F',
-    headerHi: '#2B251E',
-    headerLo: '#15120F',
-    chrome: '#EBD6B3',
+    metalHi: '#2B3441',
+    metalLo: '#1F2732',
+    edgeHi: '#3B4756',
+    edgeLo: '#0C1117',
+    well: '#121820',
+    wellEdge: '#2C3542',
+    copper: '#F5841F',
+    copperHi: '#FFA24D',
+    copperLo: '#B85E10',
+    copperFill: '#F5841F',
+    copperFillHi: '#FF9333',
+    copperFillLo: '#E0741A',
+    onCopper: '#1A1208',
+    slateHi: '#3A4757',
+    slateLo: '#2C3746',
+    onSlate: '#F1F4F8',
+    glow: '#F5841F',
+    headerHi: '#222A35',
+    headerLo: '#1A2029',
+    chrome: '#F1F4F8',
   },
 };
 
 /** How strongly the brushed grain shows, and in what colour, per theme. */
 export const finish: Record<Mode, { grain: string; grainOpacity: number }> = {
-  light: { grain: '#5A4630', grainOpacity: 0.05 },
-  dark: { grain: '#FFFFFF', grainOpacity: 0.035 },
+  light: { grain: '#4A5A6E', grainOpacity: 0.04 },
+  dark: { grain: '#FFFFFF', grainOpacity: 0.028 },
 };
 
 export const space = { xs: 4, sm: 8, md: 12, lg: 16, xl: 20, xxl: 24, xxxl: 32 } as const;

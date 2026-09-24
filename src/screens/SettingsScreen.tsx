@@ -44,7 +44,7 @@ export function SettingsScreen() {
       <ChipRow
         label="Theme"
         options={[
-          { value: 'dark', label: 'Bronze' },
+          { value: 'dark', label: 'Slate' },
           { value: 'light', label: 'Daylight' },
           { value: 'system', label: 'Match phone' },
         ]}
