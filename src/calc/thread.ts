@@ -36,70 +36,8 @@ export const NPT_TABLE: ThreadSize[] = [
   { nps: 12, label: '12"', tpi: 8, handTight: 1.36, effective: 2.125, totalThread: 2.5587, tapDrill: '12 3/8"', wrenchTurns: 3, elbowCenterToFace: 9.5, engagementWhenTight: 1.75, boreSize: '12-9/16"' },
 ];
 
-export function findThread(nps: number): ThreadSize {
-  return NPT_TABLE.find((t) => t.nps === nps) ?? NPT_TABLE[8]!;
-}
-
-export type ThreadInput = {
-  nps: number;
-  turnsPastHandTight: number;
-  centerToCenter: number;
-  centerToFace: number;
-};
-
-export type ThreadResult = {
-  valid: boolean;
-  error?: string;
-  size: ThreadSize;
-  pitch: number;
-  wrenchMakeup: number;
-  totalEngagement: number;
-  remainingThread: number;
-  overThreaded: boolean;
-  centerToFace: number;
-  deductionPerEnd: number;
-  pipeCut: number;
-  cutError?: string;
-};
-
-export function solveThread(input: ThreadInput): ThreadResult {
-  const size = findThread(input.nps);
-  const pitch = 1 / size.tpi;
-  const turns = Number.isFinite(input.turnsPastHandTight) ? input.turnsPastHandTight : size.wrenchTurns;
-  const wrenchMakeup = turns * pitch;
-  const totalEngagement = size.handTight + wrenchMakeup;
-  const remainingThread = size.totalThread - totalEngagement;
-  const overThreaded = remainingThread < 0;
-
-  const centerToFace = Number.isFinite(input.centerToFace) && input.centerToFace > 0 ? input.centerToFace : size.elbowCenterToFace;
-  const deductionPerEnd = centerToFace - totalEngagement;
-
-  let pipeCut = NaN;
-  let cutError: string | undefined;
-  if (Number.isFinite(input.centerToCenter)) {
-    if (input.centerToCenter <= 0) {
-      cutError = 'Enter a centre-to-centre dimension greater than zero.';
-    } else {
-      pipeCut = input.centerToCenter - 2 * deductionPerEnd;
-      if (pipeCut <= 0) {
-        cutError = 'Fitting deductions exceed the centre-to-centre dimension.';
-        pipeCut = NaN;
-      }
-    }
-  }
-
-  return {
-    valid: true,
-    size,
-    pitch,
-    wrenchMakeup,
-    totalEngagement,
-    remainingThread,
-    overThreaded,
-    centerToFace,
-    deductionPerEnd,
-    pipeCut,
-    cutError,
-    error: overThreaded ? 'Makeup exceeds available thread — reduce wrench turns or re-cut the thread.' : undefined,
-  };
-}
+// findThread, solveThread and the makeup maths that used them came out with
+// the thread engagement screen. The table stays because seven other modules
+// read it — the screwed takeouts, couplings, unions, nipples and reducers that
+// Cut length figures a screwed joint from, and the handbook's thread page,
+// which still carries engagement when tight, total thread and tap drill.

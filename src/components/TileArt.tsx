@@ -216,19 +216,6 @@ const art: Record<string, (k: Ink) => React.ReactNode> = {
     </G>
   ),
 
-  // Pipe threaded into a fitting, and how far it makes up.
-  ThreadEngagement: (k) => (
-    <G>
-      <Rect x={46} y={22} width={30} height={22} rx={2} fill="none" stroke={k.line} strokeWidth={2} />
-      <Line x1={12} y1={33} x2={52} y2={33} stroke={k.line} strokeWidth={3} strokeLinecap="butt" />
-      {[30, 35, 40, 45, 50].map((x) => (
-        <Line key={x} x1={x} y1={27} x2={x} y2={39} stroke={k.guide} strokeWidth={1.2} />
-      ))}
-      <Line x1={30} y1={52} x2={52} y2={52} stroke={k.accent} strokeWidth={1.6} />
-      <Path d="M30 49 L30 55 M52 49 L52 55" stroke={k.accent} strokeWidth={1.6} />
-    </G>
-  ),
-
   // A bend with its radius struck from the centre.
   HandBender: (k) => (
     <G>
