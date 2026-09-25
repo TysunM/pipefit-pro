@@ -14,6 +14,7 @@ const EXPECTED: ToolRoute[] = [
   'Reference',
   'SpoolBuilder',
   'OrderSheet',
+  'IsoSketch',
   'FlangeBoltUp',
   'Joints',
   'Heats',
@@ -26,7 +27,7 @@ const EXPECTED: ToolRoute[] = [
 ];
 
 describe('every tool is reachable', () => {
-  test('the home screen leads to all fourteen, and to nothing else', () => {
+  test('the home screen leads to all fifteen, and to nothing else', () => {
     expect([...TOOLS.map((t) => t.route)].sort()).toEqual([...EXPECTED].sort());
   });
 
@@ -69,8 +70,8 @@ describe('the grouping follows the work', () => {
     expect(group('flanges')?.tools.map((t) => t.route)).toEqual(['FlangeBoltUp', 'Joints', 'Heats']);
   });
 
-  test('the spool keeps the order sheet built from it', () => {
-    expect(group('spool')?.tools.map((t) => t.route)).toEqual(['SpoolBuilder', 'OrderSheet']);
+  test('the spool keeps the order sheet built from it, and the iso pad', () => {
+    expect(group('spool')?.tools.map((t) => t.route)).toEqual(['SpoolBuilder', 'OrderSheet', 'IsoSketch']);
   });
 
   test('thread engagement is gone from the app', () => {

@@ -216,6 +216,20 @@ const art: Record<string, (k: Ink) => React.ReactNode> = {
     </G>
   ),
 
+  // A run on iso paper: the dots, and a line that only ever follows them.
+  IsoSketch: (k) => (
+    <G>
+      {Array.from({ length: 7 }, (_, r) =>
+        Array.from({ length: 6 }, (_, c) => (
+          <Circle key={`${r}${c}`} cx={10 + c * 13.9 + (r % 2 ? 6.9 : 0)} cy={9 + r * 8} r={1.1} fill={k.guide} />
+        ))
+      )}
+      <Path d="M17 49 L37.8 37 L37.8 21 L58.6 9" fill="none" stroke={k.line} strokeWidth={3} strokeLinejoin="round" strokeLinecap="round" />
+      <Path d="M58.6 9 L72.4 17" fill="none" stroke={k.line} strokeWidth={3} strokeLinecap="round" />
+      <Path d="M46 44 L52 40 L58 44 L52 48 Z" fill="none" stroke={k.accent} strokeWidth={1.6} strokeLinejoin="round" />
+    </G>
+  ),
+
   // A bend with its radius struck from the centre.
   HandBender: (k) => (
     <G>

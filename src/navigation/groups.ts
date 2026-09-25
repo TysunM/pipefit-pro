@@ -34,7 +34,8 @@ export type ToolRoute =
   | 'Joints'
   | 'Heats'
   | 'SpoolBuilder'
-  | 'OrderSheet';
+  | 'OrderSheet'
+  | 'IsoSketch';
 
 // Every tool route is a real route. If one is renamed this stops compiling.
 const _routesExist: readonly (keyof RootStackParamList)[] = [] as readonly ToolRoute[];
@@ -82,6 +83,7 @@ const SPOOL: Tool[] = [
   // is not a repeat of the heading above it.
   { route: 'SpoolBuilder', title: 'Build a spool', subtitle: 'Say where each leg runs and spin it in 3D', icon: 'cube-outline' },
   { route: 'OrderSheet', title: 'Order sheet', subtitle: 'One order across every saved spool', icon: 'receipt-outline' },
+  { route: 'IsoSketch', title: 'Iso sketch', subtitle: 'Draw the run on iso paper; the lines snap to the axes', icon: 'pencil-outline' },
 ];
 
 /** The home screen, in order. Kept close to the old order so nothing moves far. */
@@ -102,7 +104,7 @@ export const HOME: HomeEntry[] = [
     kind: 'group',
     id: 'spool',
     title: '3D spool',
-    subtitle: 'Build a run, then order the steel for it',
+    subtitle: 'Build a run, sketch an iso, order the steel',
     icon: 'cube-outline',
     art: 'SpoolBuilder',
     tools: SPOOL,
