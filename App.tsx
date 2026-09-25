@@ -7,6 +7,7 @@ import { UpdatesProvider, useOtaUpdate } from "./src/state/updates";
 import { JointsProvider } from "./src/state/joints";
 import { HeatsProvider } from "./src/state/heats";
 import { SpoolsProvider } from "./src/state/spools";
+import { SketchesProvider } from "./src/state/sketches";
 import { RecentsProvider } from "./src/state/recents";
 import { ThemeProvider, useTheme } from "./src/theme/ThemeProvider";
 import { useAppFonts } from "./src/theme/useFonts";
@@ -55,11 +56,13 @@ export default function App() {
         <JointsProvider>
           <HeatsProvider>
             <SpoolsProvider>
-              <RecentsProvider>
-                <UpdatesProvider>
-                  <Gate />
-                </UpdatesProvider>
-              </RecentsProvider>
+              <SketchesProvider>
+                <RecentsProvider>
+                  <UpdatesProvider>
+                    <Gate />
+                  </UpdatesProvider>
+                </RecentsProvider>
+              </SketchesProvider>
             </SpoolsProvider>
           </HeatsProvider>
         </JointsProvider>

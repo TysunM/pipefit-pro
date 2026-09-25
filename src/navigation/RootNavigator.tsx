@@ -27,6 +27,8 @@ import { JointsScreen } from '../screens/JointsScreen';
 import { HeatsScreen } from '../screens/HeatsScreen';
 import { SpoolBuilderScreen } from '../screens/SpoolBuilderScreen';
 import { OrderSheetScreen } from '../screens/OrderSheetScreen';
+import { IsoSketchScreen } from '../screens/IsoSketchScreen';
+import { IsoDrawScreen } from '../screens/IsoDrawScreen';
 import { CalculatorScreen } from '../screens/CalculatorScreen';
 import { LevelScreen } from '../screens/LevelScreen';
 import { ReferenceScreen } from '../screens/ReferenceScreen';
@@ -96,6 +98,8 @@ export function RootNavigator() {
         <Stack.Screen name="Level" component={LevelScreen} options={{ title: 'Level' }} />
         <Stack.Screen name="SpoolBuilder" component={SpoolBuilderScreen} options={{ title: '3D spool' }} />
         <Stack.Screen name="OrderSheet" component={OrderSheetScreen} options={{ title: 'Order sheet' }} />
+        <Stack.Screen name="IsoSketch" component={IsoSketchScreen} options={{ title: 'Iso sketch' }} />
+        <Stack.Screen name="IsoDraw" component={IsoDrawScreen} options={{ title: 'Sketch' }} />
         <Stack.Screen name="Reference" component={ReferenceScreen} options={{ title: 'Handbook' }} />
         <Stack.Screen
           name="ReferenceTable"

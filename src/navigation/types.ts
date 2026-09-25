@@ -16,6 +16,10 @@ export type RootStackParamList = {
   Calculator: undefined;
   Level: undefined;
   SpoolBuilder: undefined;
+  /** The sketch book: every iso drawn on the phone. */
+  IsoSketch: undefined;
+  /** One sketch, open to draw on. */
+  IsoDraw: { id: string };
   Reference: undefined;
   ReferenceTable: { id: string };
   Settings: undefined;
