@@ -54,12 +54,12 @@ describe('an svg id belongs to exactly one gradient', () => {
     // The old scheme: `${prefix}${uid}` and `${prefix}${uid}e`.
     expect(`sheen${'r2'}e`).toBe(`sheen${'r2e'}`); // the bug, stated plainly
     // The new one keeps them apart, because the uid is no longer on the end.
-    expect(svgId('sheen', 'r2', 'b')).not.toBe(svgId('sheen', 'r2e', 'a'));
+    expect(svgId('glow', 'r2', 'b')).not.toBe(svgId('glow', 'r2e', 'a'));
   });
 
   test('two gradients of one drawing differ, and the same gradient is stable', () => {
-    expect(svgId('sheen', 'r9', 'a')).not.toBe(svgId('sheen', 'r9', 'b'));
-    expect(svgId('sheen', 'r9', 'a')).toBe(svgId('sheen', 'r9', 'a'));
+    expect(svgId('glow', 'r9', 'a')).not.toBe(svgId('glow', 'r9', 'b'));
+    expect(svgId('glow', 'r9', 'a')).toBe(svgId('glow', 'r9', 'a'));
   });
 
   test('an id is usable as an svg id: starts with a letter, no punctuation', () => {

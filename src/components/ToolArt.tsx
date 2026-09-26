@@ -20,7 +20,7 @@ import { clip } from '../calc/iso';
 const W = 80;
 const H = 64;
 
-type Ink = { line: string; soft: string; accent: string; onAccent: string; plate: string; font: string };
+type Ink = { line: string; soft: string; accent: string; onAccent: string; plate: string; font: string; bold: '700' | undefined };
 
 
 const art: Partial<Record<ToolRoute, (k: Ink) => React.ReactNode>> = {
@@ -143,7 +143,7 @@ const art: Partial<Record<ToolRoute, (k: Ink) => React.ReactNode>> = {
               fill={k.accent}
               stroke="none"
               fontSize={8.5}
-              fontWeight="700"
+              fontWeight={k.bold}
               fontFamily={k.font}
               textAnchor="middle"
             >
@@ -158,13 +158,13 @@ const art: Partial<Record<ToolRoute, (k: Ink) => React.ReactNode>> = {
     <G fill="none" strokeLinecap="round" strokeLinejoin="round">
       <Path d="M20 4 H45 L55 14 V60 H20 Z" stroke={k.line} strokeWidth={2.4} />
       <Path d="M45 4 V14 H55" stroke={k.line} strokeWidth={2} />
-      <SvgText x={24} y={16} fill={k.line} stroke="none" fontSize={7.5} fontWeight="700" fontFamily={k.font}>
+      <SvgText x={24} y={16} fill={k.line} stroke="none" fontSize={7.5} fontWeight={k.bold} fontFamily={k.font}>
         HEAT
       </SvgText>
       <Line x1={24} y1={22} x2={43} y2={22} stroke={k.soft} strokeWidth={1.6} />
       <Line x1={24} y1={27} x2={39} y2={27} stroke={k.soft} strokeWidth={1.6} />
       <Rect x={24} y={33} width={18} height={11} rx={1.5} stroke={k.line} strokeWidth={1.8} />
-      <SvgText x={33} y={41.3} fill={k.line} stroke="none" fontSize={7} fontWeight="700" fontFamily={k.font} textAnchor="middle">
+      <SvgText x={33} y={41.3} fill={k.line} stroke="none" fontSize={7} fontWeight={k.bold} fontFamily={k.font} textAnchor="middle">
         MTR
       </SvgText>
       <Circle cx={53} cy={48} r={11} fill={k.plate} stroke={k.accent} strokeWidth={2.4} />
@@ -221,6 +221,7 @@ export function ToolArt({ route, height = 76 }: { route: ToolRoute; height?: num
     onAccent: t.colors.onCopper,
     plate: t.colors.metalLo,
     font: t.font.sans,
+    bold: t.fontsLoaded ? undefined : '700',
   };
   return (
     <Svg width={(W * height) / H} height={height} viewBox={`0 0 ${W} ${H}`}>

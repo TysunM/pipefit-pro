@@ -31,12 +31,12 @@ export function Compass({ corner, size = 64 }: { corner: Corner; size?: number }
     >
       <Svg width={size} height={size}>
         <Line x1={c} y1={c} x2={tip(e)[0]} y2={tip(e)[1]} stroke={t.colors.textFaint} strokeWidth={1.5} />
-        <SvgText x={tip(e, 1.42)[0]} y={tip(e, 1.42)[1] + 3.5} fontFamily={t.font.sans} fontSize={10} fontWeight="700" fill={t.colors.textFaint} textAnchor="middle">
+        <SvgText x={tip(e, 1.42)[0]} y={tip(e, 1.42)[1] + 3.5} fontFamily={t.font.sans} fontSize={10} fontWeight={t.fontsLoaded ? undefined : '700'} fill={t.colors.textFaint} textAnchor="middle">
           E
         </SvgText>
         <Line x1={c} y1={c} x2={tip(n)[0]} y2={tip(n)[1]} stroke={t.colors.accent} strokeWidth={2} />
         <Polygon points={head(n)} fill={t.colors.accent} />
-        <SvgText x={tip(n, 1.42)[0]} y={tip(n, 1.42)[1] + 3.5} fontFamily={t.font.sans} fontSize={11} fontWeight="700" fill={t.colors.accent} textAnchor="middle">
+        <SvgText x={tip(n, 1.42)[0]} y={tip(n, 1.42)[1] + 3.5} fontFamily={t.font.sans} fontSize={11} fontWeight={t.fontsLoaded ? undefined : '700'} fill={t.colors.accent} textAnchor="middle">
           N
         </SvgText>
       </Svg>

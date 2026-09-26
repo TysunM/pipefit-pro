@@ -782,7 +782,7 @@ function BoltMarker({
           opacity: pressed ? 0.65 : 1,
         })}
       >
-        <Text style={{ fontFamily: t.font.sans, color: skin.text, fontSize: Math.max(9, Math.min(15, size * 0.45)), fontWeight: '700' }}>
+        <Text style={{ fontFamily: t.font.sans, color: skin.text, fontSize: Math.max(9, Math.min(15, size * 0.45)), ...t.weight('700') }}>
           {bolt}
         </Text>
       </Pressable>
@@ -908,7 +908,7 @@ function NameSheet({
     paddingHorizontal: t.space.lg,
     fontFamily: t.font.sansMedium,
     fontSize: 17,
-    fontWeight: '600' as const,
+    ...t.weight('600'),
   };
 
   return (
@@ -1141,7 +1141,7 @@ function CheckSheet({
     paddingHorizontal: t.space.lg,
     fontFamily: t.font.sansMedium,
     fontSize: 17,
-    fontWeight: '600' as const,
+    ...t.weight('600'),
   };
 
   const answer = (value: boolean, label: string, icon: keyof typeof Ionicons.glyphMap, colour: string) => {

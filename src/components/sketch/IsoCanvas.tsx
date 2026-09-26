@@ -233,7 +233,7 @@ export function IsoCanvas({
       // where it crosses a line.
       // pointerEvents none: a word must never take the touch, or a browser
       // starts dragging the selected text and the stroke under it is lost.
-      const shared = { x: p.at[0], y: p.at[1], fontFamily: t.font.sansMedium, fontSize: 14 / s, fontWeight: '600' as const, pointerEvents: 'none' as const };
+      const shared = { x: p.at[0], y: p.at[1], fontFamily: t.font.sansMedium, fontSize: 14 / s, ...(t.fontsLoaded ? {} : { fontWeight: '600' as const }), pointerEvents: 'none' as const };
       return (
         <React.Fragment key={key}>
           <SvgText {...shared} fill={c.well} stroke={c.well} strokeWidth={4 / s} strokeLinejoin="round">

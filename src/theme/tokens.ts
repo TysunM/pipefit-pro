@@ -194,12 +194,6 @@ export const palette: Record<Mode, Colors> = {
   },
 };
 
-/** How strongly the brushed grain shows, and in what colour, per theme. */
-export const finish: Record<Mode, { grain: string; grainOpacity: number }> = {
-  light: { grain: '#4A5A6E', grainOpacity: 0.04 },
-  dark: { grain: '#FFFFFF', grainOpacity: 0.028 },
-};
-
 export const space = { xs: 4, sm: 8, md: 12, lg: 16, xl: 20, xxl: 24, xxxl: 32 } as const;
 
 export const radius = { sm: 8, md: 10, lg: 12, xl: 16, pill: 999 } as const;

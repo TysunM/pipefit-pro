@@ -185,7 +185,7 @@ export function NameSheet({
     paddingHorizontal: t.space.lg,
     fontFamily: t.font.sansMedium,
     fontSize: 17,
-    fontWeight: '600' as const,
+    ...t.weight('600'),
   };
 
   return (

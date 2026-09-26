@@ -54,7 +54,7 @@ export function CalculatorScreen() {
         >
           <View style={styles.annunciators}>
             {annunciators.map((a) => (
-              <Text key={a} style={[styles.annunciator, { fontFamily: t.font.sans, color: t.mode === 'dark' ? '#7FA890' : '#4A5A44' }]}>
+              <Text key={a} style={[styles.annunciator, t.weight('700'), { fontFamily: t.font.sans, color: t.mode === 'dark' ? '#7FA890' : '#4A5A44' }]}>
                 {a}
               </Text>
             ))}
@@ -75,7 +75,7 @@ export function CalculatorScreen() {
             {shown}
           </Text>
 
-          <Text style={[styles.unitWord, { fontFamily: t.font.sans, color: t.mode === 'dark' ? '#7FA890' : '#4A5A44' }]}>
+          <Text style={[styles.unitWord, t.weight('700'), { fontFamily: t.font.sans, color: t.mode === 'dark' ? '#7FA890' : '#4A5A44' }]}>
             {unitWord || ' '}
           </Text>
         </View>
@@ -90,7 +90,7 @@ const styles = StyleSheet.create({
   wrap: { flex: 1 },
   lcd: { borderWidth: 2, minHeight: 124, justifyContent: 'space-between' },
   annunciators: { flexDirection: 'row', gap: 10, minHeight: 14 },
-  annunciator: { fontSize: 10.5, fontWeight: '700', letterSpacing: 1 },
+  annunciator: { fontSize: 10.5, letterSpacing: 1 },
   readout: { textAlign: 'right', fontWeight: '700' },
-  unitWord: { textAlign: 'right', fontSize: 11.5, fontWeight: '700', letterSpacing: 1.4, minHeight: 15 },
+  unitWord: { textAlign: 'right', fontSize: 11.5, letterSpacing: 1.4, minHeight: 15 },
 });
