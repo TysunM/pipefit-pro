@@ -1,40 +1,53 @@
 """Launcher assets from the render.
 
 The mark is the render at assets/source/mark.jpg: a P of brushed pipe on a
-brown ground with a dimension triangle beside it. Two things change on the way
-to the launcher; everything else is cropping.
+brown ground with a dimension triangle beside it. Four things change on the
+way to the launcher; everything else is cropping.
 
-The triangle's sides go dashed. The render draws them as hairlines, and a
-hairline is gone by 48px. The sides are lifted off the ground (a diffusion
-fill over the band they sit in, so the ground under them matches the ground
-beside them) and drawn again as dashes at twice the weight, in the ink the
-render mixed for them. The right-angle mark is redrawn at the same weight; the
-letters are left alone.
+The ground goes deep bronze and the pipe goes chrome. The render's ground is
+a muted brown and its steel a soft grey, and at 48px the two run together.
+Pipe and ground are told apart by warmth (the ground is a third redder than
+it is blue, the steel is neutral), the ground is re-tinted in proportion so
+its soft shadows survive, and the steel gets a harder tone curve.
+
+The triangle and its letters are drawn again. The render draws the sides as
+hairlines and the letters small, and both are gone by 48px. They are lifted
+off the ground (a diffusion fill over the band they sit in) and drawn again
+in light slate blue: the sides dashed at four times the weight, the letters
+in the app's own bold sans a size up.
 
 The rounded corners are squared off. The render comes with its corners cut to
 white, and a launcher icon has to be full-bleed: iOS and Android each mask it
-themselves, and a pre-cut corner shows as a notch inside theirs. The ground is
-carried out to the edge along each corner's radius.
+themselves, and a pre-cut corner shows as a notch inside theirs.
+
+And the mark is fitted to the circle a launcher shows, not to its bounding
+box. The smallest circle round the pipe and triangle is found and scaled to
+the safe circle of each masked format, which is how far a P can fill a round
+window without its fittings being cut off.
 
     python3 tools/icons.py
 """
 from pathlib import Path
 
 import numpy as np
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFont
 
 HERE = Path(__file__).resolve().parent.parent
 SRC = HERE / 'assets/source/mark.jpg'
+FONT = HERE / 'node_modules/@expo-google-fonts/source-sans-3/700Bold/SourceSans3_700Bold.ttf'
 
-INK = (100, 125, 147)      # the dimension's blue-grey, sampled off the render
-GROUND = (77, 53, 41)      # the brown behind everything; app.json carries it too
+INK = (157, 183, 211)      # light slate blue, for the dimension and its letters
+GROUND = (74, 44, 20)      # deep bronze; app.json carries it as #4A2C14
+BROWN = (77, 53, 41)       # the render's flat ground, which GROUND replaces
 
 # The render's frame is 2000px. These are centrelines, measured off it.
 CORNER = 304                              # radius the render cut its corners to
 FOOT, HEEL, TOP = (772, 1654), (1312, 1654), (1312, 1168)   # right angle at HEEL
 BOX = 76                                  # right-angle mark, sides along the legs
 HAIR = 5                                  # the render's line width
-LINE, DASH, GAP = 10, 32, 18              # what gets drawn instead
+LINE, DASH, GAP = 18, 40, 22              # what gets drawn instead
+LETTERS = {'C': (966, 1356), 'B': (1406, 1426), 'A': (1059, 1756)}   # centres
+LETTER_SIZE = 196                         # cap height about 130px
 SS = 4                                    # supersample for the drawn lines
 
 
@@ -82,25 +95,53 @@ def lines():
     return sides, box
 
 
+def grow(mask, by):
+    for _ in range(by):
+        g = mask.copy()
+        g[1:] |= mask[:-1]
+        g[:-1] |= mask[1:]
+        g[:, 1:] |= mask[:, :-1]
+        g[:, :-1] |= mask[:, 1:]
+        mask = g
+    return mask
+
+
 def lift(a):
-    """Fill the band under the render's lines from the ground either side."""
+    """Fill the ground back in under the render's lines and letters."""
     sides, box = lines()
-    x0, y0, x1, y1 = FOOT[0] - 40, TOP[1] - 40, HEEL[0] + 40, HEEL[1] + 40
+    x0, y0, x1, y1 = 720, 1120, 1480, 1800
     yy, xx = np.mgrid[y0:y1, x0:x1].astype(float)
+    crop = a[y0:y1, x0:x1]
     band = np.zeros(yy.shape, bool)
     for p, q in sides + box:
         band |= seg_dist(xx, yy, p, q) <= HAIR / 2 + 6
-    crop = a[y0:y1, x0:x1].astype(float)
+    # The letters, by their blue-grey ink, grown to take the soft edge with them.
+    band |= grow((crop[..., 2] - crop[..., 0] > 12) & (crop[..., 2] > 70), 5)
     fixed = ~band
     fill = crop.copy()
     fill[band] = crop[fixed].mean(0)
-    for _ in range(400):
+    for _ in range(600):
         avg = (np.roll(fill, 1, 0) + np.roll(fill, -1, 0) + np.roll(fill, 1, 1) + np.roll(fill, -1, 1)) / 4
         fill[band] = avg[band]
     rng = np.random.default_rng(304)
     fill[band] += rng.normal(0, 0.55, (band.sum(), 3))
-    a[y0:y1, x0:x1] = np.clip(np.rint(fill), 0, 255)
+    a[y0:y1, x0:x1] = np.clip(fill, 0, 255)
     return a
+
+
+def steel_mask(a):
+    """1 on the pipe, 0 on the ground, by warmth: red over blue as a share of red."""
+    warmth = (a[..., 0] - a[..., 2]) / np.maximum(a[..., 0], 1)
+    return np.clip((0.30 - warmth) / 0.15, 0, 1)
+
+
+def retint(a):
+    """Deep bronze ground, chrome pipe."""
+    steel = steel_mask(a)[..., None]
+    ground = a * (np.array(GROUND, float) / np.array(BROWN, float))
+    lum = a @ np.array([0.299, 0.587, 0.114])
+    chrome = np.clip(128 + (lum - 120) * 1.45 + 12, 0, 255)[..., None] + np.array([-3, 0, 5], float)
+    return np.clip(ground * (1 - steel) + chrome * steel, 0, 255), steel[..., 0]
 
 
 def dashes(draw, p, q, s):
@@ -122,56 +163,61 @@ def stroke(draw, p, q, s):
                   ((x1 - nx) * s, (y1 - ny) * s), ((x0 - nx) * s, (y0 - ny) * s)], fill=255)
 
 
-def redraw(a):
-    n = a.shape[0]
+def drawn_alpha(n):
+    """Coverage of the dimension: dashed sides, right-angle mark, letters."""
     mask = Image.new('L', (n * SS, n * SS), 0)
     d = ImageDraw.Draw(mask)
-    sides, box = lines()
+    sides, _ = lines()
     for p, q in sides:
         dashes(d, p, q, SS)
     hx, hy = HEEL
-    # The right-angle mark, solid, with square corners where its two sides meet.
     stroke(d, (hx - BOX, hy - LINE / 2), (hx - BOX, hy - BOX), SS)
     stroke(d, (hx - BOX - LINE / 2, hy - BOX), (hx, hy - BOX), SS)
-    alpha = np.asarray(mask.resize((n, n), Image.BOX)).astype(float)[..., None] / 255
-    return a * (1 - alpha) + np.array(INK, float) * alpha
+    font = ImageFont.truetype(str(FONT), LETTER_SIZE * SS)
+    for ch, (cx, cy) in LETTERS.items():
+        l, t, r, b = font.getbbox(ch)
+        d.text(((cx * SS) - (l + r) / 2, (cy * SS) - (t + b) / 2), ch, font=font, fill=255)
+    return np.asarray(mask.resize((n, n), Image.BOX)).astype(float) / 255
 
 
-def content_box(a):
-    """Where the mark is, by how far the pixels sit from the ground."""
-    d = np.abs(a - np.array(GROUND, float)).sum(-1) > 18
-    ys, xs = np.nonzero(d)
-    return xs.min(), ys.min(), xs.max(), ys.max()
+def enclosing_circle(pts, rounds=3000):
+    """Smallest circle round the points, to a fraction of a pixel."""
+    c = pts.mean(0)
+    for i in range(1, rounds + 1):
+        d = np.hypot(*(pts - c).T)
+        c = c + (pts[d.argmax()] - c) / (i + 1)
+    return c, np.hypot(*(pts - c).T).max()
 
 
-def full(img, size):
-    return img.resize((size, size), Image.LANCZOS)
-
-
-def windowed(img, box, size, radius):
-    """The mark centred on a brown canvas, its box's corners inside a circle of
-    `radius` (as a fraction of `size`): the part a masked launcher will show."""
-    x0, y0, x1, y1 = box
-    w, h = x1 - x0, y1 - y0
-    s = radius * size * 2 / np.hypot(w, h)
+def fit(img, circle, size, radius, feather=0.06):
+    """The mark on a bronze canvas, its enclosing circle scaled to `radius`
+    (a fraction of `size`) and centred: the part a masked launcher shows."""
+    (cx, cy), r = circle
+    s = radius * size / r
     n = img.width
     scaled = img.resize((round(n * s), round(n * s)), Image.LANCZOS)
     canvas = Image.new('RGB', (size, size), GROUND)
-    # Feathered edge so the scaled render blends into the flat canvas ground.
+    ox, oy = round(size / 2 - cx * s), round(size / 2 - cy * s)
+    # Feather only the edges that land inside the canvas, so the scaled render
+    # blends into the flat ground there and is left alone where it overflows.
     m = scaled.width
-    feather = round(m * 0.06)
-    e = np.minimum(np.minimum(np.arange(m), np.arange(m)[::-1]) / feather, 1)
-    alpha = Image.fromarray((np.minimum.outer(e, e) * 255).astype(np.uint8))
-    ox = round(size / 2 - (x0 + w / 2) * s)
-    oy = round(size / 2 - (y0 + h / 2) * s)
+    f = max(1, round(m * feather))
+    def ramp(o):
+        e = np.ones(m)
+        if o > 0:
+            e = np.minimum(e, np.arange(m) / f)
+        if o + m < size:
+            e = np.minimum(e, np.arange(m)[::-1] / f)
+        return np.minimum(e, 1)
+    alpha = Image.fromarray((np.minimum.outer(ramp(oy), ramp(ox)) * 255).astype(np.uint8))
     canvas.paste(scaled, (ox, oy), alpha)
     return canvas
 
 
-def plated(img, size, plate=0.90, radius=0.224):
-    """The full icon on a rounded plate with transparent corners, for the splash."""
+def plated(tile, size, plate=0.90, radius=0.224):
+    """The icon on a rounded plate with transparent corners, for the splash."""
     m = round(size * plate)
-    tile = full(img, m)
+    tile = tile.resize((m, m), Image.LANCZOS)
     mask = Image.new('L', (m * SS, m * SS), 0)
     ImageDraw.Draw(mask).rounded_rectangle([0, 0, m * SS - 1, m * SS - 1], radius=m * SS * radius, fill=255)
     tile.putalpha(mask.resize((m, m), Image.BOX))
@@ -182,29 +228,40 @@ def plated(img, size, plate=0.90, radius=0.224):
 
 def main():
     a = np.asarray(Image.open(SRC).convert('RGB')).astype(float)
+    n = a.shape[0]
     a = square_corners(a)
     a = lift(a)
-    a = redraw(a)
-    box = content_box(a)
+    a, steel = retint(a)
+    ink = drawn_alpha(n)
+    a = a * (1 - ink[..., None]) + np.array(INK, float) * ink[..., None]
     img = Image.fromarray(np.clip(np.rint(a), 0, 255).astype(np.uint8))
 
+    # The circle round what is drawn: steel, dashes and letters. The soft
+    # shadow is ground and may fall outside it.
+    content = (steel > 0.5) | (ink > 0.3)
+    ys, xs = np.nonzero(content[::4, ::4])
+    circle = enclosing_circle(np.stack([xs * 4.0, ys * 4.0], 1))
+
+    icon = fit(img, circle, 1024, 0.46)
     out = {
-        'assets/icon.png': full(img, 1024),
+        'assets/icon.png': icon,
         # Android shows the middle 66dp of a 108dp foreground; on a circle
-        # launcher that window is a circle of radius 0.306. Keep a hair inside.
-        'assets/adaptive-icon.png': windowed(img, box, 1024, 0.29),
-        'assets/splash-icon.png': plated(img, 1024),
-        'assets/favicon.png': full(img, 64),
-        'public/icon-192.png': full(img, 192),
-        'public/icon-512.png': full(img, 512),
-        'public/apple-touch-icon.png': full(img, 180),
+        # launcher that window is a circle of radius 0.306.
+        'assets/adaptive-icon.png': fit(img, circle, 1024, 0.305),
+        'assets/splash-icon.png': plated(icon, 1024),
+        'assets/favicon.png': icon.resize((64, 64), Image.LANCZOS),
+        'public/icon-192.png': icon.resize((192, 192), Image.LANCZOS),
+        'public/icon-512.png': icon.resize((512, 512), Image.LANCZOS),
+        'public/apple-touch-icon.png': icon.resize((180, 180), Image.LANCZOS),
         # A maskable icon's safe zone is a circle of radius 0.40.
-        'public/icon-maskable-512.png': windowed(img, box, 512, 0.38),
+        'public/icon-maskable-512.png': fit(img, circle, 512, 0.39),
     }
     for name, image in out.items():
         path = HERE / name
         image.save(path, optimize=True)
         print(f'{name:34} {path.stat().st_size / 1024:6.1f} KB')
+    (cx, cy), r = circle
+    print(f'mark circle: centre ({cx:.0f}, {cy:.0f}) radius {r:.0f} of {n}')
 
 
 if __name__ == '__main__':

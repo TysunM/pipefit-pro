@@ -7,16 +7,22 @@
 python3 tools/icons.py
 ```
 
-The render arrives with white rounded corners and a hairline triangle. The
-tool squares the corners off (a launcher icon is full-bleed; the platforms cut
-their own corners) and redraws the triangle's sides as dashes at a weight that
-survives 48px, leaving the pipe and the letters as rendered.
+The render arrives with white rounded corners, a muted brown ground and a
+hairline triangle. The tool squares the corners off (a launcher icon is
+full-bleed; the platforms cut their own corners), re-tints the ground deep
+bronze and the pipe chrome, and redraws the triangle and its letters in light
+slate blue at a weight that survives 48px. The letters use the app's own
+Source Sans 3 Bold from `node_modules`, so run `npm install` first.
+
+Every masked format is fitted by the smallest circle round the mark, not its
+bounding box, so the P fills a round launcher window as far as it can without
+a fitting being cut off.
 
 Outputs, all regenerated from one source so they never drift apart:
 
 | File | Size | Notes |
 | --- | --- | --- |
-| `assets/icon.png` | 1024 | Full-bleed launcher icon |
+| `assets/icon.png` | 1024 | Full-bleed launcher icon, mark circle at 0.46 |
 | `assets/adaptive-icon.png` | 1024 | Android foreground; the mark sits inside the 66dp circle a launcher shows |
 | `assets/splash-icon.png` | 1024 | The icon on a rounded plate, transparent corners |
 | `assets/favicon.png` | 64 | Web |

@@ -15,6 +15,9 @@ import type { Settings } from './settings';
  */
 export const LOOK = 2;
 
+/** Longer than any job number, short enough to sit on one line of the card. */
+export const PROJECT_ID_MAX = 24;
+
 export function readSettings(
   raw: string | null,
   defaults: Settings
@@ -29,6 +32,9 @@ export function readSettings(
     return { settings: defaults, migrated: false };
   }
   const merged: Settings = { ...defaults, ...stored };
+  // Written by hand in a text field, so it is the one value that can arrive as
+  // anything. A number or a null in storage is dropped rather than shown.
+  merged.projectId = typeof stored.projectId === 'string' ? stored.projectId.slice(0, PROJECT_ID_MAX) : defaults.projectId;
   if (stored.look === LOOK) return { settings: merged, migrated: false };
   return { settings: { ...merged, themePreference: defaults.themePreference, look: LOOK }, migrated: true };
 }

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Screen } from '../components/Screen';
 import { SectionHeader } from '../components/SectionHeader';
@@ -15,6 +15,8 @@ import { useUnits } from '../hooks/useUnits';
 import { findSize } from '../calc/pipe';
 import { FractionDenominator } from '../calc/format';
 import { fromInches } from '../calc/units';
+import { PROJECT_ID_MAX } from '../state/readSettings';
+import { TabBar } from '../components/TabBar';
 
 export function SettingsScreen() {
   const t = useTheme();
@@ -39,7 +41,20 @@ export function SettingsScreen() {
   }, [settings.unitSystem, settings.defaultGap, settings.stockLength, settings.cutAllowance]);
 
   return (
-    <Screen>
+    <View style={{ flex: 1, backgroundColor: t.colors.bg }}>
+    <Screen tabbed>
+      <SectionHeader title="Project" meta="Shown on the home screen" />
+      <FieldRow>
+        <DimensionInput
+          label="Project ID"
+          value={settings.projectId}
+          onChangeText={(text) => update({ projectId: text.slice(0, PROJECT_ID_MAX) })}
+          placeholder="Job or line number"
+          keyboardType="default"
+          autoCapitalize="characters"
+        />
+      </FieldRow>
+
       <SectionHeader title="Appearance" />
       <ChipRow
         label="Theme"
@@ -212,6 +227,8 @@ export function SettingsScreen() {
         }
       />
     </Screen>
+    <TabBar active="more" />
+    </View>
   );
 }
 
