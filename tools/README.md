@@ -1,29 +1,38 @@
 # tools
 
-`icons.mjs` renders every launcher asset in `assets/` from the vector mark in
-`mark.js`, using the Chromium that Playwright installs.
+`icons.py` renders every launcher and web icon from the render at
+`assets/source/mark.jpg`, with Pillow and NumPy.
 
 ```
-node tools/icons.mjs
+python3 tools/icons.py
 ```
+
+The render arrives with white rounded corners and a hairline triangle. The
+tool squares the corners off (a launcher icon is full-bleed; the platforms cut
+their own corners) and redraws the triangle's sides as dashes at a weight that
+survives 48px, leaving the pipe and the letters as rendered.
 
 Outputs, all regenerated from one source so they never drift apart:
 
 | File | Size | Notes |
 | --- | --- | --- |
-| `icon.png` | 1024 | Full-bleed launcher icon on the gradient ground |
-| `adaptive-icon.png` | 1024 | Android foreground, transparent, scaled to 62% for the mask safe zone |
-| `splash-icon.png` | 1024 | Splash mark, transparent |
-| `favicon.png` | 64 | Web |
+| `assets/icon.png` | 1024 | Full-bleed launcher icon |
+| `assets/adaptive-icon.png` | 1024 | Android foreground; the mark sits inside the 66dp circle a launcher shows |
+| `assets/splash-icon.png` | 1024 | The icon on a rounded plate, transparent corners |
+| `assets/favicon.png` | 64 | Web |
+| `public/icon-192.png`, `icon-512.png` | | PWA, `purpose: any` |
+| `public/apple-touch-icon.png` | 180 | iOS home screen |
+| `public/icon-maskable-512.png` | 512 | PWA, `purpose: maskable`, mark inside the 40% safe circle |
 
-Edit `mark.js` and re-run. Android masks the adaptive foreground to roughly the
-inner two thirds, so anything drawn outside that scale gets cut off on a
-launcher — keep `adaptive-icon.png` at or below 0.62.
+Replace `mark.jpg` and re-run. The triangle's centrelines are measured off the
+render and set at the top of the script; a render with the triangle somewhere
+else needs those numbers moved. Icons are native assets: a new build, not an
+OTA update, is what puts them on a phone.
 
 ## docs.mjs — the guide as a PDF
 
-Renders `docs/*.md` to the PDFs beside them, through the same Chromium
-`icons.mjs` uses.
+Renders `docs/*.md` to the PDFs beside them, through the Chromium that
+Playwright installs.
 
 ```
 node tools/docs.mjs
