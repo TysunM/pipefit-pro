@@ -1,11 +1,12 @@
-import { HOME, RECORDABLE, TOOLS, group, tool, type ToolRoute } from '../navigation/groups';
+import { GROUPS, HOME, HOME_TOOLS, TOOLS, group, tool, type ToolRoute } from '../navigation/groups';
 
-// The home screen, held honest
-// ----------------------------
-// Fourteen tools sit behind six cards, and the thing that goes wrong with that
-// is quiet: a tool is added to the list and forgotten in a group, or moved to
-// one group and left in another, and nobody notices because the home screen
-// still looks right. Every one of those is a tool a man cannot reach.
+// The front page and the tabs, held honest
+// ----------------------------------------
+// Fifteen tools are cut two ways: into the sections of the front page, and
+// into the three tabs. The thing that goes wrong with that is quiet — a tool
+// is added to the list and forgotten in one cut, or moved and left in two
+// places — and nobody notices because both screens still look right. Every
+// one of those is a tool a man cannot reach, or finds twice.
 
 /** Every route the app can open a tool at. Kept here so it is stated twice. */
 const EXPECTED: ToolRoute[] = [
@@ -26,101 +27,94 @@ const EXPECTED: ToolRoute[] = [
   'HandBender',
 ];
 
-describe('every tool is reachable', () => {
-  test('the home screen leads to all fifteen, and to nothing else', () => {
-    expect([...TOOLS.map((t) => t.route)].sort()).toEqual([...EXPECTED].sort());
-  });
+const routes = (xs: { route: ToolRoute }[]) => xs.map((x) => x.route);
+const sorted = (xs: string[]) => [...xs].sort();
 
-  test('no tool is in two places at once', () => {
-    const routes = TOOLS.map((t) => t.route);
-    expect(new Set(routes).size).toBe(routes.length);
-  });
-
-  test('a group card leads somewhere — none is empty', () => {
-    for (const e of HOME) if (e.kind === 'group') expect(e.tools.length).toBeGreaterThan(1);
-  });
-
-  test('every group id on the home screen resolves', () => {
-    for (const e of HOME) if (e.kind === 'group') expect(group(e.id)?.id).toBe(e.id);
-  });
-
-  test('a group wears the drawing of a tool it actually contains', () => {
-    for (const e of HOME) {
-      if (e.kind !== 'group') continue;
-      expect(e.tools.map((x) => x.route)).toContain(e.art);
-    }
-  });
-});
-
-describe('the grouping follows the work', () => {
-  test('offsets, bends and the cut length are one card', () => {
-    expect(group('offsets')?.tools.map((t) => t.route)).toEqual([
-      'SimpleOffset',
-      'RollingOffset',
-      'CutLength',
-      'SaddleBend',
-      'MiterBend',
-      'HandBender',
-    ]);
-  });
-
-  test('the bolt-up keeps the joints it made and the heats in them', () => {
-    // The heat book counts traceability against the joint register, so it is
-    // no use on a card away from it.
-    expect(group('flanges')?.tools.map((t) => t.route)).toEqual(['FlangeBoltUp', 'Joints', 'Heats']);
-  });
-
-  test('the spool keeps the order sheet built from it, and the iso pad', () => {
-    expect(group('spool')?.tools.map((t) => t.route)).toEqual(['SpoolBuilder', 'OrderSheet', 'IsoSketch']);
+describe('every tool is listed once', () => {
+  test('the list holds all fifteen and nothing else', () => {
+    expect(sorted(routes(TOOLS))).toEqual(sorted(EXPECTED));
+    expect(new Set(routes(TOOLS)).size).toBe(TOOLS.length);
   });
 
   test('thread engagement is gone from the app', () => {
     expect(TOOLS.some((t) => String(t.route) === 'ThreadEngagement')).toBe(false);
+    expect(tool('ThreadEngagement')).toBeUndefined();
   });
 });
 
-describe('every card says what it is', () => {
+describe('the front page reaches every tool, once', () => {
+  test('its sections together are the whole list', () => {
+    expect(sorted(routes(HOME_TOOLS))).toEqual(sorted(EXPECTED));
+  });
+
+  test('no tool is on it twice', () => {
+    expect(new Set(routes(HOME_TOOLS)).size).toBe(HOME_TOOLS.length);
+  });
+
+  test('the two big columns pair up row for row', () => {
+    expect(HOME.work).toHaveLength(HOME.records.length);
+  });
+
+  test('work tools down the left, records and look-ups down the right', () => {
+    expect(routes(HOME.work)).toEqual(['Calculator', 'Level', 'SpoolBuilder', 'FlangeBoltUp']);
+    expect(routes(HOME.records)).toEqual(['Reference', 'OrderSheet', 'Joints', 'Heats']);
+  });
+
+  test('the everyday calculations fill whole rows of small tiles', () => {
+    expect(routes(HOME.calcs)).toEqual(['SimpleOffset', 'RollingOffset', 'CutLength', 'SaddleBend', 'MiterBend', 'HandBender']);
+    expect(HOME.calcs.length % 2).toBe(0);
+  });
+});
+
+describe('the tabs reach every tool, once', () => {
+  test('together they are the whole list', () => {
+    expect(sorted(GROUPS.flatMap((g) => routes(g.tools)))).toEqual(sorted(EXPECTED));
+  });
+
+  test('no tool is under two tabs', () => {
+    const all = GROUPS.flatMap((g) => routes(g.tools));
+    expect(new Set(all).size).toBe(all.length);
+  });
+
+  test('every tab id resolves, and none is empty', () => {
+    for (const g of GROUPS) {
+      expect(group(g.id)?.id).toBe(g.id);
+      expect(g.tools.length).toBeGreaterThan(1);
+    }
+  });
+
+  test('the records are one tab: the order, the joints, their heats and the isos', () => {
+    expect(routes(group('projects')?.tools ?? [])).toEqual(['OrderSheet', 'Joints', 'Heats', 'IsoSketch']);
+  });
+
+  test('the calculations tab is the same set as the front page foot', () => {
+    expect(routes(group('calcs')?.tools ?? [])).toEqual(routes(HOME.calcs));
+  });
+});
+
+describe('every tile says what it is', () => {
   test('nothing is untitled or unexplained', () => {
     for (const t of TOOLS) {
       expect(t.title.trim().length).toBeGreaterThan(0);
       expect(t.subtitle.trim().length).toBeGreaterThan(0);
     }
-    for (const e of HOME) {
-      if (e.kind !== 'group') continue;
-      expect(e.title.trim().length).toBeGreaterThan(0);
-      expect(e.subtitle.trim().length).toBeGreaterThan(0);
+    for (const g of GROUPS) {
+      expect(g.title.trim().length).toBeGreaterThan(0);
+      expect(g.subtitle.trim().length).toBeGreaterThan(0);
     }
   });
 
-  test('no row inside a group repeats the heading above it', () => {
-    for (const e of HOME) {
-      if (e.kind !== 'group') continue;
-      for (const x of e.tools) expect(x.title).not.toBe(e.title);
-    }
+  test('two tiles never carry the same name', () => {
+    const names = TOOLS.map((t) => t.title);
+    expect(new Set(names).size).toBe(names.length);
   });
 
-  test('two cards on one screen never carry the same name', () => {
-    const top = HOME.map((e) => (e.kind === 'tool' ? e.tool.title : e.title));
-    expect(new Set(top).size).toBe(top.length);
-    for (const e of HOME) {
-      if (e.kind !== 'group') continue;
-      const inner = e.tools.map((x) => x.title);
-      expect(new Set(inner).size).toBe(inner.length);
-    }
-  });
-});
-
-describe('what the last-used strip will record', () => {
-  test('it records exactly the tools, so a tool added later counts on its own', () => {
-    expect([...RECORDABLE].sort()).toEqual([...EXPECTED].sort());
+  test('no tab repeats a tool name as its own', () => {
+    for (const g of GROUPS) for (const x of g.tools) expect(x.title).not.toBe(g.title);
   });
 
-  test('a screen that is not a tool never takes a slot', () => {
-    for (const r of ['Home', 'Group', 'Settings', 'ReferenceTable']) expect(RECORDABLE.has(r)).toBe(false);
-  });
-
-  test('a route can be looked up by name, and an unknown one is not invented', () => {
-    expect(tool('Calculator')?.title).toBe('Calculator');
-    expect(tool('ThreadEngagement')).toBeUndefined();
+  test('a subtitle fits the two lines a tile gives it', () => {
+    // About twenty-two characters a line at the tile width on a small phone.
+    for (const t of TOOLS) expect(t.subtitle.length).toBeLessThanOrEqual(40);
   });
 });

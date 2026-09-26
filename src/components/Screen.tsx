@@ -8,10 +8,13 @@ export function Screen({
   children,
   scroll = true,
   style,
+  tabbed = false,
 }: {
   children: React.ReactNode;
   scroll?: boolean;
   style?: ViewStyle;
+  /** A tab bar sits under the page and takes the home indicator, so the page does not. */
+  tabbed?: boolean;
 }) {
   const t = useTheme();
   const insets = useSafeAreaInsets();
@@ -32,7 +35,7 @@ export function Screen({
       <Grain />
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={[{ paddingBottom: insets.bottom + t.space.xxxl }, style]}
+        contentContainerStyle={[{ paddingBottom: (tabbed ? 0 : insets.bottom) + t.space.xxxl }, style]}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
       >

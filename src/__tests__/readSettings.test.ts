@@ -1,4 +1,4 @@
-import { LOOK, readSettings } from '../state/readSettings';
+import { LOOK, PROJECT_ID_MAX, readSettings } from '../state/readSettings';
 import type { Settings } from '../state/settings';
 
 const DEFAULTS: Settings = {
@@ -12,6 +12,7 @@ const DEFAULTS: Settings = {
   defaultGap: 0.09375,
   stockLength: 240,
   cutAllowance: 0.125,
+  projectId: '',
   look: LOOK,
 };
 
@@ -61,5 +62,27 @@ describe('reading stored settings', () => {
     for (const raw of ['{not json', '[]', 'null', '42', '"text"']) {
       expect(readSettings(raw, DEFAULTS)).toEqual({ settings: DEFAULTS, migrated: false });
     }
+  });
+});
+
+describe('the project id', () => {
+  test('settings from before it existed read as no project, not as undefined', () => {
+    const { projectId, ...before } = DEFAULTS;
+    void projectId;
+    expect(readSettings(JSON.stringify(before), DEFAULTS).settings.projectId).toBe('');
+  });
+
+  test('a stored id is kept as typed', () => {
+    const raw = JSON.stringify({ ...DEFAULTS, projectId: 'BP-REF-001' });
+    expect(readSettings(raw, DEFAULTS).settings.projectId).toBe('BP-REF-001');
+  });
+
+  test('anything that is not text is dropped, and an overlong one is cut', () => {
+    for (const bad of [42, null, { a: 1 }, ['x']]) {
+      const raw = JSON.stringify({ ...DEFAULTS, projectId: bad });
+      expect(readSettings(raw, DEFAULTS).settings.projectId).toBe('');
+    }
+    const long = 'X'.repeat(PROJECT_ID_MAX + 10);
+    expect(readSettings(JSON.stringify({ ...DEFAULTS, projectId: long }), DEFAULTS).settings.projectId).toHaveLength(PROJECT_ID_MAX);
   });
 });

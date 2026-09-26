@@ -1,25 +1,19 @@
 import { Ionicons } from '@expo/vector-icons';
 import type { RootStackParamList } from './types';
 
-// What is on the home screen, and what is inside each card
-// -------------------------------------------------------
-// Fifteen cards is a list you scroll rather than read, and the trade words on
-// them mean nearly the same thing until you already know the difference. So
-// the ones that answer the same question sit behind one card.
+// What is on the home screen, and what each tab holds
+// ---------------------------------------------------
+// Every tool is on the front page, one tap away, laid out in three sections:
+// the tools a man works with, the records he keeps and looks things up in,
+// and the calculations he runs most. The tab bar across the bottom cuts the
+// same fifteen tools a second way — projects, tools, calculations — so a tab
+// is a short list of like things rather than the whole shop again.
 //
-// The grouping follows the work, not the maths: everything that gets a pipe
-// round an obstruction is one card, and anything that records what was done
-// sits with the tool that did it. A saved thing is no use away from the thing
-// that saved it — the heat book counts traceability against the joint
-// register, so it belongs with the bolt-up; the order sheet is built from
-// saved spools, so it belongs with the spool.
-//
-// This file is the only place that says so. The home screen reads it, the
-// group screen reads it, and the last-used strip takes its list of recordable
-// routes from it, so the three can never disagree. groups.test.ts holds that
-// every tool is reachable, exactly once, and that nothing is orphaned.
+// This file is the only place that says which tool sits where. The home
+// screen, the tab screens and groups.test.ts all read it, and the test holds
+// that each of the two cuts reaches every tool exactly once.
 
-/** A screen a fitter opens to do a job. Not Settings, not a group, not Home. */
+/** A screen a fitter opens to do a job. Not Settings, not a tab, not Home. */
 export type ToolRoute =
   | 'Calculator'
   | 'Level'
@@ -41,8 +35,6 @@ export type ToolRoute =
 const _routesExist: readonly (keyof RootStackParamList)[] = [] as readonly ToolRoute[];
 void _routesExist;
 
-export type GroupId = 'offsets' | 'flanges' | 'spool';
-
 export type Tool = {
   route: ToolRoute;
   title: string;
@@ -50,101 +42,78 @@ export type Tool = {
   icon: keyof typeof Ionicons.glyphMap;
 };
 
-export type HomeEntry =
-  | { kind: 'tool'; tool: Tool }
-  | {
-      kind: 'group';
-      id: GroupId;
-      title: string;
-      subtitle: string;
-      icon: keyof typeof Ionicons.glyphMap;
-      /** Whose drawing the card wears — the tool inside it a man opens first. */
-      art: ToolRoute;
-      tools: Tool[];
-    };
-
-const OFFSETS: Tool[] = [
+/** Every tool, once. The subtitles are short enough to sit on two lines of a tile. */
+export const TOOLS: Tool[] = [
+  { route: 'Calculator', title: 'Calculator', subtitle: 'Feet, inches and fractions', icon: 'calculator-outline' },
+  { route: 'Reference', title: 'Handbook', subtitle: 'Material specs and tables', icon: 'book-outline' },
+  { route: 'Level', title: 'Level', subtitle: 'Lay phone on pipe to read angle', icon: 'git-commit-outline' },
+  { route: 'OrderSheet', title: 'Order sheet', subtitle: 'Combine spools into one order', icon: 'receipt-outline' },
+  { route: 'SpoolBuilder', title: '3D spool', subtitle: 'Build a run and spin it in 3D', icon: 'cube-outline' },
+  { route: 'Joints', title: 'Joint register', subtitle: 'Project-level bolt-up records', icon: 'pricetags-outline' },
+  { route: 'FlangeBoltUp', title: 'Flange bolt-up', subtitle: 'Interactive cross-pattern check', icon: 'sync-circle-outline' },
+  { route: 'Heats', title: 'Heat book', subtitle: 'MTR traceability by heat #', icon: 'shield-checkmark-outline' },
+  { route: 'IsoSketch', title: 'Iso sketch', subtitle: 'Iso paper; the lines snap to the axes', icon: 'pencil-outline' },
   { route: 'SimpleOffset', title: 'Simple offset', subtitle: 'Travel, run and shrink in one plane', icon: 'git-branch-outline' },
-  { route: 'RollingOffset', title: 'Rolling offset', subtitle: 'True offset and roll angle in two planes', icon: 'sync-outline' },
-  { route: 'CutLength', title: 'Cut length', subtitle: 'Centre-to-centre minus fitting takeouts', icon: 'cut-outline' },
-  { route: 'SaddleBend', title: 'Saddle bend', subtitle: 'Three and four point saddles over an obstruction', icon: 'trending-up-outline' },
+  { route: 'RollingOffset', title: 'Rolling offset', subtitle: 'True offset and roll in two planes', icon: 'sync-outline' },
+  { route: 'CutLength', title: 'Cut length', subtitle: 'Centre-to-centre minus takeouts', icon: 'cut-outline' },
+  { route: 'SaddleBend', title: 'Saddle bend', subtitle: 'Three and four point saddles', icon: 'trending-up-outline' },
   { route: 'MiterBend', title: 'Miter bend', subtitle: 'Segmented elbow cuts, code checked', icon: 'triangle-outline' },
   { route: 'HandBender', title: 'Pipe bend', subtitle: 'Setback, arc length and gain', icon: 'analytics-outline' },
 ];
-
-const FLANGES: Tool[] = [
-  { route: 'FlangeBoltUp', title: 'Flange bolt-up', subtitle: 'Tap each bolt through the cross pattern', icon: 'sync-circle-outline' },
-  { route: 'Joints', title: 'Joint register', subtitle: 'Every bolt-up saved, bolt by bolt', icon: 'pricetags-outline' },
-  { route: 'Heats', title: 'Heat book', subtitle: 'Heat numbers, certs, and what the job can prove', icon: 'shield-checkmark-outline' },
-];
-
-const SPOOL: Tool[] = [
-  // Named for what it does rather than for the card it sits under, so the row
-  // is not a repeat of the heading above it.
-  { route: 'SpoolBuilder', title: 'Build a spool', subtitle: 'Say where each leg runs and spin it in 3D', icon: 'cube-outline' },
-  { route: 'OrderSheet', title: 'Order sheet', subtitle: 'One order across every saved spool', icon: 'receipt-outline' },
-  { route: 'IsoSketch', title: 'Iso sketch', subtitle: 'Draw the run on iso paper; the lines snap to the axes', icon: 'pencil-outline' },
-];
-
-/** The home screen, in order. Kept close to the old order so nothing moves far. */
-export const HOME: HomeEntry[] = [
-  {
-    kind: 'tool',
-    tool: { route: 'Calculator', title: 'Calculator', subtitle: 'Feet, inches and fractions with pipe keys', icon: 'calculator-outline' },
-  },
-  {
-    kind: 'tool',
-    tool: { route: 'Level', title: 'Level', subtitle: 'Lay the phone on the pipe and read the fall', icon: 'git-commit-outline' },
-  },
-  {
-    kind: 'tool',
-    tool: { route: 'Reference', title: 'Handbook', subtitle: 'Every table, searchable, with its page', icon: 'book-outline' },
-  },
-  {
-    kind: 'group',
-    id: 'spool',
-    title: '3D spool',
-    subtitle: 'Build a run, sketch an iso, order the steel',
-    icon: 'cube-outline',
-    art: 'SpoolBuilder',
-    tools: SPOOL,
-  },
-  {
-    kind: 'group',
-    id: 'flanges',
-    title: 'Flanges',
-    subtitle: 'Bolt-up, the joints you worked, and their heats',
-    icon: 'sync-circle-outline',
-    art: 'FlangeBoltUp',
-    tools: FLANGES,
-  },
-  {
-    kind: 'group',
-    id: 'offsets',
-    title: 'Offsets / Bending',
-    subtitle: 'Offsets, saddles, miters, bends and cut length',
-    icon: 'git-branch-outline',
-    art: 'SimpleOffset',
-    tools: OFFSETS,
-  },
-];
-
-export function group(id: GroupId): Extract<HomeEntry, { kind: 'group' }> | undefined {
-  for (const e of HOME) if (e.kind === 'group' && e.id === id) return e;
-  return undefined;
-}
-
-/** Every tool, wherever it sits. */
-export const TOOLS: Tool[] = HOME.flatMap((e) => (e.kind === 'tool' ? [e.tool] : e.tools));
 
 export function tool(route: string): Tool | undefined {
   return TOOLS.find((t) => t.route === route);
 }
 
+const pick = (routes: ToolRoute[]): Tool[] => routes.map((r) => tool(r) as Tool);
+
 /**
- * The routes the last-used strip records.
- *
- * A Set of the tools above, so a screen that is not a tool — Settings, a
- * group, a handbook table — never takes a slot from one that is.
+ * The home screen. Work tools down the left, records and look-ups down the
+ * right, row for row; the sketch pad full width under them; the everyday
+ * calculations in small tiles at the foot.
  */
-export const RECORDABLE: ReadonlySet<string> = new Set(TOOLS.map((t) => t.route));
+export const HOME = {
+  work: pick(['Calculator', 'Level', 'SpoolBuilder', 'FlangeBoltUp']),
+  records: pick(['Reference', 'OrderSheet', 'Joints', 'Heats']),
+  wide: tool('IsoSketch') as Tool,
+  calcs: pick(['SimpleOffset', 'RollingOffset', 'CutLength', 'SaddleBend', 'MiterBend', 'HandBender']),
+};
+
+/** The big tiles in reading order: across each row, left then right. */
+export const HOME_PAIRS: Tool[] = HOME.work.flatMap((w, i) => {
+  const r = HOME.records[i];
+  return r ? [w, r] : [w];
+});
+
+/** Every tool the home screen shows, in reading order. */
+export const HOME_TOOLS: Tool[] = [...HOME_PAIRS, HOME.wide, ...HOME.calcs];
+
+export type GroupId = 'projects' | 'tools' | 'calcs';
+
+export type Group = { id: GroupId; title: string; subtitle: string; tools: Tool[] };
+
+/** What each tab holds. */
+export const GROUPS: Group[] = [
+  {
+    id: 'projects',
+    title: 'Projects',
+    subtitle: 'What the job has on record: the order, every joint bolted up, the heats in them, and the isos.',
+    tools: pick(['OrderSheet', 'Joints', 'Heats', 'IsoSketch']),
+  },
+  {
+    id: 'tools',
+    title: 'Tools',
+    subtitle: 'The instruments: the calculator, the level, the handbook, the spool and the bolt-up.',
+    tools: pick(['Calculator', 'Level', 'Reference', 'SpoolBuilder', 'FlangeBoltUp']),
+  },
+  {
+    id: 'calcs',
+    title: 'Calculations',
+    subtitle: 'Offsets, saddles, miters, bends and cut length, all worked from the active pipe spec.',
+    tools: pick(['SimpleOffset', 'RollingOffset', 'CutLength', 'SaddleBend', 'MiterBend', 'HandBender']),
+  },
+];
+
+export function group(id: GroupId): Group | undefined {
+  return GROUPS.find((g) => g.id === id);
+}

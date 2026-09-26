@@ -28,6 +28,12 @@ export type Settings = {
    * list that comes up one piece short at the end of the day.
    */
   cutAllowance: number;
+  /**
+   * The job this phone is working, as the site names it — a project number, a
+   * line number, a spool reference. Shown on the home screen so every figure
+   * read off the phone is read against the right job. Empty until it is set.
+   */
+  projectId: string;
   /** Which look these were written under — see readSettings. */
   look: number;
 };
@@ -45,6 +51,7 @@ export const DEFAULT_SETTINGS: Settings = {
   defaultGap: 0.09375,
   stockLength: 240,
   cutAllowance: 0.125,
+  projectId: '',
   look: LOOK,
 };
 
@@ -86,9 +93,13 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
+  // The project is the job, not a default, so resetting the defaults leaves it.
   const reset = useCallback(() => {
-    setSettings(DEFAULT_SETTINGS);
-    void AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_SETTINGS));
+    setSettings((prev) => {
+      const next = { ...DEFAULT_SETTINGS, projectId: prev.projectId };
+      void AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      return next;
+    });
   }, []);
 
   const value = useMemo<Ctx>(() => ({ settings, hydrated, update, reset }), [settings, hydrated, update, reset]);

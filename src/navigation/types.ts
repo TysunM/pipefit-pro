@@ -1,7 +1,7 @@
 export type RootStackParamList = {
   Home: undefined;
-  /** One card's worth of tools — see navigation/groups.ts. */
-  Group: { id: 'offsets' | 'flanges' | 'spool' };
+  /** One tab's worth of tools — see navigation/groups.ts. */
+  Group: { id: 'projects' | 'tools' | 'calcs' };
   SimpleOffset: undefined;
   RollingOffset: undefined;
   CutLength: undefined;

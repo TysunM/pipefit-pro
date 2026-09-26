@@ -58,6 +58,13 @@ export type Colors = {
   headerHi: string;
   headerLo: string;
   chrome: string;
+  /** The featured tile: its teal plate, the edge round it and the tag on it. */
+  featureHi: string;
+  featureLo: string;
+  featureEdge: string;
+  feature: string;
+  /** The tab bar along the foot of the tab screens. */
+  tabBar: string;
 };
 
 // The palette
@@ -126,6 +133,11 @@ export const palette: Record<Mode, Colors> = {
     headerHi: '#FFFFFF',
     headerLo: '#EAEEF3',
     chrome: '#141C26',
+    featureHi: '#E6F4F5',
+    featureLo: '#D4EAEC',
+    featureEdge: '#9CCBCF',
+    feature: '#0E6A70',
+    tabBar: '#FFFFFF',
   },
   dark: {
     bg: '#1A2029',
@@ -174,6 +186,11 @@ export const palette: Record<Mode, Colors> = {
     headerHi: '#222A35',
     headerLo: '#1A2029',
     chrome: '#F1F4F8',
+    featureHi: '#2B4A52',
+    featureLo: '#1E3139',
+    featureEdge: '#3A6670',
+    feature: '#6FD3D6',
+    tabBar: '#141A21',
   },
 };
 

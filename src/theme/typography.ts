@@ -2,17 +2,19 @@ import { Platform, TextStyle } from 'react-native';
 
 // Two faces, one family
 // ---------------------
-// Source Sans 3 for anything that names or labels — screen titles, tile
-// titles, section headings, labels, buttons, chips and the big figures — and
-// Source Serif 4 for anything that explains: body copy, hints, captions, the
-// footnote under a result. They were drawn as a pair by the same hand, so the
-// x-heights and stroke weights agree and a label over a paragraph reads as
-// one voice, not two fonts.
+// Source Serif 4 for what names a thing — the title of a screen, of a tile, of
+// a section — and Source Sans 3 for everything read to use it: labels, body
+// copy, hints, buttons, chips and the big figures. A serif title over a sans
+// line is how a handbook sets a table heading over its rows, and it is what
+// makes the front page read as a finished instrument rather than a form. The
+// two were drawn as a pair by the same hand, so the x-heights and stroke
+// weights agree and a title over a paragraph reads as one voice.
 //
 // The sans was picked by setting four against the same screen. Inter, Barlow
 // and DM Sans all draw capital I and lowercase l as the same bar; on a screen
 // that reads heat numbers off steel, E7Z4l9 and E7Z4I9 must not look alike.
-// Source Sans tails its l and flags its 1, so all three are distinct.
+// Source Sans tails its l and flags its 1, so all three are distinct. That is
+// why every figure stays in the sans.
 //
 // Android does not pick a weight out of a family by fontWeight, so every
 // weight is its own family name, and each style below says which face it is
@@ -37,17 +39,18 @@ export type Face = 'sans' | 'serif';
 export type TypeStyle = TextStyle & { face: Face };
 
 export const type = {
-  screenTitle: { face: 'sans', fontSize: 22, fontWeight: '700', letterSpacing: -0.2 },
+  screenTitle: { face: 'serif', fontSize: 22, fontWeight: '700', letterSpacing: -0.2 },
   display: { face: 'sans', fontSize: 46, fontWeight: '700', letterSpacing: -1 },
   displaySmall: { face: 'sans', fontSize: 34, fontWeight: '700', letterSpacing: -0.6 },
-  sectionTitle: { face: 'sans', fontSize: 20, fontWeight: '700', letterSpacing: -0.2 },
+  sectionTitle: { face: 'serif', fontSize: 20, fontWeight: '700', letterSpacing: -0.2 },
+  tileTitle: { face: 'serif', fontSize: 19.5, fontWeight: '700', letterSpacing: -0.3 },
   label: { face: 'sans', fontSize: 12.5, fontWeight: '600', letterSpacing: 1.1, textTransform: 'uppercase' },
   labelSmall: { face: 'sans', fontSize: 11.5, fontWeight: '600', letterSpacing: 0.9, textTransform: 'uppercase' },
   fieldValue: { face: 'sans', fontSize: 24, fontWeight: '600', letterSpacing: -0.2 },
   statValue: { face: 'sans', fontSize: 22, fontWeight: '600', letterSpacing: -0.2 },
-  body: { face: 'serif', fontSize: 16, fontWeight: '400', lineHeight: 23 },
-  bodyStrong: { face: 'serif', fontSize: 16, fontWeight: '600', lineHeight: 23 },
-  caption: { face: 'serif', fontSize: 13, fontWeight: '400', lineHeight: 18 },
+  body: { face: 'sans', fontSize: 16, fontWeight: '400', lineHeight: 23 },
+  bodyStrong: { face: 'sans', fontSize: 16, fontWeight: '600', lineHeight: 23 },
+  caption: { face: 'sans', fontSize: 13.5, fontWeight: '400', lineHeight: 18 },
   captionStrong: { face: 'sans', fontSize: 13, fontWeight: '600' },
   italicNote: { face: 'serif', fontSize: 13, fontStyle: 'italic' },
   button: { face: 'sans', fontSize: 16, fontWeight: '600', letterSpacing: 0.2 },

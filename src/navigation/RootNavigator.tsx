@@ -1,9 +1,8 @@
-import React, { useCallback } from 'react';
+import React from 'react';
 import {
   DarkTheme,
   DefaultTheme,
   NavigationContainer,
-  type NavigationState,
   type Theme as NavTheme,
 } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -11,7 +10,6 @@ import { RootStackParamList } from './types';
 import { AppHeader } from '../components/AppHeader';
 import { useTheme } from '../theme/ThemeProvider';
 import { group } from './groups';
-import { useRecents } from '../state/recents';
 import { referenceTable } from '../calc/reference';
 import { HomeScreen } from '../screens/HomeScreen';
 import { GroupScreen } from '../screens/GroupScreen';
@@ -38,20 +36,6 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export function RootNavigator() {
   const t = useTheme();
-  const { remember } = useRecents();
-
-  // What the last-used strip is built from. Taken here rather than in each
-  // screen so a tool cannot be added later and quietly not count: every way
-  // into a screen — a card, the strip itself, the back stack — comes through
-  // this one listener. groups.ts decides which routes are worth recording.
-  const record = useCallback(
-    (state: NavigationState | undefined) => {
-      const name = state?.routes[state.index ?? state.routes.length - 1]?.name;
-      if (name) remember(name);
-    },
-    [remember]
-  );
-
   const navTheme: NavTheme = {
     ...(t.mode === 'dark' ? DarkTheme : DefaultTheme),
     colors: {
@@ -66,14 +50,16 @@ export function RootNavigator() {
   };
 
   return (
-    <NavigationContainer theme={navTheme} onStateChange={record}>
+    <NavigationContainer theme={navTheme}>
       <Stack.Navigator
         screenOptions={({ navigation, route }) => ({
           contentStyle: { backgroundColor: t.colors.bg },
           header: ({ options, back }) => (
             <AppHeader
               title={typeof options.title === 'string' ? options.title : route.name}
-              onBack={back ? () => navigation.goBack() : undefined}
+              // A tab is a place, reached from the tab bar, so it has no back.
+              onBack={back && route.name !== 'Group' ? () => navigation.goBack() : undefined}
+              onProfile={route.name === 'Home' ? () => navigation.navigate('Group', { id: 'projects' }) : undefined}
               onSettings={route.name === 'Settings' ? undefined : () => navigation.navigate('Settings')}
             />
           ),

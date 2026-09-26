@@ -258,3 +258,38 @@ export function zoomAbout(v: Viewport, factor: number, about: Pt): Viewport {
   const k = scale / v.scale;
   return { scale, tx: about[0] - (about[0] - v.tx) * k, ty: about[1] - (about[1] - v.ty) * k };
 }
+
+/**
+ * A line cut to a rectangle (Liang–Barsky), or null when it misses. Done here
+ * rather than with an SVG clip path, which needs an id and a <defs> that not
+ * every renderer honours inside a group.
+ */
+export function clip(
+  x0: number,
+  y0: number,
+  x1: number,
+  y1: number,
+  r: { x0: number; y0: number; x1: number; y1: number }
+): [number, number, number, number] | null {
+  const dx = x1 - x0;
+  const dy = y1 - y0;
+  let a = 0;
+  let b = 1;
+  const edges: [number, number][] = [
+    [-dx, x0 - r.x0],
+    [dx, r.x1 - x0],
+    [-dy, y0 - r.y0],
+    [dy, r.y1 - y0],
+  ];
+  for (const [p, q] of edges) {
+    if (p === 0) {
+      if (q < 0) return null;
+      continue;
+    }
+    const u = q / p;
+    if (p < 0) a = Math.max(a, u);
+    else b = Math.min(b, u);
+    if (a > b) return null;
+  }
+  return [x0 + a * dx, y0 + a * dy, x0 + b * dx, y0 + b * dy];
+}

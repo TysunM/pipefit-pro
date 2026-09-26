@@ -1,4 +1,5 @@
 import {
+  clip,
   CORNERS,
   ISO_GRID,
   L3,
@@ -147,5 +148,28 @@ describe('the window', () => {
     const z = zoomAbout(v, 2, about);
     close(toPage(about, z), before);
     expect(z.scale).toBe(2);
+  });
+});
+
+
+describe('cutting a grid line to the sheet', () => {
+  const r = { x0: 0, y0: 0, x1: 10, y1: 10 };
+  test('a line across the sheet is cut at both edges', () => {
+    expect(clip(-5, 5, 15, 5, r)).toEqual([0, 5, 10, 5]);
+  });
+  test('a line inside is left as it is', () => {
+    expect(clip(2, 2, 8, 8, r)).toEqual([2, 2, 8, 8]);
+  });
+  test('a line that misses is dropped', () => {
+    expect(clip(-5, -5, -1, 20, r)).toBeNull();
+    expect(clip(0, 12, 10, 14, r)).toBeNull();
+  });
+  test('a diagonal is cut where it crosses', () => {
+    const s = clip(-10, 0, 20, 30, r);
+    expect(s).not.toBeNull();
+    expect(s![0]).toBeCloseTo(0);
+    expect(s![1]).toBeCloseTo(10);
+    expect(s![2]).toBeCloseTo(0);
+    expect(s![3]).toBeCloseTo(10);
   });
 });
