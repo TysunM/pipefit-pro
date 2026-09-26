@@ -2,7 +2,7 @@ import React from 'react';
 import { Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/ThemeProvider';
-import { Bezel, Grain } from './metal';
+import { Bezel } from './metal';
 
 /**
  * The bar across the top of every screen: the title set in the serif in the
@@ -36,7 +36,6 @@ export function AppHeader({
         borderBottomColor: c.border,
       }}
     >
-      <Grain strength={0.8} />
       <View style={{ height: 58, flexDirection: 'row', alignItems: 'center', paddingHorizontal: t.space.md }}>
         <View style={{ width: 48, alignItems: 'flex-start' }}>
           {onBack ? (

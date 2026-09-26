@@ -1,12 +1,10 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View, ViewStyle } from 'react-native';
-import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../theme/ThemeProvider';
 import type { Tool } from '../navigation/groups';
 import { TileArt, TILE_ART_BOX } from './TileArt';
 import { ToolArt } from './ToolArt';
-import { useSvgIds } from './metal';
 
 // The tiles
 // ---------
@@ -15,14 +13,13 @@ import { useSvgIds } from './metal';
 // tile is the one tool that wants the width. A small tile is an everyday
 // calculation, read by the shape of the geometry and its name alone.
 //
-// The surface is a slate plate lit from above, with a hairline edge and a soft
-// drop, so the tiles sit on the page rather than being painted on it. Pressed,
-// the light turns over. The featured tile is the same plate in teal.
+// The surface is one flat slate colour with a hairline edge, its top edge a
+// shade lighter, and a soft drop, so the tiles sit on the page rather than
+// being painted on it. Pressed, it drops to the darker shade. The featured
+// tile is the same plate in teal. No gradients: see metal.tsx for why.
 //
-// Every drawing on a tile sits inside a View. On the web the plate's gradient
-// is absolutely positioned, and an absolutely positioned layer paints over a
-// bare <svg> sibling however late the sibling comes; a View is positioned, so
-// it paints in order like everything else.
+// Every drawing on a tile sits inside a View, so it lays out and paints in
+// order with the words under it on every platform.
 
 function Surface({
   children,
@@ -37,37 +34,21 @@ function Surface({
 }) {
   const t = useTheme();
   const c = t.colors;
-  const gid = useSvgIds('tile');
-  const [hi, lo] = featured ? [c.featureHi, c.featureLo] : [c.metalHi, c.metalLo];
+  const [up, down, edge] = featured ? [c.featureHi, c.featureLo, c.featureEdge] : [c.metalHi, c.metalLo, c.border];
   return (
     <View
       style={[
         {
+          backgroundColor: pressed ? down : up,
           borderRadius: t.radius.xl,
           borderWidth: 1,
-          borderColor: featured ? c.featureEdge : c.border,
-          backgroundColor: lo,
-          overflow: 'hidden',
+          borderColor: edge,
+          borderTopColor: pressed ? edge : featured ? c.featureEdge : c.edgeHi,
         },
         t.mode === 'dark' ? styles.dropDark : styles.dropLight,
         style,
       ]}
     >
-      <Svg width="100%" height="100%" style={StyleSheet.absoluteFill} pointerEvents="none">
-        <Defs>
-          <LinearGradient id={gid('a')} x1="0" y1="0" x2="0" y2="1">
-            <Stop offset="0" stopColor={pressed ? lo : hi} />
-            <Stop offset="1" stopColor={pressed ? hi : lo} />
-          </LinearGradient>
-          <LinearGradient id={gid('b')} x1="0" y1="0" x2="1" y2="0">
-            <Stop offset="0" stopColor={c.edgeHi} stopOpacity={0} />
-            <Stop offset="0.5" stopColor={featured ? c.feature : c.edgeHi} stopOpacity={featured ? 0.5 : 0.95} />
-            <Stop offset="1" stopColor={c.edgeHi} stopOpacity={0} />
-          </LinearGradient>
-        </Defs>
-        <Rect x="0" y="0" width="100%" height="100%" fill={`url(#${gid('a')})`} />
-        {pressed ? null : <Rect x="0" y="0" width="100%" height="1.5" fill={`url(#${gid('b')})`} />}
-      </Svg>
       {children}
     </View>
   );

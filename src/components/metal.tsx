@@ -1,22 +1,21 @@
 import React, { useId } from 'react';
-import { Image, Pressable, StyleSheet, View, ViewStyle } from 'react-native';
+import { Pressable, View, ViewStyle } from 'react-native';
 import Svg, { Defs, Ellipse, LinearGradient, RadialGradient, Rect, Stop } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../theme/ThemeProvider';
 import { svgId, type SvgPrefix } from './svgId';
 
-// The metal
-// ---------
-// Every surface that is chrome rather than content is built from these five:
-// a plate, a recess, a bezel, a lit strip and the grain. They are drawn with
-// the SVG the app already ships, not with a gradient module, because a new
-// native module would mean a new APK and these ride over the air.
+// The surfaces
+// ------------
+// Every surface that is chrome rather than content is one of these: a plate,
+// a recess, a bezel and a lit strip.
 //
-// The rule they keep is the one in tokens.ts: the metal is all in the chrome.
-// A figure never sits on a sheen — it sits down in a recess, flat and dark,
-// where the contrast test measured it.
-
-const GRAIN = require('../../assets/finish/brushed.png');
+// They are flat. Each is one solid colour with a hairline edge, and a plate
+// has its top edge a shade lighter so it reads as raised. They used to carry
+// an SVG gradient laid over them at 100% width; on Android that layer was
+// sized once, before the flex layout settled, so it stopped short and left a
+// dark band down the right of every button and tile. A solid fill cannot come
+// out short, and it reads more cleanly in the sun than a sheen did.
 
 /** Mints this drawing's gradient ids. `role` is one character. */
 export function useSvgIds(prefix: SvgPrefix): (role: string) => string {
@@ -24,53 +23,11 @@ export function useSvgIds(prefix: SvgPrefix): (role: string) => string {
   return (role) => svgId(prefix, uid, role);
 }
 
-/** The brushed grain, tiled behind whatever it is put in. */
-export function Grain({ strength = 1 }: { strength?: number }) {
-  const t = useTheme();
-  return (
-    <View pointerEvents="none" style={[StyleSheet.absoluteFill, { opacity: t.finish.grainOpacity * strength }]}>
-      <Image
-        source={GRAIN}
-        resizeMode="repeat"
-        tintColor={t.finish.grain}
-        style={{ width: '100%', height: '100%' }}
-      />
-    </View>
-  );
-}
-
 type Tone = 'metal' | 'copper' | 'slate';
 
-/** The sheen and the lit edge, laid behind a plate's content. */
-function Sheen({ tone, sunk }: { tone: Tone; sunk: boolean }) {
-  const t = useTheme();
-  const c = t.colors;
-  const gid = useSvgIds('sheen');
-  const [hi, lo] =
-    tone === 'copper' ? [c.copperFillHi, c.copperFillLo] : tone === 'slate' ? [c.slateHi, c.slateLo] : [c.metalHi, c.metalLo];
-  const edge = tone === 'copper' ? c.copperHi : tone === 'slate' ? c.onSlate : c.edgeHi;
-  return (
-    <Svg width="100%" height="100%" style={StyleSheet.absoluteFill} pointerEvents="none">
-      <Defs>
-        <LinearGradient id={gid('a')} x1="0" y1="0" x2="0" y2="1">
-          <Stop offset="0" stopColor={sunk ? lo : hi} />
-          <Stop offset="1" stopColor={sunk ? hi : lo} />
-        </LinearGradient>
-        <LinearGradient id={gid('b')} x1="0" y1="0" x2="1" y2="0">
-          <Stop offset="0" stopColor={edge} stopOpacity={0} />
-          <Stop offset="0.5" stopColor={edge} stopOpacity={tone === 'metal' ? 0.9 : 0.7} />
-          <Stop offset="1" stopColor={edge} stopOpacity={0} />
-        </LinearGradient>
-      </Defs>
-      <Rect x="0" y="0" width="100%" height="100%" fill={`url(#${gid('a')})`} />
-      {sunk ? null : <Rect x="0" y="0" width="100%" height="1" fill={`url(#${gid('b')})`} />}
-    </Svg>
-  );
-}
-
 /**
- * A raised plate — a card, a button, a strip. Pressed, it sinks: the sheen
- * turns over, which is what a pushed plate looks like under a work light.
+ * A raised plate — a card, a button, a strip. One flat colour, its top edge a
+ * shade lighter. Pressed, it drops to the darker shade of the same colour.
  */
 export function Plate({
   children,
@@ -86,27 +43,35 @@ export function Plate({
   radius?: number;
 }) {
   const t = useTheme();
+  const c = t.colors;
+  const face =
+    tone === 'copper'
+      ? { up: c.copperFill, down: c.copperFillLo, edge: c.copperFill, lit: c.copperFill }
+      : tone === 'slate'
+        ? { up: c.slateHi, down: c.slateLo, edge: c.slateLo, lit: c.slateHi }
+        : { up: c.metalHi, down: c.metalLo, edge: c.edgeLo, lit: c.edgeHi };
   return (
     <View
       style={[
         {
+          backgroundColor: sunk ? face.down : face.up,
           borderRadius: radius ?? t.radius.lg,
           borderWidth: 1,
-          borderColor: tone === 'copper' ? t.colors.copperLo : t.colors.edgeLo,
+          borderColor: face.edge,
+          borderTopColor: sunk ? face.edge : face.lit,
           overflow: 'hidden',
         },
         style,
       ]}
     >
-      <Sheen tone={tone} sunk={sunk} />
       {children}
     </View>
   );
 }
 
 /**
- * A recess — the panel a figure or a drawing sits down inside. Flat, dark and
- * shaded at the top edge, the way a hole in a plate is.
+ * A recess — the panel a figure or a drawing sits down inside. Flat and dark,
+ * its top edge the shadowed one, the way a hole in a plate is.
  */
 export function Well({
   children,
@@ -121,8 +86,6 @@ export function Well({
   trim?: boolean;
 }) {
   const t = useTheme();
-  const gid = useSvgIds('well');
-  const shade = t.mode === 'dark' ? '#000000' : '#5A4630';
   return (
     <View
       style={[
@@ -131,20 +94,13 @@ export function Well({
           borderRadius: radius ?? t.radius.md,
           borderWidth: trim ? 1.5 : 1,
           borderColor: trim ? t.colors.copper : t.colors.wellEdge,
+          // A recess is lit from above like a plate, so its shadowed edge is the top one.
+          borderTopColor: trim ? t.colors.copper : t.colors.edgeLo,
           overflow: 'hidden',
         },
         style,
       ]}
     >
-      <Svg width="100%" height="100%" style={StyleSheet.absoluteFill} pointerEvents="none">
-        <Defs>
-          <LinearGradient id={gid('a')} x1="0" y1="0" x2="0" y2="1">
-            <Stop offset="0" stopColor={shade} stopOpacity={t.mode === 'dark' ? 0.55 : 0.14} />
-            <Stop offset="1" stopColor={shade} stopOpacity={0} />
-          </LinearGradient>
-        </Defs>
-        <Rect x="0" y="0" width="100%" height="10" fill={`url(#${gid('a')})`} />
-      </Svg>
       {children}
     </View>
   );

@@ -85,6 +85,7 @@ export function Keypad({
                           styles.keyText,
                           {
                             fontFamily: t.font.sans,
+                            ...t.weight('700'),
                             color: ink,
                             fontSize: label.length > 6 ? 13.5 : label.includes('\n') ? 13.5 : 18,
                           },
@@ -135,5 +136,5 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 2,
   },
-  keyText: { fontWeight: '700', textAlign: 'center' },
+  keyText: { textAlign: 'center' },
 });

@@ -272,7 +272,7 @@ function NoteSheet({
               paddingHorizontal: t.space.lg,
               fontFamily: t.font.sansMedium,
               fontSize: 17,
-              fontWeight: '600',
+              ...t.weight('600'),
             }}
           />
           <View style={{ flexDirection: 'row', gap: t.space.md, marginTop: t.space.sm }}>
