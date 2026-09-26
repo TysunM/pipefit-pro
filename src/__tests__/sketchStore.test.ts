@@ -7,20 +7,25 @@ import {
   emptyBook,
   newSketch,
   parseBook,
+  place,
   renameSketch,
   runNodes,
   saveSketch,
   serialiseBook,
+  sketchBounds,
   sketchToSvg,
   storedStroke,
   validStroke,
   withStrokes,
 } from '../state/sketchStore';
+import { lattice, toScreen } from '../calc/iso';
 
 const strokes: Stroke[] = [
-  { kind: 'run', pts: [[0, 0], [17.3, -10]] },
-  { kind: 'pen', pts: [[5, 5], [9, 9], [12, 4]] },
-  { kind: 'note', at: [30, 30], text: '4\'-6"' },
+  { kind: 'run', from: [0, 0, 0], to: [3, 0, 0] },
+  { kind: 'run', from: [3, 0, 0], to: [3, 0, 2] },
+  { kind: 'pen', pts: [[5, 5], [9, 9], [12, 4]], anchor: [3, 0, 2] },
+  { kind: 'note', at: [10, -10], text: '4\'-6"', anchor: [3, 0, 0] },
+  { kind: 'pen', pts: [[100, 100], [120, 100]], anchor: null },
 ];
 
 const sketch = (id: string, at: number, s: Stroke[] = strokes): SavedSketch => ({
@@ -33,20 +38,39 @@ const sketch = (id: string, at: number, s: Stroke[] = strokes): SavedSketch => (
 });
 
 describe('strokes', () => {
-  test('a run has exactly two points, a pen at least two, a note some text', () => {
-    expect(validStroke({ kind: 'run', pts: [[0, 0], [1, 1], [2, 2]] })).toBeNull();
-    expect(validStroke({ kind: 'pen', pts: [[0, 0]] })).toBeNull();
-    expect(validStroke({ kind: 'note', at: [0, 0], text: '   ' })).toBeNull();
-    expect(validStroke({ kind: 'note', at: [0, 'x'], text: 'ok' })).toBeNull();
+  test('a run goes somewhere, a pen has two points, a note has words and an anchor is whole', () => {
+    expect(validStroke({ kind: 'run', from: [0, 0, 0], to: [0, 0, 0] })).toBeNull();
+    expect(validStroke({ kind: 'run', from: [0, 0, 0], to: [1.5, 0, 0] })).toBeNull();
+    expect(validStroke({ kind: 'pen', pts: [[0, 0]], anchor: null })).toBeNull();
+    expect(validStroke({ kind: 'pen', pts: [[0, 0], [1, 1]], anchor: [1, 2] })).toBeNull();
+    expect(validStroke({ kind: 'note', at: [0, 0], text: '   ', anchor: null })).toBeNull();
     for (const s of strokes) expect(validStroke(s)).toEqual(s);
   });
 
   test('stored coordinates are rounded to a tenth', () => {
-    expect(storedStroke({ kind: 'pen', pts: [[1.23456, 2.98765], [3, 4]] })).toEqual({ kind: 'pen', pts: [[1.2, 3], [3, 4]] });
+    expect(storedStroke({ kind: 'pen', pts: [[1.23456, 2.98765], [3, 4]], anchor: null })).toEqual({ kind: 'pen', pts: [[1.2, 3], [3, 4]], anchor: null });
   });
 
-  test('run nodes are every end of every run', () => {
-    expect(runNodes(strokes)).toEqual([[0, 0], [17.3, -10]]);
+  test('run nodes are every end of every run, once', () => {
+    expect(runNodes(strokes)).toEqual([[0, 0, 0], [3, 0, 0], [3, 0, 2]]);
+  });
+
+  test('a pen mark rides with its anchor when the page turns; an unanchored one stays put', () => {
+    const g = 20;
+    const a = place(strokes[2]!, 'SW', g);
+    const b = place(strokes[2]!, 'NE', g);
+    const dSW = toScreen([3, 0, 2], 'SW', g);
+    const dNE = toScreen([3, 0, 2], 'NE', g);
+    expect(a.kind === 'pen' && a.pts[0]).toEqual([5 + dSW[0], 5 + dSW[1]]);
+    expect(b.kind === 'pen' && b.pts[0]).toEqual([5 + dNE[0], 5 + dNE[1]]);
+    expect(place(strokes[4]!, 'NW', g)).toEqual({ kind: 'pen', pts: [[100, 100], [120, 100]] });
+  });
+
+  test('the bounds cover every stroke and a note\'s words', () => {
+    const b = sketchBounds(strokes, 'SW', 20)!;
+    expect(b.minX).toBeLessThanOrEqual(0);
+    expect(b.maxX).toBeGreaterThanOrEqual(120);
+    expect(sketchBounds([], 'SW', 20)).toBeNull();
   });
 });
 
@@ -56,6 +80,35 @@ describe('the book', () => {
     expect(parseBook(serialiseBook(book))).toEqual(book);
   });
 
+  test('a version-one page is lifted into the world, runs chained as they were drawn', () => {
+    const g = 20;
+    const e3 = lattice(3, 0, g);
+    const up2 = lattice(5, 2, g); // three east then two up, on the old flat page
+    const raw = JSON.stringify({
+      v: 1,
+      sketches: [
+        {
+          ...sketch('old', 5, []),
+          strokes: [
+            { kind: 'run', pts: [[0, 0], e3] },
+            { kind: 'run', pts: [e3, up2] },
+            { kind: 'pen', pts: [[1, 1], [2, 2]] },
+            { kind: 'note', at: [4, 4], text: 'hi' },
+          ],
+        },
+      ],
+    });
+    const b = parseBook(raw, g);
+    expect(b.dropped).toBe(0);
+    expect(b.sketches[0]!.strokes).toEqual([
+      { kind: 'run', from: [0, 0, 0], to: [3, 0, 0] },
+      { kind: 'run', from: [3, 0, 0], to: [3, 0, 2] },
+      { kind: 'pen', pts: [[1, 1], [2, 2]], anchor: null },
+      { kind: 'note', at: [4, 4], text: 'hi', anchor: null },
+    ]);
+    expect(JSON.parse(serialiseBook(b)).v).toBe(SKETCHES_VERSION);
+  });
+
   test('a store from a newer app is left alone and marked foreign', () => {
     const b = parseBook(JSON.stringify({ v: SKETCHES_VERSION + 1, sketches: [] }));
     expect(b.foreign).toBe(true);
@@ -63,7 +116,7 @@ describe('the book', () => {
   });
 
   test('a broken sketch is dropped and counted, never repaired', () => {
-    const raw = JSON.stringify({ v: SKETCHES_VERSION, sketches: [sketch('good', 5), { ...sketch('bad', 6), strokes: [{ kind: 'run', pts: [[0, 0]] }] }] });
+    const raw = JSON.stringify({ v: SKETCHES_VERSION, sketches: [sketch('good', 5), { ...sketch('bad', 6), strokes: [{ kind: 'run', from: [0, 0, 0], to: [0, 0, 0] }] }] });
     const b = parseBook(raw);
     expect(b.sketches.map((s) => s.id)).toEqual(['good']);
     expect(b.dropped).toBe(1);
@@ -104,11 +157,12 @@ describe('the book', () => {
 });
 
 describe('the printed page', () => {
-  test('frames what was drawn, escapes the note, and carries the dots', () => {
-    const svg = sketchToSvg(sketch('a', 1, [...strokes, { kind: 'note', at: [50, 50], text: '<2" & up>' }]), 20);
+  test('frames what was drawn, escapes the note, carries the dots and a compass', () => {
+    const svg = sketchToSvg(sketch('a', 1, [...strokes, { kind: 'note', at: [50, 50], text: '<2" & up>', anchor: null }]), 20, 'NE');
     expect(svg).toContain('<polyline');
     expect(svg).toContain('&lt;2&quot; &amp; up&gt;');
     expect(svg).toContain('<pattern id="iso"');
+    expect(svg).toContain('>N</text>');
     expect(svg).toMatch(/viewBox="-?\d+ -?\d+ \d+ \d+"/);
   });
   test('a blank sketch still prints a page', () => {
