@@ -417,7 +417,7 @@ export function JointsScreen({ navigation }: Props) {
         <View style={{ paddingHorizontal: t.layout.screenPadding, paddingTop: t.space.xl, alignItems: 'center', gap: t.space.md }}>
           <Ionicons name="pricetags-outline" size={34} color={t.colors.textFaint} />
           <Text style={[t.type.body, { color: t.colors.textMuted, textAlign: 'center' }]}>
-            No named joints yet. Work a joint, then tap <Text style={{ fontWeight: '700' }}>Name it</Text> to keep it here.
+            No named joints yet. Work a joint, then tap <Text style={{ fontFamily: t.font.sans, ...t.weight('700') }}>Name it</Text> to keep it here.
           </Text>
         </View>
       ) : null}

@@ -139,7 +139,7 @@ export function AimPad({
                   {
                     color: active ? t.colors.onPrimary : t.colors.text,
                     fontFamily: active ? t.font.sans : t.font.sansMedium,
-                    fontWeight: active ? '700' : '600',
+                    ...t.weight(active ? '700' : '600'),
                     fontSize: a.label.length > 4 ? 10 : 12,
                   },
                 ]}
