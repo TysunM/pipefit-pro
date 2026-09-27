@@ -11,7 +11,7 @@
 //
 // Everything here is pure; sketches.tsx binds it to the shared persistence.
 
-import { Bounds, Corner, L3, Pt, bounds, lattice, nearestCounts, snapRun, tenth, toScreen } from '../calc/iso';
+import { Bounds, Corner, Flip, L3, NO_FLIP, Pt, bounds, flipPt, lattice, nearestCounts, snapRun, tenth, toScreen } from '../calc/iso';
 import { cleanProject } from './project';
 
 /**
@@ -46,6 +46,8 @@ export type SavedSketch = {
   updatedAt: number;
   /** The Project ID active when it was started; '' for none. See project.ts. */
   project: string;
+  /** How the sheet was last turned over, so it opens and prints the way it was left. Absent is as drawn. */
+  flip?: Flip;
 };
 
 export type SketchBook = {
@@ -162,7 +164,14 @@ export function validSketch(v: unknown, version: number, g: number): SavedSketch
     if (!st) return null;
     ok.push(st);
   }
-  return { id, name: name.trim(), place, strokes: ok, createdAt, updatedAt, project: cleanProject(v.project) };
+  const flip = validFlip(v.flip);
+  return { id, name: name.trim(), place, strokes: ok, createdAt, updatedAt, project: cleanProject(v.project), ...(flip ? { flip } : {}) };
+}
+
+/** A stored flip, or undefined for anything that is not one: a bad value opens the sheet as drawn. */
+export function validFlip(v: unknown): Flip | undefined {
+  if (!isRec(v) || typeof v.mirror !== 'boolean' || typeof v.upside !== 'boolean') return undefined;
+  return { mirror: v.mirror, upside: v.upside };
 }
 
 // ------------------------------------------------------------- persistence
@@ -316,24 +325,59 @@ export function runNodes(strokes: readonly Stroke[]): L3[] {
 export type Placed =
   | { kind: 'run'; pts: [Pt, Pt] }
   | { kind: 'pen'; pts: Pt[] }
-  | { kind: 'note'; at: Pt; text: string };
+  /**
+   * `at` is where the word starts on its baseline. On a mirrored sheet the
+   * word runs back from it and on an upside-down one it hangs below it, so a
+   * note keeps its side of the line it labels and still reads the right way up.
+   */
+  | { kind: 'note'; at: Pt; text: string; mirror?: boolean; upside?: boolean };
+
+/** A placed stroke on the turned-over sheet. */
+export function flipPlaced(p: Placed, f: Flip): Placed {
+  if (!f.mirror && !f.upside) return p;
+  if (p.kind === 'note') return { ...p, at: flipPt(p.at, f), mirror: f.mirror, upside: f.upside };
+  if (p.kind === 'run') return { kind: 'run', pts: [flipPt(p.pts[0], f), flipPt(p.pts[1], f)] };
+  return { kind: 'pen', pts: p.pts.map((q) => flipPt(q, f)) };
+}
+
+/** How a turned sheet is described, or '' when it is as drawn. */
+export function flipWords(f: Flip): string {
+  if (f.mirror && f.upside) return 'Mirrored, upside down';
+  if (f.mirror) return 'Mirrored';
+  if (f.upside) return 'Upside down';
+  return '';
+}
+
+/** A sketch's flip, set without touching when it was last drawn on: turning the sheet over is not an edit. */
+export function withFlip(book: SketchBook, id: string, flip: Flip): SketchBook {
+  const plain = !flip.mirror && !flip.upside;
+  return {
+    ...book,
+    sketches: book.sketches.map((s) => {
+      if (s.id !== id) return s;
+      const { flip: _old, ...rest } = s;
+      return plain ? rest : { ...rest, flip };
+    }),
+  };
+}
 
 const shift = (p: Pt, by: Pt): Pt => [p[0] + by[0], p[1] + by[1]];
 
-export function place(s: Stroke, c: Corner, g: number): Placed {
-  if (s.kind === 'run') return { kind: 'run', pts: [toScreen(s.from, c, g), toScreen(s.to, c, g)] };
+/** Where a stroke sits on the page from corner `c`, on a sheet turned over by `f`. */
+export function place(s: Stroke, c: Corner, g: number, f: Flip = NO_FLIP): Placed {
+  if (s.kind === 'run') return flipPlaced({ kind: 'run', pts: [toScreen(s.from, c, g), toScreen(s.to, c, g)] }, f);
   const base: Pt = s.anchor ? toScreen(s.anchor, c, g) : [0, 0];
-  if (s.kind === 'pen') return { kind: 'pen', pts: s.pts.map((p) => shift(p, base)) };
-  return { kind: 'note', at: shift(s.at, base), text: s.text };
+  if (s.kind === 'pen') return flipPlaced({ kind: 'pen', pts: s.pts.map((p) => shift(p, base)) }, f);
+  return flipPlaced({ kind: 'note', at: shift(s.at, base), text: s.text }, f);
 }
 
 /** The page rectangle everything drawn sits in, from `c`, or null for a blank page. */
-export function sketchBounds(strokes: readonly Stroke[], c: Corner, g: number): Bounds | null {
+export function sketchBounds(strokes: readonly Stroke[], c: Corner, g: number, f: Flip = NO_FLIP): Bounds | null {
   const pts: Pt[] = [];
   for (const s of strokes) {
-    const p = place(s, c, g);
+    const p = place(s, c, g, f);
     if (p.kind === 'note') {
-      pts.push(p.at, [p.at[0] + p.text.length * 7.5, p.at[1] - 14]);
+      pts.push(p.at, [p.at[0] + (p.mirror ? -1 : 1) * p.text.length * 7.5, p.at[1] + (p.upside ? 14 : -14)]);
     } else for (const q of p.pts) pts.push(q);
   }
   return bounds(pts);
@@ -348,8 +392,8 @@ const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replac
  * from the corner it was being looked at. Framed to what was drawn plus a
  * margin, so a small sketch does not print as a corner of a blank page.
  */
-export function sketchToSvg(sketch: SavedSketch, grid: number, c: Corner = 'SW'): string {
-  const b = sketchBounds(sketch.strokes, c, grid) ?? { minX: 0, minY: 0, maxX: grid * 10, maxY: grid * 10 };
+export function sketchToSvg(sketch: SavedSketch, grid: number, c: Corner = 'SW', f: Flip = sketch.flip ?? NO_FLIP): string {
+  const b = sketchBounds(sketch.strokes, c, grid, f) ?? { minX: 0, minY: 0, maxX: grid * 10, maxY: grid * 10 };
   const m = grid * 2;
   const x0 = Math.floor((b.minX - m) / grid) * grid;
   const y0 = Math.floor((b.minY - m) / grid) * grid;
@@ -358,9 +402,9 @@ export function sketchToSvg(sketch: SavedSketch, grid: number, c: Corner = 'SW')
   const tw = grid * Math.sqrt(3);
   const body = sketch.strokes
     .map((s) => {
-      const p = place(s, c, grid);
+      const p = place(s, c, grid, f);
       if (p.kind === 'note')
-        return `<text x="${p.at[0]}" y="${p.at[1]}" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="600" fill="#111">${esc(p.text)}</text>`;
+        return `<text x="${p.at[0]}" y="${p.at[1] + (p.upside ? 9.5 : 0)}"${p.mirror ? ' text-anchor="end"' : ''} font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="600" fill="#111">${esc(p.text)}</text>`;
       const d = p.pts.map((q) => `${q[0]},${q[1]}`).join(' ');
       return p.kind === 'run'
         ? `<polyline points="${d}" fill="none" stroke="#111" stroke-width="2.4" stroke-linecap="round"/>`
@@ -368,9 +412,15 @@ export function sketchToSvg(sketch: SavedSketch, grid: number, c: Corner = 'SW')
     })
     .join('\n');
   // The compass: north as it lies on this page.
-  const n = toScreen([0, 1, 0], c, 1);
+  const n = flipPt(toScreen([0, 1, 0], c, 1), f);
   const cx = x0 + w - grid * 1.6;
   const cy = y0 + grid * 1.6;
+  // A turned sheet says so on the paper. A mirrored iso is the other hand of
+  // the run, and nobody should cut pipe off one without knowing it.
+  const turned = flipWords(f);
+  const stamp = turned
+    ? `<text x="${x0 + grid * 0.6}" y="${y0 + grid * 1.1}" font-family="Helvetica, Arial, sans-serif" font-size="11" font-weight="700" fill="#111">${esc(turned.toUpperCase())}</text>`
+    : '';
   const compass = `<line x1="${cx}" y1="${cy}" x2="${cx + n[0] * grid}" y2="${cy + n[1] * grid}" stroke="#111" stroke-width="1.5"/><text x="${cx + n[0] * grid * 1.45}" y="${cy + n[1] * grid * 1.45 + 4}" font-family="Helvetica, Arial, sans-serif" font-size="11" font-weight="700" fill="#111" text-anchor="middle">N</text>`;
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${x0} ${y0} ${w} ${h}" width="${w}" height="${h}">
 <defs><pattern id="iso" patternUnits="userSpaceOnUse" x="0" y="0" width="${tw}" height="${grid}">
@@ -380,6 +430,7 @@ export function sketchToSvg(sketch: SavedSketch, grid: number, c: Corner = 'SW')
 <rect x="${x0}" y="${y0}" width="${w}" height="${h}" fill="url(#iso)"/>
 ${body}
 ${compass}
+${stamp}
 </svg>`;
 }
 
