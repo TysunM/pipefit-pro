@@ -24,6 +24,8 @@ export type OrderSheetInput = {
   /** What the saw takes. */
   kerf: string;
   dateLine: string;
+  /** The job the spools are for, when the sheet is one job's; '' or absent for all jobs. */
+  job?: string;
   /** A length with its unit, for figures that are read. */
   length: (inches: number) => string;
   /** A length on its own, for figures that are only glanced at. */
@@ -114,7 +116,7 @@ export function orderSheetHtml(i: OrderSheetInput): string {
 
   return spoolSheetHtml({
     name: 'Order sheet',
-    place: `${sheet.spools} spool${sheet.spools === 1 ? '' : 's'} · ${sheet.pieces} piece${sheet.pieces === 1 ? '' : 's'}`,
+    place: `${i.job ? `Job ${i.job} · ` : ''}${sheet.spools} spool${sheet.spools === 1 ? '' : 's'} · ${sheet.pieces} piece${sheet.pieces === 1 ? '' : 's'}`,
     spec: `Stock ${i.stock} · saw ${i.kerf} a cut`,
     dateLine: i.dateLine,
     totals: [

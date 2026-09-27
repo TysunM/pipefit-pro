@@ -17,6 +17,7 @@ import {
   getJoint,
   isDone,
   isSettled,
+  listed,
   jointFlange,
   jointProgress,
   lastCheck,
@@ -31,6 +32,7 @@ import { useHeats } from '../state/heats';
 import { JointHeatsSheet } from '../components/JointHeatsSheet';
 import { putJoint, withHeat, withoutHeat } from '../state/register';
 import { normaliseHeat } from '../calc/heat';
+import { JobChips, useJobFilter } from '../components/JobChips';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Joints'>;
 
@@ -75,6 +77,7 @@ function JointRow({
   onDelete,
   onHeats,
   heatsOwed,
+  job,
 }: {
   t: Theme;
   joint: Joint;
@@ -84,6 +87,8 @@ function JointRow({
   onHeats: () => void;
   /** How many heats on this joint have no cert in hand. */
   heatsOwed: number;
+  /** The job it is under, shown when the list is every job's. */
+  job?: string;
 }) {
   // Deleting confirms in the row rather than in an alert, because an alert is
   // one mis-tap from gone and because react-native-web does not show one at all.
@@ -112,6 +117,11 @@ function JointRow({
           <Text style={[t.type.bodyStrong, { color: t.colors.text }]} numberOfLines={1}>
             {joint.tag || 'Untitled joint'}
           </Text>
+          {job !== undefined ? (
+            <Text style={[t.type.labelSmall, { color: job ? t.colors.accent : t.colors.textFaint, fontSize: 11 }]} numberOfLines={1}>
+              {job || 'No project'}
+            </Text>
+          ) : null}
           <Text style={[t.type.caption, { color: t.colors.textMuted }]} numberOfLines={1}>
             {jointFlange(joint)}
           </Text>
@@ -292,12 +302,18 @@ export function JointsScreen({ navigation }: Props) {
   };
   const showingHeats = heatsFor ? getJoint(register, heatsFor) : undefined;
 
-  const open = openJoints(register);
-  const done = doneJoints(register);
+  // One job's joints, the job picked on any screen or else the active one.
+  // The unnamed working joint belongs to no job until it is named, so it is
+  // shown whatever the filter.
+  const job = useJobFilter(listed(register));
+  const { mine } = job;
+  const open = mine(openJoints(register));
+  const done = mine(doneJoints(register));
   // Finished is not the same as closed out. A joint that has not been back to
   // since the line came up to temperature is the one worth a walk.
-  const due = needsCheckJoints(register);
-  const settled = settledJoints(register);
+  const due = mine(needsCheckJoints(register));
+  const settled = mine(settledJoints(register));
+  const jobOf = (j: Joint) => (job.filter.kind === 'all' ? j.project : undefined);
   const scratch = getJoint(register, SCRATCH_ID);
   const scratchStarted = scratch ? boltUpProgress(scratch.state).done > 0 : false;
 
@@ -340,6 +356,8 @@ export function JointsScreen({ navigation }: Props) {
       ) : null}
 
       <HintRow text="Every joint is saved as you work it, bolt by bolt. Leave the screen, close the app or put the phone in your pocket mid-pass and it picks up on the same bolt." />
+      <JobChips f={job} />
+      <View style={{ height: t.space.md }} />
 
       <SectionHeader title="Working now" meta={scratchStarted ? jointProgress(scratch as Joint) : undefined} />
       <View style={{ paddingHorizontal: t.layout.screenPadding, marginBottom: t.space.xl }}>
@@ -364,7 +382,7 @@ export function JointsScreen({ navigation }: Props) {
           <SectionHeader title="Part done" meta={`${open.length} ${open.length === 1 ? 'joint' : 'joints'}`} />
           {open.map((j) => (
             <JointRow key={j.id} t={t} joint={j} now={now} onOpen={() => go(j.id)} onDelete={() => drop(j.id)}
-              onHeats={() => setHeatsFor(j.id)} heatsOwed={owedOn(j)} />
+              onHeats={() => setHeatsFor(j.id)} heatsOwed={owedOn(j)} job={jobOf(j)} />
           ))}
         </>
       ) : null}
@@ -380,7 +398,7 @@ export function JointsScreen({ navigation }: Props) {
           </View>
           {due.map((j) => (
             <JointRow key={j.id} t={t} joint={j} now={now} onOpen={() => go(j.id)} onDelete={() => drop(j.id)}
-              onHeats={() => setHeatsFor(j.id)} heatsOwed={owedOn(j)} />
+              onHeats={() => setHeatsFor(j.id)} heatsOwed={owedOn(j)} job={jobOf(j)} />
           ))}
         </>
       ) : null}
@@ -393,7 +411,7 @@ export function JointsScreen({ navigation }: Props) {
           />
           {settled.map((j) => (
             <JointRow key={j.id} t={t} joint={j} now={now} onOpen={() => go(j.id)} onDelete={() => drop(j.id)}
-              onHeats={() => setHeatsFor(j.id)} heatsOwed={owedOn(j)} />
+              onHeats={() => setHeatsFor(j.id)} heatsOwed={owedOn(j)} job={jobOf(j)} />
           ))}
         </>
       ) : null}
@@ -402,7 +420,13 @@ export function JointsScreen({ navigation }: Props) {
         <View style={{ paddingHorizontal: t.layout.screenPadding, paddingTop: t.space.xl, alignItems: 'center', gap: t.space.md }}>
           <Ionicons name="pricetags-outline" size={34} color={t.colors.textFaint} />
           <Text style={[t.type.body, { color: t.colors.textMuted, textAlign: 'center' }]}>
-            No named joints yet. Work a joint, then tap <Text style={{ fontFamily: t.font.sans, ...t.weight('700') }}>Name it</Text> to keep it here.
+            {listed(register).length ? (
+              `No joints under ${job.label}. Pick another job above; joints named while this job is active land here.`
+            ) : (
+              <>
+                No named joints yet. Work a joint, then tap <Text style={{ fontFamily: t.font.sans, ...t.weight('700') }}>Name it</Text> to keep it here.
+              </>
+            )}
           </Text>
         </View>
       ) : null}
@@ -420,7 +444,8 @@ export function JointsScreen({ navigation }: Props) {
                   setClearing(false);
                   // Only the closed-out ones. A joint still waiting on a
                   // re-check is not finished with, whatever the passes say.
-                  apply((r) => settledJoints(r).reduce((acc, j) => removeJoint(acc, j.id), r));
+                  // And only this job's: the count on the button is what goes.
+                  apply((r) => mine(settledJoints(r)).reduce((acc, j) => removeJoint(acc, j.id), r));
                 }}
               />
             </>

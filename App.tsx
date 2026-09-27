@@ -10,6 +10,7 @@ import { SpoolsProvider } from "./src/state/spools";
 import { SketchesProvider } from "./src/state/sketches";
 import { LevelsProvider } from "./src/state/levels";
 import { RecentsProvider } from "./src/state/recents";
+import { JobPickProvider } from "./src/state/jobPick";
 import { ThemeProvider, useTheme } from "./src/theme/ThemeProvider";
 import { useAppFonts } from "./src/theme/useFonts";
 import { RootNavigator } from "./src/navigation/RootNavigator";
@@ -60,9 +61,11 @@ export default function App() {
               <SketchesProvider>
                 <LevelsProvider>
                   <RecentsProvider>
-                    <UpdatesProvider>
-                      <Gate />
-                    </UpdatesProvider>
+                    <JobPickProvider>
+                      <UpdatesProvider>
+                        <Gate />
+                      </UpdatesProvider>
+                    </JobPickProvider>
                   </RecentsProvider>
                 </LevelsProvider>
               </SketchesProvider>

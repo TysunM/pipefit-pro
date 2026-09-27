@@ -10,12 +10,13 @@ const spool = (over: Partial<OrderSpool> & { id: string; cuts: number[] }): Orde
   ...over,
 });
 
-const html = (spools: OrderSpool[]) =>
+const html = (spools: OrderSpool[], job?: string) =>
   orderSheetHtml({
     sheet: planOrder(spools, 240, 0.125),
     stock: '20 ft',
     kerf: '0.13 in',
     dateLine: 'Printed 20 Sep 2026',
+    job,
     length: (v) => `${v.toFixed(2)} in`,
     short: (v) => v.toFixed(2),
   });
@@ -104,5 +105,20 @@ describe('a spool name cannot break the page', () => {
   test('a place is escaped the same way', () => {
     const h = html([spool({ id: 'a', place: '</table><script>x</script>', cuts: [100] })]);
     expect(h).not.toContain('<script>x');
+  });
+});
+
+describe('the job it is for', () => {
+  test('one job\'s sheet names the job under the title', () => {
+    expect(html(TWO, 'BP-REF-001')).toContain('Job BP-REF-001 · 2 spools');
+  });
+
+  test('an all-jobs sheet names none', () => {
+    expect(html(TWO)).not.toContain('Job ');
+    expect(html(TWO, '')).not.toContain('Job ');
+  });
+
+  test('the job is escaped like any other text', () => {
+    expect(html(TWO, '<b>X</b>')).not.toContain('<b>X</b>');
   });
 });
