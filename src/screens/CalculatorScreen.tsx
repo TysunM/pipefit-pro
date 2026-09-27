@@ -1,7 +1,9 @@
 import React, { useMemo, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { Screen } from '../components/Screen';
-import { Keypad } from '../components/keypad/Keypad';
+import { KEY_HEIGHT, Keypad, ROW_EXTRA } from '../components/keypad/Keypad';
+import { KEYPAD } from '../calc/keys';
+import { TabBar } from '../components/TabBar';
 import { useTheme } from '../theme/ThemeProvider';
 import { useSettings } from '../state/settings';
 import { displayText, initialState, press, type CalcState } from '../calc/engine';
@@ -35,9 +37,16 @@ export function CalculatorScreen() {
     return out;
   }, [state]);
 
+  // The pad is fitted to the room left under the readout, so on a short
+  // phone the keys get shorter rather than running under the tab bar.
+  const short = useWindowDimensions().height < 760;
+  const [room, setRoom] = useState<number | null>(null);
+  const keyHeight = room === null ? KEY_HEIGHT : Math.max(34, Math.min(KEY_HEIGHT, Math.floor(room / KEYPAD.length - ROW_EXTRA)));
+
   const handle = (action: KeyAction, arg?: string) => setState((s) => press(s, action, arg));
 
   return (
+    <View style={{ flex: 1, backgroundColor: t.colors.bg }}>
     <Screen scroll={false}>
       <View style={[styles.wrap, { padding: t.space.md, gap: t.space.md }]}>
         <View
@@ -49,6 +58,7 @@ export function CalculatorScreen() {
               borderColor: t.colors.copper,
               borderRadius: t.radius.lg,
               padding: t.space.md,
+              minHeight: short ? 96 : 124,
             },
           ]}
         >
@@ -80,15 +90,19 @@ export function CalculatorScreen() {
           </Text>
         </View>
 
-        <Keypad onPress={handle} shift={state.shift} />
+        <View style={{ flex: 1 }} onLayout={(e) => setRoom(e.nativeEvent.layout.height)}>
+          <Keypad onPress={handle} shift={state.shift} keyHeight={keyHeight} />
+        </View>
       </View>
     </Screen>
+    <TabBar active="calc" />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   wrap: { flex: 1 },
-  lcd: { borderWidth: 2, minHeight: 124, justifyContent: 'space-between' },
+  lcd: { borderWidth: 2, justifyContent: 'space-between' },
   annunciators: { flexDirection: 'row', gap: 10, minHeight: 14 },
   annunciator: { fontSize: 10.5, letterSpacing: 1 },
   readout: { textAlign: 'right', fontWeight: '700' },

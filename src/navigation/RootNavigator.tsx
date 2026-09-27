@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import {
   DarkTheme,
   DefaultTheme,
   NavigationContainer,
+  type NavigationState,
   type Theme as NavTheme,
 } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -10,9 +11,11 @@ import { RootStackParamList } from './types';
 import { AppHeader } from '../components/AppHeader';
 import { useTheme } from '../theme/ThemeProvider';
 import { group } from './groups';
+import { useRecents } from '../state/recents';
 import { referenceTable } from '../calc/reference';
 import { HomeScreen } from '../screens/HomeScreen';
 import { GroupScreen } from '../screens/GroupScreen';
+import { ProjectsScreen } from '../screens/ProjectsScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
 import { SimpleOffsetScreen } from '../screens/SimpleOffsetScreen';
 import { RollingOffsetScreen } from '../screens/RollingOffsetScreen';
@@ -34,8 +37,21 @@ import { ReferenceTableScreen } from '../screens/ReferenceTableScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
+/** The tabs: places reached from the tab bar, so none of them has a back arrow. */
+const TAB_ROUTES = new Set<string>(['Group', 'Projects', 'Calculator']);
+
 export function RootNavigator() {
   const t = useTheme();
+  const { remember } = useRecents();
+  // Whatever screen is on top is what was used last. Tabs and Settings are
+  // filtered out by the store; this just reports.
+  const record = useCallback(
+    (state: NavigationState | undefined) => {
+      const name = state?.routes[state.index ?? state.routes.length - 1]?.name;
+      if (name) remember(name);
+    },
+    [remember]
+  );
   const navTheme: NavTheme = {
     ...(t.mode === 'dark' ? DarkTheme : DefaultTheme),
     colors: {
@@ -50,7 +66,7 @@ export function RootNavigator() {
   };
 
   return (
-    <NavigationContainer theme={navTheme}>
+    <NavigationContainer theme={navTheme} onStateChange={record}>
       <Stack.Navigator
         screenOptions={({ navigation, route }) => ({
           contentStyle: { backgroundColor: t.colors.bg },
@@ -58,14 +74,15 @@ export function RootNavigator() {
             <AppHeader
               title={typeof options.title === 'string' ? options.title : route.name}
               // A tab is a place, reached from the tab bar, so it has no back.
-              onBack={back && route.name !== 'Group' ? () => navigation.goBack() : undefined}
-              onProfile={route.name === 'Home' ? () => navigation.navigate('Group', { id: 'projects' }) : undefined}
+              onBack={back && !TAB_ROUTES.has(route.name) ? () => navigation.goBack() : undefined}
+              onProfile={route.name === 'Home' ? () => navigation.reset({ index: 1, routes: [{ name: 'Home' }, { name: 'Projects' }] }) : undefined}
               onSettings={route.name === 'Settings' ? undefined : () => navigation.navigate('Settings')}
             />
           ),
         })}
       >
         <Stack.Screen name="Home" component={HomeScreen} options={{ title: 'PipeFit Pro' }} />
+        <Stack.Screen name="Projects" component={ProjectsScreen} options={{ title: 'Projects' }} />
         <Stack.Screen
           name="Group"
           component={GroupScreen}
@@ -78,7 +95,7 @@ export function RootNavigator() {
         <Stack.Screen name="MiterBend" component={MiterBendScreen} options={{ title: 'Miter bend' }} />
         <Stack.Screen name="HandBender" component={HandBenderScreen} options={{ title: 'Pipe bend' }} />
         <Stack.Screen name="FlangeBoltUp" component={FlangeBoltUpScreen} options={{ title: 'Flange bolt-up' }} />
-        <Stack.Screen name="Joints" component={JointsScreen} options={{ title: 'Joint register' }} />
+        <Stack.Screen name="Joints" component={JointsScreen} options={{ title: 'Joint log' }} />
         <Stack.Screen name="Heats" component={HeatsScreen} options={{ title: 'Heat book' }} />
         <Stack.Screen name="Calculator" component={CalculatorScreen} options={{ title: 'Calculator' }} />
         <Stack.Screen name="Level" component={LevelScreen} options={{ title: 'Level' }} />

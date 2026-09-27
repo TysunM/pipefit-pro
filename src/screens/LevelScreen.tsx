@@ -16,20 +16,28 @@
 // was used. Bearing belongs where it can be qualified, which is the sighting
 // sheet, next to the field strength that earned it.
 import React, { useEffect, useRef, useState } from 'react';
-import { Text, View } from 'react-native';
+import { Modal, Pressable, Text, TextInput, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { DeviceMotion } from 'expo-sensors';
 import { Screen } from '../components/Screen';
-import { GlowBar, Well } from '../components/metal';
+import { GlowBar, Plate, Well } from '../components/metal';
+import { SectionHeader } from '../components/SectionHeader';
+import { stamp } from '../components/stamp';
 import { HintRow } from '../components/HintRow';
 import { FooterNote } from '../components/Results';
-import { ControlRow, GhostButton } from '../components/Buttons';
-import { useTheme } from '../theme/ThemeProvider';
+import { AccentButton, ControlRow, GhostButton } from '../components/Buttons';
+import { Theme, useTheme } from '../theme/ThemeProvider';
 import { Hold, Orientation, inchesPerFoot, levelWord, sightDir } from '../calc/sight';
+import { useLevels } from '../state/levels';
+import { TAG_MAX, addReading, deleteReading } from '../state/levelLog';
 
 const RATE_MS = 60;
 
 const tidy = (n: number) => (Math.abs(n) < 0.05 ? '0.0' : n.toFixed(1));
+
+/** Fall per foot as the list shows it, signed the way the level reads. */
+const fall = (inPerFt: number) => `${inPerFt >= 0 ? '' : '−'}${Math.abs(inPerFt).toFixed(2)}″/ft`;
 
 export function LevelScreen() {
   const t = useTheme();
@@ -37,6 +45,12 @@ export function LevelScreen() {
   const [slope, setSlope] = useState<number | null>(null);
   const [held, setHeld] = useState<number | null>(null);
   const [unavailable, setUnavailable] = useState(false);
+  const { log, hydrated, apply } = useLevels();
+  // The figure being named, captured when Save is pressed so the sheet names
+  // the reading that was on screen, not whatever the level reads by the time
+  // the name is typed.
+  const [naming, setNaming] = useState<number | null>(null);
+  const [confirm, setConfirm] = useState<string | null>(null);
 
   const holdRef = useRef(hold);
   holdRef.current = hold;
@@ -134,6 +148,17 @@ export function LevelScreen() {
             />
           </ControlRow>
 
+          <ControlRow>
+            <AccentButton
+              label="Save reading"
+              icon="bookmark-outline"
+              onPress={() => {
+                if (shown !== null) setNaming(shown);
+              }}
+              style={{ flex: 1, opacity: shown === null ? 0.5 : 1 }}
+            />
+          </ControlRow>
+
           <HintRow
             text={
               held !== null
@@ -144,7 +169,111 @@ export function LevelScreen() {
         </>
       )}
 
+      <SectionHeader title="Saved pipes" meta={hydrated ? `${log.readings.length} kept` : 'loading'} />
+      {hydrated && log.readings.length === 0 ? (
+        <Text style={[t.type.body, { color: t.colors.textMuted, paddingHorizontal: t.layout.screenPadding, textAlign: 'center' }]}>
+          Nothing saved yet. Save a reading by the pipe it was taken on, and it stays on this phone for the foreman or the inspector.
+        </Text>
+      ) : null}
+      {log.readings.map((r) => (
+        <View key={r.id} style={{ marginHorizontal: t.layout.screenPadding, marginBottom: t.space.sm }}>
+          <Plate radius={t.radius.lg} style={{ padding: t.space.lg, flexDirection: 'row', alignItems: 'center', gap: t.space.md }}>
+            <View style={{ flex: 1, gap: 2 }}>
+              <Text style={[t.type.bodyStrong, { color: t.colors.text }]} numberOfLines={1}>
+                {r.tag}
+              </Text>
+              <Text style={[t.type.caption, { color: t.colors.textMuted }]} numberOfLines={1}>
+                {`${tidy(r.slope)}° · ${fall(r.inPerFt)} · ${stamp(r.createdAt)}`}
+              </Text>
+            </View>
+            {confirm === r.id ? (
+              <View style={{ flexDirection: 'row', gap: t.space.sm }}>
+                <GhostButton label="Keep" onPress={() => setConfirm(null)} />
+                <GhostButton
+                  label="Delete"
+                  icon="trash-outline"
+                  onPress={() => {
+                    setConfirm(null);
+                    apply((l) => deleteReading(l, r.id));
+                  }}
+                />
+              </View>
+            ) : (
+              <Pressable onPress={() => setConfirm(r.id)} hitSlop={10} accessibilityRole="button" accessibilityLabel={`Delete ${r.tag}`}>
+                <Ionicons name="trash-outline" size={20} color={t.colors.textFaint} />
+              </Pressable>
+            )}
+          </Plate>
+        </View>
+      ))}
+
+      <TagSheet
+        t={t}
+        slope={naming}
+        onCancel={() => setNaming(null)}
+        onSave={(tag) => {
+          const slopeNow = naming;
+          setNaming(null);
+          if (slopeNow !== null && tag) apply((l) => addReading(l, tag, slopeNow, Date.now()));
+        }}
+      />
+
       <FooterNote text="Slope only. A compass is bent by every rack and beam on a job, so a bearing is offered where it can be qualified — inside a spool leg, beside the field strength that earned it." />
     </Screen>
+  );
+}
+
+/** Asks which pipe the reading was taken on. */
+function TagSheet({ t, slope, onCancel, onSave }: { t: Theme; slope: number | null; onCancel: () => void; onSave: (tag: string) => void }) {
+  const [tag, setTag] = useState('');
+  useEffect(() => {
+    if (slope !== null) setTag('');
+  }, [slope]);
+  return (
+    <Modal visible={slope !== null} transparent animationType="fade" onRequestClose={onCancel}>
+      <Pressable style={{ flex: 1, backgroundColor: t.colors.overlay, justifyContent: 'center' }} onPress={onCancel}>
+        <Pressable
+          onPress={(e) => e.stopPropagation()}
+          style={{ margin: t.space.xxl, padding: t.space.xxl, borderRadius: t.radius.xl, backgroundColor: t.colors.bg, gap: t.space.md }}
+        >
+          <Text style={[t.type.sectionTitle, { color: t.colors.text }]}>Save this reading</Text>
+          <Text style={[t.type.body, { color: t.colors.textMuted }]}>
+            {slope === null ? '' : `${tidy(slope)}° · ${fall(inchesPerFoot(slope))}`}
+          </Text>
+          <TextInput
+            value={tag}
+            onChangeText={(v) => setTag(v.slice(0, TAG_MAX))}
+            placeholder="Which pipe: line number, spool mark, location"
+            placeholderTextColor={t.colors.textFaint}
+            accessibilityLabel="Pipe name"
+            autoCorrect={false}
+            autoFocus
+            style={{
+              height: t.layout.fieldHeight,
+              borderRadius: t.radius.md,
+              borderWidth: 1,
+              borderColor: t.colors.border,
+              backgroundColor: t.colors.bgRaised,
+              color: t.colors.text,
+              paddingHorizontal: t.space.lg,
+              fontFamily: t.font.sansMedium,
+              fontSize: 17,
+              ...t.weight('600'),
+            }}
+          />
+          <View style={{ flexDirection: 'row', gap: t.space.md, marginTop: t.space.sm }}>
+            <GhostButton label="Cancel" onPress={onCancel} style={{ flex: 1 }} />
+            <AccentButton
+              label="Save"
+              icon="checkmark"
+              style={{ flex: 1, opacity: tag.trim() ? 1 : 0.5 }}
+              onPress={() => {
+                if (tag.trim()) onSave(tag.trim());
+              }}
+            />
+          </View>
+        </Pressable>
+      </Pressable>
+    </Modal>
   );
 }

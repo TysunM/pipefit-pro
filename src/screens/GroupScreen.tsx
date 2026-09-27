@@ -2,9 +2,10 @@ import React from 'react';
 import { View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
-import { group } from '../navigation/groups';
+import { group, groupTools, type Section, type Tool } from '../navigation/groups';
 import { Screen } from '../components/Screen';
-import { GridLabel, ToolGrid, ToolTile } from '../components/ToolTile';
+import { CalcTile, GridLabel, ToolGrid, WideTile } from '../components/ToolTile';
+import { LiveTile } from '../components/LiveTile';
 import { HintRow } from '../components/HintRow';
 import { FooterNote } from '../components/Results';
 import { TabBar } from '../components/TabBar';
@@ -13,27 +14,38 @@ import { useTheme } from '../theme/ThemeProvider';
 type Props = NativeStackScreenProps<RootStackParamList, 'Group'>;
 
 /**
- * One tab's worth of tools.
+ * The Tools tab or the Logs tab.
  *
- * The same tiles as the front page, drawing and all, so a man who has
- * learned the front page has learned this too. The list is short enough to
- * read rather than scroll, which is the whole point of having it.
+ * The same tiles as the front page, drawing and all, in the sections
+ * groups.ts gives: big pictures for the instruments and the books, small
+ * tiles for the everyday bends and offsets.
  */
 export function GroupScreen({ route, navigation }: Props) {
   const t = useTheme();
   const g = group(route.params.id);
   if (!g) return <Screen><FooterNote text="That tab is not in this build." /></Screen>;
 
+  const open = (x: Tool) => navigation.navigate(x.route as never);
+  const section = (s: Section) => (
+    <View key={s.title}>
+      <GridLabel text={s.title} meta={`${s.tools.length}`} />
+      {s.size === 'wide' ? (
+        <View style={{ paddingHorizontal: t.layout.screenPadding, gap: 14 }}>
+          {s.tools.map((x) => (
+            <WideTile key={x.route} tool={x} onPress={() => open(x)} />
+          ))}
+        </View>
+      ) : (
+        <ToolGrid>{s.tools.map((x) => (s.size === 'small' ? <CalcTile key={x.route} tool={x} onPress={() => open(x)} /> : <LiveTile key={x.route} tool={x} onPress={() => open(x)} />))}</ToolGrid>
+      )}
+    </View>
+  );
+
   return (
     <View style={{ flex: 1, backgroundColor: t.colors.bg }}>
       <Screen tabbed>
         <HintRow text={g.subtitle} />
-        <GridLabel text={g.title} meta={`${g.tools.length} tools`} />
-        <ToolGrid>
-          {g.tools.map((tool) => (
-            <ToolTile key={tool.route} tool={tool} onPress={() => navigation.navigate(tool.route as never)} />
-          ))}
-        </ToolGrid>
+        {g.sections.map(section)}
       </Screen>
       <TabBar active={g.id} />
     </View>

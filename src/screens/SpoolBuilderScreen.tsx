@@ -1,6 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Modal, Pressable, Text, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import type { RootStackParamList } from '../navigation/types';
 import { Screen } from '../components/Screen';
 import { HintRow } from '../components/HintRow';
 import { SectionHeader } from '../components/SectionHeader';
@@ -64,7 +66,9 @@ const MORPH_MS = 460;
 
 const tidy = (n: number): string => (Math.abs(n - Math.round(n)) < 0.05 ? String(Math.round(n)) : n.toFixed(1));
 
-export function SpoolBuilderScreen() {
+type Props = NativeStackScreenProps<RootStackParamList, 'SpoolBuilder'>;
+
+export function SpoolBuilderScreen({ route, navigation }: Props) {
   const t = useTheme();
   const u = useUnits();
   const pipe = usePipeConfig();
@@ -111,6 +115,17 @@ export function SpoolBuilderScreen() {
     setConfirmDelete(null);
     setOpen(0);
   };
+
+  // Opened from the Projects page on a saved spool: load it once the shelf is
+  // read, then clear the ask so a re-render or a later edit does not reload it.
+  const askedId = route.params?.spoolId;
+  useEffect(() => {
+    if (!askedId || !spoolsCtx.hydrated) return;
+    const s = getSpool(shelf, askedId);
+    if (s) loadSpool(s);
+    navigation.setParams({ spoolId: undefined });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [askedId, spoolsCtx.hydrated]);
 
   /**
    * One sheet, three outcomes, decided by what would be lost.

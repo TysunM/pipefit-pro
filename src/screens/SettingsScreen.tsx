@@ -16,7 +16,6 @@ import { findSize } from '../calc/pipe';
 import { FractionDenominator } from '../calc/format';
 import { fromInches } from '../calc/units';
 import { PROJECT_ID_MAX } from '../state/readSettings';
-import { TabBar } from '../components/TabBar';
 
 export function SettingsScreen() {
   const t = useTheme();
@@ -41,8 +40,7 @@ export function SettingsScreen() {
   }, [settings.unitSystem, settings.defaultGap, settings.stockLength, settings.cutAllowance]);
 
   return (
-    <View style={{ flex: 1, backgroundColor: t.colors.bg }}>
-    <Screen tabbed>
+    <Screen>
       <SectionHeader title="Project" meta="Shown on the home screen" />
       <FieldRow>
         <DimensionInput
@@ -227,8 +225,6 @@ export function SettingsScreen() {
         }
       />
     </Screen>
-    <TabBar active="more" />
-    </View>
   );
 }
 

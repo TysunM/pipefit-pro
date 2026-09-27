@@ -8,6 +8,8 @@ import { JointsProvider } from "./src/state/joints";
 import { HeatsProvider } from "./src/state/heats";
 import { SpoolsProvider } from "./src/state/spools";
 import { SketchesProvider } from "./src/state/sketches";
+import { LevelsProvider } from "./src/state/levels";
+import { RecentsProvider } from "./src/state/recents";
 import { ThemeProvider, useTheme } from "./src/theme/ThemeProvider";
 import { useAppFonts } from "./src/theme/useFonts";
 import { RootNavigator } from "./src/navigation/RootNavigator";
@@ -56,9 +58,13 @@ export default function App() {
           <HeatsProvider>
             <SpoolsProvider>
               <SketchesProvider>
-                <UpdatesProvider>
-                  <Gate />
-                </UpdatesProvider>
+                <LevelsProvider>
+                  <RecentsProvider>
+                    <UpdatesProvider>
+                      <Gate />
+                    </UpdatesProvider>
+                  </RecentsProvider>
+                </LevelsProvider>
               </SketchesProvider>
             </SpoolsProvider>
           </HeatsProvider>

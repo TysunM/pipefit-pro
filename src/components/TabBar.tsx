@@ -8,25 +8,26 @@ import type { RootStackParamList } from '../navigation/types';
 
 // The tab bar
 // -----------
-// Five ways into the app from its foot, the same five on every tab. It sits on
-// the tab screens — home, projects, tools, calculations and settings — and not
-// on a tool: a tool is where a man is working, and the calculator's keys and
-// the level's dial want every point of the screen they can get.
+// Five ways into the app from its foot, the same five on every tab: home,
+// projects, tools, logs and the calculator. It sits on the tab screens and not
+// on a tool: a tool is where a man is working, and the level's dial and the
+// spool's model want every point of the screen they can get. The calculator is
+// the exception because it is a tab, the one tool used all day long.
 //
 // A tab is a place, not a step. Pressing one sets the stack to Home with that
 // tab on it, so back from any tab lands on Home, never on a tab two presses
 // ago.
 
-export type TabId = 'home' | 'projects' | 'tools' | 'calcs' | 'more';
+export type TabId = 'home' | 'projects' | 'tools' | 'logs' | 'calc';
 
 type Route = { name: keyof RootStackParamList; params?: object };
 
 const TABS: { id: TabId; label: string; icon: keyof typeof Ionicons.glyphMap; on: keyof typeof Ionicons.glyphMap; route: Route | null }[] = [
   { id: 'home', label: 'Home', icon: 'home-outline', on: 'home', route: null },
-  { id: 'projects', label: 'Projects', icon: 'folder-outline', on: 'folder', route: { name: 'Group', params: { id: 'projects' } } },
+  { id: 'projects', label: 'Projects', icon: 'folder-outline', on: 'folder', route: { name: 'Projects' } },
   { id: 'tools', label: 'Tools', icon: 'construct-outline', on: 'construct', route: { name: 'Group', params: { id: 'tools' } } },
-  { id: 'calcs', label: 'Calculations', icon: 'calculator-outline', on: 'calculator', route: { name: 'Group', params: { id: 'calcs' } } },
-  { id: 'more', label: 'More', icon: 'ellipsis-horizontal', on: 'ellipsis-horizontal', route: { name: 'Settings' } },
+  { id: 'logs', label: 'Logs', icon: 'journal-outline', on: 'journal', route: { name: 'Group', params: { id: 'logs' } } },
+  { id: 'calc', label: 'Calculator', icon: 'calculator-outline', on: 'calculator', route: { name: 'Calculator' } },
 ];
 
 export const TAB_BAR_HEIGHT = 62;

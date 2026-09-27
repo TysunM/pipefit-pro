@@ -9,8 +9,7 @@ import { SectionHeader } from '../components/SectionHeader';
 import { AccentButton, ControlRow, GhostButton } from '../components/Buttons';
 import { HintRow } from '../components/HintRow';
 import { Theme, useTheme } from '../theme/ThemeProvider';
-import { boltUp } from '../calc/boltUp';
-import { PASSES, boltUpProgress, currentPass, isFinished } from '../calc/boltUpSequence';
+import { PASSES, boltUpProgress, isFinished } from '../calc/boltUpSequence';
 import {
   Joint,
   SCRATCH_ID,
@@ -18,6 +17,8 @@ import {
   getJoint,
   isDone,
   isSettled,
+  jointFlange,
+  jointProgress,
   lastCheck,
   needsCheckJoints,
   openJoints,
@@ -35,22 +36,6 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Joints'>;
 
 /** The same ramp the flange face uses, so a row reads like the joint does. */
 const PASS_FILL = ['#FACC15', '#F97316', '#2563EB', '#15803D'];
-
-function flangeLabel(j: Joint): string {
-  const f = j.nps === null ? undefined : boltUp(j.nps, j.cls);
-  return f ? `${f.label} · class ${j.cls} · ${j.bolts} bolts` : `${j.bolts} bolts`;
-}
-
-function where(j: Joint): string {
-  if (isFinished(j.state)) {
-    const last = lastCheck(j);
-    if (!last) return 'All four passes · not re-checked';
-    return last.moved ? 'Re-checked · bolts took up' : 'Re-checked · all tight';
-  }
-  const pass = currentPass(j.state);
-  if (boltUpProgress(j.state).done === 0) return 'Not started';
-  return `${pass?.label ?? ''} · bolt ${j.state.step + 1} of ${j.bolts}`;
-}
 
 /** Four pips, one per pass, filled as far as the joint has got. */
 function PassPips({ t, joint }: { t: Theme; joint: Joint }) {
@@ -114,7 +99,7 @@ function JointRow({
       <Pressable
         onPress={onOpen}
         accessibilityRole="button"
-        accessibilityLabel={`Open ${joint.tag || 'untitled joint'}, ${where(joint)}`}
+        accessibilityLabel={`Open ${joint.tag || 'untitled joint'}, ${jointProgress(joint)}`}
         style={({ pressed }) => ({
           flexDirection: 'row',
           alignItems: 'center',
@@ -128,7 +113,7 @@ function JointRow({
             {joint.tag || 'Untitled joint'}
           </Text>
           <Text style={[t.type.caption, { color: t.colors.textMuted }]} numberOfLines={1}>
-            {flangeLabel(joint)}
+            {jointFlange(joint)}
           </Text>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.sm, marginTop: 2 }}>
             <PassPips t={t} joint={joint} />
@@ -146,7 +131,7 @@ function JointRow({
               ]}
               numberOfLines={1}
             >
-              {where(joint)}
+              {jointProgress(joint)}
             </Text>
           </View>
           {joint.note ? (
@@ -356,7 +341,7 @@ export function JointsScreen({ navigation }: Props) {
 
       <HintRow text="Every joint is saved as you work it, bolt by bolt. Leave the screen, close the app or put the phone in your pocket mid-pass and it picks up on the same bolt." />
 
-      <SectionHeader title="Working now" meta={scratchStarted ? where(scratch as Joint) : undefined} />
+      <SectionHeader title="Working now" meta={scratchStarted ? jointProgress(scratch as Joint) : undefined} />
       <View style={{ paddingHorizontal: t.layout.screenPadding, marginBottom: t.space.xl }}>
         <AccentButton
           label={scratchStarted ? 'Back to the unnamed joint' : 'Start a joint'}
@@ -365,7 +350,7 @@ export function JointsScreen({ navigation }: Props) {
         />
         {scratch && scratchStarted ? (
           <Text style={[t.type.caption, { color: t.colors.textMuted, marginTop: t.space.md }]}>
-            {`${flangeLabel(scratch)} · worked ${sinceLabel(scratch.updatedAt, now)}. Name it on that screen to keep it here as a record.`}
+            {`${jointFlange(scratch)} · worked ${sinceLabel(scratch.updatedAt, now)}. Name it on that screen to keep it here as a record.`}
           </Text>
         ) : (
           <Text style={[t.type.caption, { color: t.colors.textMuted, marginTop: t.space.md }]}>

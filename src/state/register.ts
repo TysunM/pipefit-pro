@@ -14,8 +14,8 @@
 // persists it; all the reasoning lives in these functions so it can be tested
 // without a device.
 
-import { CastIronFlangeClass } from '../calc/boltUp';
-import { BoltUpState, PASSES, isFinished, startBoltUp } from '../calc/boltUpSequence';
+import { CastIronFlangeClass, boltUp } from '../calc/boltUp';
+import { BoltUpState, PASSES, boltUpProgress, currentPass, isFinished, startBoltUp } from '../calc/boltUpSequence';
 
 /** The unnamed joint the flange screen uses until it is given a tag. */
 export const SCRATCH_ID = 'scratch';
@@ -487,6 +487,24 @@ export function sinceLabel(then: number, now: number): string {
   if (d < 7) return `${d} days ago`;
   const w = Math.round(d / 7);
   return w === 1 ? 'a week ago' : `${w} weeks ago`;
+}
+
+/** The flange in a line: size, class and bolt count. */
+export function jointFlange(j: Joint): string {
+  const f = j.nps === null ? undefined : boltUp(j.nps, j.cls);
+  return f ? `${f.label} · class ${j.cls} · ${j.bolts} bolts` : `${j.bolts} bolts`;
+}
+
+/** How far the bolt-up has got, in the words a foreman would use. */
+export function jointProgress(j: Joint): string {
+  if (isFinished(j.state)) {
+    const last = lastCheck(j);
+    if (!last) return 'All four passes · not re-checked';
+    return last.moved ? 'Re-checked · bolts took up' : 'Re-checked · all tight';
+  }
+  const pass = currentPass(j.state);
+  if (boltUpProgress(j.state).done === 0) return 'Not started';
+  return `${pass?.label ?? ''} · bolt ${j.state.step + 1} of ${j.bolts}`;
 }
 
 /** Everything a list should show: the named joints, in order, scratch aside. */
