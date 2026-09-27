@@ -6,12 +6,12 @@ import { newSketch, emptyBook } from '../state/sketchStore';
 
 const T = Date.UTC(2026, 8, 20, 12);
 
-/** A joint worked `taps` bolts into its sequence. */
-function joint(tag: string, taps: number, heats: string[] = []): Joint {
+/** A joint worked `taps` bolts into its sequence, signed off unless told otherwise. */
+function joint(tag: string, taps: number, heats: string[] = [], sign: Partial<Pick<Joint, 'boltedBy' | 'witnessedBy'>> = {}): Joint {
   let j = newJoint(tag.toLowerCase(), { cls: '125', nps: 6, bolts: 8, torque: 60, project: 'BP-1' }, T);
   let s = j.state;
   for (let k = 0; k < taps; k++) s = tapBolt(s, expectedBolt(s)).state;
-  j = withState({ ...j, tag, heats }, s, T + 1000);
+  j = withState({ ...j, tag, heats, boltedBy: 'J. Smith', witnessedBy: 'R. Lee', ...sign }, s, T + 1000);
   return j;
 }
 const FULL = 32; // four passes of eight
@@ -46,6 +46,18 @@ describe('the punch list', () => {
     expect(items[1]?.needs).toBe('Re-check at temperature not recorded');
     expect(items[3]?.needs).toBe('No heat number recorded');
     expect(items[4]?.needs).toContain('MTR not in hand (filed as MTR-7) (Done)');
+  });
+
+  test('a finished joint nobody signed is open, and says who is missing', () => {
+    const settled = (sign: Partial<Pick<Joint, 'boltedBy' | 'witnessedBy'>>) =>
+      addCheck(joint('A', FULL, ['H1'], sign), { moved: false, torque: null, note: '' }, T + 5000);
+    const certs = [heat('H1', { certified: true })];
+    expect(openItems([settled({ witnessedBy: '' })], certs)).toEqual([{ what: 'A', needs: 'Sign-off: a witness not recorded' }]);
+    expect(openItems([settled({ boltedBy: ' ', witnessedBy: '' })], certs)[0]?.needs).toBe('Sign-off: who bolted it and a witness not recorded');
+  });
+
+  test('an unfinished joint is not also chased for a signature', () => {
+    expect(openItems([joint('Part', 5, ['H1'], { boltedBy: '', witnessedBy: '' })], [heat('H1', { certified: true })])).toHaveLength(1);
   });
 
   test('a re-check where bolts took up is still open', () => {
@@ -115,6 +127,12 @@ describe('the page', () => {
   test('empty isos are left out; drawn ones get a page each', () => {
     expect(h.match(/class="iso"/g)).toHaveLength(1);
     expect(h).toContain('Iso 1 of 1');
+  });
+
+  test('the record names who bolted and who witnessed', () => {
+    expect(h).toContain('<th>Bolted by</th>');
+    expect(h).toContain('<td>J. Smith</td>');
+    expect(h).toContain('<td>R. Lee</td>');
   });
 
   test('signed by QC and the supervisor', () => {

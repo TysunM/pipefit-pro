@@ -16,6 +16,7 @@
 
 import { CastIronFlangeClass, boltUp } from '../calc/boltUp';
 import { cleanProject } from './project';
+import { cleanPerson } from './readSettings';
 import { BoltUpState, PASSES, boltUpProgress, currentPass, isFinished, startBoltUp } from '../calc/boltUpSequence';
 
 /** The unnamed joint the flange screen uses until it is given a tag. */
@@ -102,6 +103,13 @@ export type Joint = {
   heats: string[];
   /** The Project ID active when the joint was first named; '' for none. See project.ts. */
   project: string;
+  /**
+   * Who pulled it up, and who watched it done. A turnover record names both:
+   * a torque figure nobody put their name to is a figure nobody can be asked
+   * about. Empty until entered; kept as typed and trimmed where it is read.
+   */
+  boltedBy: string;
+  witnessedBy: string;
 };
 
 export type Register = {
@@ -273,6 +281,9 @@ export function validJoint(v: unknown): Joint | null {
     heats,
     // Stores written before projects were tagged have none: "no project".
     project: cleanProject(v.project),
+    // Stores written before these existed have none: nobody recorded.
+    boltedBy: cleanPerson(v.boltedBy),
+    witnessedBy: cleanPerson(v.witnessedBy),
   };
 }
 
@@ -379,6 +390,7 @@ export type JointSpec = {
   bolts: number;
   torque?: number | null;
   project?: string;
+  boltedBy?: string;
 };
 
 export function newJoint(id: string, spec: JointSpec, now: number): Joint {
@@ -397,6 +409,8 @@ export function newJoint(id: string, spec: JointSpec, now: number): Joint {
     checks: [],
     heats: [],
     project: cleanProject(spec.project),
+    boltedBy: cleanPerson(spec.boltedBy),
+    witnessedBy: '',
   };
 }
 
@@ -512,6 +526,25 @@ export function jointProgress(j: Joint): string {
   const pass = currentPass(j.state);
   if (boltUpProgress(j.state).done === 0) return 'Not started';
   return `${pass?.label ?? ''} · bolt ${j.state.step + 1} of ${j.bolts}`;
+}
+
+/**
+ * The names already used for a role on this phone, newest first, so the one
+ * inspector who witnesses every joint on a job is one tap rather than a
+ * spelling each time — and spelled the same on every record.
+ */
+export function recentNames(r: Register, role: 'boltedBy' | 'witnessedBy', max = 3): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const j of r.joints.slice().sort((a, b) => b.updatedAt - a.updatedAt)) {
+    const name = j[role].trim();
+    const key = name.toUpperCase();
+    if (!name || seen.has(key)) continue;
+    seen.add(key);
+    out.push(name);
+    if (out.length >= max) break;
+  }
+  return out;
 }
 
 /** Everything a list should show: the named joints, in order, scratch aside. */

@@ -54,7 +54,9 @@ import {
   sinceLabel,
   withFlange,
   withState,
+  recentNames,
 } from '../state/register';
+import { PERSON_MAX } from '../state/readSettings';
 import { boltCentre, flangeFace } from '../components/flange/face';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'FlangeBoltUp'>;
@@ -255,7 +257,18 @@ function Bolting({
     // The id is worked out here rather than inside the reducer: a reducer must
     // be a pure function of the state it is handed, and navigating is not.
     const id = freshId(register, tag || `joint-${now.toString(36)}`);
-    const moved: Joint = { ...joint, id, tag, note, createdAt: now, updatedAt: now, project: cleanProject(settings.projectId) };
+    const moved: Joint = {
+      ...joint,
+      id,
+      tag,
+      note,
+      createdAt: now,
+      updatedAt: now,
+      project: cleanProject(settings.projectId),
+      // Whoever carries the phone is taken to be the one bolting it up until
+      // somebody says otherwise on the record.
+      boltedBy: joint.boltedBy.trim() ? joint.boltedBy : settings.fitterName.trim(),
+    };
     const cleared = newJoint(SCRATCH_ID, { cls, nps, bolts }, now);
     apply((r) => putJoint(putJoint(r, moved), cleared));
     navigation.setParams({ jointId: id });
@@ -428,6 +441,15 @@ function Bolting({
           }}
         />
       </ControlRow>
+
+      {isScratch(joint) ? null : (
+        <SignOff
+          t={t}
+          joint={joint}
+          suggest={(role) => recentNames(register, role, 4)}
+          onChange={(patch) => write({ ...joint, ...patch, updatedAt: Date.now() })}
+        />
+      )}
 
       {isDone(joint) ? (
         <ReTorque
@@ -875,6 +897,85 @@ function JointBar({
   );
 }
 
+/**
+ * Who bolted it and who watched. Both go on the turnover record, and a
+ * finished joint missing either is listed there as open. The names used
+ * before sit under each field, so the inspector who witnesses every joint on
+ * the job is one tap and spelled the same way on every record.
+ */
+function SignOff({
+  t,
+  joint,
+  suggest,
+  onChange,
+}: {
+  t: Theme;
+  joint: Joint;
+  suggest: (role: 'boltedBy' | 'witnessedBy') => string[];
+  onChange: (patch: Partial<Pick<Joint, 'boltedBy' | 'witnessedBy'>>) => void;
+}) {
+  const done = isDone(joint);
+  const row = (role: 'boltedBy' | 'witnessedBy', label: string, placeholder: string) => {
+    const value = joint[role];
+    const picks = suggest(role).filter((n) => n.toUpperCase() !== value.trim().toUpperCase());
+    return (
+      <View style={{ gap: t.space.sm }}>
+        <Text style={[t.type.labelSmall, { color: t.colors.textMuted }]}>{label}</Text>
+        <Well style={{ height: t.layout.fieldHeight, justifyContent: 'center' }}>
+          <TextInput
+            value={value}
+            onChangeText={(v) => onChange({ [role]: v.slice(0, PERSON_MAX) })}
+            placeholder={placeholder}
+            placeholderTextColor={t.colors.textFaint}
+            accessibilityLabel={label}
+            autoCapitalize="words"
+            autoCorrect={false}
+            style={[t.type.fieldValue, { color: t.colors.text, paddingHorizontal: t.space.lg, height: '100%' }]}
+          />
+        </Well>
+        {picks.length ? (
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space.sm }}>
+            {picks.map((n) => (
+              <Pressable
+                key={n}
+                onPress={() => onChange({ [role]: n })}
+                accessibilityRole="button"
+                accessibilityLabel={`${label}: ${n}`}
+                style={({ pressed }) => ({
+                  height: 34,
+                  paddingHorizontal: 12,
+                  borderRadius: 17,
+                  borderWidth: 1,
+                  borderColor: t.colors.border,
+                  backgroundColor: pressed ? t.colors.metalLo : t.colors.metalHi,
+                  justifyContent: 'center',
+                })}
+              >
+                <Text style={[t.type.caption, { color: t.colors.text }]}>{n}</Text>
+              </Pressable>
+            ))}
+          </View>
+        ) : null}
+      </View>
+    );
+  };
+  const missing = [!joint.boltedBy.trim() && 'who bolted it', !joint.witnessedBy.trim() && 'a witness'].filter(Boolean);
+  return (
+    <>
+      <SectionHeader title="Sign-off" meta="on the turnover record" />
+      <View style={{ paddingHorizontal: t.layout.screenPadding, marginBottom: t.space.lg, gap: t.space.lg }}>
+        {row('boltedBy', 'Bolted by', 'Name and badge #')}
+        {row('witnessedBy', 'Witnessed by', 'QC inspector or foreman')}
+        <Text style={[t.type.caption, { color: done && missing.length ? t.colors.warnText : t.colors.textMuted }]}>
+          {done && missing.length
+            ? `Finished, but ${missing.join(' and ')} ${missing.length > 1 ? 'are' : 'is'} not recorded. The turnover package lists it as open until it is.`
+            : 'Printed in the bolt-up record of the turnover package. Set your own name in Settings and it fills Bolted by on every joint you name.'}
+        </Text>
+      </View>
+    </>
+  );
+}
+
 function NameSheet({
   t,
   visible,
@@ -930,7 +1031,7 @@ function NameSheet({
             {isScratch(joint) ? 'Name this joint' : 'Rename this joint'}
           </Text>
           <Text style={[t.type.caption, { color: t.colors.textMuted }]}>
-            Whatever you would call it out by \u2014 a line number, a spool mark, a valve tag.
+            Whatever you would call it out by — a line number, a spool mark, a valve tag.
           </Text>
           <TextInput
             value={tag}

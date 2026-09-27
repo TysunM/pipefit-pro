@@ -18,6 +18,12 @@ export const LOOK = 2;
 /** Longer than any job number, short enough to sit on one line of the card. */
 export const PROJECT_ID_MAX = 24;
 
+/** A person's name as it goes on a record: long enough for a full name and a badge number. */
+export const PERSON_MAX = 40;
+
+/** A typed name, capped; anything that is not a string is no name. Trimmed where it is read, not while it is typed. */
+export const cleanPerson = (v: unknown): string => (typeof v === 'string' ? v.slice(0, PERSON_MAX) : '');
+
 export function readSettings(
   raw: string | null,
   defaults: Settings
@@ -35,6 +41,7 @@ export function readSettings(
   // Written by hand in a text field, so it is the one value that can arrive as
   // anything. A number or a null in storage is dropped rather than shown.
   merged.projectId = typeof stored.projectId === 'string' ? stored.projectId.slice(0, PROJECT_ID_MAX) : defaults.projectId;
+  merged.fitterName = typeof stored.fitterName === 'string' ? cleanPerson(stored.fitterName) : defaults.fitterName;
   if (stored.look === LOOK) return { settings: merged, migrated: false };
   return { settings: { ...merged, themePreference: defaults.themePreference, look: LOOK }, migrated: true };
 }

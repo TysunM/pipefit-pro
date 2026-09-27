@@ -34,6 +34,11 @@ export type Settings = {
    * read off the phone is read against the right job. Empty until it is set.
    */
   projectId: string;
+  /**
+   * The name of whoever carries this phone, filled in as "bolted by" on every
+   * joint they name. Empty until it is set.
+   */
+  fitterName: string;
   /** Which look these were written under — see readSettings. */
   look: number;
 };
@@ -52,6 +57,7 @@ export const DEFAULT_SETTINGS: Settings = {
   stockLength: 240,
   cutAllowance: 0.125,
   projectId: '',
+  fitterName: '',
   look: LOOK,
 };
 
