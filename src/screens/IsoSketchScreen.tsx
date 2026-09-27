@@ -11,13 +11,11 @@ import { HintRow } from '../components/HintRow';
 import { Theme, useTheme } from '../theme/ThemeProvider';
 import { useSketches } from '../state/sketches';
 import { SavedSketch, deleteSketch, newSketch, renameSketch, saveSketch } from '../state/sketchStore';
+import { stamp } from '../components/stamp';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'IsoSketch'>;
 
-const when = (at: number): string =>
-  new Date(at).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) +
-  ' ' +
-  new Date(at).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+const when = stamp;
 
 function count(s: SavedSketch): string {
   let runs = 0, pen = 0, notes = 0;

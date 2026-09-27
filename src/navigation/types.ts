@@ -1,7 +1,9 @@
 export type RootStackParamList = {
   Home: undefined;
-  /** One tab's worth of tools — see navigation/groups.ts. */
-  Group: { id: 'projects' | 'tools' | 'calcs' };
+  /** The Tools or Logs tab — see navigation/groups.ts. */
+  Group: { id: 'tools' | 'logs' };
+  /** Everything saved on the phone, one card per kind. */
+  Projects: undefined;
   SimpleOffset: undefined;
   RollingOffset: undefined;
   CutLength: undefined;
@@ -15,7 +17,8 @@ export type RootStackParamList = {
   OrderSheet: undefined;
   Calculator: undefined;
   Level: undefined;
-  SpoolBuilder: undefined;
+  /** A saved spool to open on arrival. Absent means the one on screen. */
+  SpoolBuilder: { spoolId?: string } | undefined;
   /** The sketch book: every iso drawn on the phone. */
   IsoSketch: undefined;
   /** One sketch, open to draw on. */

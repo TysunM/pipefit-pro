@@ -33,12 +33,20 @@ function inkFor(t: ReturnType<typeof useTheme>, skin: Skin): string {
   return skin.plate === 'copper' ? t.colors.onCopper : skin.plate === 'slate' ? t.colors.onSlate : t.colors.text;
 }
 
+/** Room a row needs besides its key: the shift hint over it and the gap under it. */
+export const ROW_EXTRA = 12 + 1 + 6;
+/** The key height the pad is drawn at when there is room for it. */
+export const KEY_HEIGHT = 54;
+
 export function Keypad({
   onPress,
   shift,
+  keyHeight = KEY_HEIGHT,
 }: {
   onPress: (action: KeyAction, arg?: string) => void;
   shift: boolean;
+  /** Shorter keys on a short screen, so the whole pad fits above the tab bar. */
+  keyHeight?: number;
 }) {
   const t = useTheme();
 
@@ -95,7 +103,7 @@ export function Keypad({
                       </Text>
                     );
                     return 'plate' in skin ? (
-                      <Plate tone={skin.plate} sunk={pressed} radius={t.radius.md} style={styles.key}>
+                      <Plate tone={skin.plate} sunk={pressed} radius={t.radius.md} style={[styles.key, { height: keyHeight }]}>
                         {face}
                       </Plate>
                     ) : (
@@ -103,6 +111,7 @@ export function Keypad({
                         style={[
                           styles.key,
                           {
+                            height: keyHeight,
                             backgroundColor: skin.flat,
                             borderRadius: t.radius.md,
                             borderWidth: 1,
@@ -131,7 +140,6 @@ const styles = StyleSheet.create({
   cell: { flex: 1 },
   hint: { textAlign: 'center', fontSize: 9.5, letterSpacing: 0.2, marginBottom: 1, height: 12 },
   key: {
-    height: 54,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 2,

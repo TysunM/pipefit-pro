@@ -1,17 +1,19 @@
 import { Ionicons } from '@expo/vector-icons';
 import type { RootStackParamList } from './types';
 
-// What is on the home screen, and what each tab holds
-// ---------------------------------------------------
-// Every tool is on the front page, one tap away, laid out in three sections:
-// the tools a man works with, the records he keeps and looks things up in,
-// and the calculations he runs most. The tab bar across the bottom cuts the
-// same fifteen tools a second way — projects, tools, calculations — so a tab
-// is a short list of like things rather than the whole shop again.
+// What each tab holds
+// -------------------
+// Five tabs across the foot: Home, Projects, Tools, Logs and the Calculator.
 //
-// This file is the only place that says which tool sits where. The home
-// screen, the tab screens and groups.test.ts all read it, and the test holds
-// that each of the two cuts reaches every tool exactly once.
+//   Home       the job card and the tools this man used last.
+//   Projects   everything saved: bolt-ups, isos, spools, level readings.
+//   Tools      the instruments he works with, and every bend and offset.
+//   Logs       the books he keeps and looks things up in.
+//   Calculator the trade calculator, straight to the keys.
+//
+// This file is the only place that says which tool sits where. The tab
+// screens, the home screen and groups.test.ts all read it, and the test holds
+// that the tabs and the Projects page together reach every tool exactly once.
 
 /** A screen a fitter opens to do a job. Not Settings, not a tab, not Home. */
 export type ToolRoute =
@@ -49,7 +51,7 @@ export const TOOLS: Tool[] = [
   { route: 'Level', title: 'Level', subtitle: 'Lay phone on pipe to read angle', icon: 'git-commit-outline' },
   { route: 'OrderSheet', title: 'Order sheet', subtitle: 'Combine spools into one order', icon: 'receipt-outline' },
   { route: 'SpoolBuilder', title: '3D spool', subtitle: 'Build a run and spin it in 3D', icon: 'cube-outline' },
-  { route: 'Joints', title: 'Joint register', subtitle: 'Project-level bolt-up records', icon: 'pricetags-outline' },
+  { route: 'Joints', title: 'Joint log', subtitle: 'Every bolt-up on the job', icon: 'pricetags-outline' },
   { route: 'FlangeBoltUp', title: 'Flange bolt-up', subtitle: 'Interactive cross-pattern check', icon: 'sync-circle-outline' },
   { route: 'Heats', title: 'Heat book', subtitle: 'MTR traceability by heat #', icon: 'shield-checkmark-outline' },
   { route: 'IsoSketch', title: 'Iso sketch', subtitle: 'Iso paper; the lines snap to the axes', icon: 'pencil-outline' },
@@ -67,53 +69,58 @@ export function tool(route: string): Tool | undefined {
 
 const pick = (routes: ToolRoute[]): Tool[] => routes.map((r) => tool(r) as Tool);
 
-/**
- * The home screen. Work tools down the left, records and look-ups down the
- * right, row for row; the sketch pad full width under them; the everyday
- * calculations in small tiles at the foot.
- */
-export const HOME = {
-  work: pick(['Calculator', 'Level', 'SpoolBuilder', 'FlangeBoltUp']),
-  records: pick(['Reference', 'OrderSheet', 'Joints', 'Heats']),
-  wide: tool('IsoSketch') as Tool,
-  calcs: pick(['SimpleOffset', 'RollingOffset', 'CutLength', 'SaddleBend', 'MiterBend', 'HandBender']),
-};
+/** How a section draws its tiles: big pictures two to a row, one across the width, or small calc tiles. */
+export type SectionSize = 'big' | 'wide' | 'small';
+export type Section = { title: string; size: SectionSize; tools: Tool[] };
 
-/** The big tiles in reading order: across each row, left then right. */
-export const HOME_PAIRS: Tool[] = HOME.work.flatMap((w, i) => {
-  const r = HOME.records[i];
-  return r ? [w, r] : [w];
-});
+export type GroupId = 'tools' | 'logs';
+export type Group = { id: GroupId; title: string; subtitle: string; sections: Section[] };
 
-/** Every tool the home screen shows, in reading order. */
-export const HOME_TOOLS: Tool[] = [...HOME_PAIRS, HOME.wide, ...HOME.calcs];
-
-export type GroupId = 'projects' | 'tools' | 'calcs';
-
-export type Group = { id: GroupId; title: string; subtitle: string; tools: Tool[] };
-
-/** What each tab holds. */
+/** What the Tools and Logs tabs hold. */
 export const GROUPS: Group[] = [
-  {
-    id: 'projects',
-    title: 'Projects',
-    subtitle: 'What the job has on record: the order, every joint bolted up, the heats in them, and the isos.',
-    tools: pick(['OrderSheet', 'Joints', 'Heats', 'IsoSketch']),
-  },
   {
     id: 'tools',
     title: 'Tools',
-    subtitle: 'The instruments: the calculator, the level, the handbook, the spool and the bolt-up.',
-    tools: pick(['Calculator', 'Level', 'Reference', 'SpoolBuilder', 'FlangeBoltUp']),
+    subtitle: 'The iso paper, the spool, the bolt-up and the level, then every bend and offset.',
+    sections: [
+      { title: 'Layout & fit-up', size: 'big', tools: pick(['IsoSketch', 'SpoolBuilder', 'FlangeBoltUp', 'Level']) },
+      {
+        title: 'Bends & offsets',
+        size: 'small',
+        tools: pick(['SimpleOffset', 'RollingOffset', 'CutLength', 'SaddleBend', 'MiterBend', 'HandBender']),
+      },
+    ],
   },
   {
-    id: 'calcs',
-    title: 'Calculations',
-    subtitle: 'Offsets, saddles, miters, bends and cut length, all worked from the active pipe spec.',
-    tools: pick(['SimpleOffset', 'RollingOffset', 'CutLength', 'SaddleBend', 'MiterBend', 'HandBender']),
+    id: 'logs',
+    title: 'Logs',
+    subtitle: 'The books the job keeps: every joint bolted up, the heats in them, and the handbook.',
+    sections: [
+      { title: 'Records', size: 'big', tools: pick(['Joints', 'Heats']) },
+      { title: 'Look-up', size: 'wide', tools: pick(['Reference']) },
+    ],
   },
 ];
 
 export function group(id: GroupId): Group | undefined {
   return GROUPS.find((g) => g.id === id);
 }
+
+/** Every tool a tab lists, in reading order. */
+export const groupTools = (g: Group): Tool[] => g.sections.flatMap((s) => s.tools);
+
+/** Reached from the Projects page, not a tab: the order is worked out of the saved spools. */
+export const PROJECT_TOOLS: Tool[] = pick(['OrderSheet']);
+
+/** The one tool that is its own tab. */
+export const TAB_TOOLS: Tool[] = pick(['Calculator']);
+
+/**
+ * What the home screen's "recently used" remembers. The calculator is left
+ * out: it has its own tab, so a tile for it would be a second way to the
+ * same place, taking the room of a tool that is not one tap away.
+ */
+export const RECORDABLE: ReadonlySet<string> = new Set(TOOLS.map((t) => t.route).filter((r) => r !== 'Calculator'));
+
+/** What the home screen offers before anything has been used. */
+export const START: Tool[] = pick(['IsoSketch', 'FlangeBoltUp', 'SpoolBuilder', 'Level']);
