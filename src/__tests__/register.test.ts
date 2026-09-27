@@ -21,6 +21,7 @@ import {
   parseRegister,
   pruneRegister,
   putJoint,
+  recentNames,
   removeCheck,
   removeJoint,
   serialiseRegister,
@@ -770,5 +771,48 @@ describe('heats recorded against a joint', () => {
     const back = parseRegister(serialiseRegister(putJoint(emptyRegister(), j)));
     expect(back.joints[0]!.heats).toEqual(['E7Z419', '0M2947']);
     expect(back.dropped).toBe(0);
+  });
+});
+
+describe('who bolted it and who witnessed it', () => {
+  const T0 = 1_760_000_000_000;
+  const j = (id: string, at: number, boltedBy: string, witnessedBy: string): Joint => ({
+    ...newJoint(id, { cls: '125', nps: 6, bolts: 8 }, at),
+    boltedBy,
+    witnessedBy,
+    updatedAt: at,
+  });
+
+  test('a joint saved before these existed loads with nobody recorded', () => {
+    const { boltedBy: _b, witnessedBy: _w, ...old } = newJoint('a', { cls: '125', nps: 6, bolts: 8 }, T0);
+    const loaded = validJoint(old);
+    expect(loaded?.boltedBy).toBe('');
+    expect(loaded?.witnessedBy).toBe('');
+  });
+
+  test('a stray value does not cost the joint, only the name', () => {
+    const loaded = validJoint({ ...newJoint('a', { cls: '125', nps: 6, bolts: 8 }, T0), boltedBy: 12, witnessedBy: null });
+    expect(loaded).not.toBeNull();
+    expect(loaded?.boltedBy).toBe('');
+  });
+
+  test('names survive the store as typed', () => {
+    const r: Register = { ...emptyRegister(), joints: [j('a', T0, 'J. Smith #412', 'R. Lee (QC)')] };
+    const back = parseRegister(serialiseRegister(r)).joints[0];
+    expect([back?.boltedBy, back?.witnessedBy]).toEqual(['J. Smith #412', 'R. Lee (QC)']);
+  });
+
+  test('a new joint can start with the fitter already named', () => {
+    expect(newJoint('a', { cls: '125', nps: 6, bolts: 8, boltedBy: 'J. Smith' }, T0).boltedBy).toBe('J. Smith');
+  });
+
+  test('recent names are newest first, one per person however they were cased, blanks skipped', () => {
+    const r: Register = {
+      ...emptyRegister(),
+      joints: [j('a', T0, 'J. Smith', 'R. Lee'), j('b', T0 + 2, 'j. smith', ''), j('c', T0 + 1, 'A. Diaz', ' r. lee ')],
+    };
+    expect(recentNames(r, 'boltedBy')).toEqual(['j. smith', 'A. Diaz']);
+    expect(recentNames(r, 'witnessedBy')).toEqual(['r. lee']);
+    expect(recentNames(r, 'boltedBy', 1)).toEqual(['j. smith']);
   });
 });

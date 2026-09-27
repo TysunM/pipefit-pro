@@ -15,7 +15,7 @@ import { useUnits } from '../hooks/useUnits';
 import { findSize } from '../calc/pipe';
 import { FractionDenominator } from '../calc/format';
 import { fromInches } from '../calc/units';
-import { PROJECT_ID_MAX } from '../state/readSettings';
+import { PERSON_MAX, PROJECT_ID_MAX } from '../state/readSettings';
 
 export function SettingsScreen() {
   const t = useTheme();
@@ -50,6 +50,16 @@ export function SettingsScreen() {
           placeholder="Job or line number"
           keyboardType="default"
           autoCapitalize="characters"
+        />
+      </FieldRow>
+      <FieldRow>
+        <DimensionInput
+          label="Your name"
+          value={settings.fitterName}
+          onChangeText={(text) => update({ fitterName: text.slice(0, PERSON_MAX) })}
+          placeholder="Filled in as Bolted by on joints you name"
+          keyboardType="default"
+          autoCapitalize="words"
         />
       </FieldRow>
 

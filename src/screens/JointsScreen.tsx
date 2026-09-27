@@ -149,6 +149,17 @@ function JointRow({
               {joint.note}
             </Text>
           ) : null}
+          {joint.boltedBy.trim() || joint.witnessedBy.trim() ? (
+            <Text style={[t.type.caption, { color: t.colors.textMuted }]} numberOfLines={1}>
+              {[joint.boltedBy.trim() && `Bolted by ${joint.boltedBy.trim()}`, joint.witnessedBy.trim() && `witnessed by ${joint.witnessedBy.trim()}`]
+                .filter(Boolean)
+                .join(' · ')}
+            </Text>
+          ) : isDone(joint) ? (
+            <Text style={[t.type.caption, { color: t.colors.warnText }]} numberOfLines={1}>
+              No sign-off recorded
+            </Text>
+          ) : null}
           <Text style={[t.type.caption, { color: t.colors.textFaint }]}>
             {(() => {
               const last = lastCheck(joint);

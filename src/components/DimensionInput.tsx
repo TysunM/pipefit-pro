@@ -60,6 +60,7 @@ export function DimensionInput({
           value={value}
           onChangeText={onChangeText}
           editable={editable}
+          accessibilityLabel={label}
           placeholder={placeholder}
           placeholderTextColor={t.colors.textFaint}
           keyboardType={kb}

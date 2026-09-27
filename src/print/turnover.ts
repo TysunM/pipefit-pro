@@ -71,8 +71,8 @@ export function heatsUsed(joints: readonly Joint[], book: readonly Heat[]): { nu
 
 /**
  * The punch list: everything that stops the package being signed, in the
- * order it gets chased — work not finished, then checks not done, then paper
- * not in hand.
+ * order it gets chased — work not finished, then checks not done, then
+ * records nobody signed, then paper not in hand.
  */
 export function openItems(joints: readonly Joint[], book: readonly Heat[]): OpenItem[] {
   const out: OpenItem[] = [];
@@ -82,6 +82,11 @@ export function openItems(joints: readonly Joint[], book: readonly Heat[]): Open
       const last = lastCheck(j);
       out.push({ what: name(j), needs: last?.moved ? 'Bolts took up on the last re-check; check again' : 'Re-check at temperature not recorded' });
     }
+  for (const j of joints) {
+    if (!isDone(j)) continue;
+    const missing = [!j.boltedBy.trim() && 'who bolted it', !j.witnessedBy.trim() && 'a witness'].filter(Boolean);
+    if (missing.length) out.push({ what: name(j), needs: `Sign-off: ${missing.join(' and ')} not recorded` });
+  }
   for (const j of joints) if (!j.heats.length) out.push({ what: name(j), needs: 'No heat number recorded' });
   for (const u of heatsUsed(joints, book)) {
     if (!u.heat) out.push({ what: `Heat ${u.number}`, needs: `Not in the heat book; no cert on file (${u.joints.join(', ')})` });
@@ -104,7 +109,7 @@ export function turnoverTotals(i: TurnoverInput): { label: string; value: string
 }
 
 function status(j: Joint): string {
-  if (isSettled(j)) return 'Complete, re-checked tight';
+  if (isSettled(j)) return 'Complete, re-checked';
   return jointProgress(j);
 }
 
@@ -124,7 +129,7 @@ export function turnoverHtml(i: TurnoverInput): string {
   if (i.joints.length)
     tables.push({
       title: 'Flange bolt-up record',
-      head: ['Joint', 'Flange', 'Final torque', 'Status', 'Finished', 'Heats'],
+      head: ['Joint', 'Flange', 'Final torque', 'Status', 'Finished', 'Bolted by', 'Witnessed by', 'Heats'],
       right: [2],
       rows: i.joints.map((j) => [
         name(j),
@@ -132,6 +137,8 @@ export function turnoverHtml(i: TurnoverInput): string {
         j.torque === null ? '—' : `${j.torque} ft-lb`,
         status(j),
         j.completedAt === null ? '—' : day(j.completedAt),
+        j.boltedBy.trim() || '—',
+        j.witnessedBy.trim() || '—',
         j.heats.length ? j.heats.join(', ') : '—',
       ]),
       note: 'Four passes in the cross pattern: 30%, 60% and 100% of final torque, then a check pass round the circle at 100%.',
