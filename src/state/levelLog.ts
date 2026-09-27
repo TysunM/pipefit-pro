@@ -14,6 +14,7 @@
 // store in persisted.tsx, the same machinery the spools and sketches ride.
 
 import { inchesPerFoot } from '../calc/sight';
+import { cleanProject } from './project';
 
 /** Bumped only when the stored shape changes in a way an older app would misread. */
 export const LEVELS_VERSION = 1;
@@ -33,6 +34,8 @@ export type Reading = {
   /** Inches of fall per foot of run, worked from the slope when it was taken. */
   inPerFt: number;
   createdAt: number;
+  /** The Project ID active when it was saved; '' for none. See project.ts. */
+  project: string;
 };
 
 export type LevelLog = {
@@ -58,7 +61,7 @@ export function validReading(v: unknown): Reading | null {
   if (!isNum(slope) || slope < -90 || slope > 90) return null;
   if (!isNum(inPerFt)) return null;
   if (!isInt(createdAt) || createdAt <= 0) return null;
-  return { id, tag: tag.trim().slice(0, TAG_MAX), slope, inPerFt, createdAt };
+  return { id, tag: tag.trim().slice(0, TAG_MAX), slope, inPerFt, createdAt, project: cleanProject(v.project) };
 }
 
 export function serialiseLog(l: LevelLog): string {
@@ -103,12 +106,12 @@ export function sortReadings(rs: Reading[]): Reading[] {
  * Keep a reading. The fall per foot is worked here, from the slope, so the
  * two can never disagree. Past the cap the oldest goes, never the new one.
  */
-export function addReading(log: LevelLog, tag: string, slope: number, now: number): LevelLog {
+export function addReading(log: LevelLog, tag: string, slope: number, now: number, project = ''): LevelLog {
   const name = tag.trim().slice(0, TAG_MAX);
   if (!name || !Number.isFinite(slope)) return log;
   let id = `lv${now.toString(36)}`;
   for (let n = 2; log.readings.some((r) => r.id === id); n++) id = `lv${now.toString(36)}-${n}`;
-  const reading: Reading = { id, tag: name, slope, inPerFt: inchesPerFoot(slope), createdAt: now };
+  const reading: Reading = { id, tag: name, slope, inPerFt: inchesPerFoot(slope), createdAt: now, project: cleanProject(project) };
   const readings = sortReadings([reading, ...log.readings]).slice(0, MAX_READINGS);
   if (!readings.some((r) => r.id === id)) return log;
   return { ...log, readings };

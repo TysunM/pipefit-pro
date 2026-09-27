@@ -35,6 +35,7 @@ const sketch = (id: string, at: number, s: Stroke[] = strokes): SavedSketch => (
   strokes: s,
   createdAt: at,
   updatedAt: at,
+  project: '',
 });
 
 describe('strokes', () => {

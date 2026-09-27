@@ -15,6 +15,7 @@
 // without a device.
 
 import { CastIronFlangeClass, boltUp } from '../calc/boltUp';
+import { cleanProject } from './project';
 import { BoltUpState, PASSES, boltUpProgress, currentPass, isFinished, startBoltUp } from '../calc/boltUpSequence';
 
 /** The unnamed joint the flange screen uses until it is given a tag. */
@@ -99,6 +100,8 @@ export type Joint = {
    * about that joint: no heat was recorded against it.
    */
   heats: string[];
+  /** The Project ID active when the joint was first named; '' for none. See project.ts. */
+  project: string;
 };
 
 export type Register = {
@@ -268,6 +271,8 @@ export function validJoint(v: unknown): Joint | null {
     completedAt: completedAt as number | null,
     checks,
     heats,
+    // Stores written before projects were tagged have none: "no project".
+    project: cleanProject(v.project),
   };
 }
 
@@ -373,6 +378,7 @@ export type JointSpec = {
   nps: number | null;
   bolts: number;
   torque?: number | null;
+  project?: string;
 };
 
 export function newJoint(id: string, spec: JointSpec, now: number): Joint {
@@ -390,6 +396,7 @@ export function newJoint(id: string, spec: JointSpec, now: number): Joint {
     completedAt: null,
     checks: [],
     heats: [],
+    project: cleanProject(spec.project),
   };
 }
 

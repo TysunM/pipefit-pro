@@ -1,5 +1,5 @@
-import React from 'react';
-import { Pressable, Text, View } from 'react-native';
+import React, { useState } from 'react';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
@@ -14,7 +14,9 @@ import { useJoints } from '../state/joints';
 import { useSketches } from '../state/sketches';
 import { useSpools } from '../state/spools';
 import { useLevels } from '../state/levels';
-import { isDone, isSettled, jointFlange, jointProgress, listed, sinceLabel, sortJoints } from '../state/register';
+import { useSettings } from '../state/settings';
+import { ALL, ProjectFilter, claimUntagged, cleanProject, defaultFilter, inProject, only, projectsIn, sameProject, untagged } from '../state/project';
+import { isDone, isScratch, isSettled, jointFlange, jointProgress, listed, sinceLabel, sortJoints } from '../state/register';
 import { sortSketches } from '../state/sketchStore';
 import { sortSpools } from '../state/spoolStore';
 import { findSize } from '../calc/pipe';
@@ -25,7 +27,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Projects'>;
 /** How many of each kind a card lists before "see all". */
 const SHOWN = 3;
 
-type Row = { key: string; title: string; sub: string; when: string; tint?: string; onPress: () => void };
+type Row = { key: string; title: string; sub: string; when: string; job?: string; tint?: string; onPress: () => void };
 
 /**
  * Everything saved on the phone, one card per kind: the bolt-ups, the isos,
@@ -33,27 +35,68 @@ type Row = { key: string; title: string; sub: string; when: string; tint?: strin
  * any of them where it was left, and starts a new one.
  *
  * This is the page a foreman is shown. It answers "what have you got on this
- * job" without opening four tools to find out.
+ * job" without opening four tools to find out. So it opens on the job that is
+ * active in Settings, and the chips across the top switch to another job, to
+ * everything, or to what was saved with no job at all. See state/project.ts.
  */
 export function ProjectsScreen({ navigation }: Props) {
   const t = useTheme();
   const now = Date.now();
-  const { register, hydrated: jIn } = useJoints();
-  const { book, hydrated: kIn } = useSketches();
-  const { shelf, hydrated: sIn } = useSpools();
-  const { log, hydrated: lIn } = useLevels();
+  const { register, hydrated: jIn, apply: applyJoints } = useJoints();
+  const { book, hydrated: kIn, apply: applySketches } = useSketches();
+  const { shelf, hydrated: sIn, apply: applySpools } = useSpools();
+  const { log, hydrated: lIn, apply: applyLevels } = useLevels();
+  const { settings } = useSettings();
   const go = (route: ToolRoute) => navigation.navigate(route as never);
 
-  const joints = sortJoints(listed(register));
-  const sketches = sortSketches(book.sketches);
-  const spools = sortSpools(shelf.spools);
-  const readings = log.readings;
+  const active = cleanProject(settings.projectId);
+  // Until a chip is pressed the page follows the active project.
+  const [picked, setPicked] = useState<ProjectFilter | null>(null);
+  const [claiming, setClaiming] = useState(false);
+
+  const everything = [...listed(register), ...book.sketches, ...shelf.spools, ...log.readings];
+  const jobs = projectsIn(everything, active);
+  // A chip whose job has since emptied (its work claimed or deleted) is gone,
+  // so the page falls back rather than showing a filter nobody can see.
+  const stale = picked?.kind === 'one' && !jobs.some((j) => sameProject(j.id, picked.id));
+  const filter = picked && !stale ? picked : defaultFilter(active);
+  const loose = untagged(everything);
+  const mine = <T extends { project: string }>(xs: T[]) => xs.filter((x) => inProject(x.project, filter));
+
+  const joints = sortJoints(mine(listed(register)));
+  const sketches = sortSketches(mine(book.sketches));
+  const spools = sortSpools(mine(shelf.spools));
+  const readings = mine(log.readings);
+  const showJob = filter.kind === 'all';
+  const jobOf = (p: string) => (showJob ? p || 'No project' : undefined);
+
+  const jobChips = jobs.map((j) => (
+    <Chip
+      key={j.id || '(none)'}
+      label={j.id || 'No project'}
+      count={j.count}
+      dot={!!active && sameProject(j.id, active)}
+      on={filter.kind === 'one' && sameProject(filter.id, j.id)}
+      onPress={() => setPicked(only(j.id))}
+    />
+  ));
+  const allChip = <Chip key="(all)" label="All jobs" count={everything.length} on={filter.kind === 'all'} onPress={() => setPicked(ALL)} />;
+
+  const claim = () => {
+    if (!active) return;
+    applyJoints((r) => ({ ...r, joints: r.joints.map((j) => (isScratch(j) || j.project ? j : { ...j, project: active })) }));
+    applySketches((b) => ({ ...b, sketches: claimUntagged(b.sketches, active) }));
+    applySpools((sh) => ({ ...sh, spools: claimUntagged(sh.spools, active) }));
+    applyLevels((l) => ({ ...l, readings: claimUntagged(l.readings, active) }));
+    setClaiming(false);
+  };
 
   const jointRows: Row[] = joints.slice(0, SHOWN).map((j) => ({
     key: j.id,
     title: j.tag || 'Untitled joint',
     sub: `${jointFlange(j)}\n${jointProgress(j)}`,
     when: sinceLabel(j.updatedAt, now),
+    job: jobOf(j.project),
     tint: isSettled(j) ? t.colors.success : isDone(j) ? t.colors.accent : t.colors.data,
     onPress: () => navigation.navigate('FlangeBoltUp', { jointId: j.id }),
   }));
@@ -63,6 +106,7 @@ export function ProjectsScreen({ navigation }: Props) {
     title: s.name,
     sub: s.place || `${s.strokes.length} ${s.strokes.length === 1 ? 'line' : 'lines'}`,
     when: sinceLabel(s.updatedAt, now),
+    job: jobOf(s.project),
     onPress: () => navigation.navigate('IsoDraw', { id: s.id }),
   }));
 
@@ -71,6 +115,7 @@ export function ProjectsScreen({ navigation }: Props) {
     title: s.name,
     sub: `${findSize(s.nps).label} SCH ${s.schedule} · ${s.legs.length} legs${s.place ? ` · ${s.place}` : ''}`,
     when: sinceLabel(s.updatedAt, now),
+    job: jobOf(s.project),
     onPress: () => navigation.navigate('SpoolBuilder', { spoolId: s.id }),
   }));
 
@@ -81,6 +126,7 @@ export function ProjectsScreen({ navigation }: Props) {
       title: r.tag,
       sub: `${Math.abs(r.slope) < 0.05 ? '0.0' : `${r.slope < 0 ? '−' : ''}${Math.abs(r.slope).toFixed(1)}`}° · ${f < 0 ? '−' : ''}${Math.abs(f).toFixed(2)}″/ft`,
       when: sinceLabel(r.createdAt, now),
+      job: jobOf(r.project),
       onPress: () => go('Level'),
     };
   });
@@ -88,8 +134,41 @@ export function ProjectsScreen({ navigation }: Props) {
   return (
     <View style={{ flex: 1, backgroundColor: t.colors.bg }}>
       <Screen tabbed>
-        <HintRow text="Everything saved on this phone. Tap one to open it where you left it." />
-        <View style={{ paddingHorizontal: t.layout.screenPadding, paddingTop: t.space.xl, gap: 16 }}>
+        <HintRow
+          text={
+            active
+              ? `New work is saved to ${active}. Tap a job below to see its work, or All jobs for everything on this phone.`
+              : 'No Project ID is set, so new work is not tagged to a job. Set one in Settings to keep each job apart.'
+          }
+        />
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ gap: 8, paddingHorizontal: t.layout.screenPadding, paddingTop: t.space.lg }}
+        >
+          {/* The active job first, then everything, then the other jobs: the
+              two a man switches between most sit on screen together. */}
+          {active ? null : <Chip label="Set Project ID" icon="create-outline" on={false} onPress={() => navigation.navigate('Settings')} />}
+          {active ? [jobChips[0], allChip, ...jobChips.slice(1)] : [allChip, ...jobChips]}
+        </ScrollView>
+
+        {active && loose > 0 && filter.kind === 'one' && sameProject(filter.id, active) ? (
+          <View style={{ paddingHorizontal: t.layout.screenPadding, paddingTop: t.space.md }}>
+            <Plate tone="slate" radius={t.radius.lg} style={{ padding: 12, gap: 10 }}>
+              <Text style={[t.type.caption, { color: t.colors.onSlate }]}>
+                {claiming
+                  ? `Put all ${loose} under ${active}? Work already tagged to another job stays where it is.`
+                  : `${loose} saved before jobs were tagged ${loose === 1 ? 'is' : 'are'} under No project.`}
+              </Text>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                <SmallButton label={claiming ? `Yes, add to ${active}` : `Add to ${active}`} onPress={claiming ? claim : () => setClaiming(true)} strong />
+                {claiming ? <SmallButton label="Cancel" onPress={() => setClaiming(false)} /> : null}
+              </View>
+            </Plate>
+          </View>
+        ) : null}
+
+        <View style={{ paddingHorizontal: t.layout.screenPadding, paddingTop: t.space.lg, gap: 16 }}>
           <Card
             art="FlangeBoltUp"
             title="Flange bolt-ups"
@@ -216,7 +295,14 @@ function Card({
                 {r.sub}
               </Text>
             </View>
-            <Text style={[t.type.caption, { color: c.textFaint }]}>{r.when}</Text>
+            <View style={{ alignItems: 'flex-end', gap: 2, maxWidth: 120 }}>
+              {r.job !== undefined ? (
+                <Text style={[t.type.labelSmall, { color: r.job === 'No project' ? c.textFaint : c.accent, fontSize: 11 }]} numberOfLines={1}>
+                  {r.job}
+                </Text>
+              ) : null}
+              <Text style={[t.type.caption, { color: c.textFaint }]}>{r.when}</Text>
+            </View>
             <Ionicons name="chevron-forward" size={17} color={c.textFaint} />
           </Pressable>
         ))
@@ -243,5 +329,73 @@ function Card({
         <Ionicons name="arrow-forward" size={17} color={c.accent} />
       </Pressable>
     </Plate>
+  );
+}
+
+/** One job in the strip across the top. */
+function Chip({
+  label,
+  count,
+  on,
+  dot = false,
+  icon,
+  onPress,
+}: {
+  label: string;
+  count?: number;
+  on: boolean;
+  dot?: boolean;
+  icon?: React.ComponentProps<typeof Ionicons>['name'];
+  onPress: () => void;
+}) {
+  const t = useTheme();
+  const c = t.colors;
+  const ink = on ? c.onCopper : c.text;
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityState={{ selected: on }}
+      accessibilityLabel={count === undefined ? label : `${label}, ${count} saved`}
+    >
+      {({ pressed }) => (
+        <View
+          style={{
+            height: 40,
+            paddingHorizontal: 14,
+            borderRadius: 20,
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 7,
+            borderWidth: 1,
+            borderColor: on ? c.copperFill : c.border,
+            backgroundColor: on ? (pressed ? c.copperFillLo : c.copperFill) : pressed ? c.metalLo : c.metalHi,
+          }}
+        >
+          {dot ? <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: on ? c.onCopper : c.success }} /> : null}
+          {icon ? <Ionicons name={icon} size={16} color={ink} /> : null}
+          <Text style={[t.type.captionStrong, { color: ink, fontSize: 14 }]} numberOfLines={1}>
+            {label}
+          </Text>
+          {count !== undefined ? <Text style={[t.type.caption, { color: on ? c.onCopper : c.textFaint, fontSize: 13 }]}>{count}</Text> : null}
+        </View>
+      )}
+    </Pressable>
+  );
+}
+
+function SmallButton({ label, onPress, strong = false }: { label: string; onPress: () => void; strong?: boolean }) {
+  const t = useTheme();
+  const c = t.colors;
+  return (
+    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={label}>
+      {({ pressed }) => (
+        <Plate tone={strong ? 'copper' : 'metal'} sunk={pressed} radius={t.radius.sm} style={{ height: 40, paddingHorizontal: 14, justifyContent: 'center' }}>
+          <Text style={[t.type.captionStrong, { color: strong ? c.onCopper : c.text }]} numberOfLines={1}>
+            {label}
+          </Text>
+        </Plate>
+      )}
+    </Pressable>
   );
 }

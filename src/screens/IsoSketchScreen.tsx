@@ -10,6 +10,7 @@ import { AccentButton, ControlRow, GhostButton } from '../components/Buttons';
 import { HintRow } from '../components/HintRow';
 import { Theme, useTheme } from '../theme/ThemeProvider';
 import { useSketches } from '../state/sketches';
+import { useSettings } from '../state/settings';
 import { SavedSketch, deleteSketch, newSketch, renameSketch, saveSketch } from '../state/sketchStore';
 import { stamp } from '../components/stamp';
 
@@ -36,6 +37,7 @@ function count(s: SavedSketch): string {
 export function IsoSketchScreen({ navigation }: Props) {
   const t = useTheme();
   const { book, hydrated, saveError, apply, takeOver } = useSketches();
+  const { settings } = useSettings();
   const [naming, setNaming] = useState<SavedSketch | null>(null);
   const [confirm, setConfirm] = useState<string | null>(null);
 
@@ -43,7 +45,7 @@ export function IsoSketchScreen({ navigation }: Props) {
 
   const create = () => {
     const now = Date.now();
-    const s = newSketch(book, now);
+    const s = newSketch(book, now, settings.projectId);
     apply((b) => saveSketch(b, s, now));
     open(s.id);
   };
