@@ -12,6 +12,7 @@ import { Theme, useTheme } from '../theme/ThemeProvider';
 import { useSketches } from '../state/sketches';
 import { Corner, ISO_GRID, L3, Pt, Viewport, contained, fitViewport, tenth, turn, zoomAbout } from '../calc/iso';
 import { MAX_NOTE, Stroke, getSketch, sketchBounds, sketchToSvg, withStrokes } from '../state/sketchStore';
+import { esc } from '../print/spoolSvg';
 import { shareSheet } from '../print/share';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'IsoDraw'>;
@@ -112,7 +113,7 @@ export function IsoDrawScreen({ navigation, route }: Props) {
 
   const share = async () => {
     if (!sketch) return;
-    const html = `<!doctype html><html><head><meta charset="utf-8"><title>${sketch.name}</title><style>body{margin:0;padding:12px;font-family:Helvetica,Arial,sans-serif}h1{font-size:16px;margin:0 0 8px}svg{max-width:100%;height:auto}</style></head><body><h1>${sketch.name}${sketch.place ? ' · ' + sketch.place : ''}</h1>${sketchToSvg(sketch, ISO_GRID, corner)}</body></html>`;
+    const html = `<!doctype html><html><head><meta charset="utf-8"><title>${esc(sketch.name)}</title><style>body{margin:0;padding:12px;font-family:Helvetica,Arial,sans-serif}h1{font-size:16px;margin:0 0 8px}svg{max-width:100%;height:auto}</style></head><body><h1>${esc(sketch.name)}${sketch.place ? ' · ' + esc(sketch.place) : ''}</h1>${sketchToSvg(sketch, ISO_GRID, corner)}</body></html>`;
     const r = await shareSheet(html, sketch.name);
     if (!r.ok) setWord(r.why);
   };
