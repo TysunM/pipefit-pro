@@ -139,8 +139,10 @@ export function SpoolBuilderScreen({ route, navigation }: Props) {
     const now = Date.now();
     const keepId = loaded && (name === loaded.name || !dirty);
     const id = keepId ? loaded!.id : freshSpoolId(shelf, name);
+    // An update stays with its job; a new spool goes to the job that is active now.
+    const project = keepId ? loaded!.project : settings.projectId;
     spoolsCtx.apply((prev) =>
-      saveSpool(prev, { id, name, place, ...onScreen, createdAt: now, updatedAt: now }, now)
+      saveSpool(prev, { id, name, place, ...onScreen, createdAt: now, updatedAt: now, project }, now)
     );
     setLoadedId(id);
     setSaveOpen(false);

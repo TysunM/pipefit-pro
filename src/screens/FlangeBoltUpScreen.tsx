@@ -33,6 +33,7 @@ import {
 } from '../calc/boltUpSequence';
 import { formatInches } from '../calc/ftin';
 import { useSettings } from '../state/settings';
+import { cleanProject } from '../state/project';
 import { useJoints } from '../state/joints';
 import {
   Joint,
@@ -161,6 +162,7 @@ function Bolting({
   navigation: Props['navigation'];
 }) {
   const t = useTheme();
+  const { settings } = useSettings();
 
   const { cls, nps, bolts, state } = joint;
   const [torque, setTorque] = useState(joint.torque === null ? '' : String(joint.torque));
@@ -253,7 +255,7 @@ function Bolting({
     // The id is worked out here rather than inside the reducer: a reducer must
     // be a pure function of the state it is handed, and navigating is not.
     const id = freshId(register, tag || `joint-${now.toString(36)}`);
-    const moved: Joint = { ...joint, id, tag, note, createdAt: now, updatedAt: now };
+    const moved: Joint = { ...joint, id, tag, note, createdAt: now, updatedAt: now, project: cleanProject(settings.projectId) };
     const cleared = newJoint(SCRATCH_ID, { cls, nps, bolts }, now);
     apply((r) => putJoint(putJoint(r, moved), cleared));
     navigation.setParams({ jointId: id });

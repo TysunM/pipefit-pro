@@ -30,6 +30,7 @@ import { AccentButton, ControlRow, GhostButton } from '../components/Buttons';
 import { Theme, useTheme } from '../theme/ThemeProvider';
 import { Hold, Orientation, inchesPerFoot, levelWord, sightDir } from '../calc/sight';
 import { useLevels } from '../state/levels';
+import { useSettings } from '../state/settings';
 import { TAG_MAX, addReading, deleteReading } from '../state/levelLog';
 
 const RATE_MS = 60;
@@ -46,6 +47,7 @@ export function LevelScreen() {
   const [held, setHeld] = useState<number | null>(null);
   const [unavailable, setUnavailable] = useState(false);
   const { log, hydrated, apply } = useLevels();
+  const { settings } = useSettings();
   // The figure being named, captured when Save is pressed so the sheet names
   // the reading that was on screen, not whatever the level reads by the time
   // the name is typed.
@@ -214,7 +216,7 @@ export function LevelScreen() {
         onSave={(tag) => {
           const slopeNow = naming;
           setNaming(null);
-          if (slopeNow !== null && tag) apply((l) => addReading(l, tag, slopeNow, Date.now()));
+          if (slopeNow !== null && tag) apply((l) => addReading(l, tag, slopeNow, Date.now(), settings.projectId));
         }}
       />
 

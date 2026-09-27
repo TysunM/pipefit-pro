@@ -16,6 +16,7 @@
 // lives in these functions so it can be tested without a device.
 
 import { ElbowRadius, Schedule } from '../calc/pipe';
+import { cleanProject } from './project';
 import { MAX_LEGS, solveSpool } from '../calc/spool';
 import { solveDirections } from '../calc/direction';
 import { OrderSpool } from '../calc/orderSheet';
@@ -52,6 +53,8 @@ export type SavedSpool = {
   legs: SavedLeg[];
   createdAt: number;
   updatedAt: number;
+  /** The Project ID active when it was first saved; '' for none. See project.ts. */
+  project: string;
 };
 
 export type SpoolShelf = {
@@ -122,6 +125,7 @@ export function validSpool(v: unknown): SavedSpool | null {
     legs: okLegs,
     createdAt,
     updatedAt,
+    project: cleanProject(v.project),
   };
 }
 

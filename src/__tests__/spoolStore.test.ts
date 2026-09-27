@@ -36,6 +36,7 @@ const spool = (over: Partial<SavedSpool> = {}): SavedSpool => ({
   ],
   createdAt: NOW - 60_000,
   updatedAt: NOW - 60_000,
+  project: '',
   ...over,
 });
 
@@ -246,6 +247,7 @@ describe('a saved spool becomes an order line', () => {
     ],
     createdAt: 1,
     updatedAt: 2,
+    project: '',
     ...over,
   });
 

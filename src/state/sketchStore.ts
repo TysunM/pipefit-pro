@@ -12,6 +12,7 @@
 // Everything here is pure; sketches.tsx binds it to the shared persistence.
 
 import { Bounds, Corner, L3, Pt, bounds, lattice, nearestCounts, snapRun, tenth, toScreen } from '../calc/iso';
+import { cleanProject } from './project';
 
 /**
  * Version 1 kept runs as page points, before the page could turn. It is read
@@ -43,6 +44,8 @@ export type SavedSketch = {
   strokes: Stroke[];
   createdAt: number;
   updatedAt: number;
+  /** The Project ID active when it was started; '' for none. See project.ts. */
+  project: string;
 };
 
 export type SketchBook = {
@@ -159,7 +162,7 @@ export function validSketch(v: unknown, version: number, g: number): SavedSketch
     if (!st) return null;
     ok.push(st);
   }
-  return { id, name: name.trim(), place, strokes: ok, createdAt, updatedAt };
+  return { id, name: name.trim(), place, strokes: ok, createdAt, updatedAt, project: cleanProject(v.project) };
 }
 
 // ------------------------------------------------------------- persistence
@@ -227,9 +230,17 @@ export function defaultName(now: number): string {
 }
 
 /** A sketch with nothing on it yet. */
-export function newSketch(book: SketchBook, now: number): SavedSketch {
+export function newSketch(book: SketchBook, now: number, project = ''): SavedSketch {
   const name = defaultName(now);
-  return { id: freshSketchId(book, `${name}${now.toString(36)}`), name, place: '', strokes: [], createdAt: now, updatedAt: now };
+  return {
+    id: freshSketchId(book, `${name}${now.toString(36)}`),
+    name,
+    place: '',
+    strokes: [],
+    createdAt: now,
+    updatedAt: now,
+    project: cleanProject(project),
+  };
 }
 
 /**
