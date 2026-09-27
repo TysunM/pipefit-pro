@@ -62,3 +62,17 @@ export function claimUntagged<T extends { project: string }>(xs: readonly T[], p
 
 /** How many records have no project. */
 export const untagged = (xs: readonly { project: string }[]): number => xs.filter((x) => x.project === '').length;
+
+/**
+ * The job list with the picked job in it even when this list holds nothing
+ * for it, so a job chosen on one screen stays visible, and chosen, on the next.
+ */
+export function withPicked(jobs: readonly ProjectCount[], picked: ProjectFilter | null): ProjectCount[] {
+  if (picked?.kind !== 'one' || jobs.some((j) => sameProject(j.id, picked.id))) return jobs.slice();
+  if (picked.id === '') return [...jobs, { id: '', count: 0 }];
+  // Before "no project", which always sits last.
+  const out = jobs.slice();
+  const at = out.findIndex((j) => j.id === '');
+  out.splice(at === -1 ? out.length : at, 0, { id: picked.id, count: 0 });
+  return out;
+}

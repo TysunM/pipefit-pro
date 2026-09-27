@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
@@ -14,8 +14,8 @@ import { useJoints } from '../state/joints';
 import { useSketches } from '../state/sketches';
 import { useSpools } from '../state/spools';
 import { useLevels } from '../state/levels';
-import { useSettings } from '../state/settings';
-import { ALL, ProjectFilter, claimUntagged, cleanProject, defaultFilter, inProject, only, projectsIn, sameProject, untagged } from '../state/project';
+import { claimUntagged, sameProject, untagged } from '../state/project';
+import { JobChips, useJobFilter } from '../components/JobChips';
 import { isDone, isScratch, isSettled, jointFlange, jointProgress, listed, sinceLabel, sortJoints } from '../state/register';
 import { sortSketches } from '../state/sketchStore';
 import { sortSpools } from '../state/spoolStore';
@@ -46,22 +46,13 @@ export function ProjectsScreen({ navigation }: Props) {
   const { book, hydrated: kIn, apply: applySketches } = useSketches();
   const { shelf, hydrated: sIn, apply: applySpools } = useSpools();
   const { log, hydrated: lIn, apply: applyLevels } = useLevels();
-  const { settings } = useSettings();
   const go = (route: ToolRoute) => navigation.navigate(route as never);
 
-  const active = cleanProject(settings.projectId);
-  // Until a chip is pressed the page follows the active project.
-  const [picked, setPicked] = useState<ProjectFilter | null>(null);
-  const [claiming, setClaiming] = useState(false);
-
   const everything = [...listed(register), ...book.sketches, ...shelf.spools, ...log.readings];
-  const jobs = projectsIn(everything, active);
-  // A chip whose job has since emptied (its work claimed or deleted) is gone,
-  // so the page falls back rather than showing a filter nobody can see.
-  const stale = picked?.kind === 'one' && !jobs.some((j) => sameProject(j.id, picked.id));
-  const filter = picked && !stale ? picked : defaultFilter(active);
+  const f = useJobFilter(everything);
+  const { active, filter, mine } = f;
   const loose = untagged(everything);
-  const mine = <T extends { project: string }>(xs: T[]) => xs.filter((x) => inProject(x.project, filter));
+  const [claiming, setClaiming] = useState(false);
 
   const joints = sortJoints(mine(listed(register)));
   const sketches = sortSketches(mine(book.sketches));
@@ -69,18 +60,6 @@ export function ProjectsScreen({ navigation }: Props) {
   const readings = mine(log.readings);
   const showJob = filter.kind === 'all';
   const jobOf = (p: string) => (showJob ? p || 'No project' : undefined);
-
-  const jobChips = jobs.map((j) => (
-    <Chip
-      key={j.id || '(none)'}
-      label={j.id || 'No project'}
-      count={j.count}
-      dot={!!active && sameProject(j.id, active)}
-      on={filter.kind === 'one' && sameProject(filter.id, j.id)}
-      onPress={() => setPicked(only(j.id))}
-    />
-  ));
-  const allChip = <Chip key="(all)" label="All jobs" count={everything.length} on={filter.kind === 'all'} onPress={() => setPicked(ALL)} />;
 
   const claim = () => {
     if (!active) return;
@@ -141,16 +120,7 @@ export function ProjectsScreen({ navigation }: Props) {
               : 'No Project ID is set, so new work is not tagged to a job. Set one in Settings to keep each job apart.'
           }
         />
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ gap: 8, paddingHorizontal: t.layout.screenPadding, paddingTop: t.space.lg }}
-        >
-          {/* The active job first, then everything, then the other jobs: the
-              two a man switches between most sit on screen together. */}
-          {active ? null : <Chip label="Set Project ID" icon="create-outline" on={false} onPress={() => navigation.navigate('Settings')} />}
-          {active ? [jobChips[0], allChip, ...jobChips.slice(1)] : [allChip, ...jobChips]}
-        </ScrollView>
+        <JobChips f={f} />
 
         {active && loose > 0 && filter.kind === 'one' && sameProject(filter.id, active) ? (
           <View style={{ paddingHorizontal: t.layout.screenPadding, paddingTop: t.space.md }}>
@@ -329,58 +299,6 @@ function Card({
         <Ionicons name="arrow-forward" size={17} color={c.accent} />
       </Pressable>
     </Plate>
-  );
-}
-
-/** One job in the strip across the top. */
-function Chip({
-  label,
-  count,
-  on,
-  dot = false,
-  icon,
-  onPress,
-}: {
-  label: string;
-  count?: number;
-  on: boolean;
-  dot?: boolean;
-  icon?: React.ComponentProps<typeof Ionicons>['name'];
-  onPress: () => void;
-}) {
-  const t = useTheme();
-  const c = t.colors;
-  const ink = on ? c.onCopper : c.text;
-  return (
-    <Pressable
-      onPress={onPress}
-      accessibilityRole="button"
-      accessibilityState={{ selected: on }}
-      accessibilityLabel={count === undefined ? label : `${label}, ${count} saved`}
-    >
-      {({ pressed }) => (
-        <View
-          style={{
-            height: 40,
-            paddingHorizontal: 14,
-            borderRadius: 20,
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 7,
-            borderWidth: 1,
-            borderColor: on ? c.copperFill : c.border,
-            backgroundColor: on ? (pressed ? c.copperFillLo : c.copperFill) : pressed ? c.metalLo : c.metalHi,
-          }}
-        >
-          {dot ? <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: on ? c.onCopper : c.success }} /> : null}
-          {icon ? <Ionicons name={icon} size={16} color={ink} /> : null}
-          <Text style={[t.type.captionStrong, { color: ink, fontSize: 14 }]} numberOfLines={1}>
-            {label}
-          </Text>
-          {count !== undefined ? <Text style={[t.type.caption, { color: on ? c.onCopper : c.textFaint, fontSize: 13 }]}>{count}</Text> : null}
-        </View>
-      )}
-    </Pressable>
   );
 }
 

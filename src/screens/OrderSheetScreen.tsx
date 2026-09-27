@@ -11,6 +11,7 @@ import { Theme, useTheme } from '../theme/ThemeProvider';
 import { useUnits } from '../hooks/useUnits';
 import { useSettings } from '../state/settings';
 import { useSpools } from '../state/spools';
+import { JobChips, useJobFilter } from '../components/JobChips';
 import { SavedSpool, spoolToOrder } from '../state/spoolStore';
 import { sinceLabel } from '../state/register';
 import { OrderGroup, OrderSheet, planOrder } from '../calc/orderSheet';
@@ -73,6 +74,11 @@ export function OrderSheetScreen() {
   const u = useUnits();
   const { settings } = useSettings();
   const { shelf, hydrated } = useSpools();
+  // One job's spools on one order: pipe bought for one job is charged to it,
+  // and a stick shared across two jobs cannot be.
+  const job = useJobFilter(shelf.spools);
+  const { mine } = job;
+  const pool = useMemo(() => mine(shelf.spools), [mine, shelf.spools]);
 
   // Everything on the shelf starts chosen. An order sheet that opens empty
   // makes the man do the work before it does any, and the whole job is the
@@ -88,7 +94,8 @@ export function OrderSheetScreen() {
       return next;
     });
 
-  const picked = useMemo(() => shelf.spools.filter((s) => chosen(s.id)), [shelf.spools, chosen]);
+  const picked = useMemo(() => pool.filter((s) => chosen(s.id)), [pool, chosen]);
+  const leftOff = pool.length - picked.length;
 
   const sheet = useMemo(
     () => planOrder(picked.map(spoolToOrder), settings.stockLength, settings.cutAllowance),
@@ -120,6 +127,7 @@ export function OrderSheetScreen() {
         stock: stick,
         kerf: length(settings.cutAllowance),
         dateLine: printedOn(),
+        job: job.label,
         length,
         short: figure,
       }),
@@ -144,8 +152,18 @@ export function OrderSheetScreen() {
       </Screen>
     );
 
+  if (pool.length === 0)
+    return (
+      <Screen>
+        <JobChips f={job} />
+        <SectionHeader title="Order sheet" meta="Nothing on this job" />
+        <HintRow text={`No spools are saved under ${job.label}. Pick another job above, or save a spool while this job is active.`} />
+      </Screen>
+    );
+
   return (
     <Screen>
+      <JobChips f={job} />
       {/* Not "Order sheet" again — the header above already says that, and a
           screen that names itself twice wastes the line that could say what
           is on it. */}
@@ -196,24 +214,24 @@ export function OrderSheetScreen() {
           and out — which is the only way to see what each one is worth. */}
       <SectionHeader
         title="On this order"
-        meta={dropped.size ? `${dropped.size} left off` : 'All of them'}
+        meta={leftOff ? `${leftOff} left off` : 'All of them'}
       />
       <ControlRow>
         <GhostButton
           label="All"
           icon="checkmark-done-outline"
           onPress={() => setDropped(new Set())}
-          style={{ flex: 1, opacity: dropped.size ? 1 : 0.4 }}
+          style={{ flex: 1, opacity: leftOff ? 1 : 0.4 }}
         />
         <GhostButton
           label="None"
           icon="remove-outline"
-          onPress={() => setDropped(new Set(shelf.spools.map((s) => s.id)))}
-          style={{ flex: 1, opacity: dropped.size === shelf.spools.length ? 0.4 : 1 }}
+          onPress={() => setDropped(new Set(pool.map((s) => s.id)))}
+          style={{ flex: 1, opacity: pool.every((s) => dropped.has(s.id)) ? 0.4 : 1 }}
         />
       </ControlRow>
 
-      {shelf.spools.map((s: SavedSpool) => {
+      {pool.map((s: SavedSpool) => {
         const on = chosen(s.id);
         const mark = sheet.groups.flatMap((g) => g.lines).find((l) => l.spoolId === s.id)?.mark;
         const skipped = sheet.skipped.find((k) => k.id === s.id);

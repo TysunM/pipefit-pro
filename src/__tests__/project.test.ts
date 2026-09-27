@@ -1,4 +1,4 @@
-import { ALL, claimUntagged, cleanProject, defaultFilter, inProject, only, projectsIn, sameProject, untagged } from '../state/project';
+import { ALL, claimUntagged, cleanProject, defaultFilter, inProject, only, projectsIn, sameProject, untagged, withPicked } from '../state/project';
 import { PROJECT_ID_MAX } from '../state/readSettings';
 import { newJoint, parseRegister, serialiseRegister, validJoint } from '../state/register';
 import { newSketch, validSketch, emptyBook } from '../state/sketchStore';
@@ -110,5 +110,23 @@ describe('new records carry the project they were saved under', () => {
     const r = parseRegister(serialiseRegister({ joints: [newJoint('j', { cls: '125', nps: 6, bolts: 8, project: 'BP-1' }, 1)], foreign: false, dropped: 0 }));
     expect(r.joints[0]?.project).toBe('BP-1');
     expect(parseLog(serialiseLog(addReading(emptyLog(), 'T', 1, 1, 'BP-2'))).readings[0]?.project).toBe('BP-2');
+  });
+});
+
+describe('a job picked on one screen stays picked on the next', () => {
+  const jobs = [{ id: 'A', count: 2 }, { id: '', count: 1 }];
+
+  test('a job this list has no records for still gets its chip, before "no project"', () => {
+    expect(withPicked(jobs, only('B'))).toEqual([{ id: 'A', count: 2 }, { id: 'B', count: 0 }, { id: '', count: 1 }]);
+  });
+
+  test('"no project" picked with none here goes last', () => {
+    expect(withPicked([{ id: 'A', count: 2 }], only(''))).toEqual([{ id: 'A', count: 2 }, { id: '', count: 0 }]);
+  });
+
+  test('nothing is added for all jobs, nothing picked, or a job already listed', () => {
+    expect(withPicked(jobs, ALL)).toEqual(jobs);
+    expect(withPicked(jobs, null)).toEqual(jobs);
+    expect(withPicked(jobs, only('a'))).toEqual(jobs);
   });
 });
