@@ -61,7 +61,8 @@ export type SheetInput = {
 const cell = (v: string, tag: 'th' | 'td', right: boolean): string =>
   `<${tag}${right ? ' class="r"' : ''}>${esc(v)}</${tag}>`;
 
-function table(t: SheetTable): string {
+/** One table, escaped. Shared with the turnover package so both read alike. */
+export function table(t: SheetTable): string {
   const right = new Set(t.right ?? []);
   const head = t.head.map((h, i) => cell(h, 'th', right.has(i))).join('');
   const rows = t.rows
@@ -82,7 +83,7 @@ function table(t: SheetTable): string {
  * office. The drawing frames and the table rules are the only furniture,
  * because everything else on a spool sheet is a figure somebody needs.
  */
-const CSS = `
+export const CSS = `
   @page { size: A4; margin: 12mm 12mm 10mm; }
   * { box-sizing: border-box; }
   body { font: 9.5pt/1.4 Helvetica, Arial, sans-serif; color: #000; margin: 0; }

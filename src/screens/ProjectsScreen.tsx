@@ -21,6 +21,10 @@ import { sortSketches } from '../state/sketchStore';
 import { sortSpools } from '../state/spoolStore';
 import { findSize } from '../calc/pipe';
 import { inchesPerFoot } from '../calc/sight';
+import { ISO_GRID } from '../calc/iso';
+import { useHeats } from '../state/heats';
+import { day, openItems, turnoverHtml } from '../print/turnover';
+import { shareSheet } from '../print/share';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Projects'>;
 
@@ -46,6 +50,7 @@ export function ProjectsScreen({ navigation }: Props) {
   const { book, hydrated: kIn, apply: applySketches } = useSketches();
   const { shelf, hydrated: sIn, apply: applySpools } = useSpools();
   const { log, hydrated: lIn, apply: applyLevels } = useLevels();
+  const { book: heatBook } = useHeats();
   const go = (route: ToolRoute) => navigation.navigate(route as never);
 
   const everything = [...listed(register), ...book.sketches, ...shelf.spools, ...log.readings];
@@ -60,6 +65,35 @@ export function ProjectsScreen({ navigation }: Props) {
   const readings = mine(log.readings);
   const showJob = filter.kind === 'all';
   const jobOf = (p: string) => (showJob ? p || 'No project' : undefined);
+
+  // The turnover package: this job's records, in the order a checker reads
+  // them — joints and spools by mark, readings as they were taken.
+  const byName = (a: string, b: string) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
+  const tpJoints = [...joints].sort((a, b) => byName(a.tag, b.tag));
+  const tpOpen = openItems(tpJoints, heatBook.heats).length;
+  const tpEmpty = !joints.length && !sketches.length && !spools.length && !readings.length;
+  const [tpBusy, setTpBusy] = useState(false);
+  const [tpNote, setTpNote] = useState<string | null>(null);
+  const shareTurnover = async () => {
+    if (tpBusy || tpEmpty) return;
+    setTpBusy(true);
+    setTpNote(null);
+    const out = await shareSheet(
+      turnoverHtml({
+        job: f.label,
+        dateLine: `Printed ${day(Date.now())}`,
+        joints: tpJoints,
+        heats: heatBook.heats,
+        sketches: [...sketches].sort((a, b) => byName(a.name, b.name)),
+        readings: [...readings].sort((a, b) => a.createdAt - b.createdAt),
+        spools: [...spools].sort((a, b) => byName(a.name, b.name)),
+        grid: ISO_GRID,
+      }),
+      `Turnover package ${f.label || 'all jobs'}`
+    );
+    setTpBusy(false);
+    if (!out.ok) setTpNote(out.why);
+  };
 
   const claim = () => {
     if (!active) return;
@@ -139,6 +173,49 @@ export function ProjectsScreen({ navigation }: Props) {
         ) : null}
 
         <View style={{ paddingHorizontal: t.layout.screenPadding, paddingTop: t.space.lg, gap: 16 }}>
+          <Plate radius={t.radius.xl} style={{ padding: 14, gap: 10 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+              <Ionicons name="document-text-outline" size={30} color={t.colors.accent} />
+              <View style={{ flex: 1 }}>
+                <Text style={[t.type.tileTitle, { color: t.colors.text }]} accessibilityRole="header">
+                  Turnover package
+                </Text>
+                <Text style={[t.type.caption, { color: tpOpen ? t.colors.warnText : t.colors.textMuted }]}>
+                  {tpEmpty
+                    ? 'Nothing saved on this job yet.'
+                    : tpOpen
+                      ? `${f.label || 'All jobs'} · ${tpOpen} open ${tpOpen === 1 ? 'item' : 'items'} to clear before sign-off`
+                      : `${f.label || 'All jobs'} · nothing open, ready to sign`}
+                </Text>
+              </View>
+            </View>
+            <Text style={[t.type.caption, { color: t.colors.textMuted }]}>
+              One PDF for QC: open items first, the bolt-up record, re-torque checks, material traceability, level readings, spools and every iso, with sign-off lines.
+            </Text>
+            <Pressable
+              onPress={shareTurnover}
+              disabled={tpBusy || tpEmpty}
+              accessibilityRole="button"
+              accessibilityLabel="Share turnover package"
+              accessibilityState={{ disabled: tpBusy || tpEmpty }}
+            >
+              {({ pressed }) => (
+                <Plate
+                  tone="copper"
+                  sunk={pressed}
+                  radius={t.radius.md}
+                  style={{ height: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, opacity: tpBusy || tpEmpty ? 0.5 : 1 }}
+                >
+                  <Ionicons name="share-outline" size={19} color={t.colors.onCopper} />
+                  <Text style={[t.type.captionStrong, { color: t.colors.onCopper, fontSize: 15 }]}>
+                    {tpBusy ? 'Making the PDF…' : 'Share turnover PDF'}
+                  </Text>
+                </Plate>
+              )}
+            </Pressable>
+            {tpNote ? <Text style={[t.type.caption, { color: t.colors.danger }]}>{tpNote}</Text> : null}
+          </Plate>
+
           <Card
             art="FlangeBoltUp"
             title="Flange bolt-ups"
