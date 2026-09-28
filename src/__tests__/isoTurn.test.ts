@@ -1,5 +1,8 @@
 import {
+  NO_FLIP,
   SQUARE_WITHIN,
+  compassRose,
+  toScreen,
   TWIST_FROM,
   Viewport,
   bounds,
@@ -128,5 +131,38 @@ describe('fitting a turned drawing', () => {
     const b = bounds([[0, 0], [100, 0]].map((p) => rotPt(p as [number, number], deg(90))))!;
     expect(b.maxX - b.minX).toBeCloseTo(0);
     expect(b.maxY - b.minY).toBeCloseTo(100);
+  });
+});
+
+describe('the compass on the paper', () => {
+  const g = 20;
+  const unit = (p: [number, number]) => {
+    const l = Math.hypot(p[0], p[1]);
+    return [p[0] / l, p[1] / l];
+  };
+
+  test('north and east lie along the axes a run follows, south and west opposite', () => {
+    const r = compassRose('SW', g, NO_FLIP, 2);
+    near(r.n.tip, toScreen([0, 2, 0], 'SW', g));
+    near(r.e.tip, toScreen([2, 0, 0], 'SW', g));
+    near(r.s.tip, [-r.n.tip[0], -r.n.tip[1]]);
+    near(r.w.tip, [-r.e.tip[0], -r.e.tip[1]]);
+  });
+
+  test('a run drawn north on the paper points the way the N arm does', () => {
+    const run = toScreen([0, 5, 0], 'SW', g);
+    near(unit(run), unit(compassRose('SW', g, NO_FLIP).n.tip));
+  });
+
+  test('the letters sit beyond the tips, on the same line', () => {
+    const r = compassRose('SW', g, NO_FLIP, 2, 1.5);
+    near(r.e.label, [r.e.tip[0] * 1.5, r.e.tip[1] * 1.5]);
+  });
+
+  test('turned over, it turns over with the drawing: mirrored, east and west swap sides', () => {
+    const plain = compassRose('SW', g, NO_FLIP);
+    const mirrored = compassRose('SW', g, { mirror: true, upside: false });
+    near(mirrored.e.tip, [-plain.e.tip[0], plain.e.tip[1]]);
+    near(mirrored.n.tip, [-plain.n.tip[0], plain.n.tip[1]]);
   });
 });
