@@ -577,6 +577,7 @@ export function SpoolBuilderScreen({ route, navigation }: Props) {
       ) : null}
 
       <ResultBanner
+        speak={valid ? { inches: spool.totalCut } : undefined}
         label="Total pipe"
         value={valid ? `${u.num(spool.totalCut)} ${u.unitName}` : error ?? '—'}
         hint={

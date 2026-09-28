@@ -79,6 +79,36 @@ export function SettingsScreen() {
         entered until you add the heat. Off, or with no signal, both stay on this phone and work as before.
       </Text>
 
+      <SectionHeader title="In the field" meta="Gloves · noise" />
+      <ChipRow
+        label="Glove keys"
+        options={[
+          { value: 'off', label: 'Off' },
+          { value: 'on', label: 'On' },
+        ]}
+        selected={settings.gloveMode ? 'on' : 'off'}
+        onSelect={(v) => update({ gloveMode: v === 'on' })}
+      />
+      <Text style={[t.type.caption, { color: t.colors.textMuted, paddingHorizontal: t.layout.screenPadding, marginTop: -t.space.sm, marginBottom: t.space.lg }]}>
+        Every number field opens big keys: feet, inches, a row of eighths with +1/16, and the figures you used last. Made for a
+        knuckle, a capacitive stylus or touchscreen gloves — no phone screen reads through plain leather.
+      </Text>
+      <ChipRow
+        label="Read aloud"
+        options={[
+          { value: 'off', label: 'Off' },
+          { value: 'tap', label: 'Tap' },
+          { value: 'auto', label: 'Auto' },
+        ]}
+        selected={settings.readAloud}
+        onSelect={(v) => update({ readAloud: v as 'off' | 'tap' | 'auto' })}
+      />
+      <Text style={[t.type.caption, { color: t.colors.textMuted, paddingHorizontal: t.layout.screenPadding, marginTop: -t.space.sm, marginBottom: t.space.lg }]}>
+        Tap puts a speaker on each answer; Auto says it once the figures stop changing — "Pipe cut: 4 foot, 3 and
+        five-eighths", with "strong" or "shy" when it is off the mark. Plays through earbuds when they are connected, the
+        speaker when not.
+      </Text>
+
       <SectionHeader title="Appearance" />
       <ChipRow
         label="Theme"

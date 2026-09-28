@@ -128,6 +128,7 @@ export function SaddleBendScreen() {
       ) : null}
 
       <ResultBanner
+        speak={!pristine && !result.error ? { inches: result.marks[0]?.position ?? NaN } : undefined}
         label="First mark"
         value={pristine ? '—' : result.error ? result.error : `${u.num(result.marks[0]?.position ?? NaN)} ${u.unitName}`}
         hint={

@@ -132,6 +132,7 @@ export function CutLengthScreen() {
       </ControlRow>
 
       <ResultBanner
+        speak={!pristine && result.valid ? { inches: result.pipeCut } : undefined}
         label="Pipe cut"
         value={pristine ? '—' : result.error ? result.error : `${u.num(result.pipeCut)} ${u.unitName}`}
         hint={

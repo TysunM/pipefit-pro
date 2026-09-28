@@ -1,8 +1,18 @@
-import React from 'react';
-import { Text, View } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { Pressable, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useIsFocused } from '@react-navigation/native';
 import { useTheme } from '../theme/ThemeProvider';
+import { useSettings } from '../state/settings';
+import { spokenAngle, spokenLength, spokenResult } from '../calc/spoken';
+import { say } from '../audio/say';
 import { GlowBar, Well } from './metal';
+
+/** What a result reads aloud: a length in inches, or an angle in degrees. */
+export type Speak = { inches: number } | { degrees: number };
+
+/** How long the inputs have to sit still before a result is spoken on its own. */
+const SETTLE_MS = 1500;
 
 export function ResultBanner({
   label,
@@ -10,16 +20,42 @@ export function ResultBanner({
   hint,
   meta,
   tone = 'default',
+  speak,
 }: {
   label: string;
   value: string;
   hint?: string;
   meta?: string;
   tone?: 'default' | 'idle' | 'error';
+  /** The figure to read aloud, when there is a real one. */
+  speak?: Speak;
 }) {
   const t = useTheme();
+  const { settings } = useSettings();
   const isError = tone === 'error';
   const isIdle = tone === 'idle';
+
+  // Said the way a fitter reads a tape, and only a real answer: nothing while
+  // the fields are empty or the inputs cannot be solved.
+  const figure = !speak
+    ? ''
+    : 'inches' in speak
+      ? spokenLength(speak.inches, settings.unitSystem, settings.fractionDenominator)
+      : spokenAngle(speak.degrees);
+  const phrase = settings.readAloud !== 'off' && !isError && !isIdle ? spokenResult(label, figure) : '';
+
+  // Auto: spoken once the inputs settle, never twice for the same figure,
+  // and only from the screen that is showing.
+  const focused = useIsFocused();
+  const lastSaid = useRef('');
+  useEffect(() => {
+    if (settings.readAloud !== 'auto' || !phrase || !focused || phrase === lastSaid.current) return;
+    const timer = setTimeout(() => {
+      lastSaid.current = phrase;
+      say(phrase);
+    }, SETTLE_MS);
+    return () => clearTimeout(timer);
+  }, [phrase, focused, settings.readAloud]);
   // The answer is the instrument's readout: let into the plate, trimmed in
   // copper, and lit underneath when there is a figure in it to read.
   return (
@@ -35,7 +71,29 @@ export function ResultBanner({
             size={18}
             color={t.colors.textMuted}
           />
-          <Text style={[t.type.label, { color: t.colors.textMuted }]}>{label}</Text>
+          <Text style={[t.type.label, { color: t.colors.textMuted, flex: 1 }]}>{label}</Text>
+          {phrase ? (
+            <Pressable
+              onPress={() => {
+                lastSaid.current = phrase;
+                say(phrase);
+              }}
+              accessibilityRole="button"
+              accessibilityLabel={`Read aloud: ${phrase}`}
+              hitSlop={12}
+              style={({ pressed }) => ({
+                width: 40,
+                height: 40,
+                marginVertical: -10,
+                borderRadius: 20,
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: pressed ? t.colors.primary : 'transparent',
+              })}
+            >
+              {({ pressed }) => <Ionicons name="volume-high-outline" size={22} color={pressed ? t.colors.onPrimary : t.colors.data} />}
+            </Pressable>
+          ) : null}
         </View>
         <Text
           style={[

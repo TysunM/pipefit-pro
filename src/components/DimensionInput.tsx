@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
-import { Platform, StyleSheet, Text, TextInput, TextStyle, View, ViewStyle } from 'react-native';
+import { Platform, Pressable, StyleSheet, Text, TextInput, TextStyle, View, ViewStyle } from 'react-native';
 import { useTheme } from '../theme/ThemeProvider';
+import { useSettings } from '../state/settings';
 import { Well } from './metal';
+import { GloveKeypad } from './GloveKeypad';
 
 export function DimensionInput({
   label,
@@ -31,10 +33,18 @@ export function DimensionInput({
   autoCapitalize?: 'none' | 'characters' | 'words' | 'sentences';
 }) {
   const t = useTheme();
+  const { settings } = useSettings();
   const [focused, setFocused] = useState(false);
   const kb =
     keyboardType ??
     (Platform.select({ ios: 'numbers-and-punctuation', default: 'decimal-pad' }) as 'decimal-pad');
+  // Glove mode: a numeric field opens the big keypad instead of the phone's
+  // keyboard. An imperial length gets feet and fraction keys; an angle or a
+  // count, digits and a point. Text fields (a heat number) keep the keyboard.
+  const glove = settings.gloveMode && kb !== 'default' && editable && !!onChangeText;
+  const tape = settings.unitSystem === 'imperial' && suffix === '"';
+  const [keypad, setKeypad] = useState(false);
+  const lit = focused || keypad;
   return (
     <View style={[{ flex: 1, minWidth: 96 }, style]}>
       <Text style={[t.type.label, { color: t.colors.textMuted, marginBottom: t.space.sm }]} numberOfLines={1}>
@@ -47,13 +57,25 @@ export function DimensionInput({
           styles.box,
           {
             height: t.layout.fieldHeight,
-            borderColor: focused ? t.colors.data : t.colors.wellEdge,
-            borderWidth: focused ? 2 : 1,
-            paddingHorizontal: focused ? t.space.md - 1 : t.space.md,
+            borderColor: lit ? t.colors.data : t.colors.wellEdge,
+            borderWidth: lit ? 2 : 1,
+            paddingHorizontal: lit ? t.space.md - 1 : t.space.md,
             opacity: editable ? 1 : 0.7,
           },
         ]}
       >
+        {glove ? (
+          <Pressable
+            onPress={() => setKeypad(true)}
+            accessibilityRole="button"
+            accessibilityLabel={`${label}${value ? `, ${value}` : ''}. Opens the keypad.`}
+            style={{ flex: 1, alignSelf: 'stretch', justifyContent: 'center' }}
+          >
+            <Text style={[t.type.fieldValue, { color: value ? t.colors.text : t.colors.textFaint }]} numberOfLines={1}>
+              {value || placeholder || ''}
+            </Text>
+          </Pressable>
+        ) : (
         <TextInput
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
@@ -69,8 +91,23 @@ export function DimensionInput({
           selectTextOnFocus
           style={[t.type.fieldValue, { color: t.colors.text, flex: 1, padding: 0 }, WEB_INPUT_RESET]}
         />
+        )}
         {suffix ? <Text style={[t.type.body, { color: t.colors.textMuted }]}>{suffix}</Text> : null}
       </Well>
+      {glove ? (
+        <GloveKeypad
+          visible={keypad}
+          label={label}
+          tape={tape}
+          unit={suffix}
+          current={value}
+          onClose={() => setKeypad(false)}
+          onDone={(next) => {
+            setKeypad(false);
+            if (next) onChangeText?.(next);
+          }}
+        />
+      ) : null}
       {readout ? (
         <Text style={[t.type.caption, { color: t.colors.data, marginTop: 6 }]} numberOfLines={1}>
           {readout}

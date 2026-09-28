@@ -159,6 +159,7 @@ export function HandBenderScreen() {
       ) : null}
 
       <ResultBanner
+        speak={result.error || result.legError || result.stockError ? undefined : { inches: marked ? result.markFromEnd : result.setback }}
         label={result.error || result.legError || result.stockError ? 'Cannot solve' : marked ? 'Mark from end' : 'Setback'}
         value={
           result.error
