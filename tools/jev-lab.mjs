@@ -12,7 +12,7 @@
 // It runs the app's own code — the scanner, the questions smart fill asks, the
 // way answers are read — against text with known answers, then prints what
 // was right, what was wrong and what was left blank at every confidence
-// threshold. Everything it sent and got back goes to .jev-lab/ (gitignored),
+// threshold. Everything it sent and got back goes to tools/.jev-lab/ (gitignored),
 // minus the key. The whole run is a few hundred thousand input tokens.
 
 import { mkdirSync, writeFileSync } from 'node:fs';
@@ -339,7 +339,7 @@ if (latencies.length) {
   const q = (p) => s[Math.min(s.length - 1, Math.floor(p * s.length))];
   console.log(`\n${s.length} calls · latency p50 ${q(0.5)} ms, p95 ${q(0.95)} ms · ${tokensIn} input tokens ≈ $${((tokensIn / 1e6) * USD_PER_M_INPUT).toFixed(4)}`);
 }
-mkdirSync('.jev-lab', { recursive: true });
-const file = `.jev-lab/run-${log.at.replace(/[:.]/g, '-')}.json`;
+mkdirSync('tools/.jev-lab', { recursive: true });
+const file = `tools/.jev-lab/run-${log.at.replace(/[:.]/g, '-')}.json`;
 writeFileSync(file, JSON.stringify({ ...log, latencies, tokensIn }, null, 1));
 console.log(`Full record: ${file}`);

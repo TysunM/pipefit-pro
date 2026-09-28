@@ -1,10 +1,6 @@
 node_modules/
 .expo/
 dist/
-# Wrangler's local dev state (created by wrangler dev / deploy --dry-run)
-.wrangler/
-# Jev lab runs (tools/jev-lab.mjs): what was sent and answered, never the key
-.jev-lab/
 .ci-export/
 web-build/
 *.log
