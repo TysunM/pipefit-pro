@@ -4,7 +4,7 @@
 // heat record — and whether Jev can fix the handbook search, which today finds
 // nothing for most things a fitter would type.
 //
-//   export TYPESAFE_API_KEY=...        (never in the repo, never in chat)
+//   TYPESAFE_API_KEY in the shell, or in .env at the repo root (gitignored; never in chat)
 //   npx --yes tsx tools/jev-lab.mjs              both experiments
 //   npx --yes tsx tools/jev-lab.mjs heat         one of them
 //   npx --yes tsx tools/jev-lab.mjs --dry        no calls: the scanner baseline and request sizes only
@@ -20,6 +20,16 @@ import { JEV_MODEL, OFFER_AT, cleanCandidates, cleanText, heatRequest, readHeatA
 import { scanForHeats } from '../src/calc/heatScan';
 import { normaliseHeat } from '../src/calc/heat';
 import { REFERENCE_TABLES, searchReference } from '../src/calc/reference';
+
+// The key can sit in a .env at the repo root (gitignored) instead of the
+// shell. A key already exported wins over the file.
+for (const f of ['.env.local', '.env']) {
+  try {
+    process.loadEnvFile(f);
+  } catch {
+    // No such file: the shell's environment is all there is.
+  }
+}
 
 const args = process.argv.slice(2);
 const DRY = args.includes('--dry');
@@ -323,7 +333,7 @@ async function handbookExperiment(log) {
 // ----------------------------------------------------------------------- main
 
 if (!DRY && !KEY) {
-  console.error('TYPESAFE_API_KEY is not set in this shell. export it first, or run with --dry.');
+  console.error('TYPESAFE_API_KEY is not set: export it, or put TYPESAFE_API_KEY=... in .env at the repo root, or run with --dry.');
   process.exit(1);
 }
 const log = { at: new Date().toISOString(), model: JEV_MODEL, base: BASE, offerAt: OFFER_AT };
