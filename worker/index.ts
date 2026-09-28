@@ -5,12 +5,14 @@
 // a key out of an APK or a web bundle. So the key is a Worker secret, set once
 // with `npx wrangler secret put TYPESAFE_API_KEY`, and the app calls here.
 //
-// It is not a general relay. The app sends scan text and the scanner's heat
-// candidates; the questions Jev is asked are built here, from heatFill.ts, so
-// a copied URL can do nothing but fill a heat entry — capped in size, and
-// cheap. Everything that is not /api/* is the web app, served as it was.
+// It is not a general relay. Each route takes one small, fixed shape of input
+// and builds the question Jev is asked itself, from the same code the app
+// uses, so a copied URL can do nothing but fill a heat entry or pick a
+// handbook table — capped in size, and cheap. Everything that is not /api/* is
+// the web app, served as it was.
 
 import { HEAT_FILL_PATH, MAX_TEXT, heatRequest } from '../src/ai/heatFill';
+import { HANDBOOK_PICK_PATH, MAX_QUERY, cleanQuery, handbookRequest, readHandbookAnswer } from '../src/ai/handbookPick';
 
 export interface Env {
   /** Set with `npx wrangler secret put TYPESAFE_API_KEY`. Never in the repo. */
@@ -23,8 +25,37 @@ export interface Env {
 
 /** How long Jev gets. It usually answers in well under a second; this is for a bad network day. */
 const UPSTREAM_MS = 8000;
-/** Largest body accepted, in bytes: the text cap plus room for candidates and JSON. */
-const MAX_BODY = MAX_TEXT * 2 + 2048;
+
+type JevReply = { answers?: Record<string, unknown>; model?: unknown };
+
+type Route = {
+  /** Largest body accepted, in bytes. */
+  maxBody: number;
+  /** The request for Jev, built here from a checked body — or why the body is refused. */
+  build: (body: Record<string, unknown>) => { payload: unknown } | { error: string };
+  /** What goes back to the app: only what it needs, nothing about the key, the account or the usage. */
+  reply: (data: JevReply) => unknown;
+};
+
+const modelOf = (d: JevReply) => (typeof d.model === 'string' ? d.model : undefined);
+
+const ROUTES: Record<string, Route> = {
+  [HEAT_FILL_PATH]: {
+    // The text cap plus room for candidates and JSON.
+    maxBody: MAX_TEXT * 2 + 2048,
+    build: (b) =>
+      typeof b.text === 'string' && b.text.trim()
+        ? { payload: heatRequest(b.text, (Array.isArray(b.candidates) ? b.candidates : []) as string[]) }
+        : { error: 'no_text' },
+    reply: (d) => ({ answers: d.answers ?? {}, model: modelOf(d) }),
+  },
+  [HANDBOOK_PICK_PATH]: {
+    maxBody: MAX_QUERY * 4 + 256,
+    build: (b) => (cleanQuery(b.query) ? { payload: handbookRequest(b.query as string) } : { error: 'no_query' }),
+    // Table ids, not Jev's option keys: the app checks them against its own handbook.
+    reply: (d) => ({ pick: readHandbookAnswer(d.answers?.table), model: modelOf(d) }),
+  },
+};
 
 const CORS = {
   'access-control-allow-origin': '*',
@@ -41,7 +72,8 @@ export async function handle(req: Request, env: Env, fetchImpl: typeof fetch = f
   if (!url.pathname.startsWith('/api/')) {
     return env.ASSETS ? env.ASSETS.fetch(req) : new Response('Not found', { status: 404 });
   }
-  if (url.pathname !== HEAT_FILL_PATH) return json(404, { error: 'not_found' });
+  const route = ROUTES[url.pathname];
+  if (!route) return json(404, { error: 'not_found' });
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
   if (req.method !== 'POST') return json(405, { error: 'method_not_allowed' });
 
@@ -49,18 +81,16 @@ export async function handle(req: Request, env: Env, fetchImpl: typeof fetch = f
   if (!key) return json(503, { error: 'not_configured' });
 
   const raw = await req.text();
-  if (raw.length > MAX_BODY) return json(413, { error: 'too_large' });
+  if (raw.length > route.maxBody) return json(413, { error: 'too_large' });
   let body: unknown;
   try {
     body = JSON.parse(raw);
   } catch {
     return json(400, { error: 'bad_json' });
   }
-  const b = body as { text?: unknown; candidates?: unknown };
-  if (typeof b?.text !== 'string' || !b.text.trim()) return json(400, { error: 'no_text' });
-  const candidates = Array.isArray(b.candidates) ? b.candidates : [];
+  const built = route.build(body && typeof body === 'object' ? (body as Record<string, unknown>) : {});
+  if ('error' in built) return json(400, { error: built.error });
 
-  const payload = heatRequest(b.text, candidates as unknown[] as string[]);
   const base = (env.TYPESAFE_BASE_URL?.trim() || 'https://api.typesafe.ai').replace(/\/+$/, '');
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), UPSTREAM_MS);
@@ -68,13 +98,12 @@ export async function handle(req: Request, env: Env, fetchImpl: typeof fetch = f
     const res = await fetchImpl(`${base}/v1/systemone`, {
       method: 'POST',
       headers: { authorization: `Bearer ${key}`, 'content-type': 'application/json' },
-      body: JSON.stringify(payload),
+      body: JSON.stringify(built.payload),
       signal: ctrl.signal,
     });
     if (!res.ok) return json(502, { error: 'upstream', status: res.status });
-    const data = (await res.json()) as { answers?: unknown; model?: unknown };
-    // Only the answers go back: nothing about the key, the account or the usage.
-    return json(200, { answers: data?.answers ?? {}, model: typeof data?.model === 'string' ? data.model : undefined });
+    const data = (await res.json()) as JevReply | null;
+    return json(200, route.reply(data ?? {}));
   } catch {
     return json(504, { error: 'upstream_unreachable' });
   } finally {
