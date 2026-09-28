@@ -114,6 +114,41 @@ describe('reading the answers', () => {
       expect(readHeatAnswers(bad, CANDS)).toEqual({});
   });
 
+  test('the grade decides the form when the two disagree (the lab: CONC RED read as pipe at 96%)', () => {
+    const fill = readHeatAnswers({ material: choiceAns('a420wpl6', 0.9), form: choiceAns('pipe', 0.96) }, CANDS);
+    expect(fill.form).toEqual({ value: 'fitting', label: 'Fitting', confidence: 0.9 });
+  });
+
+  test('a grade with one possible form fills it in when Jev left it blank', () => {
+    expect(readHeatAnswers({ material: choiceAns('a193b7', 0.8) }, CANDS).form?.value).toBe('bolting');
+    expect(readHeatAnswers({ material: choiceAns('a516g70', 0.8), form: choiceAns('none', 0.9) }, CANDS).form?.value).toBe('plate');
+  });
+
+  test('a forging can be a flange or a fitting, so neither is guessed, and pipe is refused', () => {
+    expect(readHeatAnswers({ material: choiceAns('a105', 0.9) }, CANDS).form).toBeUndefined();
+    expect(readHeatAnswers({ material: choiceAns('a105', 0.9), form: choiceAns('flange', 0.8) }, CANDS).form?.value).toBe('flange');
+    expect(readHeatAnswers({ material: choiceAns('a105', 0.9), form: choiceAns('pipe', 0.8) }, CANDS).form).toBeUndefined();
+  });
+
+  test('a stainless schedule on carbon steel is left blank (the lab: SCH 40 on A106 read as 40S)', () => {
+    expect(readHeatAnswers({ material: choiceAns('a106b', 0.9), schedule: choiceAns('sch40s', 0.85) }, CANDS).schedule).toBeUndefined();
+    expect(readHeatAnswers({ material: choiceAns('a312tp304', 0.9), schedule: choiceAns('sch40s', 0.85) }, CANDS).schedule?.value).toBe('40S');
+    // With no grade to check against, the schedule stands as read.
+    expect(readHeatAnswers({ schedule: choiceAns('sch40s', 0.85) }, CANDS).schedule?.value).toBe('40S');
+  });
+
+  test('an unsure grade decides nothing', () => {
+    const fill = readHeatAnswers({ material: choiceAns('a420wpl6', OFFER_AT - 0.1), form: choiceAns('pipe', 0.96) }, CANDS);
+    expect(fill.material).toBeUndefined();
+    expect(fill.form?.value).toBe('pipe');
+  });
+
+  test('the schedule choices say plainly that 40 and 40S are different markings', () => {
+    const c = heatQuestions(CANDS).schedule!.criteria;
+    expect(c.sch40s).toMatch(/only when an S follows the number/);
+    expect(c.sch40).toMatch(/no S after the number/);
+  });
+
   test('standard weight reads as STD, not a numbered schedule', () => {
     expect(readHeatAnswers({ schedule: choiceAns('schstd', 0.9) }, CANDS).schedule).toEqual({ value: 'STD', label: 'STD', confidence: 0.9 });
   });
