@@ -8,7 +8,7 @@ import { Screen } from '../components/Screen';
 import { Segmented } from '../components/Segmented';
 import { AccentButton, GhostButton } from '../components/Buttons';
 import { IsoCanvas, SketchMode } from '../components/sketch/IsoCanvas';
-import { Compass, FlipLabel, PaperKey } from '../components/sketch/PageControls';
+import { FlipLabel, PaperKey } from '../components/sketch/PageControls';
 import { Theme, useTheme } from '../theme/ThemeProvider';
 import { useSketches } from '../state/sketches';
 import { Corner, Flip, ISO_GRID, L3, NO_FLIP, Pt, Viewport, contained, fitViewport, holding, tenth, toPage, turnDegrees, turnOver } from '../calc/iso';
@@ -22,7 +22,7 @@ const HINT: Record<SketchMode, string> = {
   run: 'Drag to draw a line; it follows the nearest axis. Start near the end of a line to carry on from it.',
   pen: 'Draw freehand: a tie-in box, a valve, a cloud round a problem.',
   note: 'Tap where a word or a measurement goes. Tap a word to change it.',
-  move: 'Drag to move the page. Two fingers move, zoom and turn it from any tool; tap the compass to square it up.',
+  move: 'Drag to move the page. Two fingers move, zoom and turn it from any tool; N, E, S and W on the paper turn with it.',
 };
 
 const TOOLS: { value: SketchMode; label: string; icon: 'analytics-outline' | 'create-outline' | 'text-outline' | 'hand-left-outline' }[] = [
@@ -238,9 +238,6 @@ export function IsoDrawScreen({ navigation, route }: Props) {
             />
           </Animated.View>
         ) : null}
-        <View style={{ position: 'absolute', top: 10, right: 10 }}>
-          <Compass corner={corner} flip={flip} rot={rot} onSquare={squareUp} />
-        </View>
         {full ? (
           <View style={{ position: 'absolute', top: 10, left: 10, flexDirection: 'row', gap: 6 }} accessibilityLabel="Tools">
             {TOOLS.map((tool) => (
@@ -255,6 +252,7 @@ export function IsoDrawScreen({ navigation, route }: Props) {
         </View>
         <View style={{ position: 'absolute', right: 10, bottom: 10 + lift, flexDirection: 'row', gap: 6 }} accessibilityLabel="Sheet controls">
           {full ? <PaperKey icon="arrow-undo-outline" label="Undo" onPress={() => edit((prev) => prev.slice(0, -1))} /> : null}
+          {turned || flip.upside ? <PaperKey icon="compass-outline" label="Square the sheet up" on onPress={squareUp} /> : null}
           <PaperKey
             icon="swap-horizontal-outline"
             label={flip.mirror ? 'Turn the sheet back, unmirrored' : 'Mirror the sheet left for right'}

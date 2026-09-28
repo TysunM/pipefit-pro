@@ -227,6 +227,21 @@ export function turnOver(v: Viewport, w: number, h: number, from: Flip, to: Flip
   return holding(v, now, [w / 2, h / 2]);
 }
 
+/**
+ * The compass drawn on the paper itself: north, east, south and west laid
+ * along the iso axes a run follows, through the page's origin dot, turned
+ * over with the sheet. `arm` is in dots. Because it is drawn on the page it
+ * zooms, pans and turns with the drawing, so a line can be read against it
+ * directly: a run parallel to the N arm runs north.
+ */
+export type Rose = Record<'n' | 'e' | 's' | 'w', { tip: Pt; label: Pt }>;
+
+export function compassRose(c: Corner, g: number, f: Flip, arm = 2.5, labelAt = 1.4): Rose {
+  const at = (v: L3, k: number): Pt => flipPt(toScreen([v[0] * k, v[1] * k, 0], c, g), f);
+  const way = (v: L3) => ({ tip: at(v, arm), label: at(v, arm * labelAt) });
+  return { n: way([0, 1, 0]), e: way([1, 0, 0]), s: way([0, -1, 0]), w: way([-1, 0, 0]) };
+}
+
 /** A coordinate as it is stored: a tenth of a point is finer than any finger. */
 export const tenth = (n: number): number => Math.round(n * 10) / 10;
 

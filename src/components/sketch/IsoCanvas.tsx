@@ -1,6 +1,6 @@
 import React, { useMemo, useRef, useState } from 'react';
 import { PanResponder, Platform, View, type ViewStyle } from 'react-native';
-import Svg, { Circle, Defs, G, Pattern, Polyline, Rect, Text as SvgText } from 'react-native-svg';
+import Svg, { Circle, Defs, G, Line, Pattern, Polyline, Rect, Text as SvgText } from 'react-native-svg';
 import { useTheme } from '../../theme/ThemeProvider';
 import {
   Corner,
@@ -9,6 +9,7 @@ import {
   L3,
   Pt,
   TWIST_FROM,
+  compassRose,
   Viewport,
   distance,
   flipPt,
@@ -279,6 +280,51 @@ export function IsoCanvas({
   const pageW = Math.max(...seen.map((q) => q[0])) - pageX0;
   const pageH = Math.max(...seen.map((q) => q[1])) - pageY0;
 
+  // North, east, south and west on the paper itself, through the origin dot:
+  // it turns, zooms and turns over with the drawing, so a run is read against
+  // it directly. Arms zoom with the dots; strokes and letters stay one screen
+  // size, and the letters stay upright however the page is turned.
+  const rose = useMemo(() => compassRose(corner, g, flip), [corner, g, flip]);
+  const deg = (rot * 180) / Math.PI;
+  const roseFs = 13 / s;
+  const roseArm = (k: 'n' | 'e' | 's' | 'w') => (
+    <Line
+      key={`arm-${k}`}
+      x1={0}
+      y1={0}
+      x2={rose[k].tip[0]}
+      y2={rose[k].tip[1]}
+      stroke={k === 'n' ? c.accent : c.textFaint}
+      strokeWidth={(k === 'n' ? 2 : 1.5) / s}
+      strokeLinecap="round"
+    />
+  );
+  // Each letter drawn twice, a halo in the paper colour under it the way a
+  // note is, so it reads where a run passes through it.
+  const roseLetter = (k: 'n' | 'e' | 's' | 'w') => {
+    const [x, y] = rose[k].label;
+    const shared = {
+      x,
+      y: y + roseFs * 0.36,
+      transform: `rotate(${-deg} ${x} ${y})`,
+      fontFamily: t.font.sans,
+      fontSize: roseFs,
+      ...(t.fontsLoaded ? {} : { fontWeight: '700' as const }),
+      textAnchor: 'middle' as const,
+      pointerEvents: 'none' as const,
+    };
+    return (
+      <React.Fragment key={`letter-${k}`}>
+        <SvgText {...shared} fill={c.well} stroke={c.well} strokeWidth={4 / s} strokeLinejoin="round">
+          {k.toUpperCase()}
+        </SvgText>
+        <SvgText {...shared} fill={k === 'n' ? c.accent : c.textMuted}>
+          {k.toUpperCase()}
+        </SvgText>
+      </React.Fragment>
+    );
+  };
+
   const drawPlaced = (p: Placed, key: string, preview: boolean) => {
     if (p.kind === 'note') {
       // Drawn twice: a halo in the paper colour under the word, so it reads
@@ -361,7 +407,13 @@ export function IsoCanvas({
         </Defs>
         <G transform={`translate(${viewport.tx} ${viewport.ty}) rotate(${(rot * 180) / Math.PI}) scale(${s})`}>
           {showDots ? <Rect x={pageX0} y={pageY0} width={pageW} height={pageH} fill="url(#isodots)" /> : null}
+          <G opacity={0.85}>
+            {(['e', 'w', 's', 'n'] as const).map(roseArm)}
+            <Circle cx={0} cy={0} r={2.4 / s} fill={c.textFaint} />
+          </G>
           {strokes.map((st, i) => drawPlaced(place(st, corner, g, flip), `s${i}`, false))}
+          {/* The letters over the drawing, the arms under it: a run through the rose never hides which way is which. */}
+          {(['n', 'e', 's', 'w'] as const).map(roseLetter)}
           {draft ? drawPlaced(flipPlaced(draft, flip), 'draft', true) : null}
         </G>
       </Svg>
