@@ -1,5 +1,5 @@
 import React, { useMemo, useRef, useState } from 'react';
-import { PanResponder, Platform, View, type GestureResponderEvent, type ViewStyle } from 'react-native';
+import { Dimensions, PanResponder, Platform, View, type GestureResponderEvent, type ViewStyle } from 'react-native';
 import Svg, { Circle, Defs, G, Line, Pattern, Polyline, Rect, Text as SvgText } from 'react-native-svg';
 import { useTheme } from '../../theme/ThemeProvider';
 import {
@@ -23,6 +23,7 @@ import {
   wrapAngle,
 } from '../../calc/iso';
 import { Placed, Stroke, flipPlaced, place, runNodes, storedStroke } from '../../state/sketchStore';
+import { onEdge, startsTwoFingers } from '../../calc/palm';
 
 export type SketchMode = 'run' | 'pen' | 'note' | 'move';
 
@@ -35,7 +36,9 @@ const PICK_UP = 26;
  * key on the paper suddenly reads from the key's own corner, and the line
  * jumps across the sheet and back.
  */
-type Touch = { pageX: number; pageY: number };
+type Touch = { pageX: number; pageY: number; identifier?: number | string };
+
+const idOf = (f: Touch): string => String(f.identifier ?? 0);
 
 const centroid = (ts: Pt[]): Pt => [ts.reduce((s, q) => s + q[0], 0) / ts.length, ts.reduce((s, q) => s + q[1], 0) / ts.length];
 
@@ -113,11 +116,30 @@ export function IsoCanvas({
    */
   const origin = useRef<Pt>([0, 0]);
   const local = (f: Touch): Pt => [f.pageX - origin.current[0], f.pageY - origin.current[1]];
-  const fingers = (e: GestureResponderEvent): Pt[] => {
-    const ts = (e.nativeEvent.touches ?? []) as Touch[];
-    return ts.length ? ts.map(local) : [local(e.nativeEvent)];
+
+  /**
+   * The touches that are fingers. One that came down on the very edge of the
+   * screen is a palm, and stays one until it lifts, wherever it slides.
+   */
+  const known = useRef(new Set<string>());
+  const palms = useRef(new Set<string>());
+  const fingersOf = (e: GestureResponderEvent): Touch[] => {
+    const ne = e.nativeEvent;
+    const ts: Touch[] = ne.touches?.length ? ne.touches : [ne];
+    const w = Dimensions.get('window').width;
+    for (const f of ts) {
+      const id = idOf(f);
+      if (known.current.has(id)) continue;
+      known.current.add(id);
+      if (onEdge(f.pageX, w)) palms.current.add(id);
+    }
+    return ts.filter((f) => !palms.current.has(idOf(f)));
   };
 
+  /** The finger drawing, followed by its own id so a hand landing beside it can never take the line. */
+  const drawId = useRef<string | null>(null);
+  const startedAt = useRef(0);
+  const lastPt = useRef<Pt>([0, 0]);
   const start3 = useRef<L3>([0, 0, 0]);
   const startPage = useRef<Pt>([0, 0]);
   const pen = useRef<Pt[]>([]);
@@ -165,6 +187,27 @@ export function IsoCanvas({
     pen.current = [];
   };
 
+  /** A stroke starts under this finger, in whatever the tool is. */
+  const begin = (f: Touch) => {
+    const { mode: m, viewport: v, corner: c } = live.current;
+    const p = pagePoint(local(f));
+    drawId.current = idOf(f);
+    startedAt.current = Date.now();
+    moved.current = false;
+    startPage.current = p;
+    lastPt.current = p;
+    if (m === 'run') {
+      const hit = nearestOf(p, nodesOnPage(), (x) => x.at, PICK_UP / v.scale);
+      const from = hit ? hit.n : screenToLattice(p, c, g);
+      start3.current = from;
+      const at = toScreen(from, c, g);
+      setDraft({ kind: 'run', pts: [at, at] });
+    } else if (m === 'pen') {
+      pen.current = [p];
+      setDraft({ kind: 'pen', pts: [p] });
+    }
+  };
+
   const pan = useMemo(
     () =>
       PanResponder.create({
@@ -174,37 +217,32 @@ export function IsoCanvas({
         onPanResponderGrant: (e) => {
           const ne = e.nativeEvent;
           origin.current = [ne.pageX - ne.locationX, ne.pageY - ne.locationY];
-          const touches = fingers(e);
-          const { mode: m, viewport: v, corner: c } = live.current;
+          known.current.clear();
+          palms.current.clear();
+          drawId.current = null;
+          grab.current = null;
           moved.current = false;
-          if (touches.length >= 2 || m === 'move') {
-            beginGrab(touches);
-            return;
-          }
-          const p = pagePoint(local(ne));
-          startPage.current = p;
-          if (m === 'run') {
-            const hit = nearestOf(p, nodesOnPage(), (x) => x.at, PICK_UP / v.scale);
-            const from = hit ? hit.n : screenToLattice(p, c, g);
-            start3.current = from;
-            const at = toScreen(from, c, g);
-            setDraft({ kind: 'run', pts: [at, at] });
-          } else if (m === 'pen') {
-            pen.current = [p];
-            setDraft({ kind: 'pen', pts: [p] });
-          }
+          const ts = fingersOf(e);
+          if (!ts.length) return;
+          if (ts.length >= 2 || live.current.mode === 'move') beginGrab(ts.map(local));
+          else begin(ts[0]!);
         },
         onPanResponderMove: (e) => {
-          const ts = fingers(e);
+          const ts = fingersOf(e);
           const { mode: m, corner: c, onViewport: setV } = live.current;
-          if (!grab.current && ts.length >= 2) beginGrab(ts);
-          if (grab.current && ts.length !== grab.current.fingers) beginGrab(ts);
+          if (!grab.current && ts.length) {
+            const drawing = drawId.current !== null;
+            if (m === 'move' || (ts.length >= 2 && startsTwoFingers(drawing, moved.current, Date.now() - startedAt.current))) beginGrab(ts.map(local));
+          }
           const gr = grab.current;
           if (gr) {
+            if (!ts.length) return;
+            const pts = ts.map(local);
+            if (pts.length !== gr.fingers) beginGrab(pts);
             let spread = 1;
             let turn = 0;
-            if (ts.length >= 2 && gr.span > 0) {
-              const now = spanOf(ts);
+            if (pts.length >= 2 && gr.span > 0) {
+              const now = spanOf(pts);
               spread = now.span / gr.span;
               gr.twist += wrapAngle(now.angle - gr.angle);
               gr.angle = now.angle;
@@ -212,11 +250,19 @@ export function IsoCanvas({
               if (gr.from !== null) turn = gr.twist - gr.from;
             }
             // The page point that was under the fingers stays under them.
-            setV(handWindow(gr.v, gr.at, centroid(ts), spread, turn));
+            setV(handWindow(gr.v, gr.at, centroid(pts), spread, turn));
             moved.current = true;
             return;
           }
-          const p = pagePoint(local(e.nativeEvent));
+          // Only a palm down so far: the stroke starts with the first finger.
+          if (drawId.current === null) {
+            if (ts[0]) begin(ts[0]);
+            return;
+          }
+          const f = ts.find((q) => idOf(q) === drawId.current);
+          if (!f) return;
+          const p = pagePoint(local(f));
+          lastPt.current = p;
           if (m === 'run') {
             const snap = snapRun(start3.current, p, c, g);
             if (snap.steps > 0) moved.current = true;
@@ -232,14 +278,18 @@ export function IsoCanvas({
             moved.current = true;
           }
         },
-        onPanResponderRelease: (e) => {
+        onPanResponderRelease: () => {
           const { mode: m, strokes: ss, corner: c, viewport: v, onStroke: commit, onNote: note } = live.current;
-          if (grab.current) {
+          const drew = drawId.current !== null;
+          drawId.current = null;
+          if (grab.current || !drew) {
             grab.current = null;
             setDraft(null);
+            pen.current = [];
             return;
           }
-          const p = pagePoint(local(e.nativeEvent));
+          // Where the drawing finger last was: the touch lifting last may be the palm.
+          const p = lastPt.current;
           if (m === 'run') {
             const snap = snapRun(start3.current, p, c, g);
             if (snap.steps > 0) commit({ kind: 'run', from: start3.current, to: snap.to });
@@ -253,8 +303,8 @@ export function IsoCanvas({
           } else if (m === 'note' && !moved.current) {
             let hit: number | undefined;
             let best = 28 / v.scale;
-            ss.forEach((s, i) => {
-              const pl = place(s, c, g);
+            ss.forEach((st, i) => {
+              const pl = place(st, c, g);
               if (pl.kind !== 'note') return;
               const d = distance(pl.at, p);
               if (d < best) {
@@ -274,6 +324,7 @@ export function IsoCanvas({
         },
         onPanResponderTerminate: () => {
           grab.current = null;
+          drawId.current = null;
           setDraft(null);
           pen.current = [];
         },

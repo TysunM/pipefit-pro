@@ -5,10 +5,7 @@ import { useTheme } from '../../theme/ThemeProvider';
 import { Flip } from '../../calc/iso';
 import { flipWords } from '../../state/sketchStore';
 
-/**
- * A key that sits on the paper, in a corner, over the drawing: round-cornered,
- * nearly opaque so a line under it does not read through as part of it.
- */
+/** A key in the paper's own strip, beside the drawing and never over it. */
 export function PaperKey({
   icon,
   label,
@@ -37,7 +34,6 @@ export function PaperKey({
         backgroundColor: pressed ? t.colors.primary : on ? t.colors.accentSoft : t.colors.bgRaised,
         borderWidth: 1,
         borderColor: on ? t.colors.accent : t.colors.border,
-        opacity: 0.96,
       })}
     >
       {({ pressed }) => <Ionicons name={icon} size={20} color={pressed ? t.colors.onPrimary : on ? t.colors.accent : t.colors.text} />}

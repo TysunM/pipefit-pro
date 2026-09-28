@@ -194,6 +194,15 @@ export function IsoDrawScreen({ navigation, route }: Props) {
   const rot = viewport.rot ?? 0;
   const turned = turnDegrees(rot);
   const lift = full ? insets.bottom : 0;
+  const strip = {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    backgroundColor: t.colors.bgSubtle,
+    borderColor: t.colors.wellEdge,
+  };
 
   return (
     <Screen scroll={false}>
@@ -206,11 +215,13 @@ export function IsoDrawScreen({ navigation, route }: Props) {
         </View>
       )}
 
+      {/* The paper, and under it (over it too, full screen) a strip of its own
+          for the keys and the words on how the sheet lies. Nothing sits on
+          the drawing, so a stroke is never drawn, or ended, under a key. */}
       <View
-        onLayout={(e) => onPaper(Math.floor(e.nativeEvent.layout.width), Math.floor(e.nativeEvent.layout.height))}
         style={
           full
-            ? { flex: 1, marginTop: insets.top, overflow: 'hidden', backgroundColor: t.colors.well }
+            ? { flex: 1, marginTop: insets.top, backgroundColor: t.colors.well }
             : {
                 flex: 1,
                 marginHorizontal: t.layout.screenPadding,
@@ -222,35 +233,37 @@ export function IsoDrawScreen({ navigation, route }: Props) {
               }
         }
       >
-        {size.w > 0 && size.h > 0 ? (
-          <Animated.View style={{ transform: [folding === 'x' ? { scaleX: fold } : { scaleY: fold }] }}>
-            <IsoCanvas
-              width={size.w}
-              height={size.h}
-              strokes={strokes}
-              mode={mode}
-              corner={corner}
-              flip={flip}
-              viewport={viewport}
-              onViewport={setViewport}
-              onStroke={(s) => edit((prev) => [...prev, s])}
-              onNote={(at, anchor, index) => setNote({ at, anchor, index })}
-            />
-          </Animated.View>
-        ) : null}
         {full ? (
-          <View style={{ position: 'absolute', top: 10, left: 10, flexDirection: 'row', gap: 6 }} accessibilityLabel="Tools">
+          <View style={[strip, { borderBottomWidth: 1 }]} accessibilityLabel="Tools">
             {TOOLS.map((tool) => (
               <PaperKey key={tool.value} icon={tool.icon} label={tool.label} on={mode === tool.value} onPress={() => setMode(tool.value)} />
             ))}
           </View>
         ) : null}
-        <View style={{ position: 'absolute', left: 10, bottom: 10 + lift, flexDirection: 'row', alignItems: 'center', gap: 6 }} pointerEvents="none">
-          <FlipLabel flip={flip} />
-          <Text style={[t.type.labelSmall, { color: t.colors.textFaint }]}>{`· ${Math.round(viewport.scale * 100)}%`}</Text>
-          {turned ? <Text style={[t.type.labelSmall, { color: t.colors.accent }]}>{`· ${turned}°`}</Text> : null}
+        <View style={{ flex: 1, overflow: 'hidden' }} onLayout={(e) => onPaper(Math.floor(e.nativeEvent.layout.width), Math.floor(e.nativeEvent.layout.height))}>
+          {size.w > 0 && size.h > 0 ? (
+            <Animated.View style={{ transform: [folding === 'x' ? { scaleX: fold } : { scaleY: fold }] }}>
+              <IsoCanvas
+                width={size.w}
+                height={size.h}
+                strokes={strokes}
+                mode={mode}
+                corner={corner}
+                flip={flip}
+                viewport={viewport}
+                onViewport={setViewport}
+                onStroke={(s) => edit((prev) => [...prev, s])}
+                onNote={(at, anchor, index) => setNote({ at, anchor, index })}
+              />
+            </Animated.View>
+          ) : null}
         </View>
-        <View style={{ position: 'absolute', right: 10, bottom: 10 + lift, flexDirection: 'row', gap: 6 }} accessibilityLabel="Sheet controls">
+        <View style={[strip, { borderTopWidth: 1, paddingBottom: 5 + lift }]} accessibilityLabel="Sheet controls">
+          <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <FlipLabel flip={flip} />
+            <Text style={[t.type.labelSmall, { color: t.colors.textFaint }]}>{`· ${Math.round(viewport.scale * 100)}%`}</Text>
+            {turned ? <Text style={[t.type.labelSmall, { color: t.colors.accent }]}>{`· ${turned}°`}</Text> : null}
+          </View>
           {full ? <PaperKey icon="arrow-undo-outline" label="Undo" onPress={() => edit((prev) => prev.slice(0, -1))} /> : null}
           {turned || flip.upside ? <PaperKey icon="compass-outline" label="Square the sheet up" on onPress={squareUp} /> : null}
           <PaperKey
