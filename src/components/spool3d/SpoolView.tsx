@@ -1,10 +1,12 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { PanResponder, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { PanResponder, Platform, Pressable, ScrollView, StyleSheet, Text, View, type ViewStyle } from 'react-native';
 import * as Haptics from 'expo-haptics';
+import { Ionicons } from '@expo/vector-icons';
 import Svg, { Circle, Defs, G, Line, LinearGradient, Path, Rect, Stop, Text as SvgText } from 'react-native-svg';
 import { SpoolResult, Vec3, add, elbowCenterline, scale, sub } from '../../calc/spool';
 import { useTheme } from '../../theme/ThemeProvider';
 import { pipeShades } from '../diagram/primitives';
+import { useSvgIds } from '../metal';
 import { Box } from './dimension';
 import { Scene, ScenePiece, buildScene, polyline, runNormal, runSides, tubeSides, weldTick } from './scene';
 import {
@@ -69,6 +71,9 @@ export function SpoolView({
   legText,
   elbowText,
   onCamera,
+  initialCam,
+  fill = false,
+  onFullScreen,
 }: {
   spool: SpoolResult;
   showLabels: boolean;
@@ -88,9 +93,23 @@ export function SpoolView({
    * the pipe no longer goes.
    */
   onCamera?: (cam: Camera) => void;
+  /** Where the viewer starts, when it should not be the spool's best corner — coming in or out of full screen. */
+  initialCam?: Camera;
+  /**
+   * Take all the height it is given rather than a square: the drawing is laid
+   * out on a sheet the shape of the space, so a long run gets the long side.
+   */
+  fill?: boolean;
+  /** Shows the full-screen key on the drawing; `fill` decides which way it points. */
+  onFullScreen?: () => void;
 }) {
   const t = useTheme();
   const sh = pipeShades(t);
+  // Gradient ids are global on a web page, and full screen puts a second
+  // drawing of the same spool on it: each drawing names its own. The piece
+  // number goes after a separator a React id never contains (see svgId.ts).
+  const ids = useSvgIds('tube');
+  const gid = (role: 'r' | 'e', i: number) => `${ids(role)}_${i}`;
   // Held in a ref so a caller passing a fresh closure each render does not
   // make this fire on every render instead of on every turn of the view.
   const onCameraRef = useRef(onCamera);
@@ -98,7 +117,7 @@ export function SpoolView({
   // The view opens on the corner this spool reads best from, not on a fixed
   // one. Which corner that is depends only on the shape, so it is worked out
   // from the shape.
-  const [cam, setCam] = useState<Camera>(() => bestCorner(spool.points).cam);
+  const [cam, setCam] = useState<Camera>(() => initialCam ?? bestCorner(spool.points).cam);
   const [dragging, setDragging] = useState(false);
   useEffect(() => {
     onCameraRef.current?.(cam);
@@ -109,11 +128,18 @@ export function SpoolView({
 
   const [grabbed, setGrabbed] = useState<number | null>(null);
   const box = useRef({ w: W, h: H });
+  // The sheet the scene is laid out on. A square, normally; full screen, the
+  // shape of the screen, one unit to the point, so pipe and figures are the
+  // size they are in the square.
+  const [sheet, setSheet] = useState({ w: W, h: H });
+  const sheetRef = useRef(sheet);
+  sheetRef.current = sheet;
 
-  const viewScale = () => Math.min(box.current.w / W, box.current.h / H) || 1;
+  const viewScale = () => Math.min(box.current.w / sheetRef.current.w, box.current.h / sheetRef.current.h) || 1;
   const toViewBox = (x: number, y: number) => {
     const s = viewScale();
-    return { x: (x - (box.current.w - W * s) / 2) / s, y: (y - (box.current.h - H * s) / 2) / s };
+    const { w, h } = sheetRef.current;
+    return { x: (x - (box.current.w - w * s) / 2) / s, y: (y - (box.current.h - h * s) / 2) / s };
   };
   const geom = useRef<{ pts: Projected[]; scale: number; transform: Transform }>({
     pts: [],
@@ -273,10 +299,17 @@ export function SpoolView({
   onCornerRef.current = onCorner;
   const pointsRef = useRef(spool.points);
   pointsRef.current = spool.points;
+  // Not on the way in: a view handed over from full screen is kept as it was.
+  const firstShape = useRef(true);
   useEffect(() => {
+    if (firstShape.current) {
+      firstShape.current = false;
+      if (initialCam) return;
+    }
     if (!onCornerRef.current) return;
     setCam(bestCorner(pointsRef.current).cam);
     setCeiling(Infinity);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [shape]);
 
   const od = dragging && grabbed === null ? 9 : 16;
@@ -290,8 +323,8 @@ export function SpoolView({
       buildScene({
         spool,
         cam: view,
-        width: W,
-        height: H,
+        width: sheet.w,
+        height: sheet.h,
         pad: PAD,
         od,
         maxScale: ceiling,
@@ -300,7 +333,7 @@ export function SpoolView({
         // moves, and a figure in the wrong place reads worse than none.
         text: showLabels && !dragging ? { legText, elbowText } : null,
       }),
-    [spool, view, ceiling, hold, od, showLabels, dragging, legText, elbowText]
+    [spool, view, sheet, ceiling, hold, od, showLabels, dragging, legText, elbowText]
   );
 
   geom.current = { pts: scene.pts, scale: scene.scale, transform: scene.transform };
@@ -406,21 +439,27 @@ export function SpoolView({
         borderTopWidth: t.hairline,
         borderBottomWidth: t.hairline,
         borderColor: t.colors.border,
+        ...(fill ? { flex: 1 } : null),
       }}
     >
       <View
-        style={{ position: 'relative' }}
+        style={{ position: 'relative', ...(fill ? { flex: 1 } : null) }}
         onLayout={(e) => {
-          box.current = { w: e.nativeEvent.layout.width, h: e.nativeEvent.layout.height };
+          const { width, height } = e.nativeEvent.layout;
+          box.current = { w: width, h: height };
+          if (fill && width > 0 && height > 0) {
+            const next = { w: Math.round(width), h: Math.round(height) };
+            if (next.w !== sheetRef.current.w || next.h !== sheetRef.current.h) setSheet(next);
+          }
         }}
       >
-        <Svg width="100%" height={H} viewBox={`0 0 ${W} ${H}`}>
+        <Svg width="100%" height={fill ? '100%' : H} viewBox={`0 0 ${sheet.w} ${sheet.h}`}>
           <Defs>
             {pieces.map((p, i) =>
               p.kind === 'run' ? (
                 <LinearGradient
                   key={`g${i}`}
-                  id={`r${i}`}
+                  id={gid('r', i)}
                   gradientUnits="userSpaceOnUse"
                   x1={p.a.x + perpOf(p).x}
                   y1={p.a.y + perpOf(p).y}
@@ -436,7 +475,7 @@ export function SpoolView({
               ) : (
                 <LinearGradient
                   key={`g${i}`}
-                  id={`e${i}`}
+                  id={gid('e', i)}
                   gradientUnits="userSpaceOnUse"
                   x1={chordNormal(p.path, od / 2).x1}
                   y1={chordNormal(p.path, od / 2).y1}
@@ -477,7 +516,7 @@ export function SpoolView({
                     y1={p.a.y}
                     x2={p.b.x}
                     y2={p.b.y}
-                    stroke={`url(#r${i})`}
+                    stroke={`url(#${gid('r', i)})`}
                     strokeWidth={od}
                     strokeLinecap="round"
                   />
@@ -522,7 +561,7 @@ export function SpoolView({
                 <Path
                   d={spine}
                   fill="none"
-                  stroke={`url(#e${i})`}
+                  stroke={`url(#${gid('e', i)})`}
                   strokeWidth={od}
                   strokeLinecap="butt"
                   strokeLinejoin="round"
@@ -598,7 +637,32 @@ export function SpoolView({
           })}
 
         </Svg>
-        <View style={StyleSheet.absoluteFill} {...pan.panHandlers} />
+        {/* touchAction: a drag on the drawing turns the spool, not the browser page. */}
+        <View style={[StyleSheet.absoluteFill, Platform.OS === 'web' ? ({ touchAction: 'none' } as ViewStyle) : null]} {...pan.panHandlers} />
+        {onFullScreen ? (
+          <Pressable
+            onPress={onFullScreen}
+            accessibilityRole="button"
+            accessibilityLabel={fill ? 'Leave full screen' : 'Full screen'}
+            hitSlop={6}
+            style={({ pressed }) => ({
+              position: 'absolute',
+              top: 8,
+              right: 8,
+              width: 42,
+              height: 42,
+              borderRadius: t.radius.md,
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: pressed ? t.colors.primary : t.colors.bgRaised,
+              borderWidth: 1,
+              borderColor: t.colors.border,
+              opacity: 0.96,
+            })}
+          >
+            {({ pressed }) => <Ionicons name={fill ? 'contract-outline' : 'expand-outline'} size={20} color={pressed ? t.colors.onPrimary : t.colors.text} />}
+          </Pressable>
+        ) : null}
       </View>
 
       <View style={{ paddingHorizontal: t.layout.screenPadding, paddingBottom: t.space.md, gap: t.space.xs }}>

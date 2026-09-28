@@ -224,7 +224,7 @@ export const flipPt = (p: Pt, f: Flip): Pt => [f.mirror ? -p[0] : p[0], f.upside
 export function turnOver(v: Viewport, w: number, h: number, from: Flip, to: Flip): Viewport {
   const shown = toPage([w / 2, h / 2], v);
   const now = flipPt(flipPt(shown, from), to);
-  return { scale: v.scale, tx: w / 2 - now[0] * v.scale, ty: h / 2 - now[1] * v.scale };
+  return holding(v, now, [w / 2, h / 2]);
 }
 
 /** A coordinate as it is stored: a tenth of a point is finer than any finger. */
@@ -232,20 +232,87 @@ export const tenth = (n: number): number => Math.round(n * 10) / 10;
 
 // ---------------------------------------------------------------- the window
 
-/** How the page sits in the screen: page units scaled, then shifted. */
-export type Viewport = { scale: number; tx: number; ty: number };
+/**
+ * How the page sits in the screen: page units turned by `rot` (radians,
+ * clockwise on screen), scaled, then shifted. The turn is the paper turned on
+ * the desk — how it is being looked at, never what is drawn on it — so it is
+ * not saved with the sketch and not printed.
+ */
+export type Viewport = { scale: number; tx: number; ty: number; rot?: number };
 
 export const MIN_SCALE = 0.15;
 export const MAX_SCALE = 3;
 
 export const clampScale = (s: number): number => Math.min(MAX_SCALE, Math.max(MIN_SCALE, s));
 
+/** `p` turned by `a` radians about the origin. */
+export const rotPt = (p: Pt, a: number): Pt => {
+  if (!a) return p;
+  const c = Math.cos(a);
+  const s = Math.sin(a);
+  return [p[0] * c - p[1] * s, p[0] * s + p[1] * c];
+};
+
 export function toPage(p: Pt, v: Viewport): Pt {
-  return [(p[0] - v.tx) / v.scale, (p[1] - v.ty) / v.scale];
+  return rotPt([(p[0] - v.tx) / v.scale, (p[1] - v.ty) / v.scale], -(v.rot ?? 0));
 }
 
 export function toView(p: Pt, v: Viewport): Pt {
-  return [p[0] * v.scale + v.tx, p[1] * v.scale + v.ty];
+  const q = rotPt(p, v.rot ?? 0);
+  return [q[0] * v.scale + v.tx, q[1] * v.scale + v.ty];
+}
+
+/** The window at `v`'s scale and turn that puts page point `page` under screen point `at`. */
+export function holding(v: Viewport, page: Pt, at: Pt): Viewport {
+  const q = rotPt(page, v.rot ?? 0);
+  return { scale: v.scale, rot: v.rot ?? 0, tx: at[0] - q[0] * v.scale, ty: at[1] - q[1] * v.scale };
+}
+
+// ------------------------------------------------------------ turning by hand
+
+/** A turn in (-π, π]. */
+export function wrapAngle(a: number): number {
+  const t = a % (2 * Math.PI);
+  if (t > Math.PI) return t - 2 * Math.PI;
+  if (t <= -Math.PI) return t + 2 * Math.PI;
+  return t;
+}
+
+/**
+ * How far two fingers have to twist before the page starts to turn. Below
+ * this a pinch is a pinch: nobody spreads two fingers perfectly straight, and
+ * a page that wobbled on every zoom would be worse than one that never turned.
+ */
+export const TWIST_FROM = (10 * Math.PI) / 180;
+
+/** Within this of square — upright, on its side, upside down — the page settles square. */
+export const SQUARE_WITHIN = (5 * Math.PI) / 180;
+
+/** The turn, settled onto the nearest quarter turn when it is that close to one. */
+export function settleTurn(a: number): number {
+  const w = wrapAngle(a);
+  const q = Math.round(w / (Math.PI / 2)) * (Math.PI / 2);
+  // `|| 0`: a turn settled back from just below upright is 0, not -0.
+  return Math.abs(w - q) <= SQUARE_WITHIN ? wrapAngle(q) || 0 : w;
+}
+
+/** The turn in whole degrees, 0 to 359, for saying on screen. */
+export const turnDegrees = (a: number): number => ((Math.round((wrapAngle(a) * 180) / Math.PI) % 360) + 360) % 360;
+
+/**
+ * The window under two fingers, or one.
+ *
+ * The page point that was under the fingers when they landed stays under
+ * them: spread them and the page grows about that point, twist them and it
+ * turns about it, move them and it goes with them. `twist` is how far the
+ * fingers have turned, already past TWIST_FROM; `spread` is how much further
+ * apart they are than they started.
+ */
+export function handWindow(start: Viewport, at0: Pt, at: Pt, spread: number, twist: number): Viewport {
+  const page = toPage(at0, start);
+  const scale = clampScale(start.scale * (spread > 0 && Number.isFinite(spread) ? spread : 1));
+  const rot = twist ? settleTurn((start.rot ?? 0) + twist) : start.rot ?? 0;
+  return holding({ scale, tx: 0, ty: 0, rot }, page, at);
 }
 
 export type Bounds = { minX: number; minY: number; maxX: number; maxY: number };
@@ -264,21 +331,30 @@ export function bounds(pts: readonly Pt[]): Bounds | null {
 
 /**
  * The window that shows all of `b` inside a `w` by `h` screen with `margin`
- * round it, centred, never larger than `maxScale`.
+ * round it, centred, never larger than `maxScale`, turned by `rot`.
+ *
+ * `b` is measured on the page as turned — the bounds of the drawing's points
+ * each turned by `rot` — which is what the screen sees. With no turn that is
+ * the page's own bounds.
  */
-export function fitViewport(b: Bounds, w: number, h: number, margin: number, maxScale = 1): Viewport {
+export function fitViewport(b: Bounds, w: number, h: number, margin: number, maxScale = 1, rot = 0): Viewport {
   const bw = Math.max(1, b.maxX - b.minX);
   const bh = Math.max(1, b.maxY - b.minY);
   const scale = clampScale(Math.min(maxScale, (w - 2 * margin) / bw, (h - 2 * margin) / bh));
   const cx = (b.minX + b.maxX) / 2;
   const cy = (b.minY + b.maxY) / 2;
-  return { scale, tx: w / 2 - cx * scale, ty: h / 2 - cy * scale };
+  return { scale, rot, tx: w / 2 - cx * scale, ty: h / 2 - cy * scale };
 }
 
-/** Whether all of `b` is on a `w` by `h` screen through `v`, with `margin` to spare. */
+/**
+ * Whether all of `b` is on a `w` by `h` screen through `v`, with `margin` to
+ * spare. `b` is measured on the page as turned, as for fitViewport.
+ */
 export function contained(b: Bounds, v: Viewport, w: number, h: number, margin: number): boolean {
-  const [x0, y0] = toView([b.minX, b.minY], v);
-  const [x1, y1] = toView([b.maxX, b.maxY], v);
+  const x0 = b.minX * v.scale + v.tx;
+  const y0 = b.minY * v.scale + v.ty;
+  const x1 = b.maxX * v.scale + v.tx;
+  const y1 = b.maxY * v.scale + v.ty;
   return x0 >= margin && y0 >= margin && x1 <= w - margin && y1 <= h - margin;
 }
 
@@ -286,7 +362,7 @@ export function contained(b: Bounds, v: Viewport, w: number, h: number, margin: 
 export function zoomAbout(v: Viewport, factor: number, about: Pt): Viewport {
   const scale = clampScale(v.scale * factor);
   const k = scale / v.scale;
-  return { scale, tx: about[0] - (about[0] - v.tx) * k, ty: about[1] - (about[1] - v.ty) * k };
+  return { ...v, scale, tx: about[0] - (about[0] - v.tx) * k, ty: about[1] - (about[1] - v.ty) * k };
 }
 
 /**

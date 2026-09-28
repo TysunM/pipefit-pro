@@ -1,0 +1,3 @@
+# Jev lab runs: what was sent and answered, never the key. Kept out of the root
+# .gitignore, which is part of the app's runtime fingerprint.
+.jev-lab/

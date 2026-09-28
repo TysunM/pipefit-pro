@@ -1,8 +1,6 @@
 node_modules/
 .expo/
 dist/
-# Wrangler's local dev state (created by wrangler dev / deploy --dry-run)
-.wrangler/
 .ci-export/
 web-build/
 *.log
