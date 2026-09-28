@@ -107,6 +107,7 @@ export function MiterBendScreen() {
       ) : null}
 
       <ResultBanner
+        speak={result.error ? undefined : { degrees: result.cutAngle }}
         label={result.error ? 'Cannot solve' : 'Cut angle'}
         value={result.error ? result.error : u.angle(result.cutAngle, 2)}
         hint={

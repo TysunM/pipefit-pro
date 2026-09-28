@@ -15,6 +15,8 @@ const DEFAULTS: Settings = {
   projectId: '',
   fitterName: '',
   smartFill: true,
+  readAloud: 'tap',
+  gloveMode: false,
   look: LOOK,
 };
 
@@ -110,5 +112,20 @@ describe('smart fill', () => {
     expect(readSettings(JSON.stringify(before), DEFAULTS).settings.smartFill).toBe(true);
     expect(readSettings(JSON.stringify({ ...DEFAULTS, smartFill: false }), DEFAULTS).settings.smartFill).toBe(false);
     expect(readSettings(JSON.stringify({ ...DEFAULTS, smartFill: 'no' }), DEFAULTS).settings.smartFill).toBe(true);
+  });
+});
+
+describe('field settings', () => {
+  test('read aloud is tap unless set, and only the three real choices are taken', () => {
+    const { readAloud, gloveMode, ...before } = DEFAULTS;
+    void readAloud;
+    void gloveMode;
+    const loaded = readSettings(JSON.stringify(before), DEFAULTS).settings;
+    expect(loaded.readAloud).toBe('tap');
+    expect(loaded.gloveMode).toBe(false);
+    expect(readSettings(JSON.stringify({ ...DEFAULTS, readAloud: 'auto' }), DEFAULTS).settings.readAloud).toBe('auto');
+    expect(readSettings(JSON.stringify({ ...DEFAULTS, readAloud: 'loud' }), DEFAULTS).settings.readAloud).toBe('tap');
+    expect(readSettings(JSON.stringify({ ...DEFAULTS, gloveMode: true }), DEFAULTS).settings.gloveMode).toBe(true);
+    expect(readSettings(JSON.stringify({ ...DEFAULTS, gloveMode: 'yes' }), DEFAULTS).settings.gloveMode).toBe(false);
   });
 });

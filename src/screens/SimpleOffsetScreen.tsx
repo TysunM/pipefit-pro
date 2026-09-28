@@ -63,11 +63,13 @@ export function SimpleOffsetScreen() {
       ? {
           label: 'Elbow cut — throat arc',
           value: result.valid ? `${u.num(result.throatArc)} ${u.unitName}` : '—',
+          inches: result.throatArc,
           hint: result.valid ? `Wrap from throat · Back arc ${u.num(result.backArc)} ${u.unitName}` : undefined,
         }
       : {
           label: 'Pipe cut',
           value: result.valid ? `${u.num(result.pipeCut)} ${u.unitName}` : '—',
+          inches: result.pipeCut,
           hint: result.valid ? `Mark & cut this length · Travel ${u.num(result.travel)} ${u.unitName}` : undefined,
         };
 
@@ -175,6 +177,7 @@ export function SimpleOffsetScreen() {
       ) : null}
 
       <ResultBanner
+        speak={!pristine && !result.error && result.valid ? { inches: banner.inches } : undefined}
         label={pristine ? banner.label : result.error ? 'Cannot solve' : banner.label}
         value={pristine ? '—' : result.error ? result.error : banner.value}
         hint={pristine ? 'Enter an offset to solve this run' : result.error ? undefined : banner.hint}

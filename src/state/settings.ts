@@ -10,6 +10,8 @@ export type ThemePreference = 'light' | 'dark' | 'system';
 /** What the calculator shows a length as before any conversion is asked for. */
 export type LengthReadout = 'inches' | 'feetInches';
 
+export type ReadAloud = 'off' | 'tap' | 'auto';
+
 export type Settings = {
   themePreference: ThemePreference;
   unitSystem: UnitSystem;
@@ -46,6 +48,18 @@ export type Settings = {
    * always did, entirely on the phone.
    */
   smartFill: boolean;
+  /**
+   * Reading results aloud, so the eyes stay on the tape: off, a speaker button
+   * on the result ('tap'), or spoken on its own once the inputs settle
+   * ('auto'). Goes to whatever the phone plays through — earbuds if connected.
+   */
+  readAloud: ReadAloud;
+  /**
+   * Oversized keys for every dimension field in place of the phone's keyboard,
+   * with fraction keys and recent figures, for a knuckle, a capacitive stylus
+   * or touchscreen gloves. (No touchscreen reads through plain leather.)
+   */
+  gloveMode: boolean;
   /** Which look these were written under — see readSettings. */
   look: number;
 };
@@ -66,6 +80,8 @@ export const DEFAULT_SETTINGS: Settings = {
   projectId: '',
   fitterName: '',
   smartFill: true,
+  readAloud: 'tap',
+  gloveMode: false,
   look: LOOK,
 };
 
