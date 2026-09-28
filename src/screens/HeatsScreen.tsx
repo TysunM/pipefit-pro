@@ -28,16 +28,24 @@ import { useTheme } from '../theme/ThemeProvider';
 import { useHeats } from '../state/heats';
 import { useJoints } from '../state/joints';
 import { putHeat, removeHeat } from '../state/heatBook';
-import { HEAT_FORMS, Heat, differingAt, findClash, newHeat, traceability } from '../calc/heat';
+import { HEAT_FORMS, Heat, differingAt, findClash, newHeat, sameHeat, traceability } from '../calc/heat';
 import { isScratch } from '../state/register';
 import { HeatScanSheet } from '../components/HeatScanSheet';
+import { useSettings } from '../state/settings';
+import { HeatDetails, describeHeatDetails } from '../ai/heatFill';
 
 export function HeatsScreen() {
   const t = useTheme();
   const { book, apply } = useHeats();
   const { register } = useJoints();
 
+  const { settings } = useSettings();
   const [entry, setEntry] = useState('');
+  // What a smart-fill scan found to go with the heat it read. Applied only if
+  // that same heat is the one added, and only to a new entry: an existing
+  // heat's record is never rewritten by a scan.
+  const [scanned, setScanned] = useState<{ heat: string; details: HeatDetails } | null>(null);
+  const pending = scanned && sameHeat(scanned.heat, entry) ? scanned : null;
   const [open, setOpen] = useState<string | null>(null);
   const [scanning, setScanning] = useState(false);
 
@@ -61,7 +69,9 @@ export function HeatsScreen() {
       setEntry('');
       return;
     }
-    apply((b) => putHeat(b, newHeat(number, Date.now())));
+    const details = pending?.details ?? {};
+    apply((b) => putHeat(b, { ...newHeat(number, Date.now()), ...details }));
+    setScanned(null);
     setOpen(number);
     setEntry('');
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -119,6 +129,31 @@ export function HeatsScreen() {
           autoCapitalize="characters"
         />
       </FieldRow>
+
+      {pending && !clash?.identical && Object.keys(pending.details).length ? (
+        <View
+          style={{
+            marginHorizontal: t.layout.screenPadding,
+            marginBottom: t.space.lg,
+            padding: t.space.md,
+            borderRadius: t.radius.md,
+            borderWidth: 1,
+            borderColor: t.colors.border,
+            backgroundColor: t.colors.bgSubtle,
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: t.space.sm,
+          }}
+        >
+          <Ionicons name="sparkles-outline" size={17} color={t.colors.accent} />
+          <Text style={[t.type.caption, { color: t.colors.text, flex: 1 }]}>
+            {`From the scan: ${describeHeatDetails(pending.details)}. Filled in when you add it.`}
+          </Text>
+          <Pressable onPress={() => setScanned(null)} hitSlop={10} accessibilityRole="button" accessibilityLabel="Do not fill in from the scan">
+            <Ionicons name="close" size={18} color={t.colors.textMuted} />
+          </Pressable>
+        </View>
+      ) : null}
 
       {/* The reason this screen exists. */}
       {clash ? (
@@ -305,7 +340,11 @@ export function HeatsScreen() {
         visible={scanning}
         onClose={() => setScanning(false)}
         book={book.heats}
-        onPick={(heat) => setEntry(heat)}
+        smartFill={settings.smartFill}
+        onPick={(heat, details) => {
+          setEntry(heat);
+          setScanned(details && Object.keys(details).length ? { heat, details } : null);
+        }}
       />
 
     </Screen>

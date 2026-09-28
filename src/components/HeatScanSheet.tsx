@@ -13,6 +13,12 @@
 // The reading is on-device. No key in the APK for anybody to spend, and no
 // signal needed — which matters because stencils are read in racks, pits and
 // vaults, which is where the service worker exists for too.
+//
+// Smart fill is the one exception, and it is optional. With signal and the
+// setting on, the text read (never the photo) goes to Jev through the app's
+// Worker, which says which candidate is the heat and which grade, form, size
+// and schedule the marking gives — see ai/heatFill.ts. It only reorders and
+// suggests: the fitter still taps the heat, and sees what will be filled in.
 import React, { useRef, useState } from 'react';
 import { Image, Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -22,6 +28,8 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useTheme } from '../theme/ThemeProvider';
 import { Heat } from '../calc/heat';
 import { Candidate, scanForHeats, whyLabel } from '../calc/heatScan';
+import { HeatDetails, HeatFill, describeDetails, detailsOf, fetchHeatFill } from '../ai/heatFill';
+import { API_BASE } from '../ai/apiBase';
 
 /** Loaded lazily so a device with no OCR module still opens the sheet. */
 type Ocr = { recognizeText: (uri: string) => Promise<{ text: string }> };
@@ -45,7 +53,7 @@ async function loadOcr(): Promise<Ocr | null> {
 type Stage =
   | { at: 'camera' }
   | { at: 'reading'; uri: string }
-  | { at: 'read'; uri: string; found: Candidate[]; raw: string }
+  | { at: 'read'; uri: string; found: Candidate[]; raw: string; fill: 'off' | 'asking' | 'unavailable' | HeatFill }
   | { at: 'failed'; why: string };
 
 export function HeatScanSheet({
@@ -53,11 +61,15 @@ export function HeatScanSheet({
   onClose,
   onPick,
   book,
+  smartFill = false,
 }: {
   visible: boolean;
   onClose: () => void;
-  onPick: (heat: string) => void;
+  /** The heat tapped, and what smart fill found to go with it, if anything. */
+  onPick: (heat: string, details?: HeatDetails) => void;
   book: readonly Heat[];
+  /** Ask Jev to fill in the rest when there is signal. */
+  smartFill?: boolean;
 }) {
   const t = useTheme();
   const insets = useSafeAreaInsets();
@@ -93,7 +105,15 @@ export function HeatScanSheet({
       const result = await engine.recognizeText(shot.uri);
       const raw = result?.text ?? '';
       const found = scanForHeats(raw, book);
-      setStage({ at: 'read', uri: shot.uri, found, raw });
+      const asking = smartFill && raw.trim().length > 0;
+      setStage({ at: 'read', uri: shot.uri, found, raw, fill: asking ? 'asking' : 'off' });
+      if (asking) {
+        // In the background: the read is on screen and tappable meanwhile, and
+        // an answer for an old picture never lands on a new one.
+        void fetchHeatFill(API_BASE, raw, found.map((c) => c.text)).then((fill) =>
+          setStage((s) => (s.at === 'read' && s.uri === shot.uri ? { ...s, fill: fill ?? 'unavailable' } : s)),
+        );
+      }
       void Haptics.notificationAsync(
         found.length
           ? Haptics.NotificationFeedbackType.Success
@@ -115,8 +135,10 @@ export function HeatScanSheet({
       return (
         <View style={{ padding: t.layout.screenPadding, gap: t.space.lg }}>
           <Text style={[t.type.body, { color: t.colors.textMuted }]}>
-            The camera reads the stencil. The picture is processed on this phone and is not uploaded anywhere —
-            there is no account and no server to upload it to.
+            The camera reads the stencil, and the picture never leaves this phone.
+            {smartFill
+              ? ' With Smart fill on and signal, only the text it read is sent, to suggest the grade and size. Turn it off in Settings.'
+              : ' Nothing is sent anywhere.'}
           </Text>
           <Pressable
             onPress={() => void requestPermission()}
@@ -231,13 +253,16 @@ export function HeatScanSheet({
             record nobody questions.
           </Text>
         )}
-        {stage.found.map((c) => {
+        <FillNote t={t} fill={stage.fill} />
+        {orderByFill(stage.found, stage.fill).map((c) => {
           const suspect = c.why.kind === 'looksLikeBook';
+          const fill = typeof stage.fill === 'object' ? stage.fill : null;
+          const jevPick = fill?.heat?.value === c.text;
           return (
             <Pressable
               key={c.text}
               onPress={() => {
-                onPick(c.text);
+                onPick(c.text, fill ? detailsOf(fill) : undefined);
                 void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                 close();
               }}
@@ -273,6 +298,11 @@ export function HeatScanSheet({
                 <Text style={[t.type.caption, { color: suspect ? t.colors.warnText : t.colors.textMuted }]}>
                   {whyLabel(c.why)}
                 </Text>
+                {jevPick && fill?.heat ? (
+                  <Text style={[t.type.captionStrong, { color: t.colors.accent }]}>
+                    {`Jev picks this as the heat · ${Math.round(fill.heat.confidence * 100)}%`}
+                  </Text>
+                ) : null}
               </View>
               <Ionicons name="chevron-forward" size={16} color={t.colors.textFaint} />
             </Pressable>
@@ -335,5 +365,48 @@ export function HeatScanSheet({
 function Note({ t, text }: { t: ReturnType<typeof useTheme>; text: string }) {
   return (
     <Text style={[t.type.body, { color: t.colors.textMuted, padding: t.layout.screenPadding }]}>{text}</Text>
+  );
+}
+
+/** Jev's pick first, the scanner's own order otherwise. A book warning still shows wherever it lands. */
+function orderByFill(found: Candidate[], fill: 'off' | 'asking' | 'unavailable' | HeatFill): Candidate[] {
+  const pickText = typeof fill === 'object' ? fill.heat?.value : undefined;
+  if (!pickText) return found;
+  return [...found.filter((c) => c.text === pickText), ...found.filter((c) => c.text !== pickText)];
+}
+
+/** What smart fill is doing, and what it found to go with the heat. */
+function FillNote({ t, fill }: { t: ReturnType<typeof useTheme>; fill: 'off' | 'asking' | 'unavailable' | HeatFill }) {
+  if (fill === 'off') return null;
+  const box = {
+    marginHorizontal: t.layout.screenPadding,
+    marginBottom: t.space.md,
+    padding: t.space.md,
+    borderRadius: t.radius.md,
+    borderWidth: 1,
+    borderColor: t.colors.border,
+    backgroundColor: t.colors.bgSubtle,
+    flexDirection: 'row' as const,
+    gap: t.space.sm,
+  };
+  if (fill === 'asking' || fill === 'unavailable')
+    return (
+      <View style={box}>
+        <Ionicons name={fill === 'asking' ? 'sparkles-outline' : 'cloud-offline-outline'} size={17} color={t.colors.textMuted} />
+        <Text style={[t.type.caption, { color: t.colors.textMuted, flex: 1 }]}>
+          {fill === 'asking' ? 'Checking the read with Jev…' : 'Smart fill could not be reached. Pick the heat yourself; the rest can be typed in the book.'}
+        </Text>
+      </View>
+    );
+  const line = describeDetails(fill);
+  return (
+    <View style={box}>
+      <Ionicons name="sparkles-outline" size={17} color={t.colors.accent} />
+      <Text style={[t.type.caption, { color: t.colors.text, flex: 1 }]}>
+        {line
+          ? `Also on the marking: ${line}. Filled in with the heat you tap — check it against the steel.`
+          : 'Jev found nothing else on the marking it was sure of.'}
+      </Text>
+    </View>
   );
 }

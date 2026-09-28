@@ -42,6 +42,7 @@ export function readSettings(
   // anything. A number or a null in storage is dropped rather than shown.
   merged.projectId = typeof stored.projectId === 'string' ? stored.projectId.slice(0, PROJECT_ID_MAX) : defaults.projectId;
   merged.fitterName = typeof stored.fitterName === 'string' ? cleanPerson(stored.fitterName) : defaults.fitterName;
+  merged.smartFill = typeof stored.smartFill === 'boolean' ? stored.smartFill : defaults.smartFill;
   if (stored.look === LOOK) return { settings: merged, migrated: false };
   return { settings: { ...merged, themePreference: defaults.themePreference, look: LOOK }, migrated: true };
 }

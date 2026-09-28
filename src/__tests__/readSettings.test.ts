@@ -14,6 +14,7 @@ const DEFAULTS: Settings = {
   cutAllowance: 0.125,
   projectId: '',
   fitterName: '',
+  smartFill: true,
   look: LOOK,
 };
 
@@ -99,5 +100,15 @@ describe('the fitter\'s name', () => {
     expect(readSettings(JSON.stringify({ ...DEFAULTS, fitterName: 'J. Smith #412' }), DEFAULTS).settings.fitterName).toBe('J. Smith #412');
     expect(readSettings(JSON.stringify({ ...DEFAULTS, fitterName: 'x'.repeat(99) }), DEFAULTS).settings.fitterName).toHaveLength(PERSON_MAX);
     for (const bad of [7, null, {}]) expect(readSettings(JSON.stringify({ ...DEFAULTS, fitterName: bad }), DEFAULTS).settings.fitterName).toBe('');
+  });
+});
+
+describe('smart fill', () => {
+  test('on unless it was turned off, and only a real true or false is taken', () => {
+    const { smartFill, ...before } = DEFAULTS;
+    void smartFill;
+    expect(readSettings(JSON.stringify(before), DEFAULTS).settings.smartFill).toBe(true);
+    expect(readSettings(JSON.stringify({ ...DEFAULTS, smartFill: false }), DEFAULTS).settings.smartFill).toBe(false);
+    expect(readSettings(JSON.stringify({ ...DEFAULTS, smartFill: 'no' }), DEFAULTS).settings.smartFill).toBe(true);
   });
 });

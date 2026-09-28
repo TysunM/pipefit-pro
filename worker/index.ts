@@ -1,0 +1,87 @@
+// The one piece of the app that runs on a server
+// ------------------------------------------------
+// Everything else in PipeFit Pro runs on the phone. This Worker exists for one
+// reason: the TypeSafe API key cannot live in the app, because anyone can pull
+// a key out of an APK or a web bundle. So the key is a Worker secret, set once
+// with `npx wrangler secret put TYPESAFE_API_KEY`, and the app calls here.
+//
+// It is not a general relay. The app sends scan text and the scanner's heat
+// candidates; the questions Jev is asked are built here, from heatFill.ts, so
+// a copied URL can do nothing but fill a heat entry — capped in size, and
+// cheap. Everything that is not /api/* is the web app, served as it was.
+
+import { HEAT_FILL_PATH, MAX_TEXT, heatRequest } from '../src/ai/heatFill';
+
+export interface Env {
+  /** Set with `npx wrangler secret put TYPESAFE_API_KEY`. Never in the repo. */
+  TYPESAFE_API_KEY?: string;
+  /** TypeSafe's API root; defaults to https://api.typesafe.ai. */
+  TYPESAFE_BASE_URL?: string;
+  /** The web app's static files. */
+  ASSETS?: { fetch: (req: Request) => Promise<Response> };
+}
+
+/** How long Jev gets. It usually answers in well under a second; this is for a bad network day. */
+const UPSTREAM_MS = 8000;
+/** Largest body accepted, in bytes: the text cap plus room for candidates and JSON. */
+const MAX_BODY = MAX_TEXT * 2 + 2048;
+
+const CORS = {
+  'access-control-allow-origin': '*',
+  'access-control-allow-methods': 'POST, OPTIONS',
+  'access-control-allow-headers': 'content-type',
+  'access-control-max-age': '86400',
+};
+
+const json = (status: number, body: unknown): Response =>
+  new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json', ...CORS } });
+
+export async function handle(req: Request, env: Env, fetchImpl: typeof fetch = fetch): Promise<Response> {
+  const url = new URL(req.url);
+  if (!url.pathname.startsWith('/api/')) {
+    return env.ASSETS ? env.ASSETS.fetch(req) : new Response('Not found', { status: 404 });
+  }
+  if (url.pathname !== HEAT_FILL_PATH) return json(404, { error: 'not_found' });
+  if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
+  if (req.method !== 'POST') return json(405, { error: 'method_not_allowed' });
+
+  const key = env.TYPESAFE_API_KEY?.trim();
+  if (!key) return json(503, { error: 'not_configured' });
+
+  const raw = await req.text();
+  if (raw.length > MAX_BODY) return json(413, { error: 'too_large' });
+  let body: unknown;
+  try {
+    body = JSON.parse(raw);
+  } catch {
+    return json(400, { error: 'bad_json' });
+  }
+  const b = body as { text?: unknown; candidates?: unknown };
+  if (typeof b?.text !== 'string' || !b.text.trim()) return json(400, { error: 'no_text' });
+  const candidates = Array.isArray(b.candidates) ? b.candidates : [];
+
+  const payload = heatRequest(b.text, candidates as unknown[] as string[]);
+  const base = (env.TYPESAFE_BASE_URL?.trim() || 'https://api.typesafe.ai').replace(/\/+$/, '');
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), UPSTREAM_MS);
+  try {
+    const res = await fetchImpl(`${base}/v1/systemone`, {
+      method: 'POST',
+      headers: { authorization: `Bearer ${key}`, 'content-type': 'application/json' },
+      body: JSON.stringify(payload),
+      signal: ctrl.signal,
+    });
+    if (!res.ok) return json(502, { error: 'upstream', status: res.status });
+    const data = (await res.json()) as { answers?: unknown; model?: unknown };
+    // Only the answers go back: nothing about the key, the account or the usage.
+    return json(200, { answers: data?.answers ?? {}, model: typeof data?.model === 'string' ? data.model : undefined });
+  } catch {
+    return json(504, { error: 'upstream_unreachable' });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+export default {
+  fetch: (req: Request, env: Env) => handle(req, env),
+};
