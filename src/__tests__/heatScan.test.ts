@@ -203,6 +203,14 @@ describe('the false positives that would make it useless', () => {
     expect(cs[0]!.text).toBe('0M2947');
   });
 
+  it('does not take the grade after a heat as a second labelled heat', () => {
+    const cs = scanForHeats('HEAT E7Z419 ASTM A106 GR B 6" SCH 40 SMLS');
+    expect(cs[0]).toMatchObject({ text: 'E7Z419', why: { kind: 'labelled' } });
+    const spec = cs.find((c) => c.text === 'A106');
+    expect(spec?.why.kind).toBe('shape');
+    expect(spec!.score).toBeLessThan(25);
+  });
+
   it('offers nothing from a page of pure specification', () => {
     const cs = scanForHeats('ASTM A106 GRADE B SCH 40 SMLS PIPE NPS 4 CLASS 150');
     expect(cs.map((c) => c.text)).not.toContain('SCH');

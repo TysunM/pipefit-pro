@@ -177,6 +177,10 @@ export function scanForHeats(text: string, book: readonly Heat[] = []): Candidat
         const next = raw[j]!;
         if (labelOf(next)) continue;
         if (!couldBeHeat(next)) continue;
+        // `HEAT E7Z419 ASTM A106` — the grade is inside the look-ahead but is
+        // the next field, not a second heat. It is still offered below, on
+        // its own shape, which marks a spec down.
+        if (looksLikeSpec(normaliseHeat(next))) continue;
         offer(next, { kind: 'labelled', label }, SCORE.labelled - (j - i));
       }
       continue;
