@@ -1,5 +1,5 @@
 import React, { useMemo, useRef, useState } from 'react';
-import { PanResponder, Platform, View, type ViewStyle } from 'react-native';
+import { PanResponder, Platform, View, type GestureResponderEvent, type ViewStyle } from 'react-native';
 import Svg, { Circle, Defs, G, Line, Pattern, Polyline, Rect, Text as SvgText } from 'react-native-svg';
 import { useTheme } from '../../theme/ThemeProvider';
 import {
@@ -29,19 +29,22 @@ export type SketchMode = 'run' | 'pen' | 'note' | 'move';
 /** How close a finger has to land, on screen, to pick up a run where it was left. */
 const PICK_UP = 26;
 
-type Touch = { locationX: number; locationY: number };
+/**
+ * A finger, where the app's root has it. Never `locationX`: that is measured
+ * from whatever view is under the finger now, so a stroke dragged across a
+ * key on the paper suddenly reads from the key's own corner, and the line
+ * jumps across the sheet and back.
+ */
+type Touch = { pageX: number; pageY: number };
 
-const centroid = (ts: Touch[]): Pt => [
-  ts.reduce((s, t) => s + t.locationX, 0) / ts.length,
-  ts.reduce((s, t) => s + t.locationY, 0) / ts.length,
-];
+const centroid = (ts: Pt[]): Pt => [ts.reduce((s, q) => s + q[0], 0) / ts.length, ts.reduce((s, q) => s + q[1], 0) / ts.length];
 
 /** How far apart the first two fingers are, and the angle of the line between them. */
-const spanOf = (ts: Touch[]): { span: number; angle: number } => {
+const spanOf = (ts: Pt[]): { span: number; angle: number } => {
   const a = ts[0]!;
   const b = ts[1]!;
-  const dx = b.locationX - a.locationX;
-  const dy = b.locationY - a.locationY;
+  const dx = b[0] - a[0];
+  const dy = b[1] - a[1];
   return { span: Math.hypot(dx, dy), angle: Math.atan2(dy, dx) };
 };
 
@@ -100,7 +103,20 @@ export function IsoCanvas({
    * is on the reflection, so it is reflected back, and everything below —
    * picking up a run, snapping, anchoring a note — works on the page as drawn.
    */
-  const pagePoint = (x: number, y: number): Pt => flipPt(toPage([x, y], live.current.viewport), live.current.flip);
+  const pagePoint = (q: Pt): Pt => flipPt(toPage(q, live.current.viewport), live.current.flip);
+
+  /**
+   * Where the paper's corner is, in root coordinates. Taken when a gesture
+   * starts: the first finger has just landed on the paper itself (nothing
+   * drawn on it takes a touch), so there its own corner is the one
+   * `locationX` counts from, and the two readings together give it exactly.
+   */
+  const origin = useRef<Pt>([0, 0]);
+  const local = (f: Touch): Pt => [f.pageX - origin.current[0], f.pageY - origin.current[1]];
+  const fingers = (e: GestureResponderEvent): Pt[] => {
+    const ts = (e.nativeEvent.touches ?? []) as Touch[];
+    return ts.length ? ts.map(local) : [local(e.nativeEvent)];
+  };
 
   const start3 = useRef<L3>([0, 0, 0]);
   const startPage = useRef<Pt>([0, 0]);
@@ -133,12 +149,12 @@ export function IsoCanvas({
 
   // A finger landing or lifting mid-gesture starts the hold again from where
   // the page is, so the page never jumps to a new centre between fingers.
-  const beginGrab = (touches: Touch[]) => {
+  const beginGrab = (touches: Pt[]) => {
     const { viewport: v } = live.current;
     const two = touches.length >= 2 ? spanOf(touches) : { span: 0, angle: 0 };
     grab.current = {
       v,
-      at: touches.length ? centroid(touches) : [0, 0],
+      at: centroid(touches),
       span: two.span,
       angle: two.angle,
       twist: 0,
@@ -156,14 +172,16 @@ export function IsoCanvas({
         onMoveShouldSetPanResponder: () => true,
         onPanResponderTerminationRequest: () => false,
         onPanResponderGrant: (e) => {
-          const touches = (e.nativeEvent.touches ?? []) as Touch[];
+          const ne = e.nativeEvent;
+          origin.current = [ne.pageX - ne.locationX, ne.pageY - ne.locationY];
+          const touches = fingers(e);
           const { mode: m, viewport: v, corner: c } = live.current;
           moved.current = false;
           if (touches.length >= 2 || m === 'move') {
-            beginGrab(touches.length ? touches : [{ locationX: e.nativeEvent.locationX, locationY: e.nativeEvent.locationY }]);
+            beginGrab(touches);
             return;
           }
-          const p = pagePoint(e.nativeEvent.locationX, e.nativeEvent.locationY);
+          const p = pagePoint(local(ne));
           startPage.current = p;
           if (m === 'run') {
             const hit = nearestOf(p, nodesOnPage(), (x) => x.at, PICK_UP / v.scale);
@@ -177,13 +195,12 @@ export function IsoCanvas({
           }
         },
         onPanResponderMove: (e) => {
-          const raw = (e.nativeEvent.touches ?? []) as Touch[];
+          const ts = fingers(e);
           const { mode: m, corner: c, onViewport: setV } = live.current;
-          if (!grab.current && raw.length >= 2) beginGrab(raw);
-          if (grab.current && raw.length && raw.length !== grab.current.fingers) beginGrab(raw);
+          if (!grab.current && ts.length >= 2) beginGrab(ts);
+          if (grab.current && ts.length !== grab.current.fingers) beginGrab(ts);
           const gr = grab.current;
           if (gr) {
-            const ts = raw.length ? raw : [{ locationX: e.nativeEvent.locationX, locationY: e.nativeEvent.locationY }];
             let spread = 1;
             let turn = 0;
             if (ts.length >= 2 && gr.span > 0) {
@@ -199,7 +216,7 @@ export function IsoCanvas({
             moved.current = true;
             return;
           }
-          const p = pagePoint(e.nativeEvent.locationX, e.nativeEvent.locationY);
+          const p = pagePoint(local(e.nativeEvent));
           if (m === 'run') {
             const snap = snapRun(start3.current, p, c, g);
             if (snap.steps > 0) moved.current = true;
@@ -222,7 +239,7 @@ export function IsoCanvas({
             setDraft(null);
             return;
           }
-          const p = pagePoint(e.nativeEvent.locationX, e.nativeEvent.locationY);
+          const p = pagePoint(local(e.nativeEvent));
           if (m === 'run') {
             const snap = snapRun(start3.current, p, c, g);
             if (snap.steps > 0) commit({ kind: 'run', from: start3.current, to: snap.to });
