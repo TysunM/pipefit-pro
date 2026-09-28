@@ -11,7 +11,7 @@
 //
 // Everything here is pure; sketches.tsx binds it to the shared persistence.
 
-import { Bounds, Corner, Flip, L3, NO_FLIP, Pt, bounds, flipPt, lattice, nearestCounts, snapRun, tenth, toScreen } from '../calc/iso';
+import { Bounds, Corner, Flip, L3, NO_FLIP, Pt, bounds, flipPt, lattice, nearestCounts, rotPt, snapRun, tenth, toScreen } from '../calc/iso';
 import { cleanProject } from './project';
 
 /**
@@ -372,7 +372,7 @@ export function place(s: Stroke, c: Corner, g: number, f: Flip = NO_FLIP): Place
 }
 
 /** The page rectangle everything drawn sits in, from `c`, or null for a blank page. */
-export function sketchBounds(strokes: readonly Stroke[], c: Corner, g: number, f: Flip = NO_FLIP): Bounds | null {
+export function sketchBounds(strokes: readonly Stroke[], c: Corner, g: number, f: Flip = NO_FLIP, rot = 0): Bounds | null {
   const pts: Pt[] = [];
   for (const s of strokes) {
     const p = place(s, c, g, f);
@@ -380,7 +380,9 @@ export function sketchBounds(strokes: readonly Stroke[], c: Corner, g: number, f
       pts.push(p.at, [p.at[0] + (p.mirror ? -1 : 1) * p.text.length * 7.5, p.at[1] + (p.upside ? 14 : -14)]);
     } else for (const q of p.pts) pts.push(q);
   }
-  return bounds(pts);
+  // On a page turned on the desk, what has to fit the screen is the drawing
+  // as it now lies, not its bounds on the page turned with it.
+  return bounds(rot ? pts.map((q) => rotPt(q, rot)) : pts);
 }
 
 // ------------------------------------------------------------------ export

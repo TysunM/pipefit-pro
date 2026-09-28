@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Modal, Pressable, Text, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
 import { Screen } from '../components/Screen';
@@ -229,6 +230,15 @@ export function SpoolBuilderScreen({ route, navigation }: Props) {
   // has to know where the viewer is standing. The drawing owns that and says
   // when it changes.
   const [cam, setCam] = useState<Camera>(ISO_VIEW);
+  // Full screen: the drawing on its own, the whole phone, for a run too long
+  // to read in the square. Coming back, the drawing opens where it was left.
+  const [full, setFull] = useState(false);
+  const [returns, setReturns] = useState(0);
+  const leaveFull = () => {
+    setFull(false);
+    setReturns((n) => n + 1);
+  };
+  const insets = useSafeAreaInsets();
 
   // Whether the run is held to one vertical plane.
   //
@@ -467,8 +477,11 @@ export function SpoolBuilderScreen({ route, navigation }: Props) {
 
       {valid ? (
         <SpoolView
+          key={returns}
           spool={shown}
           onCamera={setCam}
+          initialCam={returns ? cam : undefined}
+          onFullScreen={() => setFull(true)}
           showLabels
           selectedRun={open}
           onPickRun={setOpen}
@@ -478,6 +491,27 @@ export function SpoolBuilderScreen({ route, navigation }: Props) {
           elbowText={elbowText}
         />
       ) : null}
+
+      <Modal visible={full && valid} animationType="fade" onRequestClose={leaveFull} statusBarTranslucent>
+        <View style={{ flex: 1, backgroundColor: t.colors.bg, paddingTop: insets.top, paddingBottom: insets.bottom }}>
+          {full && valid ? (
+            <SpoolView
+              fill
+              spool={shown}
+              onCamera={setCam}
+              initialCam={cam}
+              onFullScreen={leaveFull}
+              showLabels
+              selectedRun={open}
+              onPickRun={setOpen}
+              onResizeLeg={setLength}
+              lengthLabel={(v) => `${u.num(v)} ${u.unitName}`}
+              legText={legText}
+              elbowText={elbowText}
+            />
+          ) : null}
+        </View>
+      </Modal>
 
       {/* Anything that reshapes the drawing sits against the drawing. Down
           under the leg list these were a button you pressed and then scrolled

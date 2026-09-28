@@ -1,5 +1,5 @@
 import React, { useMemo, useRef, useState } from 'react';
-import { PanResponder, View, type ViewStyle } from 'react-native';
+import { PanResponder, Platform, View, type ViewStyle } from 'react-native';
 import Svg, { Circle, Defs, G, Pattern, Polyline, Rect, Text as SvgText } from 'react-native-svg';
 import { useTheme } from '../../theme/ThemeProvider';
 import {
@@ -8,16 +8,18 @@ import {
   ISO_GRID,
   L3,
   Pt,
+  TWIST_FROM,
   Viewport,
-  clampScale,
   distance,
   flipPt,
+  handWindow,
   nearestOf,
   screenToLattice,
   snapRun,
   thinStroke,
   toPage,
   toScreen,
+  wrapAngle,
 } from '../../calc/iso';
 import { Placed, Stroke, flipPlaced, place, runNodes, storedStroke } from '../../state/sketchStore';
 
@@ -33,6 +35,15 @@ const centroid = (ts: Touch[]): Pt => [
   ts.reduce((s, t) => s + t.locationY, 0) / ts.length,
 ];
 
+/** How far apart the first two fingers are, and the angle of the line between them. */
+const spanOf = (ts: Touch[]): { span: number; angle: number } => {
+  const a = ts[0]!;
+  const b = ts[1]!;
+  const dx = b.locationX - a.locationX;
+  const dy = b.locationY - a.locationY;
+  return { span: Math.hypot(dx, dy), angle: Math.atan2(dy, dx) };
+};
+
 /**
  * The paper.
  *
@@ -41,7 +52,10 @@ const centroid = (ts: Touch[]): Pt => [
  * end of any run picks it up from there. Pen: whatever the finger draws, for a
  * tie-in box, a valve, a cloud round a problem. Note: tap where a word should
  * go, and the sheet asks for the word; tap a word to change it. Move: drag
- * the page. Two fingers move and zoom the page whatever the tool.
+ * the page. Two fingers move, zoom and turn the page whatever the tool — the
+ * paper turned on the desk, so a long run can lie along the long side of the
+ * phone. It settles square when it comes near upright, on its side or upside
+ * down.
  *
  * The page has no edge. The window onto it is `viewport`, owned by the screen
  * above, which also decides when to shrink it so a growing run stays in view.
@@ -91,8 +105,22 @@ export function IsoCanvas({
   const startPage = useRef<Pt>([0, 0]);
   const pen = useRef<Pt[]>([]);
   const moved = useRef(false);
-  /** Two fingers, or the move tool: the page is being dragged, not drawn on. */
-  const grab = useRef<{ v: Viewport; at: Pt; span: number; pinch: boolean } | null>(null);
+  /**
+   * Two fingers, or the move tool: the page is being handled, not drawn on.
+   * `twist` is how far the fingers have turned, added up move by move so a
+   * turn past half a circle keeps going rather than jumping back; the page
+   * only starts turning once that passes TWIST_FROM, and `from` is where it
+   * passed, so it starts from where it was rather than with a jump.
+   */
+  const grab = useRef<{
+    v: Viewport;
+    at: Pt;
+    span: number;
+    angle: number;
+    twist: number;
+    from: number | null;
+    fingers: number;
+  } | null>(null);
 
   const nodesOnPage = () => {
     const { strokes: ss, corner: c } = live.current;
@@ -102,12 +130,20 @@ export function IsoCanvas({
   /** The run node nearest a page point, at any distance, or null when there are no runs. */
   const anchorFor = (p: Pt): L3 | null => nearestOf(p, nodesOnPage(), (x) => x.at, Infinity)?.n ?? null;
 
+  // A finger landing or lifting mid-gesture starts the hold again from where
+  // the page is, so the page never jumps to a new centre between fingers.
   const beginGrab = (touches: Touch[]) => {
     const { viewport: v } = live.current;
-    const ts = touches.length ? touches : [];
-    const at = ts.length ? centroid(ts) : [0, 0];
-    const span = ts.length >= 2 ? Math.hypot(ts[0]!.locationX - ts[1]!.locationX, ts[0]!.locationY - ts[1]!.locationY) : 0;
-    grab.current = { v, at: at as Pt, span, pinch: ts.length >= 2 };
+    const two = touches.length >= 2 ? spanOf(touches) : { span: 0, angle: 0 };
+    grab.current = {
+      v,
+      at: touches.length ? centroid(touches) : [0, 0],
+      span: two.span,
+      angle: two.angle,
+      twist: 0,
+      from: null,
+      fingers: touches.length,
+    };
     setDraft(null);
     pen.current = [];
   };
@@ -140,25 +176,25 @@ export function IsoCanvas({
           }
         },
         onPanResponderMove: (e) => {
-          const touches = (e.nativeEvent.touches ?? []) as Touch[];
+          const raw = (e.nativeEvent.touches ?? []) as Touch[];
           const { mode: m, corner: c, onViewport: setV } = live.current;
-          if (!grab.current && touches.length >= 2) beginGrab(touches);
+          if (!grab.current && raw.length >= 2) beginGrab(raw);
+          if (grab.current && raw.length && raw.length !== grab.current.fingers) beginGrab(raw);
           const gr = grab.current;
           if (gr) {
-            const ts = touches.length ? touches : [{ locationX: e.nativeEvent.locationX, locationY: e.nativeEvent.locationY }];
-            const at = centroid(ts);
-            let scale = gr.v.scale;
-            if (gr.pinch && ts.length >= 2 && gr.span > 0) {
-              const span = Math.hypot(ts[0]!.locationX - ts[1]!.locationX, ts[0]!.locationY - ts[1]!.locationY);
-              scale = clampScale(gr.v.scale * (span / gr.span));
+            const ts = raw.length ? raw : [{ locationX: e.nativeEvent.locationX, locationY: e.nativeEvent.locationY }];
+            let spread = 1;
+            let turn = 0;
+            if (ts.length >= 2 && gr.span > 0) {
+              const now = spanOf(ts);
+              spread = now.span / gr.span;
+              gr.twist += wrapAngle(now.angle - gr.angle);
+              gr.angle = now.angle;
+              if (gr.from === null && Math.abs(gr.twist) > TWIST_FROM) gr.from = Math.sign(gr.twist) * TWIST_FROM;
+              if (gr.from !== null) turn = gr.twist - gr.from;
             }
             // The page point that was under the fingers stays under them.
-            const k = scale / gr.v.scale;
-            setV({
-              scale,
-              tx: at[0] - (gr.at[0] - gr.v.tx) * k,
-              ty: at[1] - (gr.at[1] - gr.v.ty) * k,
-            });
+            setV(handWindow(gr.v, gr.at, centroid(ts), spread, turn));
             moved.current = true;
             return;
           }
@@ -229,15 +265,19 @@ export function IsoCanvas({
 
   const c = t.colors;
   const s = viewport.scale;
+  const rot = viewport.rot ?? 0;
   const tw = g * Math.sqrt(3);
   // The dots stay one screen size whatever the zoom, and go when they would
   // be a grey wash rather than dots.
   const dotR = 1.1 / s;
   const showDots = g * s >= 7;
-  const pageX0 = -viewport.tx / s;
-  const pageY0 = -viewport.ty / s;
-  const pageW = width / s;
-  const pageH = height / s;
+  // The patch of page the screen shows. Turned, the screen is a tilted
+  // window onto the page, so the dots cover every corner of it.
+  const seen = [toPage([0, 0], viewport), toPage([width, 0], viewport), toPage([0, height], viewport), toPage([width, height], viewport)];
+  const pageX0 = Math.min(...seen.map((q) => q[0]));
+  const pageY0 = Math.min(...seen.map((q) => q[1]));
+  const pageW = Math.max(...seen.map((q) => q[0])) - pageX0;
+  const pageH = Math.max(...seen.map((q) => q[1])) - pageY0;
 
   const drawPlaced = (p: Placed, key: string, preview: boolean) => {
     if (p.kind === 'note') {
@@ -297,7 +337,7 @@ export function IsoCanvas({
         ? 'Iso paper. Draw freehand.'
         : mode === 'note'
           ? 'Iso paper. Tap to place a note.'
-          : 'Iso paper. Drag to move the page.';
+          : 'Iso paper. Drag to move the page. Two fingers turn it.';
 
   return (
     <View
@@ -305,7 +345,9 @@ export function IsoCanvas({
       accessibilityLabel={label}
       // Nothing on the paper is text to select or an image to drag: a stroke
       // that started on a word must stay a stroke.
-      style={{ width, height, backgroundColor: c.well, userSelect: 'none' } as ViewStyle}
+      // touchAction: in a browser, two fingers on the paper are the paper's —
+      // left to the browser they pinch-zoom the whole page instead.
+      style={{ width, height, backgroundColor: c.well, userSelect: 'none', ...(Platform.OS === 'web' ? { touchAction: 'none' } : null) } as ViewStyle}
     >
       <Svg width={width} height={height} pointerEvents="none">
         <Defs>
@@ -317,7 +359,7 @@ export function IsoCanvas({
             <Circle cx={tw} cy={g} r={dotR} fill={c.borderStrong} />
           </Pattern>
         </Defs>
-        <G transform={`translate(${viewport.tx} ${viewport.ty}) scale(${s})`}>
+        <G transform={`translate(${viewport.tx} ${viewport.ty}) rotate(${(rot * 180) / Math.PI}) scale(${s})`}>
           {showDots ? <Rect x={pageX0} y={pageY0} width={pageW} height={pageH} fill="url(#isodots)" /> : null}
           {strokes.map((st, i) => drawPlaced(place(st, corner, g, flip), `s${i}`, false))}
           {draft ? drawPlaced(flipPlaced(draft, flip), 'draft', true) : null}

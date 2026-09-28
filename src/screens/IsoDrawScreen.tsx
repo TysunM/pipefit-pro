@@ -8,10 +8,10 @@ import { Screen } from '../components/Screen';
 import { Segmented } from '../components/Segmented';
 import { AccentButton, GhostButton } from '../components/Buttons';
 import { IsoCanvas, SketchMode } from '../components/sketch/IsoCanvas';
-import { Compass, FlipLabel, PageBar } from '../components/sketch/PageControls';
+import { Compass, FlipLabel, PaperKey } from '../components/sketch/PageControls';
 import { Theme, useTheme } from '../theme/ThemeProvider';
 import { useSketches } from '../state/sketches';
-import { Corner, Flip, ISO_GRID, L3, NO_FLIP, Pt, Viewport, contained, fitViewport, tenth, turnOver, zoomAbout } from '../calc/iso';
+import { Corner, Flip, ISO_GRID, L3, NO_FLIP, Pt, Viewport, contained, fitViewport, holding, tenth, toPage, turnDegrees, turnOver } from '../calc/iso';
 import { MAX_NOTE, Stroke, getSketch, sketchBounds, sketchToSvg, withFlip, withStrokes } from '../state/sketchStore';
 import { esc } from '../print/spoolSvg';
 import { shareSheet } from '../print/share';
@@ -22,8 +22,15 @@ const HINT: Record<SketchMode, string> = {
   run: 'Drag to draw a line; it follows the nearest axis. Start near the end of a line to carry on from it.',
   pen: 'Draw freehand: a tie-in box, a valve, a cloud round a problem.',
   note: 'Tap where a word or a measurement goes. Tap a word to change it.',
-  move: 'Drag to move the page. Two fingers move and zoom it from any tool.',
+  move: 'Drag to move the page. Two fingers move, zoom and turn it from any tool; tap the compass to square it up.',
 };
+
+const TOOLS: { value: SketchMode; label: string; icon: 'analytics-outline' | 'create-outline' | 'text-outline' | 'hand-left-outline' }[] = [
+  { value: 'run', label: 'Run', icon: 'analytics-outline' },
+  { value: 'pen', label: 'Pen', icon: 'create-outline' },
+  { value: 'note', label: 'Note', icon: 'text-outline' },
+  { value: 'move', label: 'Move', icon: 'hand-left-outline' },
+];
 
 /** Room left round a drawing when the page is fitted to the screen. */
 const FIT_MARGIN = 28;
@@ -56,10 +63,22 @@ export function IsoDrawScreen({ navigation, route }: Props) {
   const [note, setNote] = useState<{ at: Pt; anchor: L3 | null; index: number | undefined } | null>(null);
   const [confirmClear, setConfirmClear] = useState(false);
   const [word, setWord] = useState<string | null>(null);
+  // Full screen: the paper takes the whole phone. The header, the hints and
+  // the buttons under the paper go; the tools and undo sit on the paper.
+  const [full, setFull] = useState(false);
 
   useEffect(() => {
-    navigation.setOptions({ title: sketch?.name ?? 'Sketch' });
-  }, [navigation, sketch?.name]);
+    navigation.setOptions({ title: sketch?.name ?? 'Sketch', headerShown: !full });
+  }, [navigation, sketch?.name, full]);
+
+  // Back, full screen, comes out of full screen rather than out of the sketch.
+  useEffect(() => {
+    if (!full) return;
+    return navigation.addListener('beforeRemove', (e) => {
+      e.preventDefault();
+      setFull(false);
+    });
+  }, [navigation, full]);
 
   useEffect(() => {
     if (!word) return;
@@ -89,20 +108,46 @@ export function IsoDrawScreen({ navigation, route }: Props) {
     });
   };
 
-  /** Fit everything drawn onto the screen, never larger than life size. */
+  /** Fit everything drawn onto the screen, never larger than life size, turned as it is. */
   const fit = (everything = false) => {
     if (!size.w || !size.h) return;
-    const b = sketchBounds(strokes, corner, ISO_GRID, flip);
+    const rot = viewport.rot ?? 0;
+    const b = sketchBounds(strokes, corner, ISO_GRID, flip, rot);
     if (!b) {
-      setViewport({ scale: 1, tx: size.w / 2, ty: size.h / 2 });
+      setViewport({ scale: 1, rot, tx: size.w / 2, ty: size.h / 2 });
       return;
     }
-    if (everything || !contained(b, viewport, size.w, size.h, FIT_MARGIN)) setViewport(fitViewport(b, size.w, size.h, FIT_MARGIN, 1));
+    if (everything || !contained(b, viewport, size.w, size.h, FIT_MARGIN)) setViewport(fitViewport(b, size.w, size.h, FIT_MARGIN, 1, rot));
   };
 
-  // The page opens centred, and shrinks whenever a stroke lands off the
-  // screen, so a run that grows is always all in view. It never grows back on
-  // its own: a man who zoomed in to work on a corner is left there.
+  /**
+   * Back upright, about the middle of the screen, at the same zoom — and the
+   * right way up if the sheet was turned over top to bottom, which the turn
+   * now does instead.
+   */
+  const squareUp = () => {
+    if (flip.upside) turnSheet({ ...flip, upside: false }, 'y');
+    if (!size.w || !size.h) return;
+    const mid: Pt = [size.w / 2, size.h / 2];
+    setViewport((v) => holding({ ...v, rot: 0 }, toPage(mid, v), mid));
+  };
+
+  // Going in or out of full screen changes the paper's size. The middle of
+  // what was shown stays the middle.
+  const lastSize = useRef({ w: 0, h: 0 });
+  const onPaper = (w: number, h: number) => {
+    const old = lastSize.current;
+    if (old.w && old.h && (old.w !== w || old.h !== h)) {
+      setViewport((v) => ({ ...v, tx: v.tx + (w - old.w) / 2, ty: v.ty + (h - old.h) / 2 }));
+    }
+    lastSize.current = { w, h };
+    setSize({ w, h });
+  };
+
+  // The page opens centred, and shrinks when a new stroke lands off the
+  // screen, so a run that grows is always all in view. A stroke that lands
+  // on the screen leaves the view alone: a man zoomed in on one end of a long
+  // run is left there, not thrown back out to the whole sheet every line.
   const laidOut = useRef(false);
   const seen = useRef(0);
   useEffect(() => {
@@ -115,8 +160,9 @@ export function IsoDrawScreen({ navigation, route }: Props) {
       return;
     }
     if (strokes.length > seen.current) {
+      const fresh = sketchBounds(strokes.slice(seen.current), corner, ISO_GRID, flip, viewport.rot ?? 0);
       seen.current = strokes.length;
-      fit();
+      if (fresh && !contained(fresh, viewport, size.w, size.h, FIT_MARGIN)) fit(true);
     } else seen.current = strokes.length;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [strokes.length, size.w, size.h]);
@@ -145,35 +191,36 @@ export function IsoDrawScreen({ navigation, route }: Props) {
     if (!r.ok) setWord(r.why);
   };
 
+  const rot = viewport.rot ?? 0;
+  const turned = turnDegrees(rot);
+  const lift = full ? insets.bottom : 0;
+
   return (
     <Screen scroll={false}>
-      <View style={{ paddingTop: t.space.md }}>
-        <Segmented
-          options={[
-            { value: 'run' as SketchMode, label: 'Run' },
-            { value: 'pen' as SketchMode, label: 'Pen' },
-            { value: 'note' as SketchMode, label: 'Note' },
-            { value: 'move' as SketchMode, label: 'Move' },
-          ]}
-          selected={mode}
-          onSelect={setMode}
-        />
-        <Text style={[t.type.caption, { color: word ? t.colors.warnText : t.colors.textMuted, paddingHorizontal: t.layout.screenPadding, marginTop: -t.space.sm, marginBottom: t.space.md }]} numberOfLines={2}>
-          {word ?? HINT[mode]}
-        </Text>
-      </View>
+      {full ? null : (
+        <View style={{ paddingTop: t.space.md }}>
+          <Segmented options={TOOLS.map(({ value, label }) => ({ value, label }))} selected={mode} onSelect={setMode} />
+          <Text style={[t.type.caption, { color: word ? t.colors.warnText : t.colors.textMuted, paddingHorizontal: t.layout.screenPadding, marginTop: -t.space.sm, marginBottom: t.space.md }]} numberOfLines={2}>
+            {word ?? HINT[mode]}
+          </Text>
+        </View>
+      )}
 
       <View
-        onLayout={(e) => setSize({ w: Math.floor(e.nativeEvent.layout.width), h: Math.floor(e.nativeEvent.layout.height) })}
-        style={{
-          flex: 1,
-          marginHorizontal: t.layout.screenPadding,
-          borderRadius: t.radius.md,
-          borderWidth: 1,
-          borderColor: t.colors.wellEdge,
-          overflow: 'hidden',
-          backgroundColor: t.colors.well,
-        }}
+        onLayout={(e) => onPaper(Math.floor(e.nativeEvent.layout.width), Math.floor(e.nativeEvent.layout.height))}
+        style={
+          full
+            ? { flex: 1, marginTop: insets.top, overflow: 'hidden', backgroundColor: t.colors.well }
+            : {
+                flex: 1,
+                marginHorizontal: t.layout.screenPadding,
+                borderRadius: t.radius.md,
+                borderWidth: 1,
+                borderColor: t.colors.wellEdge,
+                overflow: 'hidden',
+                backgroundColor: t.colors.well,
+              }
+        }
       >
         {size.w > 0 && size.h > 0 ? (
           <Animated.View style={{ transform: [folding === 'x' ? { scaleX: fold } : { scaleY: fold }] }}>
@@ -191,47 +238,58 @@ export function IsoDrawScreen({ navigation, route }: Props) {
             />
           </Animated.View>
         ) : null}
-        <View style={{ position: 'absolute', top: 10, right: 10, alignItems: 'flex-end', gap: 4 }} pointerEvents="none">
-          <Compass corner={corner} flip={flip} />
+        <View style={{ position: 'absolute', top: 10, right: 10 }}>
+          <Compass corner={corner} flip={flip} rot={rot} onSquare={squareUp} />
         </View>
-        <View style={{ position: 'absolute', left: 10, bottom: 10, flexDirection: 'row', alignItems: 'center', gap: 6 }} pointerEvents="none">
+        {full ? (
+          <View style={{ position: 'absolute', top: 10, left: 10, flexDirection: 'row', gap: 6 }} accessibilityLabel="Tools">
+            {TOOLS.map((tool) => (
+              <PaperKey key={tool.value} icon={tool.icon} label={tool.label} on={mode === tool.value} onPress={() => setMode(tool.value)} />
+            ))}
+          </View>
+        ) : null}
+        <View style={{ position: 'absolute', left: 10, bottom: 10 + lift, flexDirection: 'row', alignItems: 'center', gap: 6 }} pointerEvents="none">
           <FlipLabel flip={flip} />
           <Text style={[t.type.labelSmall, { color: t.colors.textFaint }]}>{`· ${Math.round(viewport.scale * 100)}%`}</Text>
+          {turned ? <Text style={[t.type.labelSmall, { color: t.colors.accent }]}>{`· ${turned}°`}</Text> : null}
+        </View>
+        <View style={{ position: 'absolute', right: 10, bottom: 10 + lift, flexDirection: 'row', gap: 6 }} accessibilityLabel="Sheet controls">
+          {full ? <PaperKey icon="arrow-undo-outline" label="Undo" onPress={() => edit((prev) => prev.slice(0, -1))} /> : null}
+          <PaperKey
+            icon="swap-horizontal-outline"
+            label={flip.mirror ? 'Turn the sheet back, unmirrored' : 'Mirror the sheet left for right'}
+            on={flip.mirror}
+            onPress={() => turnSheet({ ...flip, mirror: !flip.mirror }, 'x')}
+          />
+          <PaperKey icon="scan-outline" label="Fit the drawing to the screen" onPress={() => fit(true)} />
+          <PaperKey icon={full ? 'contract-outline' : 'expand-outline'} label={full ? 'Leave full screen' : 'Full screen'} on={full} onPress={() => setFull((f) => !f)} />
         </View>
       </View>
 
-      <View style={{ paddingHorizontal: t.layout.screenPadding, paddingTop: t.space.md }}>
-        <PageBar
-          flip={flip}
-          onFlipUp={() => turnSheet({ ...flip, upside: !flip.upside }, 'y')}
-          onMirror={() => turnSheet({ ...flip, mirror: !flip.mirror }, 'x')}
-          onZoom={(f) => setViewport((v) => zoomAbout(v, f, [size.w / 2, size.h / 2]))}
-          onFit={() => fit(true)}
-        />
-      </View>
-
-      <View style={{ flexDirection: 'row', gap: t.space.md, paddingHorizontal: t.layout.screenPadding, paddingTop: t.space.md, paddingBottom: insets.bottom + t.space.md }}>
-        {confirmClear ? (
-          <>
-            <GhostButton label="Keep" style={{ flex: 1 }} onPress={() => setConfirmClear(false)} />
-            <GhostButton
-              label="Clear the page"
-              icon="trash-outline"
-              style={{ flex: 2 }}
-              onPress={() => {
-                setConfirmClear(false);
-                edit(() => []);
-              }}
-            />
-          </>
-        ) : (
-          <>
-            <GhostButton label="Undo" icon="arrow-undo-outline" style={{ flex: 1 }} onPress={() => edit((prev) => prev.slice(0, -1))} />
-            <GhostButton label="Clear" icon="trash-outline" style={{ flex: 1 }} onPress={() => setConfirmClear(true)} />
-            <AccentButton label="Share" icon="share-outline" style={{ flex: 1 }} onPress={() => void share()} />
-          </>
-        )}
-      </View>
+      {full ? null : (
+        <View style={{ flexDirection: 'row', gap: t.space.md, paddingHorizontal: t.layout.screenPadding, paddingTop: t.space.md, paddingBottom: insets.bottom + t.space.md }}>
+          {confirmClear ? (
+            <>
+              <GhostButton label="Keep" style={{ flex: 1 }} onPress={() => setConfirmClear(false)} />
+              <GhostButton
+                label="Clear the page"
+                icon="trash-outline"
+                style={{ flex: 2 }}
+                onPress={() => {
+                  setConfirmClear(false);
+                  edit(() => []);
+                }}
+              />
+            </>
+          ) : (
+            <>
+              <GhostButton label="Undo" icon="arrow-undo-outline" style={{ flex: 1 }} onPress={() => edit((prev) => prev.slice(0, -1))} />
+              <GhostButton label="Clear" icon="trash-outline" style={{ flex: 1 }} onPress={() => setConfirmClear(true)} />
+              <AccentButton label="Share" icon="share-outline" style={{ flex: 1 }} onPress={() => void share()} />
+            </>
+          )}
+        </View>
+      )}
 
       <NoteSheet
         t={t}
