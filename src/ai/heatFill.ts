@@ -31,14 +31,41 @@ export const MAX_CANDIDATES = 12;
 export const MAX_CANDIDATE_LEN = 32;
 
 /**
- * How sure Jev has to be before an answer is offered. A starting point, set
- * to err on the side of leaving a field blank: a blank field costs a few
- * taps, a wrong grade on a heat record costs a great deal more. To be tuned
- * against real stencils and certs.
+ * How sure Jev has to be before an answer is offered. Set from the lab
+ * (tools/jev-lab.mjs, 28 markings): with the checks below, no field offered a
+ * wrong value at any threshold from 0.4 up, and most fields not from 0.3.
+ * 0.5 keeps a margin, because 28 markings cannot justify trusting a
+ * 30%-sure answer, and a blank field costs a few taps where a wrong grade on
+ * a heat record costs a great deal more. Re-run the lab on real stencils
+ * before moving it.
  */
-export const OFFER_AT = 0.6;
+export const OFFER_AT = 0.5;
 
 type Option<T> = { key: string; value: T; label: string; about: string };
+
+/**
+ * What a specification can mark. A pipe spec marks pipe, a fitting spec a
+ * fitting, a bolting spec bolting; a forging spec a flange or a forged
+ * fitting. This is known, not judged, so it is code: when Jev names the grade
+ * and the form and the two cannot both be true, the grade wins.
+ */
+const PIPE: readonly HeatForm[] = ['pipe'];
+const FITTING: readonly HeatForm[] = ['fitting'];
+const FORGING: readonly HeatForm[] = ['flange', 'fitting'];
+const BOLTING: readonly HeatForm[] = ['bolting'];
+const PLATE: readonly HeatForm[] = ['plate'];
+
+const MATERIAL_FORMS: Record<string, readonly HeatForm[]> = {
+  a106b: PIPE, a106c: PIPE, a53b: PIPE, api5lb: PIPE, a333g6: PIPE, a335p11: PIPE, a335p22: PIPE, a335p91: PIPE,
+  a312tp304: PIPE, a312tp316: PIPE,
+  a105: FORGING, a350lf2: FORGING, a182f304: FORGING, a182f316: FORGING, a182f11: FORGING, a182f22: FORGING, a182f91: FORGING,
+  a234wpb: FITTING, a420wpl6: FITTING, a403wp304: FITTING, a403wp316: FITTING,
+  a193b7: BOLTING, a194_2h: BOLTING, a320l7: BOLTING,
+  a516g70: PLATE,
+};
+
+/** Grades whose pipe takes the stainless schedules (5S, 10S, 40S, 80S; ASME B36.19). */
+const STAINLESS = new Set(['a312tp304', 'a312tp316', 'a182f304', 'a182f316', 'a403wp304', 'a403wp316']);
 
 const MATERIALS: Option<string>[] = [
   ['a106b', 'A106 Gr B', 'ASTM A106 / ASME SA-106 Grade B carbon steel seamless pipe'],
@@ -94,7 +121,18 @@ const SCHEDULES: Option<string>[] = SCHEDULE_LIST.map((s) => ({
   key: `sch${s.toLowerCase()}`,
   value: s,
   label: s === 'STD' || s === 'XS' || s === 'XXS' ? s : `SCH ${s}`,
-  about: s === 'STD' ? 'Standard weight (STD)' : s === 'XS' ? 'Extra strong (XS)' : s === 'XXS' ? 'Double extra strong (XXS)' : `Schedule ${s}`,
+  about:
+    s === 'STD'
+      ? 'Standard weight: marked STD or STD WT'
+      : s === 'XS'
+        ? 'Extra strong: marked XS or XH'
+        : s === 'XXS'
+          ? 'Double extra strong: marked XXS or XXH'
+          : s.endsWith('S')
+            ? `Schedule ${s}, the stainless schedule: only when an S follows the number on the marking (${s}). SCH ${s.slice(0, -1)} with no S is not this`
+            : SCHEDULE_LIST.includes(`${s}S`)
+              ? `Schedule ${s}: marked SCH ${s} or SCH${s}, with no S after the number`
+              : `Schedule ${s}: marked SCH ${s} or SCH${s}`,
 }));
 
 /** The question JSON TypeSafe's API takes: POST /v1/systemone, `questions`. */
@@ -209,7 +247,31 @@ export function readHeatAnswers(answers: unknown, candidates: readonly string[],
   if (nps) fill.nps = nps;
   const schedule = pick(a.schedule, SCHEDULES, at);
   if (schedule) fill.schedule = schedule;
-  return fill;
+  return consistent(fill);
+}
+
+/**
+ * Where the answers cannot all be true, what the grade says wins, because the
+ * grade is a fact about the spec and the rest are judgements. The lab caught
+ * both of these: `A420 WPL6 … CONC RED` read as pipe at 96%, and a carbon
+ * steel `SCH 40` read as the stainless 40S.
+ */
+function consistent(fill: HeatFill): HeatFill {
+  const key = fill.material ? MATERIALS.find((m) => m.value === fill.material!.value)?.key : undefined;
+  if (!key || !fill.material) return fill;
+  const out: HeatFill = { ...fill };
+  const allowed = MATERIAL_FORMS[key];
+  if (allowed) {
+    if (out.form && !allowed.includes(out.form.value)) delete out.form;
+    // One form the grade can be: that is the form, as sure as the grade is.
+    if (!out.form && allowed.length === 1) {
+      const f = FORMS.find((o) => o.value === allowed[0]);
+      if (f) out.form = { value: f.value, label: f.label, confidence: fill.material.confidence };
+    }
+  }
+  // A stainless schedule on a grade that is not stainless is a misread: left blank, not guessed.
+  if (out.schedule && out.schedule.value.endsWith('S') && !STAINLESS.has(key)) delete out.schedule;
+  return out;
 }
 
 /** The entry fields a fill would set, for when the heat is added. */

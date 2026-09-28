@@ -137,7 +137,7 @@ export function HeatScanSheet({
           <Text style={[t.type.body, { color: t.colors.textMuted }]}>
             The camera reads the stencil, and the picture never leaves this phone.
             {smartFill
-              ? ' With Smart fill on and signal, only the text it read is sent, to suggest the grade and size. Turn it off in Settings.'
+              ? ' With Smart help on and signal, only the text it read is sent, to suggest the grade and size. Turn it off in Settings.'
               : ' Nothing is sent anywhere.'}
           </Text>
           <Pressable
@@ -394,7 +394,7 @@ function FillNote({ t, fill }: { t: ReturnType<typeof useTheme>; fill: 'off' | '
       <View style={box}>
         <Ionicons name={fill === 'asking' ? 'sparkles-outline' : 'cloud-offline-outline'} size={17} color={t.colors.textMuted} />
         <Text style={[t.type.caption, { color: t.colors.textMuted, flex: 1 }]}>
-          {fill === 'asking' ? 'Checking the read with Jev…' : 'Smart fill could not be reached. Pick the heat yourself; the rest can be typed in the book.'}
+          {fill === 'asking' ? 'Checking the read with Jev…' : 'Jev could not be reached. Pick the heat yourself; the rest can be typed in the book.'}
         </Text>
       </View>
     );

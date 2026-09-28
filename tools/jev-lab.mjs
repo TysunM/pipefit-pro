@@ -16,7 +16,8 @@
 // minus the key. The whole run is a few hundred thousand input tokens.
 
 import { mkdirSync, writeFileSync } from 'node:fs';
-import { JEV_MODEL, OFFER_AT, cleanCandidates, cleanText, heatRequest, readHeatAnswers } from '../src/ai/heatFill';
+import { JEV_MODEL, OFFER_AT, heatRequest, readHeatAnswers } from '../src/ai/heatFill';
+import { BEST_AT, handbookRequest, readHandbookAnswer } from '../src/ai/handbookPick';
 import { scanForHeats } from '../src/calc/heatScan';
 import { normaliseHeat } from '../src/calc/heat';
 import { REFERENCE_TABLES, searchReference } from '../src/calc/reference';
@@ -121,53 +122,11 @@ const HANDBOOK_CASES = [
 
 // -------------------------------------------------------------- the questions
 
-/** The shipped heat questions, with each candidate shown where it sits in the text. */
-function contextRequest(text, candidates) {
-  const req = heatRequest(text, candidates);
-  const heat = req.questions.heat;
-  if (!heat) return req;
-  const clean = cleanText(text);
-  cleanCandidates(candidates).forEach((c, i) => {
-    const at = clean.indexOf(c);
-    if (at < 0) return;
-    const from = Math.max(0, at - 28);
-    const to = Math.min(clean.length, at + c.length + 28);
-    heat.criteria[`c${i}`] = `The string "${c}", which appears in: "${from ? '…' : ''}${clean.slice(from, to)}${to < clean.length ? '…' : ''}"`;
-  });
-  return req;
-}
-
-const HEAT_VARIANTS = { shipped: heatRequest, context: contextRequest };
-
-const TERMS =
-  'Trade terms: ell = elbow; C-F or C-E = centre to face or end; LR/SR = long/short radius; takeout = centre to end; ' +
-  '# or lb = pressure class; sweat = solder; NPT = pipe thread; WN = weld neck; hanger = support.';
-
-function handbookRequest(query, variant) {
-  const rich = variant !== 'titles';
-  const criteria = {};
-  REFERENCE_TABLES.forEach((t, i) => {
-    criteria[`t${i}`] = rich
-      ? `${t.title} (${t.group}). Columns: ${t.columns.map((c) => c.label).filter(Boolean).join(', ')}.${t.note ? ' ' + t.note : ''}`
-      : t.title;
-  });
-  criteria.none = 'None of these tables answers it';
-  return {
-    model: JEV_MODEL,
-    state: variant === 'terms' ? { query, trade_terms: TERMS } : { query },
-    questions: {
-      table: {
-        type: 'choice',
-        instructions:
-          'A pipefitter typed `query` into the search box of a pipefitting handbook. Which table would answer it? ' +
-          'Choose none if no table here holds the answer.',
-        criteria,
-      },
-    },
-  };
-}
-
-const HANDBOOK_VARIANTS = ['titles', 'rich', 'terms'];
+// Both experiments ask exactly what the app asks and read the answers exactly
+// as the app reads them (src/ai/heatFill.ts, src/ai/handbookPick.ts), so a run
+// measures what ships. The first run (2026-09-28) also tried the heat
+// candidates shown in context and the tables described by title alone; neither
+// beat what is here, so they are gone.
 
 // -------------------------------------------------------------------- calling
 
@@ -251,37 +210,36 @@ async function heatExperiment(log) {
   log.heatScanner = scanned.map(({ id, candidates, covered, top1 }) => ({ id, candidates, covered, top1 }));
 
   const sample = heatRequest(HEAT_CASES[0].text, scanned[0].candidates);
-  console.log(`Request size: ~${JSON.stringify(sample).length} characters each, ${HEAT_CASES.length * Object.keys(HEAT_VARIANTS).length} requests`);
+  console.log(`Request size: ~${JSON.stringify(sample).length} characters each, ${HEAT_CASES.length} requests`);
   if (DRY) return;
 
-  log.heat = {};
-  for (const [name, build] of Object.entries(HEAT_VARIANTS)) {
+  {
     const runs = await pool(
       scanned.map((c) => async () => {
-        const body = build(c.text, c.candidates);
+        const body = heatRequest(c.text, c.candidates);
         const data = await ask(body);
-        // Every answer that is not "none", whatever its confidence; the
-        // threshold is applied below, so one call serves every threshold.
-        const fill = readHeatAnswers(data.answers, c.candidates, 0);
-        return { id: c.id, truth: c.truth, candidates: c.candidates, fill, answers: data.answers, body };
+        // Read at every threshold the way the app reads at its own, checks
+        // between the answers included, so one call serves every threshold.
+        const fills = Object.fromEntries(THRESHOLDS.map((t) => [t, readHeatAnswers(data.answers, c.candidates, t)]));
+        return { id: c.id, truth: c.truth, candidates: c.candidates, fills, answers: data.answers, body };
       }),
     );
-    log.heat[name] = runs;
+    log.heat = runs;
 
-    console.log(`\n-- variant: ${name} --`);
     console.log(`${pad('field', 9)}${THRESHOLDS.map((t) => pad(`@${t}`, 12)).join('')}   (right, incl. rightly blank / wrong / missed)`);
     for (const f of FIELDS) {
       const row = THRESHOLDS.map((t) => {
-        const js = runs.map((r) => judge(f, r.fill[f], r.truth[f], t));
+        const js = runs.map((r) => judge(f, r.fills[t][f], r.truth[f], t));
         return pad(`${js.filter((j) => j === 'right' || j === 'blank').length}/${js.filter((j) => j === 'wrong').length}/${js.filter((j) => j === 'missed').length}`, 12);
       });
       console.log(`${pad(f, 9)}${row.join('')}`);
     }
     // The ones that matter most: a wrong value offered at the shipped threshold.
     const wrong = [];
+    const atShipped = (r) => readHeatAnswers(r.answers, r.candidates, OFFER_AT);
     for (const r of runs)
       for (const f of FIELDS) {
-        const o = r.fill[f];
+        const o = atShipped(r)[f];
         if (judge(f, o, r.truth[f], OFFER_AT) === 'wrong')
           wrong.push(`  WRONG @${OFFER_AT} ${r.id}.${f}: offered ${o.label} (${Math.round(o.confidence * 100)}%), truth ${r.truth[f].map((t) => t ?? 'blank').join(' or ')}`);
       }
@@ -292,7 +250,6 @@ async function heatExperiment(log) {
 
 async function handbookExperiment(log) {
   console.log('\n== Handbook search ==');
-  const idOf = (i) => REFERENCE_TABLES[i]?.id;
   const base = HANDBOOK_CASES.map(({ q, ok }) => {
     const hits = searchReference(q).map((t) => t.id);
     const right = ok.length ? hits.some((h) => ok.includes(h)) : hits.length === 0;
@@ -300,34 +257,26 @@ async function handbookExperiment(log) {
   });
   console.log(`Today's search: a right table anywhere in the results ${pct(base.filter((b) => b.right).length, base.length)}, in the first three ${pct(base.filter((b) => b.first3).length, base.length)} (${base.length} queries)`);
   log.handbookBaseline = base;
-  console.log(`Request size: ~${JSON.stringify(handbookRequest(HANDBOOK_CASES[0].q, 'rich')).length} characters for rich, ${HANDBOOK_CASES.length * HANDBOOK_VARIANTS.length} requests`);
+  console.log(`Request size: ~${JSON.stringify(handbookRequest(HANDBOOK_CASES[0].q)).length} characters, ${HANDBOOK_CASES.length} requests`);
   if (DRY) return;
 
-  log.handbook = {};
-  for (const variant of HANDBOOK_VARIANTS) {
-    const runs = await pool(
-      HANDBOOK_CASES.map(({ q, ok }) => async () => {
-        const data = await ask(handbookRequest(q, variant));
-        const a = data.answers?.table ?? {};
-        const probs = a.probabilities && typeof a.probabilities === 'object' ? a.probabilities : {};
-        const ranked = Object.entries(probs)
-          .sort((x, y) => y[1] - x[1])
-          .map(([k]) => (k === 'none' ? 'none' : idOf(Number(k.slice(1)))));
-        const top = a.choice === 'none' ? 'none' : idOf(Number(String(a.choice).slice(1)));
-        const want = ok.length ? ok : ['none'];
-        return { q, ok, top, confidence: a.confidence, top3: (ranked.length ? ranked : [top]).slice(0, 3), right: want.includes(top), in3: (ranked.length ? ranked : [top]).slice(0, 3).some((x) => want.includes(x)) };
-      }),
-    );
-    log.handbook[variant] = runs;
-    const sure = runs.filter((r) => (r.confidence ?? 0) >= OFFER_AT);
-    console.log(
-      `${pad(variant, 7)} first choice right ${pad(pct(runs.filter((r) => r.right).length, runs.length), 5)} right in top three ${pad(pct(runs.filter((r) => r.in3).length, runs.length), 5)} ` +
-        `when ≥${OFFER_AT} sure: ${sure.filter((r) => r.right).length}/${sure.length} right`,
-    );
-    const misses = runs.filter((x) => !x.in3);
-    for (const r of misses.slice(0, 10)) console.log(`    miss: "${r.q}" -> ${r.top} (${Math.round((r.confidence ?? 0) * 100)}%), wanted ${r.ok.join(' or ') || 'none'}`);
-    if (misses.length > 10) console.log(`    …and ${misses.length - 10} more in the full record`);
-  }
+  const runs = await pool(
+    HANDBOOK_CASES.map(({ q, ok }) => async () => {
+      const data = await ask(handbookRequest(q));
+      const pick = readHandbookAnswer(data.answers?.table);
+      const want = ok.length ? ok : [null];
+      const top3 = pick ? (pick.best === null ? [null] : pick.ranked) : [];
+      return { q, ok, pick, right: !!pick && want.includes(pick.best), in3: top3.some((x) => want.includes(x)) };
+    }),
+  );
+  log.handbook = runs;
+  const sure = runs.filter((r) => r.pick && r.pick.confidence >= BEST_AT);
+  console.log(
+    `Jev: first choice right ${pct(runs.filter((r) => r.right).length, runs.length)}, right in top three ${pct(runs.filter((r) => r.in3).length, runs.length)}, ` +
+      `shown as best match (≥${BEST_AT} sure) ${sure.filter((r) => r.right).length}/${sure.length} right`,
+  );
+  for (const r of runs.filter((x) => !x.right).slice(0, 10))
+    console.log(`    miss: "${r.q}" -> ${r.pick?.best ?? 'none'} (${Math.round((r.pick?.confidence ?? 0) * 100)}%), wanted ${r.ok.join(' or ') || 'none'}`);
 }
 
 // ----------------------------------------------------------------------- main

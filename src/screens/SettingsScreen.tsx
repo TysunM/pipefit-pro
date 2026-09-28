@@ -63,7 +63,7 @@ export function SettingsScreen() {
         />
       </FieldRow>
 
-      <SectionHeader title="Smart fill" meta="Heat scans" />
+      <SectionHeader title="Smart help" meta="TypeSafe Jev" />
       <ChipRow
         label="Jev"
         options={[
@@ -74,8 +74,9 @@ export function SettingsScreen() {
         onSelect={(v) => update({ smartFill: v === 'on' })}
       />
       <Text style={[t.type.caption, { color: t.colors.textMuted, paddingHorizontal: t.layout.screenPadding, marginTop: -t.space.sm, marginBottom: t.space.lg }]}>
-        With signal, a heat scan sends the text it read — never the photo — to TypeSafe's Jev, which suggests the grade, form,
-        size and schedule. Nothing is entered until you add the heat. Off, or with no signal, the scan stays on this phone.
+        With signal, two things go to TypeSafe's Jev: the text a heat scan read — never the photo — so it can suggest the grade,
+        form, size and schedule; and what you type in the handbook search, so it can find the table that answers it. Nothing is
+        entered until you add the heat. Off, or with no signal, both stay on this phone and work as before.
       </Text>
 
       <SectionHeader title="Appearance" />
