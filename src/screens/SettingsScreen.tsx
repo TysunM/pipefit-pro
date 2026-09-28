@@ -63,6 +63,21 @@ export function SettingsScreen() {
         />
       </FieldRow>
 
+      <SectionHeader title="Smart fill" meta="Heat scans" />
+      <ChipRow
+        label="Jev"
+        options={[
+          { value: 'on', label: 'On' },
+          { value: 'off', label: 'Off' },
+        ]}
+        selected={settings.smartFill ? 'on' : 'off'}
+        onSelect={(v) => update({ smartFill: v === 'on' })}
+      />
+      <Text style={[t.type.caption, { color: t.colors.textMuted, paddingHorizontal: t.layout.screenPadding, marginTop: -t.space.sm, marginBottom: t.space.lg }]}>
+        With signal, a heat scan sends the text it read — never the photo — to TypeSafe's Jev, which suggests the grade, form,
+        size and schedule. Nothing is entered until you add the heat. Off, or with no signal, the scan stays on this phone.
+      </Text>
+
       <SectionHeader title="Appearance" />
       <ChipRow
         label="Theme"

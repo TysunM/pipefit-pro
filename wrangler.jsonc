@@ -3,8 +3,10 @@
   // will not serve a private repository on a free account, so this is how the
   // web app gets a link the crew can install from.
   //
-  // There is no `main` here on purpose: with `assets` and no script, the
-  // Worker is a pure static host. Nothing runs per request.
+  // Static files are served straight from ./dist as they always were. The one
+  // script, worker/index.ts, answers /api/* only: it holds the TypeSafe key
+  // (a secret, set with `npx wrangler secret put TYPESAFE_API_KEY`) so the
+  // app never carries it. Without the secret the app simply scans as before.
   //
   // The build command that produces ./dist is set in the Cloudflare dashboard,
   // under the project's Settings -> Build, and must be:
@@ -17,8 +19,12 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "pipefit-pro",
   "compatibility_date": "2026-09-16",
+  "main": "worker/index.ts",
   "assets": {
     "directory": "./dist",
+    "binding": "ASSETS",
+    // Only the API reaches the script; every other path is a file or the app.
+    "run_worker_first": ["/api/*"],
     // The whole app lives behind one page, so any path that is not a file is
     // the app. Without this a stale bookmark or a refresh lands on a 404.
     "not_found_handling": "single-page-application"

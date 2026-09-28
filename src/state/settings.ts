@@ -39,6 +39,13 @@ export type Settings = {
    * joint they name. Empty until it is set.
    */
   fitterName: string;
+  /**
+   * Whether a heat scan, when there is signal, sends the text it read (never
+   * the photo) to Jev to fill in the grade, form, size and schedule. See
+   * ai/heatFill.ts. With it off, or with no signal, the scanner works as it
+   * always did, entirely on the phone.
+   */
+  smartFill: boolean;
   /** Which look these were written under — see readSettings. */
   look: number;
 };
@@ -58,6 +65,7 @@ export const DEFAULT_SETTINGS: Settings = {
   cutAllowance: 0.125,
   projectId: '',
   fitterName: '',
+  smartFill: true,
   look: LOOK,
 };
 
