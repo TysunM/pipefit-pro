@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { Animated, Platform } from 'react-native';
 import { Modal, Pressable, Text, TextInput, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -7,11 +8,11 @@ import { Screen } from '../components/Screen';
 import { Segmented } from '../components/Segmented';
 import { AccentButton, GhostButton } from '../components/Buttons';
 import { IsoCanvas, SketchMode } from '../components/sketch/IsoCanvas';
-import { Compass, CornerLabel, PagePad } from '../components/sketch/PageControls';
+import { Compass, FlipLabel, PageBar } from '../components/sketch/PageControls';
 import { Theme, useTheme } from '../theme/ThemeProvider';
 import { useSketches } from '../state/sketches';
-import { Corner, ISO_GRID, L3, Pt, Viewport, contained, fitViewport, tenth, turn, zoomAbout } from '../calc/iso';
-import { MAX_NOTE, Stroke, getSketch, sketchBounds, sketchToSvg, withStrokes } from '../state/sketchStore';
+import { Corner, Flip, ISO_GRID, L3, NO_FLIP, Pt, Viewport, contained, fitViewport, tenth, turnOver, zoomAbout } from '../calc/iso';
+import { MAX_NOTE, Stroke, getSketch, sketchBounds, sketchToSvg, withFlip, withStrokes } from '../state/sketchStore';
 import { esc } from '../print/spoolSvg';
 import { shareSheet } from '../print/share';
 
@@ -27,6 +28,19 @@ const HINT: Record<SketchMode, string> = {
 /** Room left round a drawing when the page is fitted to the screen. */
 const FIT_MARGIN = 28;
 
+/**
+ * The corner the paper is read from. Fixed: a sketch is a picture on iso paper,
+ * and a diagonal on the paper — a rolling offset — can be more than one run in
+ * the world, so re-working the drawing from another corner turned a man's
+ * sketch into a different one. Turning the sheet over (see Flip) keeps it the
+ * same picture.
+ */
+const CORNER: Corner = 'SW';
+
+/** How long each half of the turn-over takes. Long enough to see which way it went. */
+const FLIP_MS = 110;
+const NATIVE = Platform.OS !== 'web';
+
 /** One sketch, open on the paper. Every stroke is kept as it lands. */
 export function IsoDrawScreen({ navigation, route }: Props) {
   const t = useTheme();
@@ -36,7 +50,7 @@ export function IsoDrawScreen({ navigation, route }: Props) {
   const sketch = getSketch(book, id);
 
   const [mode, setMode] = useState<SketchMode>('run');
-  const [corner, setCorner] = useState<Corner>('SW');
+  const corner = CORNER;
   const [size, setSize] = useState({ w: 0, h: 0 });
   const [viewport, setViewport] = useState<Viewport>({ scale: 1, tx: 0, ty: 0 });
   const [note, setNote] = useState<{ at: Pt; anchor: L3 | null; index: number | undefined } | null>(null);
@@ -54,11 +68,31 @@ export function IsoDrawScreen({ navigation, route }: Props) {
   }, [word]);
 
   const strokes = sketch?.strokes ?? [];
+  const flip: Flip = sketch?.flip ?? NO_FLIP;
+
+  // The sheet turning over: squeezed flat along the fold, swapped, opened out.
+  const fold = useRef(new Animated.Value(1)).current;
+  const [folding, setFolding] = useState<'x' | 'y'>('x');
+  const turning = useRef(false);
+  const turnSheet = (next: Flip, axis: 'x' | 'y') => {
+    // One turn at a time: a second press mid-turn would read the sheet as it
+    // was and undo itself.
+    if (turning.current) return;
+    turning.current = true;
+    setFolding(axis);
+    Animated.timing(fold, { toValue: 0, duration: FLIP_MS, useNativeDriver: NATIVE }).start(() => {
+      apply((b) => withFlip(b, id, next));
+      if (size.w && size.h) setViewport((v) => turnOver(v, size.w, size.h, flip, next));
+      Animated.timing(fold, { toValue: 1, duration: FLIP_MS, useNativeDriver: NATIVE }).start(() => {
+        turning.current = false;
+      });
+    });
+  };
 
   /** Fit everything drawn onto the screen, never larger than life size. */
-  const fit = (c: Corner = corner, everything = false) => {
+  const fit = (everything = false) => {
     if (!size.w || !size.h) return;
-    const b = sketchBounds(strokes, c, ISO_GRID);
+    const b = sketchBounds(strokes, corner, ISO_GRID, flip);
     if (!b) {
       setViewport({ scale: 1, tx: size.w / 2, ty: size.h / 2 });
       return;
@@ -76,7 +110,7 @@ export function IsoDrawScreen({ navigation, route }: Props) {
     if (!laidOut.current) {
       laidOut.current = true;
       seen.current = strokes.length;
-      const b = sketchBounds(strokes, corner, ISO_GRID);
+      const b = sketchBounds(strokes, corner, ISO_GRID, flip);
       setViewport(b ? fitViewport(b, size.w, size.h, FIT_MARGIN, 1) : { scale: 1, tx: size.w / 2, ty: size.h / 2 });
       return;
     }
@@ -93,13 +127,6 @@ export function IsoDrawScreen({ navigation, route }: Props) {
       return s ? withStrokes(b, id, f(s.strokes), Date.now()) : b;
     });
 
-  const turnPage = (by: 1 | -1) => {
-    const next = turn(corner, by);
-    setCorner(next);
-    const b = sketchBounds(strokes, next, ISO_GRID);
-    if (b && size.w && size.h) setViewport(fitViewport(b, size.w, size.h, FIT_MARGIN, 1));
-  };
-
   if (hydrated && !sketch) {
     return (
       <Screen>
@@ -113,7 +140,7 @@ export function IsoDrawScreen({ navigation, route }: Props) {
 
   const share = async () => {
     if (!sketch) return;
-    const html = `<!doctype html><html><head><meta charset="utf-8"><title>${esc(sketch.name)}</title><style>body{margin:0;padding:12px;font-family:Helvetica,Arial,sans-serif}h1{font-size:16px;margin:0 0 8px}svg{max-width:100%;height:auto}</style></head><body><h1>${esc(sketch.name)}${sketch.place ? ' · ' + esc(sketch.place) : ''}</h1>${sketchToSvg(sketch, ISO_GRID, corner)}</body></html>`;
+    const html = `<!doctype html><html><head><meta charset="utf-8"><title>${esc(sketch.name)}</title><style>body{margin:0;padding:12px;font-family:Helvetica,Arial,sans-serif}h1{font-size:16px;margin:0 0 8px}svg{max-width:100%;height:auto}</style></head><body><h1>${esc(sketch.name)}${sketch.place ? ' · ' + esc(sketch.place) : ''}</h1>${sketchToSvg(sketch, ISO_GRID, corner, flip)}</body></html>`;
     const r = await shareSheet(html, sketch.name);
     if (!r.ok) setWord(r.why);
   };
@@ -149,32 +176,38 @@ export function IsoDrawScreen({ navigation, route }: Props) {
         }}
       >
         {size.w > 0 && size.h > 0 ? (
-          <IsoCanvas
-            width={size.w}
-            height={size.h}
-            strokes={strokes}
-            mode={mode}
-            corner={corner}
-            viewport={viewport}
-            onViewport={setViewport}
-            onStroke={(s) => edit((prev) => [...prev, s])}
-            onNote={(at, anchor, index) => setNote({ at, anchor, index })}
-          />
+          <Animated.View style={{ transform: [folding === 'x' ? { scaleX: fold } : { scaleY: fold }] }}>
+            <IsoCanvas
+              width={size.w}
+              height={size.h}
+              strokes={strokes}
+              mode={mode}
+              corner={corner}
+              flip={flip}
+              viewport={viewport}
+              onViewport={setViewport}
+              onStroke={(s) => edit((prev) => [...prev, s])}
+              onNote={(at, anchor, index) => setNote({ at, anchor, index })}
+            />
+          </Animated.View>
         ) : null}
         <View style={{ position: 'absolute', top: 10, right: 10, alignItems: 'flex-end', gap: 4 }} pointerEvents="none">
-          <Compass corner={corner} />
-        </View>
-        <View style={{ position: 'absolute', right: 10, bottom: 10 }}>
-          <PagePad
-            onTurn={turnPage}
-            onZoom={(f) => setViewport((v) => zoomAbout(v, f, [size.w / 2, size.h / 2]))}
-            onFit={() => fit(corner, true)}
-          />
+          <Compass corner={corner} flip={flip} />
         </View>
         <View style={{ position: 'absolute', left: 10, bottom: 10, flexDirection: 'row', alignItems: 'center', gap: 6 }} pointerEvents="none">
-          <CornerLabel corner={corner} />
+          <FlipLabel flip={flip} />
           <Text style={[t.type.labelSmall, { color: t.colors.textFaint }]}>{`· ${Math.round(viewport.scale * 100)}%`}</Text>
         </View>
+      </View>
+
+      <View style={{ paddingHorizontal: t.layout.screenPadding, paddingTop: t.space.md }}>
+        <PageBar
+          flip={flip}
+          onFlipUp={() => turnSheet({ ...flip, upside: !flip.upside }, 'y')}
+          onMirror={() => turnSheet({ ...flip, mirror: !flip.mirror }, 'x')}
+          onZoom={(f) => setViewport((v) => zoomAbout(v, f, [size.w / 2, size.h / 2]))}
+          onFit={() => fit(true)}
+        />
       </View>
 
       <View style={{ flexDirection: 'row', gap: t.space.md, paddingHorizontal: t.layout.screenPadding, paddingTop: t.space.md, paddingBottom: insets.bottom + t.space.md }}>

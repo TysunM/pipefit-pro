@@ -197,6 +197,36 @@ export function thinStroke(pts: readonly Pt[], tolerance = 1.5): Pt[] {
   return out;
 }
 
+// ------------------------------------------------------------------ the flip
+
+/**
+ * How the sheet is turned over: mirrored left for right, upside down, or both.
+ *
+ * This is the paper, not the pipe. Nothing drawn is re-worked from the world:
+ * every point on the page is reflected where it lies, so the picture is the
+ * same picture turned over, line for line, and turning it back gives exactly
+ * what was drawn. The dots are symmetric about the page origin, so a reflected
+ * dot is still a dot and a line drawn on the turned sheet lands where the
+ * finger put it.
+ */
+export type Flip = { mirror: boolean; upside: boolean };
+
+export const NO_FLIP: Flip = { mirror: false, upside: false };
+
+/** A page point on the turned sheet. Its own inverse: turning twice is no turn. */
+export const flipPt = (p: Pt, f: Flip): Pt => [f.mirror ? -p[0] : p[0], f.upside ? -p[1] : p[1]];
+
+/**
+ * The window after the sheet is turned, holding whatever was in the middle of
+ * the screen in the middle, so the drawing turns over in place rather than
+ * jumping off the side of the screen.
+ */
+export function turnOver(v: Viewport, w: number, h: number, from: Flip, to: Flip): Viewport {
+  const shown = toPage([w / 2, h / 2], v);
+  const now = flipPt(flipPt(shown, from), to);
+  return { scale: v.scale, tx: w / 2 - now[0] * v.scale, ty: h / 2 - now[1] * v.scale };
+}
+
 /** A coordinate as it is stored: a tenth of a point is finer than any finger. */
 export const tenth = (n: number): number => Math.round(n * 10) / 10;
 

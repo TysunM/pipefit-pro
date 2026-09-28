@@ -4,12 +4,14 @@ import Svg, { Circle, Defs, G, Pattern, Polyline, Rect, Text as SvgText } from '
 import { useTheme } from '../../theme/ThemeProvider';
 import {
   Corner,
+  Flip,
   ISO_GRID,
   L3,
   Pt,
   Viewport,
   clampScale,
   distance,
+  flipPt,
   nearestOf,
   screenToLattice,
   snapRun,
@@ -17,7 +19,7 @@ import {
   toPage,
   toScreen,
 } from '../../calc/iso';
-import { Placed, Stroke, place, runNodes, storedStroke } from '../../state/sketchStore';
+import { Placed, Stroke, flipPlaced, place, runNodes, storedStroke } from '../../state/sketchStore';
 
 export type SketchMode = 'run' | 'pen' | 'note' | 'move';
 
@@ -50,6 +52,7 @@ export function IsoCanvas({
   strokes,
   mode,
   corner,
+  flip,
   viewport,
   onViewport,
   onStroke,
@@ -60,6 +63,8 @@ export function IsoCanvas({
   strokes: readonly Stroke[];
   mode: SketchMode;
   corner: Corner;
+  /** How the sheet is turned over. Only what is shown turns: every stroke is kept as drawn. */
+  flip: Flip;
   viewport: Viewport;
   onViewport: (v: Viewport) => void;
   onStroke: (stroke: Stroke) => void;
@@ -72,8 +77,15 @@ export function IsoCanvas({
 
   // The responder is made once and reads what it needs through refs, so a
   // change of tool or of the window never leaves it holding a stale closure.
-  const live = useRef({ mode, strokes, corner, viewport, onViewport, onStroke, onNote });
-  live.current = { mode, strokes, corner, viewport, onViewport, onStroke, onNote };
+  const live = useRef({ mode, strokes, corner, flip, viewport, onViewport, onStroke, onNote });
+  live.current = { mode, strokes, corner, flip, viewport, onViewport, onStroke, onNote };
+
+  /**
+   * The drawn page point under a screen point. On a turned sheet the finger
+   * is on the reflection, so it is reflected back, and everything below —
+   * picking up a run, snapping, anchoring a note — works on the page as drawn.
+   */
+  const pagePoint = (x: number, y: number): Pt => flipPt(toPage([x, y], live.current.viewport), live.current.flip);
 
   const start3 = useRef<L3>([0, 0, 0]);
   const startPage = useRef<Pt>([0, 0]);
@@ -114,7 +126,7 @@ export function IsoCanvas({
             beginGrab(touches.length ? touches : [{ locationX: e.nativeEvent.locationX, locationY: e.nativeEvent.locationY }]);
             return;
           }
-          const p = toPage([e.nativeEvent.locationX, e.nativeEvent.locationY], v);
+          const p = pagePoint(e.nativeEvent.locationX, e.nativeEvent.locationY);
           startPage.current = p;
           if (m === 'run') {
             const hit = nearestOf(p, nodesOnPage(), (x) => x.at, PICK_UP / v.scale);
@@ -150,7 +162,7 @@ export function IsoCanvas({
             moved.current = true;
             return;
           }
-          const p = toPage([e.nativeEvent.locationX, e.nativeEvent.locationY], live.current.viewport);
+          const p = pagePoint(e.nativeEvent.locationX, e.nativeEvent.locationY);
           if (m === 'run') {
             const snap = snapRun(start3.current, p, c, g);
             if (snap.steps > 0) moved.current = true;
@@ -173,7 +185,7 @@ export function IsoCanvas({
             setDraft(null);
             return;
           }
-          const p = toPage([e.nativeEvent.locationX, e.nativeEvent.locationY], v);
+          const p = pagePoint(e.nativeEvent.locationX, e.nativeEvent.locationY);
           if (m === 'run') {
             const snap = snapRun(start3.current, p, c, g);
             if (snap.steps > 0) commit({ kind: 'run', from: start3.current, to: snap.to });
@@ -233,7 +245,16 @@ export function IsoCanvas({
       // where it crosses a line.
       // pointerEvents none: a word must never take the touch, or a browser
       // starts dragging the selected text and the stroke under it is lost.
-      const shared = { x: p.at[0], y: p.at[1], fontFamily: t.font.sansMedium, fontSize: 14 / s, ...(t.fontsLoaded ? {} : { fontWeight: '600' as const }), pointerEvents: 'none' as const };
+      const shared = {
+        x: p.at[0],
+        // Upside down, the word hangs below its point rather than standing on it.
+        y: p.at[1] + (p.upside ? (14 / s) * 0.72 : 0),
+        textAnchor: (p.mirror ? 'end' : 'start') as 'end' | 'start',
+        fontFamily: t.font.sansMedium,
+        fontSize: 14 / s,
+        ...(t.fontsLoaded ? {} : { fontWeight: '600' as const }),
+        pointerEvents: 'none' as const,
+      };
       return (
         <React.Fragment key={key}>
           <SvgText {...shared} fill={c.well} stroke={c.well} strokeWidth={4 / s} strokeLinejoin="round">
@@ -298,8 +319,8 @@ export function IsoCanvas({
         </Defs>
         <G transform={`translate(${viewport.tx} ${viewport.ty}) scale(${s})`}>
           {showDots ? <Rect x={pageX0} y={pageY0} width={pageW} height={pageH} fill="url(#isodots)" /> : null}
-          {strokes.map((st, i) => drawPlaced(place(st, corner, g), `s${i}`, false))}
-          {draft ? drawPlaced(draft, 'draft', true) : null}
+          {strokes.map((st, i) => drawPlaced(place(st, corner, g, flip), `s${i}`, false))}
+          {draft ? drawPlaced(flipPlaced(draft, flip), 'draft', true) : null}
         </G>
       </Svg>
     </View>
