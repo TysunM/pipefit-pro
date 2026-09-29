@@ -15,6 +15,8 @@ import {
   heatQuestions,
   heatRequest,
   readHeatAnswers,
+  readMarking,
+  withMarking,
 } from '../ai/heatFill';
 import { handle } from '../../worker/index';
 
@@ -273,5 +275,50 @@ describe('the Worker', () => {
     const res = await handle(new Request('https://pipefit.test/api/heat-fill', { method: 'OPTIONS' }), { TYPESAFE_API_KEY: 'k' });
     expect(res.status).toBe(204);
     expect(res.headers.get('access-control-allow-methods')).toContain('POST');
+  });
+});
+
+describe('what the phone reads off the marking, with or without Jev', () => {
+  const jev = (a: Record<string, unknown>) => readHeatAnswers(a, CANDS);
+
+  test('no Jev at all: the mill, the size and the schedule still come off the numbers', () => {
+    const fill = withMarking(null, readMarking('WHEATLAND TUBE A53 B ERW 6.625 X .280'));
+    expect(describeDetails(fill)).toBe('6" · SCH 40 · Wheatland Tube');
+    expect(detailsOf(fill)).toEqual({ nps: 6, schedule: '40', mill: 'Wheatland Tube' });
+  });
+
+  test('where Jev and the numbers agree, the answer stands; where they differ, neither is offered', () => {
+    const agree = withMarking(jev({ size: choiceAns('nps6', 0.9), schedule: choiceAns('sch40', 0.9) }), readMarking('6.625 X .280'));
+    expect(agree.nps?.value).toBe(6);
+    expect(agree.schedule?.value).toBe('40');
+    const size = withMarking(jev({ size: choiceAns('nps8', 0.9) }), readMarking('6.625 X .280'));
+    expect(size.nps).toBeUndefined();
+    expect(size.schedule).toBeUndefined();
+    const wall = withMarking(jev({ size: choiceAns('nps6', 0.9), schedule: choiceAns('sch80', 0.9) }), readMarking('6.625 X .280'));
+    expect(wall.nps?.value).toBe(6);
+    expect(wall.schedule).toBeUndefined();
+  });
+
+  test('a wall with several names is called what the grade calls it', () => {
+    // .280 on 6" is SCH 40, STD and 40S at once.
+    const carbon = withMarking(jev({ material: choiceAns('a106b', 0.95) }), readMarking('6.625 X .280'));
+    expect(carbon.schedule?.value).toBe('40');
+    const stainless = withMarking(jev({ material: choiceAns('a312tp316', 0.95) }), readMarking('6.625 X .280'));
+    expect(stainless.schedule?.value).toBe('40S');
+    // 12" .375 is STD or 40S, never SCH 40 (.406): carbon steel calls it STD.
+    expect(withMarking(null, readMarking('12.750 X .375')).schedule?.value).toBe('STD');
+  });
+
+  test('the mill rides along with whatever Jev found, and is filled in with the heat', () => {
+    const fill = withMarking(jev({ material: choiceAns('a106b', 0.95), heat: choiceAns('c0', 0.9) }), readMarking('TENARIS A106 B SMLS'));
+    expect(fill.heat?.value).toBe('E7Z419');
+    expect(fill.mill?.value).toBe('Tenaris');
+    expect(describeHeatDetails(detailsOf(fill))).toBe('A106 Gr B · Pipe · Tenaris');
+  });
+
+  test('a marking with none of it read changes nothing', () => {
+    const j = jev({ material: choiceAns('a106b', 0.95) });
+    expect(withMarking(j, readMarking('HEAT E7Z419 A106 GR B'))).toEqual(j);
+    expect(withMarking(null, readMarking(''))).toEqual({});
   });
 });
