@@ -28,7 +28,7 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useTheme } from '../theme/ThemeProvider';
 import { Heat } from '../calc/heat';
 import { Candidate, scanForHeats, whyLabel } from '../calc/heatScan';
-import { HeatDetails, HeatFill, describeDetails, detailsOf, fetchHeatFill } from '../ai/heatFill';
+import { FillMiss, HeatDetails, HeatFill, askHeatFill, describeDetails, detailsOf, missWords } from '../ai/heatFill';
 import { API_BASE } from '../ai/apiBase';
 
 /** Loaded lazily so a device with no OCR module still opens the sheet. */
@@ -53,7 +53,7 @@ async function loadOcr(): Promise<Ocr | null> {
 type Stage =
   | { at: 'camera' }
   | { at: 'reading'; uri: string }
-  | { at: 'read'; uri: string; found: Candidate[]; raw: string; fill: 'off' | 'asking' | 'unavailable' | HeatFill }
+  | { at: 'read'; uri: string; found: Candidate[]; raw: string; fill: Fill }
   | { at: 'failed'; why: string };
 
 export function HeatScanSheet({
@@ -110,8 +110,8 @@ export function HeatScanSheet({
       if (asking) {
         // In the background: the read is on screen and tappable meanwhile, and
         // an answer for an old picture never lands on a new one.
-        void fetchHeatFill(API_BASE, raw, found.map((c) => c.text)).then((fill) =>
-          setStage((s) => (s.at === 'read' && s.uri === shot.uri ? { ...s, fill: fill ?? 'unavailable' } : s)),
+        void askHeatFill(API_BASE, raw, found.map((c) => c.text)).then((fill) =>
+          setStage((s) => (s.at === 'read' && s.uri === shot.uri ? { ...s, fill: fill ?? 'jev_down' } : s)),
         );
       }
       void Haptics.notificationAsync(
@@ -369,14 +369,17 @@ function Note({ t, text }: { t: ReturnType<typeof useTheme>; text: string }) {
 }
 
 /** Jev's pick first, the scanner's own order otherwise. A book warning still shows wherever it lands. */
-function orderByFill(found: Candidate[], fill: 'off' | 'asking' | 'unavailable' | HeatFill): Candidate[] {
+/** Smart fill: off, waiting, why there is none, or what it found. */
+type Fill = 'off' | 'asking' | FillMiss | HeatFill;
+
+function orderByFill(found: Candidate[], fill: Fill): Candidate[] {
   const pickText = typeof fill === 'object' ? fill.heat?.value : undefined;
   if (!pickText) return found;
   return [...found.filter((c) => c.text === pickText), ...found.filter((c) => c.text !== pickText)];
 }
 
 /** What smart fill is doing, and what it found to go with the heat. */
-function FillNote({ t, fill }: { t: ReturnType<typeof useTheme>; fill: 'off' | 'asking' | 'unavailable' | HeatFill }) {
+function FillNote({ t, fill }: { t: ReturnType<typeof useTheme>; fill: Fill }) {
   if (fill === 'off') return null;
   const box = {
     marginHorizontal: t.layout.screenPadding,
@@ -389,12 +392,12 @@ function FillNote({ t, fill }: { t: ReturnType<typeof useTheme>; fill: 'off' | '
     flexDirection: 'row' as const,
     gap: t.space.sm,
   };
-  if (fill === 'asking' || fill === 'unavailable')
+  if (typeof fill === 'string')
     return (
       <View style={box}>
         <Ionicons name={fill === 'asking' ? 'sparkles-outline' : 'cloud-offline-outline'} size={17} color={t.colors.textMuted} />
         <Text style={[t.type.caption, { color: t.colors.textMuted, flex: 1 }]}>
-          {fill === 'asking' ? 'Checking the read with Jev…' : 'Jev could not be reached. Pick the heat yourself; the rest can be typed in the book.'}
+          {fill === 'asking' ? 'Checking the read with Jev…' : missWords(fill)}
         </Text>
       </View>
     );
