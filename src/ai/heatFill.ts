@@ -19,6 +19,7 @@
 
 import { HEAT_FORMS, type Heat, type HeatForm } from '../calc/heat';
 import { PIPE_SIZES } from '../calc/pipe';
+import { readDimensions, readMill } from '../calc/marking';
 
 /** The model every request names. `jev-latest` follows TypeSafe's current Jev. */
 export const JEV_MODEL = 'jev-latest';
@@ -206,10 +207,12 @@ export type HeatFill = {
   form?: Offer<HeatForm>;
   nps?: Offer<number>;
   schedule?: Offer<string>;
+  /** Only ever read off the marking by the phone: Jev is not asked who made it. */
+  mill?: Offer<string>;
 };
 
 /** The heat-entry fields a fill sets. */
-export type HeatDetails = Partial<Pick<Heat, 'material' | 'form' | 'nps' | 'schedule'>>;
+export type HeatDetails = Partial<Pick<Heat, 'material' | 'form' | 'nps' | 'schedule' | 'mill'>>;
 
 type ChoiceAnswer = { choice: string; confidence: number };
 
@@ -274,6 +277,61 @@ function consistent(fill: HeatFill): HeatFill {
   return out;
 }
 
+/**
+ * What the phone reads off a marking by itself, with no signal and no Jev:
+ * the mill when the stencil names one, and the size and the schedules its
+ * wall can be when it gives the OD and the wall. See calc/marking.ts.
+ */
+export type Marking = { mill?: string; nps?: number; schedules?: string[] };
+
+export function readMarking(text: string): Marking {
+  const m: Marking = {};
+  const mill = readMill(text);
+  if (mill) m.mill = mill;
+  const d = readDimensions(text);
+  if (d) {
+    m.nps = d.nps;
+    m.schedules = d.schedules;
+  }
+  return m;
+}
+
+/** The name a wall goes by, when it is more than one: the S schedule on stainless, the numbered one otherwise. */
+function nameWall(schedules: readonly string[], stainless: boolean): string | undefined {
+  const rank = (s: string) => (/^\d+S$/.test(s) ? (stainless ? 0 : 3) : /^\d+$/.test(s) ? 1 : 2);
+  return [...schedules].sort((a, b) => rank(a) - rank(b) || SCHEDULE_LIST.indexOf(a) - SCHEDULE_LIST.indexOf(b))[0];
+}
+
+/**
+ * Jev's fill and what the phone read off the numbers, together. The mill is
+ * the phone's alone. A size or a schedule both have stands where they agree
+ * and is dropped where they do not, since one of the two is a misread and
+ * there is no telling which. Where only the numbers give one, they fill it.
+ * Then the grade gets its say, as it does on Jev's answers alone.
+ */
+export function withMarking(jev: HeatFill | null, marking: Marking): HeatFill {
+  const out: HeatFill = { ...(jev ?? {}) };
+  if (marking.mill) out.mill = { value: marking.mill, label: marking.mill, confidence: 1 };
+  if (marking.nps != null) {
+    if (out.nps && out.nps.value !== marking.nps) delete out.nps;
+    else if (!out.nps) {
+      const o = SIZES.find((x) => x.value === marking.nps);
+      if (o) out.nps = { value: o.value, label: o.label, confidence: 1 };
+    }
+  }
+  if (marking.schedules?.length && marking.nps != null && out.nps?.value === marking.nps) {
+    if (out.schedule) {
+      if (!marking.schedules.includes(out.schedule.value)) delete out.schedule;
+    } else {
+      const key = out.material ? MATERIALS.find((m) => m.value === out.material!.value)?.key : undefined;
+      const name = nameWall(marking.schedules, !!key && STAINLESS.has(key));
+      const o = SCHEDULES.find((x) => x.value === name);
+      if (o) out.schedule = { value: o.value, label: o.label, confidence: 1 };
+    }
+  }
+  return consistent(out);
+}
+
 /** The entry fields a fill would set, for when the heat is added. */
 export function detailsOf(fill: HeatFill): HeatDetails {
   const d: HeatDetails = {};
@@ -281,12 +339,13 @@ export function detailsOf(fill: HeatFill): HeatDetails {
   if (fill.form) d.form = fill.form.value;
   if (fill.nps) d.nps = fill.nps.value;
   if (fill.schedule) d.schedule = fill.schedule.value;
+  if (fill.mill) d.mill = fill.mill.value;
   return d;
 }
 
 /** The fill in a line: "A106 Gr B · 6" · SCH 40 · Pipe". */
 export function describeDetails(fill: HeatFill): string {
-  return [fill.material?.label, fill.nps?.label, fill.schedule?.label, fill.form?.label].filter(Boolean).join(' · ');
+  return [fill.material?.label, fill.nps?.label, fill.schedule?.label, fill.form?.label, fill.mill?.label].filter(Boolean).join(' · ');
 }
 
 /** A stored fill in a line, the same words the scan showed: "A106 Gr B · 6" · SCH 40 · Pipe". */
@@ -294,7 +353,7 @@ export function describeHeatDetails(d: HeatDetails): string {
   const size = d.nps != null ? SIZES.find((o) => o.value === d.nps)?.label : undefined;
   const sch = d.schedule ? SCHEDULES.find((o) => o.value === d.schedule)?.label ?? d.schedule : undefined;
   const form = d.form ? FORMS.find((o) => o.value === d.form)?.label : undefined;
-  return [d.material || undefined, size, sch, form].filter(Boolean).join(' · ');
+  return [d.material || undefined, size, sch, form, d.mill || undefined].filter(Boolean).join(' · ');
 }
 
 /** The Worker route the app calls. */

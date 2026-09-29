@@ -28,7 +28,7 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useTheme } from '../theme/ThemeProvider';
 import { Heat } from '../calc/heat';
 import { Candidate, scanForHeats, whyLabel } from '../calc/heatScan';
-import { FillMiss, HeatDetails, HeatFill, askHeatFill, describeDetails, detailsOf, missWords } from '../ai/heatFill';
+import { FillMiss, HeatDetails, HeatFill, Marking, askHeatFill, describeDetails, detailsOf, missWords, readMarking, withMarking } from '../ai/heatFill';
 import { API_BASE } from '../ai/apiBase';
 
 /** Loaded lazily so a device with no OCR module still opens the sheet. */
@@ -53,7 +53,7 @@ async function loadOcr(): Promise<Ocr | null> {
 type Stage =
   | { at: 'camera' }
   | { at: 'reading'; uri: string }
-  | { at: 'read'; uri: string; found: Candidate[]; raw: string; fill: Fill }
+  | { at: 'read'; uri: string; found: Candidate[]; raw: string; fill: Fill; marking: Marking }
   | { at: 'failed'; why: string };
 
 export function HeatScanSheet({
@@ -106,7 +106,7 @@ export function HeatScanSheet({
       const raw = result?.text ?? '';
       const found = scanForHeats(raw, book);
       const asking = smartFill && raw.trim().length > 0;
-      setStage({ at: 'read', uri: shot.uri, found, raw, fill: asking ? 'asking' : 'off' });
+      setStage({ at: 'read', uri: shot.uri, found, raw, fill: asking ? 'asking' : 'off', marking: readMarking(raw) });
       if (asking) {
         // In the background: the read is on screen and tappable meanwhile, and
         // an answer for an old picture never lands on a new one.
@@ -226,6 +226,8 @@ export function HeatScanSheet({
       );
     }
 
+    // Jev's answer when there is one, and what the phone read off the numbers either way.
+    const shown = withMarking(typeof stage.fill === 'object' ? stage.fill : null, stage.marking);
     return (
       <View style={{ paddingBottom: t.space.md }}>
         <Image
@@ -253,16 +255,17 @@ export function HeatScanSheet({
             record nobody questions.
           </Text>
         )}
-        <FillNote t={t} fill={stage.fill} />
+        <FillNote t={t} status={stage.fill} shown={shown} />
         {orderByFill(stage.found, stage.fill).map((c) => {
           const suspect = c.why.kind === 'looksLikeBook';
           const fill = typeof stage.fill === 'object' ? stage.fill : null;
           const jevPick = fill?.heat?.value === c.text;
+          const details = detailsOf(shown);
           return (
             <Pressable
               key={c.text}
               onPress={() => {
-                onPick(c.text, fill ? detailsOf(fill) : undefined);
+                onPick(c.text, Object.keys(details).length ? details : undefined);
                 void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                 close();
               }}
@@ -308,6 +311,7 @@ export function HeatScanSheet({
             </Pressable>
           );
         })}
+        <ReadText t={t} raw={stage.raw} />
         <View style={{ padding: t.layout.screenPadding }}>
           <Pressable
             onPress={reset}
@@ -378,9 +382,12 @@ function orderByFill(found: Candidate[], fill: Fill): Candidate[] {
   return [...found.filter((c) => c.text === pickText), ...found.filter((c) => c.text !== pickText)];
 }
 
-/** What smart fill is doing, and what it found to go with the heat. */
-function FillNote({ t, fill }: { t: ReturnType<typeof useTheme>; fill: Fill }) {
-  if (fill === 'off') return null;
+/**
+ * What smart fill is doing, and what the marking gives to go with the heat:
+ * Jev's answer, what the phone read off the numbers and the mill's name, or
+ * both. When Jev cannot be asked or reached, the phone's own read still shows.
+ */
+function FillNote({ t, status, shown }: { t: ReturnType<typeof useTheme>; status: Fill; shown: HeatFill }) {
   const box = {
     marginHorizontal: t.layout.screenPadding,
     marginBottom: t.space.md,
@@ -392,24 +399,76 @@ function FillNote({ t, fill }: { t: ReturnType<typeof useTheme>; fill: Fill }) {
     flexDirection: 'row' as const,
     gap: t.space.sm,
   };
-  if (typeof fill === 'string')
-    return (
-      <View style={box}>
-        <Ionicons name={fill === 'asking' ? 'sparkles-outline' : 'cloud-offline-outline'} size={17} color={t.colors.textMuted} />
-        <Text style={[t.type.caption, { color: t.colors.textMuted, flex: 1 }]}>
-          {fill === 'asking' ? 'Checking the read with Jev…' : missWords(fill)}
-        </Text>
-      </View>
-    );
-  const line = describeDetails(fill);
+  const line = describeDetails(shown);
+  const jev = typeof status === 'object';
   return (
-    <View style={box}>
-      <Ionicons name="sparkles-outline" size={17} color={t.colors.accent} />
-      <Text style={[t.type.caption, { color: t.colors.text, flex: 1 }]}>
-        {line
-          ? `Also on the marking: ${line}. Filled in with the heat you tap — check it against the steel.`
-          : 'Jev found nothing else on the marking it was sure of.'}
-      </Text>
+    <>
+      {typeof status === 'string' && status !== 'off' ? (
+        <View style={box}>
+          <Ionicons name={status === 'asking' ? 'sparkles-outline' : 'cloud-offline-outline'} size={17} color={t.colors.textMuted} />
+          <Text style={[t.type.caption, { color: t.colors.textMuted, flex: 1 }]}>
+            {status === 'asking' ? 'Checking the read with Jev…' : missWords(status)}
+          </Text>
+        </View>
+      ) : null}
+      {line ? (
+        <View style={box}>
+          <Ionicons name={jev ? 'sparkles-outline' : 'document-text-outline'} size={17} color={t.colors.accent} />
+          <Text style={[t.type.caption, { color: t.colors.text, flex: 1 }]}>
+            {`On the marking: ${line}. Filled in with the heat you tap — check it against the steel.`}
+          </Text>
+        </View>
+      ) : jev ? (
+        <View style={box}>
+          <Ionicons name="sparkles-outline" size={17} color={t.colors.textMuted} />
+          <Text style={[t.type.caption, { color: t.colors.textMuted, flex: 1 }]}>Jev found nothing else on the marking it was sure of.</Text>
+        </View>
+      ) : null}
+    </>
+  );
+}
+
+/**
+ * Exactly what the camera read, folded away. When a field did not fill or a
+ * heat was not offered, this is where the reason is: a digit read as a
+ * letter, a line the camera never saw.
+ */
+function ReadText({ t, raw }: { t: ReturnType<typeof useTheme>; raw: string }) {
+  const [open, setOpen] = useState(false);
+  const text = raw.trim();
+  if (!text) return null;
+  return (
+    <View style={{ marginHorizontal: t.layout.screenPadding, marginTop: t.space.md }}>
+      <Pressable
+        onPress={() => setOpen((o) => !o)}
+        accessibilityRole="button"
+        accessibilityState={{ expanded: open }}
+        accessibilityLabel={open ? 'Hide what the camera read' : 'Show what the camera read'}
+        hitSlop={8}
+        style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.xs, paddingVertical: t.space.sm }}
+      >
+        <Ionicons name={open ? 'chevron-down' : 'chevron-forward'} size={16} color={t.colors.textMuted} />
+        <Text style={[t.type.captionStrong, { color: t.colors.textMuted }]}>What the camera read</Text>
+      </Pressable>
+      {open ? (
+        <Text
+          selectable
+          style={[
+            t.type.caption,
+            {
+              fontFamily: t.font.mono,
+              color: t.colors.text,
+              padding: t.space.md,
+              borderRadius: t.radius.md,
+              borderWidth: 1,
+              borderColor: t.colors.border,
+              backgroundColor: t.colors.bgSubtle,
+            },
+          ]}
+        >
+          {text}
+        </Text>
+      ) : null}
     </View>
   );
 }
