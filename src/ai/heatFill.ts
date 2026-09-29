@@ -301,34 +301,81 @@ export function describeHeatDetails(d: HeatDetails): string {
 export const HEAT_FILL_PATH = '/api/heat-fill';
 
 /**
- * Ask the Worker for a fill. Resolves null on anything short of a clean
- * answer — no signal, a timeout, the key not set, a server fault — because a
- * scan without a fill is exactly the scanner the app already had.
+ * Why there is no fill: the server has no key, the key was turned down, Jev
+ * or the Worker is at fault, or the phone never got through. Each has a
+ * different fix, so the sheet says which.
  */
+export type FillMiss = 'not_set' | 'key_refused' | 'jev_down' | 'offline';
+
+/** What a refusal from the Worker means, from its status and body. */
+export function missOf(body: unknown): FillMiss {
+  const b = body && typeof body === 'object' ? (body as { error?: unknown; status?: unknown }) : {};
+  if (b.error === 'not_configured') return 'not_set';
+  if (b.error === 'upstream' && (b.status === 401 || b.status === 403)) return 'key_refused';
+  return 'jev_down';
+}
+
+/** The line the sheet shows for each, and what to do about it. */
+export function missWords(miss: FillMiss): string {
+  const then = 'Pick the heat yourself; the rest can be typed in the book.';
+  switch (miss) {
+    case 'not_set':
+      return `Jev is not switched on: the server has no TYPESAFE_API_KEY secret. ${then}`;
+    case 'key_refused':
+      return `Jev turned the key down: check the TYPESAFE_API_KEY secret. ${then}`;
+    case 'jev_down':
+      return `Jev is not answering right now. ${then}`;
+    case 'offline':
+      return `No signal to reach Jev. ${then}`;
+  }
+}
+
+/**
+ * Ask the Worker for a fill. A clean answer is a fill; anything short of one
+ * is the reason why, and the scan carries on without it, because a scan
+ * without a fill is exactly the scanner the app already had. Null when there
+ * was nothing to ask about.
+ */
+export async function askHeatFill(
+  base: string,
+  text: string,
+  candidates: readonly string[],
+  opts: { fetchImpl?: typeof fetch; timeoutMs?: number } = {},
+): Promise<HeatFill | FillMiss | null> {
+  const f = opts.fetchImpl ?? fetch;
+  const body = { text: cleanText(text), candidates: cleanCandidates(candidates) };
+  if (!body.text) return null;
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), opts.timeoutMs ?? 6000);
+  let res: Response;
+  try {
+    res = await f(`${base}${HEAT_FILL_PATH}`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: ctrl.signal,
+    });
+  } catch {
+    clearTimeout(timer);
+    return 'offline';
+  }
+  try {
+    const data = (await res.json()) as { answers?: unknown };
+    return res.ok ? readHeatAnswers(data?.answers, body.candidates) : missOf(data);
+  } catch {
+    return 'jev_down';
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/** The fill alone, or null for any reason there is none. */
 export async function fetchHeatFill(
   base: string,
   text: string,
   candidates: readonly string[],
   opts: { fetchImpl?: typeof fetch; timeoutMs?: number } = {},
 ): Promise<HeatFill | null> {
-  const f = opts.fetchImpl ?? fetch;
-  const body = { text: cleanText(text), candidates: cleanCandidates(candidates) };
-  if (!body.text) return null;
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), opts.timeoutMs ?? 6000);
-  try {
-    const res = await f(`${base}${HEAT_FILL_PATH}`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(body),
-      signal: ctrl.signal,
-    });
-    if (!res.ok) return null;
-    const data = (await res.json()) as { answers?: unknown };
-    return readHeatAnswers(data?.answers, body.candidates);
-  } catch {
-    return null;
-  } finally {
-    clearTimeout(timer);
-  }
+  const r = await askHeatFill(base, text, candidates, opts);
+  return r && typeof r === 'object' ? r : null;
 }

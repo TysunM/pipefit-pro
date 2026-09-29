@@ -9,6 +9,9 @@ import {
   describeHeatDetails,
   detailsOf,
   fetchHeatFill,
+  askHeatFill,
+  missOf,
+  missWords,
   heatQuestions,
   heatRequest,
   readHeatAnswers,
@@ -178,6 +181,31 @@ describe('the app asking the Worker', () => {
         new Promise<Response>((_, reject) => init?.signal?.addEventListener('abort', () => reject(new Error('aborted')))),
     );
     expect(await fetchHeatFill('', 'HEAT E7Z419', CANDS, { fetchImpl: hang as unknown as typeof fetch, timeoutMs: 20 })).toBeNull();
+  });
+
+  test('each way of getting no fill says which it was, since each has a different fix', async () => {
+    const ask = (impl: unknown) => askHeatFill('', 'HEAT E7Z419', CANDS, { fetchImpl: impl as typeof fetch, timeoutMs: 20 });
+    expect(await ask(ok({ error: 'not_configured' }, 503))).toBe('not_set');
+    expect(await ask(ok({ error: 'upstream', status: 401 }, 502))).toBe('key_refused');
+    expect(await ask(ok({ error: 'upstream', status: 403 }, 502))).toBe('key_refused');
+    expect(await ask(ok({ error: 'upstream', status: 500 }, 502))).toBe('jev_down');
+    expect(await ask(ok({ error: 'upstream_unreachable' }, 504))).toBe('jev_down');
+    expect(await ask(jest.fn(async () => new Response('<html>', { status: 404 })))).toBe('jev_down');
+    expect(await ask(jest.fn(async () => { throw new TypeError('Network request failed'); }))).toBe('offline');
+    const hang = jest.fn(
+      (_u: string, init?: RequestInit) =>
+        new Promise<Response>((_, reject) => init?.signal?.addEventListener('abort', () => reject(new Error('aborted')))),
+    );
+    expect(await ask(hang)).toBe('offline');
+  });
+
+  test('the words name the fix, and every one still leaves the fitter a way on', () => {
+    expect(missOf({ error: 'not_configured' })).toBe('not_set');
+    expect(missOf(null)).toBe('jev_down');
+    expect(missWords('not_set')).toMatch(/TYPESAFE_API_KEY/);
+    expect(missWords('key_refused')).toMatch(/turned the key down/);
+    expect(missWords('offline')).toMatch(/No signal/);
+    for (const m of ['not_set', 'key_refused', 'jev_down', 'offline'] as const) expect(missWords(m)).toMatch(/Pick the heat yourself/);
   });
 
   test('an empty read is never sent', async () => {
