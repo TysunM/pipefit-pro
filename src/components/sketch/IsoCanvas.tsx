@@ -234,11 +234,15 @@ export function IsoCanvas({
             const drawing = drawId.current !== null;
             if (m === 'move' || (ts.length >= 2 && startsTwoFingers(drawing, moved.current, Date.now() - startedAt.current))) beginGrab(ts.map(local));
           }
-          const gr = grab.current;
-          if (gr) {
+          if (grab.current) {
             if (!ts.length) return;
             const pts = ts.map(local);
-            if (pts.length !== gr.fingers) beginGrab(pts);
+            // A finger landing or lifting starts the hold again, and what
+            // follows must use that new hold: the old one's centre was
+            // between different fingers, and moving the page to the new
+            // centre from it throws the whole drawing sideways for a frame.
+            if (pts.length !== grab.current.fingers) beginGrab(pts);
+            const gr = grab.current;
             let spread = 1;
             let turn = 0;
             if (pts.length >= 2 && gr.span > 0) {
@@ -250,7 +254,11 @@ export function IsoCanvas({
               if (gr.from !== null) turn = gr.twist - gr.from;
             }
             // The page point that was under the fingers stays under them.
-            setV(handWindow(gr.v, gr.at, centroid(pts), spread, turn));
+            // Kept at once as well as sent up, so a hold that starts before
+            // the next render starts from where the page is, not where it was.
+            const next = handWindow(gr.v, gr.at, centroid(pts), spread, turn);
+            live.current.viewport = next;
+            setV(next);
             moved.current = true;
             return;
           }
