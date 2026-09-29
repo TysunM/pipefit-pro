@@ -50,6 +50,12 @@ async function loadOcr(): Promise<Ocr | null> {
   return ocr;
 }
 
+/**
+ * Below this, Jev's pick is shown as a lean, not a pick: offered at 50%, a
+ * 60% answer is closer to a coin toss than to a read, and says so.
+ */
+const SURE_AT = 0.8;
+
 type Stage =
   | { at: 'camera' }
   | { at: 'reading'; uri: string }
@@ -76,10 +82,15 @@ export function HeatScanSheet({
   const [permission, requestPermission] = useCameraPermissions();
   const [stage, setStage] = useState<Stage>({ at: 'camera' });
   const cam = useRef<CameraView | null>(null);
+  // The phone's light, held on while framing: a stencil in a dark rack or an
+  // etched number in a vault reads far better lit. It stays on for the next
+  // read, and goes off when the sheet closes.
+  const [torch, setTorch] = useState(false);
 
   const reset = () => setStage({ at: 'camera' });
   const close = () => {
     reset();
+    setTorch(false);
     onClose();
   };
 
@@ -168,11 +179,37 @@ export function HeatScanSheet({
               backgroundColor: '#000',
             }}
           >
-            <CameraView ref={cam} style={{ flex: 1 }} facing="back" />
+            <CameraView ref={cam} style={{ flex: 1 }} facing="back" enableTorch={torch} />
+            <Pressable
+              onPress={() => {
+                void Haptics.selectionAsync();
+                setTorch((on) => !on);
+              }}
+              accessibilityRole="switch"
+              accessibilityState={{ checked: torch }}
+              accessibilityLabel={torch ? 'Light on. Turn it off' : 'Turn the light on'}
+              hitSlop={8}
+              style={({ pressed }) => ({
+                position: 'absolute',
+                top: t.space.md,
+                right: t.space.md,
+                width: 52,
+                height: 52,
+                borderRadius: 26,
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: torch ? t.colors.accent : pressed ? 'rgba(0,0,0,0.75)' : 'rgba(0,0,0,0.55)',
+                borderWidth: 1,
+                borderColor: torch ? t.colors.accent : 'rgba(255,255,255,0.35)',
+              })}
+            >
+              <Ionicons name={torch ? 'flashlight' : 'flashlight-outline'} size={24} color={torch ? t.colors.onPrimary : '#fff'} />
+            </Pressable>
           </View>
           <Text style={[t.type.caption, { color: t.colors.textFaint }]}>
-            Fill the frame with the stencil or the heat line on the cert. Closer and squarer reads better than
-            further and crooked.
+            {torch
+              ? 'Stamped or etched numbers read by their shadows: hold the phone off to one side so the light rakes across them, not straight on.'
+              : 'Fill the frame with the stencil or the heat line on the cert. Closer and squarer reads better than further and crooked. Dark rack or stamped steel? Tap the light.'}
           </Text>
           <Pressable
             onPress={() => void shoot()}
@@ -302,8 +339,10 @@ export function HeatScanSheet({
                   {whyLabel(c.why)}
                 </Text>
                 {jevPick && fill?.heat ? (
-                  <Text style={[t.type.captionStrong, { color: t.colors.accent }]}>
-                    {`Jev picks this as the heat · ${Math.round(fill.heat.confidence * 100)}%`}
+                  <Text style={[t.type.captionStrong, { color: fill.heat.confidence >= SURE_AT ? t.colors.accent : t.colors.warnText }]}>
+                    {fill.heat.confidence >= SURE_AT
+                      ? `Jev picks this as the heat · ${Math.round(fill.heat.confidence * 100)}%`
+                      : `Jev leans to this one · ${Math.round(fill.heat.confidence * 100)}% — check it against the steel`}
                   </Text>
                 ) : null}
               </View>
