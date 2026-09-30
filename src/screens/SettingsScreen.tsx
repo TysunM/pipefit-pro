@@ -1,5 +1,5 @@
 import React from 'react';
-import { Text, View } from 'react-native';
+import { Platform, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Screen } from '../components/Screen';
 import { SectionHeader } from '../components/SectionHeader';
@@ -10,7 +10,7 @@ import { FooterNote } from '../components/Results';
 import { PipeSheet } from '../components/PipeSheet';
 import { useTheme } from '../theme/ThemeProvider';
 import { useSettings } from '../state/settings';
-import { appVersion, buildId, runningBuild, useOtaUpdate } from '../state/updates';
+import { appVersion, buildId, runningBuild, useOtaUpdate, versionRows } from '../state/updates';
 import { useUnits } from '../hooks/useUnits';
 import { findSize } from '../calc/pipe';
 import { FractionDenominator } from '../calc/format';
@@ -221,6 +221,28 @@ export function SettingsScreen() {
       </View>
 
       <SectionHeader title="Updates" meta={runningBuild()} />
+      <View
+        style={{
+          marginHorizontal: t.layout.screenPadding,
+          marginBottom: t.space.md,
+          padding: t.space.md,
+          borderRadius: t.radius.md,
+          borderWidth: 1,
+          borderColor: t.colors.border,
+          backgroundColor: t.colors.bgSubtle,
+          gap: t.space.xs,
+        }}
+        accessibilityLabel={`App version: ${versionRows().map((r) => `${r.label} ${r.value}`).join(', ')}`}
+      >
+        {versionRows().map((r) => (
+          <View key={r.label} style={{ flexDirection: 'row', gap: t.space.md }}>
+            <Text style={[t.type.caption, { color: t.colors.textMuted, width: 72 }]}>{r.label}</Text>
+            <Text style={[t.type.bodyStrong, { color: t.colors.text, flex: 1, fontFamily: r.label === 'Build' || r.label === 'Update' ? t.font.mono : undefined }]}>
+              {r.value}
+            </Text>
+          </View>
+        ))}
+      </View>
       {ota.enabled ? (
         <>
           <ControlRow>
@@ -256,7 +278,9 @@ export function SettingsScreen() {
             { color: t.colors.textMuted, paddingHorizontal: t.layout.screenPadding, marginBottom: t.space.lg },
           ]}
         >
-          Over-the-air updates are off in development. They are live in the installed app.
+          {Platform.OS === 'web'
+            ? 'The web app is always the latest: reload the page to get it. Updates to the phone app arrive in the phone app.'
+            : 'Over-the-air updates are off in development. They are live in the installed app.'}
         </Text>
       )}
 
