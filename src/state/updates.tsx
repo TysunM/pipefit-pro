@@ -1,5 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { AppState, type AppStateStatus } from 'react-native';
+import { AppState, Platform, type AppStateStatus } from 'react-native';
 import Constants from 'expo-constants';
 import * as Updates from 'expo-updates';
 
@@ -22,6 +22,14 @@ import * as Updates from 'expo-updates';
  */
 
 const RECHECK_MS = 5 * 60 * 1000;
+
+/**
+ * The web app has no over-the-air updates to speak of: every load is the
+ * latest the Worker serves. expo-updates on web still says it is enabled, so
+ * the platform is asked instead.
+ */
+const WEB = Platform.OS === 'web';
+const OTA = Updates.isEnabled && !WEB;
 
 export type UpdateStatus = {
   /** A new bundle is downloaded and waiting for a reload. */
@@ -64,17 +72,39 @@ export function appVersion(): string {
  * what the build log prints.
  */
 export function buildId(): string {
+  if (WEB) return 'web';
   const rv = Updates.runtimeVersion;
   return rv ? rv.slice(0, 8) : 'dev';
 }
 
 /** What the app is actually running, for the settings screen. */
 export function runningBuild(): string {
+  if (WEB) return 'Web app';
   if (!Updates.isEnabled) return 'Development build';
   if (Updates.isEmbeddedLaunch) return 'As installed';
   const at = Updates.createdAt;
   if (!at) return 'Updated';
   return `Updated ${at.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`;
+}
+
+/**
+ * What this install is running, line by line, for the top of the Updates
+ * section: enough to answer "did the update land" at a glance. The time is
+ * there, not just the day, because a merge publishes an update and a busy day
+ * has several. The update id is the one expo.dev lists, to match the two up.
+ */
+export function versionRows(): { label: string; value: string }[] {
+  if (WEB) return [{ label: 'Running', value: 'Web app' }];
+  const rows = [{ label: 'Build', value: buildId() }];
+  if (!Updates.isEnabled) return [...rows, { label: 'Running', value: 'Development build' }];
+  const at = Updates.createdAt;
+  const when = at
+    ? `${at.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}, ${at.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}`
+    : null;
+  rows.push({ label: 'Running', value: Updates.isEmbeddedLaunch ? 'As installed, no update yet' : when ? `Update of ${when}` : 'An update' });
+  if (!Updates.isEmbeddedLaunch && Updates.updateId) rows.push({ label: 'Update', value: Updates.updateId.slice(0, 8) });
+  if (Updates.channel) rows.push({ label: 'Channel', value: Updates.channel });
+  return rows;
 }
 
 const UpdateContext = createContext<UpdateStatus | null>(null);
@@ -90,7 +120,7 @@ export function UpdatesProvider({ children }: { children: React.ReactNode }) {
   const inFlight = useRef(false);
 
   const run = useCallback(async (loud: boolean): Promise<boolean> => {
-    if (!Updates.isEnabled || inFlight.current) return false;
+    if (!OTA || inFlight.current) return false;
     inFlight.current = true;
     setBusy(true);
     if (loud) setError(null);
@@ -130,7 +160,7 @@ export function UpdatesProvider({ children }: { children: React.ReactNode }) {
       ready,
       busy,
       error,
-      enabled: Updates.isEnabled,
+      enabled: OTA,
       apply: () => {
         void Updates.reloadAsync();
       },
