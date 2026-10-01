@@ -9,6 +9,8 @@ import { HeatsProvider } from "./src/state/heats";
 import { SpoolsProvider } from "./src/state/spools";
 import { SketchesProvider } from "./src/state/sketches";
 import { LevelsProvider } from "./src/state/levels";
+import { PressureTestsProvider } from "./src/state/pressureTests";
+import { ShiftsProvider } from "./src/state/shifts";
 import { RecentsProvider } from "./src/state/recents";
 import { JobPickProvider } from "./src/state/jobPick";
 import { ThemeProvider, useTheme } from "./src/theme/ThemeProvider";
@@ -60,13 +62,17 @@ export default function App() {
             <SpoolsProvider>
               <SketchesProvider>
                 <LevelsProvider>
-                  <RecentsProvider>
-                    <JobPickProvider>
-                      <UpdatesProvider>
-                        <Gate />
-                      </UpdatesProvider>
-                    </JobPickProvider>
-                  </RecentsProvider>
+                  <PressureTestsProvider>
+                    <ShiftsProvider>
+                      <RecentsProvider>
+                        <JobPickProvider>
+                          <UpdatesProvider>
+                            <Gate />
+                          </UpdatesProvider>
+                        </JobPickProvider>
+                      </RecentsProvider>
+                    </ShiftsProvider>
+                  </PressureTestsProvider>
                 </LevelsProvider>
               </SketchesProvider>
             </SpoolsProvider>

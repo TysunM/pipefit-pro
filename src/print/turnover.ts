@@ -1,9 +1,9 @@
 // The turnover package
 // --------------------
-// What a job hands over at the end: every flange bolted up and how, every heat
-// that went into them and whether its cert is in hand, the isos, the level
-// readings and the spools — for one job, on paper, with a line for QC and the
-// supervisor to sign.
+// What a job hands over at the end: every pressure test and how it went, every
+// flange bolted up and how, every heat that went into them and whether its
+// cert is in hand, the isos, the level readings and the spools — for one job,
+// on paper, with a line for QC and the supervisor to sign.
 //
 // It leads with what is still open, because the question a turnover answers
 // is not "what was done" but "what can we prove, and what is missing". A page
@@ -22,6 +22,9 @@ import { isDone, isSettled, jointFlange, jointProgress, lastCheck } from '../sta
 import type { SavedSketch } from '../state/sketchStore';
 import { sketchToSvg } from '../state/sketchStore';
 import type { SavedSpool } from '../state/spoolStore';
+import type { PressureTest } from '../state/pressureLog';
+import { KIND_LABEL, RESULT_LABEL, heldMinutes, isSigned, testName } from '../state/pressureLog';
+import { dayLabel } from '../calc/days';
 import { CSS, SheetTable, table } from './sheet';
 import { esc } from './spoolSvg';
 
@@ -36,6 +39,8 @@ export type TurnoverInput = {
   sketches: readonly SavedSketch[];
   readings: readonly Reading[];
   spools: readonly SavedSpool[];
+  /** Every pressure test on the job, every attempt. */
+  tests: readonly PressureTest[];
   /** Dot spacing the isos are drawn at. */
   grid: number;
 };
@@ -69,13 +74,21 @@ export function heatsUsed(joints: readonly Joint[], book: readonly Heat[]): { nu
   return [...byKey.values()].sort((a, b) => a.number.localeCompare(b.number));
 }
 
+/** Whether a failed test has a later attempt at the same package. */
+const retestOf = (t: PressureTest, all: readonly PressureTest[]) => all.find((x) => x.id !== t.id && x.pkg.toUpperCase() === t.pkg.toUpperCase() && x.attempt > t.attempt);
+
 /**
  * The punch list: everything that stops the package being signed, in the
- * order it gets chased — work not finished, then checks not done, then
- * records nobody signed, then paper not in hand.
+ * order it gets chased — tests not passed, work not finished, then checks not
+ * done, then records nobody signed, then paper not in hand.
  */
-export function openItems(joints: readonly Joint[], book: readonly Heat[]): OpenItem[] {
+export function openItems(joints: readonly Joint[], book: readonly Heat[], tests: readonly PressureTest[] = []): OpenItem[] {
   const out: OpenItem[] = [];
+  for (const t of tests) {
+    if (t.result === 'fail' && !retestOf(t, tests)) out.push({ what: testName(t), needs: 'Pressure test failed; no retest recorded' });
+    else if (t.result === 'open') out.push({ what: testName(t), needs: 'Pressure test not signed off' });
+    else if (t.result === 'pass' && !isSigned(t.people.examiner)) out.push({ what: testName(t), needs: `Examiner${t.people.examiner.name ? ` ${t.people.examiner.name}` : ''} has not signed the test record` });
+  }
   for (const j of joints) if (!isDone(j)) out.push({ what: name(j), needs: `Bolt-up not finished: ${jointProgress(j)}` });
   for (const j of joints)
     if (isDone(j) && !isSettled(j)) {
@@ -100,11 +113,14 @@ export function turnoverTotals(i: TurnoverInput): { label: string; value: string
   const done = i.joints.filter(isDone).length;
   const settled = i.joints.filter(isSettled).length;
   const trace = traceability(i.joints, i.heats);
+  const packages = new Set(i.tests.map((t) => t.pkg.toUpperCase()));
+  const passed = new Set(i.tests.filter((t) => t.result === 'pass').map((t) => t.pkg.toUpperCase()));
   return [
+    ...(i.tests.length ? [{ label: 'Tests passed', value: `${passed.size} / ${packages.size}` }] : []),
     { label: 'Bolted up', value: `${done} / ${i.joints.length}` },
     { label: 'Re-checked', value: `${settled} / ${done}` },
     { label: 'Heats proved', value: `${trace.proved.length} / ${i.joints.length}` },
-    { label: 'Open items', value: String(openItems(i.joints, i.heats).length) },
+    { label: 'Open items', value: String(openItems(i.joints, i.heats, i.tests).length) },
   ];
 }
 
@@ -115,7 +131,7 @@ function status(j: Joint): string {
 
 export function turnoverHtml(i: TurnoverInput): string {
   const job = i.job || 'All jobs';
-  const open = openItems(i.joints, i.heats);
+  const open = openItems(i.joints, i.heats, i.tests);
   const used = heatsUsed(i.joints, i.heats);
   const isos = i.sketches.filter((s) => s.strokes.length > 0);
   const tables: SheetTable[] = [];
@@ -123,8 +139,29 @@ export function turnoverHtml(i: TurnoverInput): string {
   tables.push({
     title: 'Open items',
     head: ['Item', 'Needed before sign-off'],
-    rows: open.length ? open.map((o) => [o.what, o.needs]) : [['None', 'Every joint is bolted up and re-checked, and every heat has its cert in hand.']],
+    rows: open.length ? open.map((o) => [o.what, o.needs]) : [['None', 'Every test is passed and signed, every joint is bolted up and re-checked, and every heat has its cert in hand.']],
   });
+
+  if (i.tests.length)
+    tables.push({
+      title: 'Pressure tests',
+      head: ['Package', 'Test', 'Pressure', 'Held', 'Date', 'Result', 'Examined by', 'Witnessed by'],
+      right: [2, 3],
+      rows: i.tests.map((t) => {
+        const held = heldMinutes(t);
+        return [
+          testName(t),
+          `${KIND_LABEL[t.kind]}${t.medium ? `, ${t.medium.toLowerCase()}` : ''}`,
+          t.testPsi === null ? '—' : `${t.testPsi} psi`,
+          held === null ? '—' : `${Math.floor(held)} min`,
+          dayLabel(t.day),
+          RESULT_LABEL[t.result].toUpperCase(),
+          t.people.examiner.name ? `${t.people.examiner.name}${isSigned(t.people.examiner) ? '' : ' (unsigned)'}` : '—',
+          t.people.witness.name || '—',
+        ];
+      }),
+      note: 'Each test has a record of its own, with the gauges, the hold readings, the walk-down and the signatures. Every attempt is listed; a failed test stays in the record beside its retest.',
+    });
 
   if (i.joints.length)
     tables.push({
@@ -215,6 +252,7 @@ export function turnoverHtml(i: TurnoverInput): string {
     .join('');
 
   const contents = [
+    ...(i.tests.length ? [plural(i.tests.length, 'pressure test')] : []),
     plural(i.joints.length, 'joint'),
     plural(used.length, 'heat'),
     plural(isos.length, 'iso'),

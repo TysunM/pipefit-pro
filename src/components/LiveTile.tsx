@@ -5,6 +5,7 @@ import { LevelBadge } from './LevelBadge';
 import { useJoints } from '../state/joints';
 import { useHeats } from '../state/heats';
 import { useSpools } from '../state/spools';
+import { usePressureTests } from '../state/pressureTests';
 import { listed } from '../state/register';
 
 /**
@@ -16,6 +17,7 @@ export function LiveTile({ tool, onPress }: { tool: Tool; onPress: () => void })
   const { register, hydrated: jIn } = useJoints();
   const { book: heats, hydrated: hIn } = useHeats();
   const { shelf, hydrated: sIn } = useSpools();
+  const { log: tests, hydrated: tIn } = usePressureTests();
 
   if (tool.route === 'SpoolBuilder')
     return <ToolTile tool={tool} featured badge={<FeatureTag text="Explore" />} corner={<FeatureArrow />} onPress={onPress} />;
@@ -28,6 +30,8 @@ export function LiveTile({ tool, onPress }: { tool: Tool; onPress: () => void })
         ? heats.heats.length
         : tool.route === 'OrderSheet' && sIn
           ? shelf.spools.length
-          : null;
+          : tool.route === 'PressureTests' && tIn
+            ? tests.tests.length
+            : null;
   return <ToolTile tool={tool} corner={n === null ? undefined : <CountBadge n={n} />} onPress={onPress} />;
 }

@@ -1093,6 +1093,85 @@ The heading above the log then reads one of three things: *Not checked since it 
 
 ---
 
+## Pressure tests
+
+Every hydro and pneumatic test on the job, as a record QC signs: Logs → **Pressure tests**.
+
+### What it is for
+
+A pressure test leaves paper, and the paper is what gets argued over. This keeps the test package's form on the phone that runs the test — the figures, the gauges, the relief valve, the walk-down, the hold timed from the phone's clock, the readings as they are taken, what was found and who signed — and prints it as one PDF with the boundary isos at the back.
+
+It also does the arithmetic QC does on the back of the form, as you type: whether the test pressure is inside what ASME B31.3 or B31.1 allows for the design pressure, whether each gauge is in calibration on the day and the right size for the test, whether the relief valve is set where it protects the line without lifting before test pressure, and whether the hold ran long enough. Anything wrong is at the top of the screen, worst first. Nothing stops you saving; the inspector decides, the app makes sure the inspector sees.
+
+### Step by step
+
+1. **Start a test.** It is dated today and tagged to the active job.
+2. **Fill in the test**: the package number, what is in it (lines, isos), the code, hydro or pneumatic, the medium, the design and test pressures and temperatures, and the hold the job asks for. The code's minimum hold is used if the job's is shorter.
+3. **Gauges and relief valve**: tag, range and calibration due date for each gauge; the relief valve's tag and set pressure.
+4. **Walk-down**: tick each step before pressure goes on. A pneumatic test has two more — the barricade, and the preliminary check at low pressure.
+5. **Start the hold** when the gauge reads test pressure, typing what it reads. The clock runs from the phone's time, so it is right after the phone has been in a pocket, and the phone buzzes when the hold is met. **Log reading** as you take readings through the hold. **End the hold** with the final reading.
+6. **Result**: passed, failed or open, and what was found. A failed test says where it leaked.
+7. **Sign-off**: type each name, then **Sign** draws the signature on the glass. The record carries it, with the time.
+8. **Share the test record**: the PDF, to the inspector, the GC or the job folder. The isos you ticked under Boundary isos go at the back, one to a page.
+
+A test that failed is never edited into a pass. **Start the retest** makes a new record with the same package, figures, gauges and people, numbered as the next attempt, and both stay in the log and in the turnover package.
+
+### What the code figures are
+
+| | Hydrostatic | Pneumatic |
+|---|---|---|
+| **ASME B31.3** | at least 1.5 × design | 1.1 × to 1.33 × design; relief set no higher than test pressure plus the lesser of 50 psi or 10%; preliminary check at the lesser of 25 psi or half the test pressure |
+| **ASME B31.1** | at least 1.5 × design | 1.2 × to 1.5 × design |
+| **Both** | hold at least 10 minutes before examining the joints | |
+
+Gauge range is not in either code; the app uses ASME Section VIII's rule for test gauges, about twice the test pressure and never under 1.5 or over 4 times it, which is what most job specs adopt, so a gauge outside it is a warning rather than a fault. **Job spec** as the code turns the code checks off, for a test run to a spec that is neither.
+
+### What it will not do
+
+It does not work the B31.3 stress-ratio increase for a design temperature above the test temperature: that needs the material's allowable stresses, which the app does not hold. It flags the case and leaves the figure to the test package. The test pressure on the package is the engineer's; this checks the arithmetic around it.
+
+### Where people go wrong
+
+- **Starting the hold before the gauge is at test pressure.** The app flags a hold started under the test pressure, but it only knows what you typed.
+- **A gauge out of calibration on the day.** The app stops on it; the inspector will too. Check the stickers before the pump is on.
+- **Marking passed with no examiner named.** The code has the examiner certify the result; the record needs the name and the signature.
+
+---
+
+## Shift report
+
+The day, written up once at the end of it: Logs → **Shift report**.
+
+### What it is for
+
+A foreman reads a shift report for three things: what got done, what failed or is still open, and what held the crew up. The report leads with a few sentences that say exactly that, then the figures that back them, then the crew's own words.
+
+Most of the figures the app already has, because they were logged as they happened — the pressure tests, the bolt-ups, the re-torque checks, the heats entered, the level readings, the isos drawn — and it reads them off those logs for the day and the job. What nobody else keeps is typed here: the welds made by size, any rejected, the spools finished, the crew and hours, and four notes: issues and delays, safety, tomorrow, and anything else.
+
+### Step by step
+
+1. Pick the job and the day. Opening the same day again opens the same report, so one started at lunch is finished at the end of the shift.
+2. Check **Already logged**: what the app read off the records for that day. If a test or a bolt-up is missing, it was not logged on that day under that job.
+3. Count the welds with the plus and minus buttons, one row per size. **Another size** adds a row. The total and the diameter-inches work themselves out.
+4. Add any rejected weld by its number and why. Tick the spools finished, or type a mark.
+5. Crew and hours each.
+6. Write the notes in whatever shorthand you use.
+7. **Build the report**: the plain version, from the records and your notes word for word. Or **Polish with Claude**: the same facts go to Claude, which writes the summary as sentences and tidies your notes into sentences a GC can read.
+8. Read it over and change anything, then **Send as text** to a chat or email, or **Share as PDF**.
+
+### What Claude is and is not allowed to do
+
+Claude writes only the summary and rewrites the four notes. Every figure under them is the app's own, laid out by code. And the app checks Claude's version before showing it: every number in it must be a number in the facts or your notes; every rejected weld, failed or open test, joint that took up and heat without a cert must be named in the summary; a note you left empty stays empty and one you filled stays filled. If any of that fails, the plain version is used and the screen says why. Either way you read it before it goes.
+
+With no signal, or with Claude not switched on at the server, the plain report is there and is right.
+
+### Where people go wrong
+
+- **Logging the welds once at the end of the week.** One report per day; the figures are what the shift did.
+- **Sending it without reading it.** Claude's version is checked against the record, not against what you meant. A note it misread is yours to fix.
+
+---
+
 ## Handbook
 
 Every table from the printed book, searchable, **with its page number on it**.
@@ -1113,6 +1192,7 @@ Use it when you want to see the figure the calculation used rather than take it 
 | **Weld gap** | Your standard root gap |
 | **Stock length** | The length you buy. The cut list packs onto it, and the offset and cut-length screens check against it. |
 | **Saw cut** | What the blade takes, default 1/8". Charged on every cut in the cut list. |
+| **Smart fill** | Whether a heat scan and the handbook search ask Jev, with signal |
 | **Updates** | What is running, and a manual check |
 
 Settings are stored on the phone only. Nothing leaves it.

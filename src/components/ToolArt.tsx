@@ -173,6 +173,45 @@ const art: Partial<Record<ToolRoute, (k: Ink) => React.ReactNode>> = {
     </G>
   ),
 
+  PressureTests: (k) => {
+    // A test gauge: the dial, the needle up at test pressure, the stem into the pipe.
+    const cx = 40;
+    const cy = 30;
+    const ticks = Array.from({ length: 9 }, (_, i) => {
+      const a = Math.PI * (1.25 - (i * 1.5) / 8);
+      return [cx + 17.5 * Math.cos(a), cy - 17.5 * Math.sin(a), cx + 21 * Math.cos(a), cy - 21 * Math.sin(a)];
+    });
+    const needle = Math.PI * (1.25 - 1.5 * 0.72);
+    return (
+      <G fill="none" strokeLinecap="round" strokeLinejoin="round">
+        <Line x1={10} y1={58} x2={70} y2={58} stroke={k.line} strokeWidth={2.4} />
+        <Line x1={10} y1={62} x2={70} y2={62} stroke={k.soft} strokeWidth={1.2} />
+        <Rect x={36} y={50} width={8} height={8} rx={1.5} stroke={k.line} strokeWidth={1.8} />
+        <Circle cx={cx} cy={cy} r={24} stroke={k.line} strokeWidth={2.4} fill={k.plate} />
+        {ticks.map(([x1, y1, x2, y2], i) => (
+          <Line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke={i >= 6 ? k.accent : k.line} strokeWidth={i % 4 === 0 ? 2 : 1.3} />
+        ))}
+        <Line x1={cx} y1={cy} x2={cx + 16 * Math.cos(needle)} y2={cy - 16 * Math.sin(needle)} stroke={k.accent} strokeWidth={2.4} />
+        <Circle cx={cx} cy={cy} r={2.6} fill={k.accent} />
+      </G>
+    );
+  },
+
+  ShiftReport: (k) => (
+    <G fill="none" strokeLinecap="round" strokeLinejoin="round">
+      <Path d="M22 6 H50 L58 14 V58 H22 Z" stroke={k.line} strokeWidth={2.4} />
+      <Path d="M50 6 V14 H58" stroke={k.line} strokeWidth={2} />
+      <Line x1={28} y1={22} x2={46} y2={22} stroke={k.line} strokeWidth={2.2} />
+      <Line x1={28} y1={29} x2={52} y2={29} stroke={k.soft} strokeWidth={1.6} />
+      <Line x1={28} y1={34} x2={48} y2={34} stroke={k.soft} strokeWidth={1.6} />
+      <Line x1={28} y1={39} x2={52} y2={39} stroke={k.soft} strokeWidth={1.6} />
+      <Path d="M28 48 l3.5 3.5 L38 45" stroke={k.accent} strokeWidth={2.4} />
+      <Line x1={42} y1={49} x2={52} y2={49} stroke={k.accent} strokeWidth={2} />
+      <Circle cx={14} cy={16} r={7} stroke={k.accent} strokeWidth={2} />
+      <Path d="M14 12 V16.5 L17 18.5" stroke={k.accent} strokeWidth={1.8} />
+    </G>
+  ),
+
   IsoSketch: (k) => {
     // Iso paper: two families of lines at thirty degrees, cut to the sheet.
     const t30 = Math.tan(Math.PI / 6);

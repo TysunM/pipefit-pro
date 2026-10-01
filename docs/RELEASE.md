@@ -440,9 +440,9 @@ default.
    no `dist` to serve.
 4. Save. Every push to `main` redeploys.
 
-`wrangler.jsonc` in the repo root carries the rest. It has no `main` on
-purpose: with `assets` and no script, the Worker is a pure static host and
-nothing runs per request. `not_found_handling` is set to
+`wrangler.jsonc` in the repo root carries the rest. `main` is
+`worker/index.ts`, which runs for `/api/*` only (`run_worker_first`); every
+other path is served straight out of `dist`. `not_found_handling` is set to
 `single-page-application`, so a refresh or a stale bookmark on any path opens
 the app instead of a 404 — the whole app lives behind one page.
 
@@ -454,6 +454,26 @@ npx wrangler deploy --dry-run
 ```
 
 It should read the files out of `dist` and stop without deploying.
+
+### The Worker's keys
+
+`worker/index.ts` answers `/api/*` and holds the two keys the app must never
+carry, because anyone can pull a key out of an APK or a web bundle. Both are
+set in the Cloudflare dashboard under the Worker's **Settings → Variables and
+Secrets**, or with `npx wrangler secret put <NAME>`. Without them the app
+still works; the two features simply say the server is not set up.
+
+| Name | Kind | For |
+|---|---|---|
+| `TYPESAFE_API_KEY` | Secret | Jev: smart fill on a heat scan, and the handbook search |
+| `ANTHROPIC_API_KEY` | Secret | Claude: the shift report summary |
+| `CLAUDE_MODEL` | Variable (plain text) | Which Claude model writes it. Changing it needs no build and no deploy. |
+
+Neither key goes in the repo, in a chat, in a screenshot, or in a plain
+Variable. Put the name in the Name field and the key in the Value field, and
+pick **Secret**. On the Anthropic console set a monthly spend limit on the
+key: the endpoint takes one fixed question about one shift's facts and
+nothing else, but a limit costs nothing.
 
 **GitHub Pages, if the repo ever goes public or the account goes Pro:**
 Settings → Pages → Source: GitHub Actions, then add a repository variable

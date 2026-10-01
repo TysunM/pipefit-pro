@@ -26,6 +26,9 @@ import { HandBenderScreen } from '../screens/HandBenderScreen';
 import { FlangeBoltUpScreen } from '../screens/FlangeBoltUpScreen';
 import { JointsScreen } from '../screens/JointsScreen';
 import { HeatsScreen } from '../screens/HeatsScreen';
+import { PressureTestsScreen } from '../screens/PressureTestsScreen';
+import { PressureTestScreen } from '../screens/PressureTestScreen';
+import { ShiftReportScreen } from '../screens/ShiftReportScreen';
 import { SpoolBuilderScreen } from '../screens/SpoolBuilderScreen';
 import { OrderSheetScreen } from '../screens/OrderSheetScreen';
 import { IsoSketchScreen } from '../screens/IsoSketchScreen';
@@ -97,6 +100,9 @@ export function RootNavigator() {
         <Stack.Screen name="FlangeBoltUp" component={FlangeBoltUpScreen} options={{ title: 'Flange bolt-up' }} />
         <Stack.Screen name="Joints" component={JointsScreen} options={{ title: 'Joint log' }} />
         <Stack.Screen name="Heats" component={HeatsScreen} options={{ title: 'Heat book' }} />
+        <Stack.Screen name="PressureTests" component={PressureTestsScreen} options={{ title: 'Pressure tests' }} />
+        <Stack.Screen name="PressureTest" component={PressureTestScreen} options={{ title: 'Pressure test' }} />
+        <Stack.Screen name="ShiftReport" component={ShiftReportScreen} options={{ title: 'Shift report' }} />
         <Stack.Screen name="Calculator" component={CalculatorScreen} options={{ title: 'Calculator' }} />
         <Stack.Screen name="Level" component={LevelScreen} options={{ title: 'Level' }} />
         <Stack.Screen name="SpoolBuilder" component={SpoolBuilderScreen} options={{ title: '3D spool' }} />
