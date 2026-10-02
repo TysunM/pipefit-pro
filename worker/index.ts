@@ -1,9 +1,10 @@
 // The one piece of the app that runs on a server
 // ------------------------------------------------
 // Everything else in PipeFit Pro runs on the phone. This Worker exists for one
-// reason: the TypeSafe API key cannot live in the app, because anyone can pull
-// a key out of an APK or a web bundle. So the key is a Worker secret, set once
-// with `npx wrangler secret put TYPESAFE_API_KEY`, and the app calls here.
+// reason: an API key cannot live in the app, because anyone can pull a key out
+// of an APK or a web bundle. So the keys are Worker secrets — TypeSafe's for
+// Jev, set with `npx wrangler secret put TYPESAFE_API_KEY`, and Anthropic's for
+// the shift report summary (see claude.ts) — and the app calls here.
 //
 // It is not a general relay. Each route takes one small, fixed shape of input
 // and builds the question Jev is asked itself, from the same code the app
@@ -13,12 +14,18 @@
 
 import { HEAT_FILL_PATH, MAX_TEXT, heatRequest } from '../src/ai/heatFill';
 import { HANDBOOK_PICK_PATH, MAX_QUERY, cleanQuery, handbookRequest, readHandbookAnswer } from '../src/ai/handbookPick';
+import { SHIFT_POLISH_PATH } from '../src/ai/shiftPolish';
+import { MODEL_ID, shiftPolish } from './claude';
 
 export interface Env {
   /** Set with `npx wrangler secret put TYPESAFE_API_KEY`. Never in the repo. */
   TYPESAFE_API_KEY?: string;
   /** TypeSafe's API root; defaults to https://api.typesafe.ai. */
   TYPESAFE_BASE_URL?: string;
+  /** Set with `npx wrangler secret put ANTHROPIC_API_KEY`. Never in the repo. */
+  ANTHROPIC_API_KEY?: string;
+  /** The Claude model that writes shift report summaries. A plain variable, set in the dashboard. */
+  CLAUDE_MODEL?: string;
   /** The web app's static files. */
   ASSETS?: { fetch: (req: Request) => Promise<Response> };
 }
@@ -72,10 +79,22 @@ export async function handle(req: Request, env: Env, fetchImpl: typeof fetch = f
   if (!url.pathname.startsWith('/api/')) {
     return env.ASSETS ? env.ASSETS.fetch(req) : new Response('Not found', { status: 404 });
   }
+  const claude = url.pathname === SHIFT_POLISH_PATH;
   const route = ROUTES[url.pathname];
-  if (!route) return json(404, { error: 'not_found' });
+  if (!route && !claude) return json(404, { error: 'not_found' });
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
   if (req.method !== 'POST') return json(405, { error: 'method_not_allowed' });
+
+  // Claude's route has its own key and model, and never needs TypeSafe's.
+  if (claude) {
+    const apiKey = env.ANTHROPIC_API_KEY?.trim();
+    const model = env.CLAUDE_MODEL?.trim() ?? '';
+    const missing = [!apiKey && 'ANTHROPIC_API_KEY', !MODEL_ID.test(model) && 'CLAUDE_MODEL'].filter(Boolean);
+    if (!apiKey || missing.length) return json(503, { error: 'not_configured', missing });
+    const out = await shiftPolish(await req.text(), apiKey, model, fetchImpl);
+    return json(out.status, out.body);
+  }
+  if (!route) return json(404, { error: 'not_found' });
 
   const key = env.TYPESAFE_API_KEY?.trim();
   if (!key) return json(503, { error: 'not_configured' });

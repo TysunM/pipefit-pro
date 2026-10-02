@@ -23,6 +23,8 @@ import { findSize } from '../calc/pipe';
 import { inchesPerFoot } from '../calc/sight';
 import { ISO_GRID } from '../calc/iso';
 import { useHeats } from '../state/heats';
+import { usePressureTests } from '../state/pressureTests';
+import { sortTests } from '../state/pressureLog';
 import { day, openItems, turnoverHtml } from '../print/turnover';
 import { shareSheet } from '../print/share';
 
@@ -51,9 +53,10 @@ export function ProjectsScreen({ navigation }: Props) {
   const { shelf, hydrated: sIn, apply: applySpools } = useSpools();
   const { log, hydrated: lIn, apply: applyLevels } = useLevels();
   const { book: heatBook } = useHeats();
+  const { log: testLog, apply: applyTests } = usePressureTests();
   const go = (route: ToolRoute) => navigation.navigate(route as never);
 
-  const everything = [...listed(register), ...book.sketches, ...shelf.spools, ...log.readings];
+  const everything = [...listed(register), ...book.sketches, ...shelf.spools, ...log.readings, ...testLog.tests];
   const f = useJobFilter(everything);
   const { active, filter, mine } = f;
   const loose = untagged(everything);
@@ -63,6 +66,8 @@ export function ProjectsScreen({ navigation }: Props) {
   const sketches = sortSketches(mine(book.sketches));
   const spools = sortSpools(mine(shelf.spools));
   const readings = mine(log.readings);
+  // Oldest first, so a package reads as the attempts were made.
+  const tests = sortTests(mine(testLog.tests)).reverse();
   const showJob = filter.kind === 'all';
   const jobOf = (p: string) => (showJob ? p || 'No project' : undefined);
 
@@ -70,8 +75,8 @@ export function ProjectsScreen({ navigation }: Props) {
   // them — joints and spools by mark, readings as they were taken.
   const byName = (a: string, b: string) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
   const tpJoints = [...joints].sort((a, b) => byName(a.tag, b.tag));
-  const tpOpen = openItems(tpJoints, heatBook.heats).length;
-  const tpEmpty = !joints.length && !sketches.length && !spools.length && !readings.length;
+  const tpOpen = openItems(tpJoints, heatBook.heats, tests).length;
+  const tpEmpty = !joints.length && !sketches.length && !spools.length && !readings.length && !tests.length;
   const [tpBusy, setTpBusy] = useState(false);
   const [tpNote, setTpNote] = useState<string | null>(null);
   const shareTurnover = async () => {
@@ -87,6 +92,7 @@ export function ProjectsScreen({ navigation }: Props) {
         sketches: [...sketches].sort((a, b) => byName(a.name, b.name)),
         readings: [...readings].sort((a, b) => a.createdAt - b.createdAt),
         spools: [...spools].sort((a, b) => byName(a.name, b.name)),
+        tests,
         grid: ISO_GRID,
       }),
       `Turnover package ${f.label || 'all jobs'}`
@@ -101,6 +107,7 @@ export function ProjectsScreen({ navigation }: Props) {
     applySketches((b) => ({ ...b, sketches: claimUntagged(b.sketches, active) }));
     applySpools((sh) => ({ ...sh, spools: claimUntagged(sh.spools, active) }));
     applyLevels((l) => ({ ...l, readings: claimUntagged(l.readings, active) }));
+    applyTests((l) => ({ ...l, tests: claimUntagged(l.tests, active) }));
     setClaiming(false);
   };
 
@@ -190,7 +197,7 @@ export function ProjectsScreen({ navigation }: Props) {
               </View>
             </View>
             <Text style={[t.type.caption, { color: t.colors.textMuted }]}>
-              One PDF for QC: open items first, the bolt-up record, re-torque checks, material traceability, level readings, spools and every iso, with sign-off lines.
+              One PDF for QC: open items first, the pressure tests, the bolt-up record, re-torque checks, material traceability, level readings, spools and every iso, with sign-off lines.
             </Text>
             <Pressable
               onPress={shareTurnover}

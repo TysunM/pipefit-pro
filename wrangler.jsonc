@@ -20,6 +20,11 @@
   "name": "pipefit-pro",
   "compatibility_date": "2026-09-16",
   "main": "worker/index.ts",
+  // Plain variables set in the dashboard (CLAUDE_MODEL) survive a deploy.
+  // Without this every push to main deploys the Worker without them and the
+  // shift report's Claude button goes back to "not switched on". Secrets
+  // (TYPESAFE_API_KEY, ANTHROPIC_API_KEY) are kept either way.
+  "keep_vars": true,
   "assets": {
     "directory": "./dist",
     "binding": "ASSETS",

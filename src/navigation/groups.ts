@@ -29,6 +29,8 @@ export type ToolRoute =
   | 'FlangeBoltUp'
   | 'Joints'
   | 'Heats'
+  | 'PressureTests'
+  | 'ShiftReport'
   | 'SpoolBuilder'
   | 'OrderSheet'
   | 'IsoSketch';
@@ -54,6 +56,8 @@ export const TOOLS: Tool[] = [
   { route: 'Joints', title: 'Joint log', subtitle: 'Every bolt-up on the job', icon: 'pricetags-outline' },
   { route: 'FlangeBoltUp', title: 'Flange bolt-up', subtitle: 'Interactive cross-pattern check', icon: 'sync-circle-outline' },
   { route: 'Heats', title: 'Heat book', subtitle: 'MTR traceability by heat #', icon: 'shield-checkmark-outline' },
+  { route: 'PressureTests', title: 'Pressure tests', subtitle: 'Hydro and pneumatic test records', icon: 'speedometer-outline' },
+  { route: 'ShiftReport', title: 'Shift report', subtitle: 'The day, written up for the foreman', icon: 'newspaper-outline' },
   { route: 'IsoSketch', title: 'Iso sketch', subtitle: 'Iso paper; the lines snap to the axes', icon: 'pencil-outline' },
   { route: 'SimpleOffset', title: 'Simple offset', subtitle: 'Travel, run and shrink in one plane', icon: 'git-branch-outline' },
   { route: 'RollingOffset', title: 'Rolling offset', subtitle: 'True offset and roll in two planes', icon: 'sync-outline' },
@@ -94,9 +98,9 @@ export const GROUPS: Group[] = [
   {
     id: 'logs',
     title: 'Logs',
-    subtitle: 'The books the job keeps: every joint bolted up, the heats in them, and the handbook.',
+    subtitle: 'The books the job keeps: every test, every joint bolted up, the heats in them, the shift report, and the handbook.',
     sections: [
-      { title: 'Records', size: 'big', tools: pick(['Joints', 'Heats']) },
+      { title: 'Records', size: 'big', tools: pick(['PressureTests', 'Joints', 'Heats', 'ShiftReport']) },
       { title: 'Look-up', size: 'wide', tools: pick(['Reference']) },
     ],
   },

@@ -14,6 +14,12 @@ export type RootStackParamList = {
   FlangeBoltUp: { jointId?: string } | undefined;
   Joints: undefined;
   Heats: undefined;
+  /** The pressure test log: every hydro and pneumatic test on the phone. */
+  PressureTests: undefined;
+  /** One test's record, open to fill in, time and sign. */
+  PressureTest: { testId: string };
+  /** The daily shift report: today's, or the day picked on the screen. */
+  ShiftReport: undefined;
   OrderSheet: undefined;
   Calculator: undefined;
   Level: undefined;

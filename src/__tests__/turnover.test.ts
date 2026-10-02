@@ -26,6 +26,7 @@ const input = (over: Partial<TurnoverInput> = {}): TurnoverInput => ({
   sketches: [],
   readings: [],
   spools: [],
+  tests: [],
   grid: 20,
   ...over,
 });
