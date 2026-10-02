@@ -469,6 +469,11 @@ still works; the two features simply say the server is not set up.
 | `ANTHROPIC_API_KEY` | Secret | Claude: the shift report summary |
 | `CLAUDE_MODEL` | Variable (plain text) | Which Claude model writes it. Changing it needs no build and no deploy. |
 
+`wrangler.jsonc` sets `keep_vars: true`, so a deploy keeps the plain
+variables set in the dashboard. Without it every push would deploy the Worker
+without `CLAUDE_MODEL`. Do not copy the variable into `wrangler.jsonc` instead:
+the dashboard is where it is meant to be changed.
+
 Neither key goes in the repo, in a chat, in a screenshot, or in a plain
 Variable. Put the name in the Name field and the key in the Value field, and
 pick **Secret**. On the Anthropic console set a monthly spend limit on the
