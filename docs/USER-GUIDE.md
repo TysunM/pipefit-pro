@@ -1220,6 +1220,50 @@ Use it when you want to see the figure the calculation used rather than take it 
 
 ---
 
+## Voice
+
+The round mic low on the right of every screen. Tap it, say it, and the app does it — for a hood, gloves or two dirty hands.
+
+### What you can say
+
+| Say | What happens |
+|---|---|
+| "Bolt up", "hydro", "heat book", "shift report" | That tool opens. Works with no signal. |
+| "Rolling offset, rise 12, roll 8 and a half, run 30" | Rolling offset opens with the figures in. "3 foot 6" and "12 and 3/8" are understood. |
+| "Two 6 inch welds, weld 14 rejected for porosity" | Added to today's shift report for the job on the home screen. |
+| "Safety note: fire watch posted at the tank" | Added under Safety on today's report. Issues, Tomorrow and Notes work the same way. |
+| "Hold started at 225", "reading 224", "hold ended at 224", "test passed" | Written on the pressure test on screen, or the job's latest open test. |
+| "What's the takeout on a 2 inch screwed 90?" | Answered out loud from the handbook, and the table opens with its page number. |
+| "Back", "cancel" | Goes back a screen, or closes the panel. |
+
+Tool names are matched on the phone, at once. Everything else is read by Claude through the app's server, which needs signal.
+
+### Nothing is written without you hearing it
+
+Anything that goes into a record is **said back and left on screen with an Undo** for 15 seconds. Listen for the number. A loud shop will get one wrong sooner or later; Undo puts the record back exactly as it was. **Report** or **Test** on the panel opens what was written.
+
+Claude only answers handbook questions from the handbook. If the book does not cover it, it says so rather than guess.
+
+### Hands-free bolt-up
+
+On the flange bolt-up, tap **Hands-free: say "done"**. The phone says the bolt and the torque, then listens:
+
+- **"Done"** (or "next", "got it") — the bolt asked for is logged, and the phone says the next one.
+- **"Undo"** — the last bolt is taken back.
+- **"Repeat"** — the bolt is said again.
+- **"Stop"** — hands-free ends. Leaving the screen ends it too.
+
+Anything else it hears is shown and ignored, so a conversation nearby does not log a bolt. Earbuds with a mic work best: the phone hears you, not the impact gun.
+
+### When it does not work
+
+- **No mic button:** it is off under Settings → In the field → Voice, or the phone has no speech recogniser (install or update the Google app).
+- **"The microphone is off for PipeFit":** phone Settings → Apps → PipeFit Pro → Permissions → Microphone → Allow.
+- **"Claude is not set up on the server":** the Worker needs `ANTHROPIC_API_KEY` and `CLAUDE_MODEL` (see RELEASE.md). Tool names still work.
+- **Misheard tools:** say the name on the tile ("flange bolt-up", "pressure tests"). Every tile name is taught to the recogniser.
+
+---
+
 ## Settings
 
 | Setting | What it does |

@@ -18,3 +18,25 @@ export function say(text: string): void {
     // No speech engine (an old WebView, a stripped phone): the figure is still on the screen.
   }
 }
+
+/**
+ * Say it, and settle once it has been said — so the microphone is not opened
+ * while the phone is still talking and hears itself. Gives up waiting after
+ * long enough for the words, in case an engine never says it is done.
+ */
+export function sayThen(text: string): Promise<void> {
+  if (!text) return Promise.resolve();
+  return new Promise((resolve) => {
+    const limit = setTimeout(resolve, 1500 + text.length * 90);
+    const done = () => {
+      clearTimeout(limit);
+      resolve();
+    };
+    try {
+      void Speech.stop();
+      Speech.speak(text, { rate: RATE, language: 'en-US', onDone: done, onStopped: done, onError: done });
+    } catch {
+      done();
+    }
+  });
+}

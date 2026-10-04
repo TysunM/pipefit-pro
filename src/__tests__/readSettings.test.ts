@@ -17,6 +17,7 @@ const DEFAULTS: Settings = {
   smartFill: true,
   readAloud: 'tap',
   gloveMode: false,
+  voice: true,
   look: LOOK,
 };
 

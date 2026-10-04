@@ -60,6 +60,11 @@ export type Settings = {
    * or touchscreen gloves. (No touchscreen reads through plain leather.)
    */
   gloveMode: boolean;
+  /**
+   * The mic button on every screen: say a tool, a figure, a weld or a test
+   * reading instead of tapping for it. See voice/VoiceProvider.tsx.
+   */
+  voice: boolean;
   /** Which look these were written under — see readSettings. */
   look: number;
 };
@@ -82,6 +87,7 @@ export const DEFAULT_SETTINGS: Settings = {
   smartFill: true,
   readAloud: 'tap',
   gloveMode: false,
+  voice: true,
   look: LOOK,
 };
 

@@ -45,6 +45,7 @@ export function readSettings(
   merged.smartFill = typeof stored.smartFill === 'boolean' ? stored.smartFill : defaults.smartFill;
   merged.readAloud = stored.readAloud === 'off' || stored.readAloud === 'tap' || stored.readAloud === 'auto' ? stored.readAloud : defaults.readAloud;
   merged.gloveMode = typeof stored.gloveMode === 'boolean' ? stored.gloveMode : defaults.gloveMode;
+  merged.voice = typeof stored.voice === 'boolean' ? stored.voice : defaults.voice;
   if (stored.look === LOOK) return { settings: merged, migrated: false };
   return { settings: { ...merged, themePreference: defaults.themePreference, look: LOOK }, migrated: true };
 }

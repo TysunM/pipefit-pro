@@ -18,6 +18,8 @@ import { ThemeProvider, useTheme } from "./src/theme/ThemeProvider";
 import { useAppFonts } from "./src/theme/useFonts";
 import { RootNavigator } from "./src/navigation/RootNavigator";
 import { UpdateBanner } from "./src/components/UpdateBanner";
+import { VoiceProvider } from "./src/voice/VoiceProvider";
+import { VoiceButton } from "./src/components/VoiceButton";
 
 function Shell() {
   const t = useTheme();
@@ -27,6 +29,7 @@ function Shell() {
       <StatusBar style={t.mode === "dark" ? "light" : "dark"} />
       <View style={{ flex: 1, paddingBottom: visible ? bannerHeight : 0 }}>
         <RootNavigator />
+        <VoiceButton />
       </View>
       <UpdateBanner />
     </>
@@ -68,9 +71,11 @@ export default function App() {
                       <RecentsProvider>
                         <JobPickProvider>
                           <LaserProvider>
-                            <UpdatesProvider>
-                              <Gate />
-                            </UpdatesProvider>
+                            <VoiceProvider>
+                              <UpdatesProvider>
+                                <Gate />
+                              </UpdatesProvider>
+                            </VoiceProvider>
                           </LaserProvider>
                         </JobPickProvider>
                       </RecentsProvider>

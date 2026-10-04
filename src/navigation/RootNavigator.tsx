@@ -4,11 +4,11 @@ import {
   DarkTheme,
   DefaultTheme,
   NavigationContainer,
-  createNavigationContainerRef,
   type NavigationState,
   type Theme as NavTheme,
 } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { nav } from './navRef';
 import { RootStackParamList } from './types';
 import { AppHeader } from '../components/AppHeader';
 import { useTheme } from '../theme/ThemeProvider';
@@ -43,7 +43,6 @@ import { ReferenceTableScreen } from '../screens/ReferenceTableScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
-const nav = createNavigationContainerRef<RootStackParamList>();
 
 /**
  * The installed app opens AR measure in Chrome as the web app's address with

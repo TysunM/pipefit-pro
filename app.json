@@ -47,6 +47,14 @@
       ],
       "expo-mlkit-ocr",
       [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "PipeFit listens when you tap the mic, so you can call up a tool or log a weld with gloves on.",
+          "speechRecognitionPermission": "PipeFit turns what you say into a command when you tap the mic.",
+          "androidSpeechServicePackages": ["com.google.android.googlequicksearchbox", "com.google.android.as"]
+        }
+      ],
+      [
         "expo-camera",
         {
           "cameraPermission": "PipeFit Pro reads heat numbers off stencils and mill certs with the camera. Nothing leaves the phone.",
