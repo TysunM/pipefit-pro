@@ -8,6 +8,7 @@ import { ControlRow, GhostButton } from '../components/Buttons';
 import { AngleFromPipe } from '../components/AngleFromPipe';
 import { FooterNote, MetaBar, ResultBanner, StatGrid } from '../components/Results';
 import { useUnits } from '../hooks/useUnits';
+import { figureText, useSpokenFigures } from '../voice/figures';
 import { BenderDiagram } from '../components/diagram/BenderDiagram';
 import { RADIUS_RULES, radiusFromRule, solveBender } from '../calc/bender';
 import { PIPE_SIZES, findSize } from '../calc/pipe';
@@ -24,6 +25,16 @@ export function HandBenderScreen() {
   const [leg, setLeg] = useState('');
   const [legB, setLegB] = useState('');
   const [stock, setStock] = useState('');
+  // Spoken: "pipe bend, 90 degrees, leg a 30, leg b 2 foot 6".
+  useSpokenFigures('HandBender', (f) => {
+    const text = (k: keyof typeof f) => figureText(f[k]!, u.num);
+    if (f.angle) setAngleText(text('angle'));
+    if (f.legA) setLeg(text('legA'));
+    if (f.legB) setLegB(text('legB'));
+    if (f.radius) setRadiusOverride(text('radius'));
+    if (f.springback) setSpringbackText(text('springback'));
+    if (f.stock) setStock(text('stock'));
+  });
 
   const rule = RADIUS_RULES.find((r) => r.id === ruleId) ?? RADIUS_RULES[1]!;
   const ruleRadius = radiusFromRule(nps, rule.multiple);

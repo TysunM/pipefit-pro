@@ -7,6 +7,11 @@ import { GloveKeypad } from './GloveKeypad';
 import { freshReading, useLaser } from '../state/laser';
 import { useUnits } from '../hooks/useUnits';
 import { M_TO_IN } from '../calc/spatial';
+import { Ionicons } from '@expo/vector-icons';
+import { useVoiceMaybe } from '../voice/VoiceProvider';
+import { listenOnce } from '../voice/listen';
+import { spokenValue } from '../voice/intent';
+import { figureText } from '../voice/figures';
 
 export function DimensionInput({
   label,
@@ -52,11 +57,46 @@ export function DimensionInput({
   const u = useUnits();
   const reading = freshReading(useLaser());
   const laser = reading && editable && onChangeText && suffix === u.suffix ? reading.metres * M_TO_IN : null;
+  // Say it instead: a mic by the label, for any number field, for gloves.
+  const voice = useVoiceMaybe();
+  const [listening, setListening] = useState(false);
+  const [note, setNote] = useState<string | null>(null);
+  const canSay = !!voice?.enabled && editable && !!onChangeText && kb !== 'default' && !voice.handsFree;
+  const say = () => {
+    if (listening) return;
+    setListening(true);
+    setNote('Listening…');
+    void listenOnce((partial) => setNote(`“${partial}”`)).then((h) => {
+      setListening(false);
+      const kind = suffix === '°' ? 'angle' : suffix === u.suffix ? 'length' : 'count';
+      const f = 'text' in h ? spokenValue(h.text, kind) : null;
+      if (f) {
+        onChangeText?.(figureText(f, u.num));
+        return setNote(null);
+      }
+      if (!('text' in h) && h.error === 'aborted') return setNote(null);
+      setNote('text' in h ? `No number in “${h.text}”` : 'Nothing heard. Tap the mic and say the figure.');
+      setTimeout(() => setNote(null), 3000);
+    });
+  };
   return (
     <View style={[{ flex: 1, minWidth: 96 }, style]}>
-      <Text style={[t.type.label, { color: t.colors.textMuted, marginBottom: t.space.sm }]} numberOfLines={1}>
-        {label}
-      </Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: t.space.sm, gap: 4 }}>
+        <Text style={[t.type.label, { color: t.colors.textMuted, flexShrink: 1 }]} numberOfLines={1}>
+          {label}
+        </Text>
+        {canSay ? (
+          <Pressable
+            onPress={say}
+            hitSlop={12}
+            accessibilityRole="button"
+            accessibilityLabel={`Say the ${label}`}
+            style={{ marginLeft: 'auto', paddingHorizontal: 2 }}
+          >
+            <Ionicons name={listening ? 'mic' : 'mic-outline'} size={18} color={listening ? t.colors.danger : t.colors.textFaint} />
+          </Pressable>
+        ) : null}
+      </View>
       {/* A field you type into is a recess in the plate; one the app works
           out for you is flat, so the two are told apart before either is read. */}
       <Well
@@ -127,6 +167,11 @@ export function DimensionInput({
             {`⤓ Laser ${u.frac(laser) || `${u.num(laser)}${u.suffix}`}`}
           </Text>
         </Pressable>
+      ) : null}
+      {note ? (
+        <Text style={[t.type.caption, { color: listening ? t.colors.data : t.colors.warnText, marginTop: 6 }]} numberOfLines={2}>
+          {note}
+        </Text>
       ) : null}
       {readout ? (
         <Text style={[t.type.caption, { color: t.colors.data, marginTop: 6 }]} numberOfLines={1}>

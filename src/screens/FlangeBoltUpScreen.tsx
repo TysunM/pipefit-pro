@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, Modal, Pressable, ScrollView, Text, TextInput, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { StatusBar } from 'expo-status-bar';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import Svg, { Circle, Defs, Line, RadialGradient, Stop } from 'react-native-svg';
@@ -557,6 +558,7 @@ function Bolting({
         visible={full && crowded}
         onClose={() => setFull(false)}
         L={flangeFace(bolts, Math.max(FACE_MIN, width), bcFrac, FULL_PITCH)}
+        fitTo={(size) => fittedFace(bolts, size, bcFrac)}
         at={done ? null : angles[expected - 1] ?? null}
         banner={
           <PassBanner t={t} state={state} expected={expected} target={target} progress={progress} order={order} />
@@ -691,16 +693,17 @@ function BoltFace({
 }
 
 /**
- * A crowded flange at full size, over the whole phone. The face is bigger
- * than the screen, so it pans both ways under a finger and glides to the bolt
- * being asked for each time one is logged. The banner and the log button stay
- * put above and below it.
+ * A crowded flange over the whole phone, status bar and all. It opens on the
+ * whole flange, as big as the screen holds it, so nothing is ever cut off;
+ * Zoom in draws it at a gloved pitch, bigger than the screen, and glides to
+ * the bolt being asked for each time one is logged (drag to look around).
  */
 function FullFace({
   t,
   visible,
   onClose,
   L,
+  fitTo,
   at,
   banner,
   face,
@@ -710,7 +713,10 @@ function FullFace({
   t: Theme;
   visible: boolean;
   onClose: () => void;
+  /** The zoomed face, bigger than the screen. */
   L: FaceLayout;
+  /** The whole face, fitted to a square of the size given. */
+  fitTo: (size: number) => FaceLayout;
   at: number | null;
   banner: React.ReactNode;
   face: (L: FaceLayout) => React.ReactNode;
@@ -722,10 +728,16 @@ function FullFace({
   const across = useRef<ScrollView | null>(null);
   const down = useRef<ScrollView | null>(null);
   const [view, setView] = useState({ w: win.width, h: win.height / 2 });
+  const [zoom, setZoom] = useState(false);
 
-  // Follow the bolt: centre it in the window whenever it changes.
+  // Every time it opens, it opens on the whole flange.
   useEffect(() => {
-    if (!visible || at === null) return;
+    if (visible) setZoom(false);
+  }, [visible]);
+
+  // Zoomed, follow the bolt: centre it in the window whenever it changes.
+  useEffect(() => {
+    if (!visible || !zoom || at === null) return;
     const p = boltCentre(L, at);
     const go = () => {
       across.current?.scrollTo({ x: Math.max(0, p.x - view.w / 2), animated: true });
@@ -734,24 +746,37 @@ function FullFace({
     // The first time, the scroll views are only just laid out.
     const id = setTimeout(go, 60);
     return () => clearTimeout(id);
-  }, [visible, at, L, view.w, view.h]);
+  }, [visible, zoom, at, L, view.w, view.h]);
+
+  const whole = fitTo(Math.max(160, Math.min(view.w, view.h) - 8));
 
   return (
     <Modal visible={visible} animationType="fade" onRequestClose={onClose} statusBarTranslucent>
+      {visible ? <StatusBar hidden /> : null}
       <View style={{ flex: 1, backgroundColor: t.colors.bg, paddingTop: insets.top, paddingBottom: insets.bottom }}>
         {banner}
         <View style={{ flex: 1 }} onLayout={(e) => setView({ w: e.nativeEvent.layout.width, h: e.nativeEvent.layout.height })}>
-          <ScrollView ref={down} showsVerticalScrollIndicator={false}>
-            <ScrollView ref={across} horizontal showsHorizontalScrollIndicator={false}>
-              {face(L)}
+          {zoom ? (
+            <ScrollView ref={down} showsVerticalScrollIndicator={false}>
+              <ScrollView ref={across} horizontal showsHorizontalScrollIndicator={false}>
+                {face(L)}
+              </ScrollView>
             </ScrollView>
-          </ScrollView>
+          ) : (
+            <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>{face(whole)}</View>
+          )}
         </View>
-        <View style={{ paddingVertical: t.layout.screenPadding, gap: t.space.md }}>
+        <View style={{ paddingVertical: t.space.md, gap: t.space.md }}>
           <View style={{ paddingHorizontal: t.layout.screenPadding }}>{logButton}</View>
           <ControlRow>
             <GhostButton label="Undo" icon="arrow-undo-outline" style={{ flex: 1 }} onPress={onUndo} />
-            <GhostButton label="Leave full screen" icon="contract-outline" style={{ flex: 1 }} onPress={onClose} />
+            <GhostButton
+              label={zoom ? 'Whole' : 'Zoom'}
+              icon={zoom ? 'scan-outline' : 'search-outline'}
+              style={{ flex: 1 }}
+              onPress={() => setZoom((z) => !z)}
+            />
+            <GhostButton label="Exit" icon="contract-outline" style={{ flex: 1 }} onPress={onClose} />
           </ControlRow>
         </View>
       </View>

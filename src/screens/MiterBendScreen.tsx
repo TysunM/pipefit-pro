@@ -10,6 +10,7 @@ import { FooterNote, MetaBar, ResultBanner, StatGrid, WarningBanner } from '../c
 import { PipeSheet } from '../components/PipeSheet';
 import { MiterDiagram } from '../components/diagram/MiterDiagram';
 import { useUnits } from '../hooks/useUnits';
+import { figureText, useSpokenFigures } from '../voice/figures';
 import { usePipeConfig } from '../hooks/usePipeConfig';
 import { bendRadius, findSize } from '../calc/pipe';
 import { solveMiter } from '../calc/miter';
@@ -23,6 +24,12 @@ export function MiterBendScreen() {
   const [angleText, setAngleText] = useState('90');
   const [segments, setSegments] = useState(3);
   const [radiusOverride, setRadiusOverride] = useState('');
+  // Spoken: "miter, 90 degrees, 4 segments".
+  useSpokenFigures('MiterBend', (f) => {
+    if (f.angle) setAngleText(figureText(f.angle, u.num));
+    if (f.segments) setSegments(Math.min(6, Math.max(2, Math.round(f.segments.n))));
+    if (f.radius) setRadiusOverride(figureText(f.radius, u.num));
+  });
 
   const totalAngle = parseNumber(angleText);
   const defaultRadius = bendRadius(pipe.nps, pipe.kind);

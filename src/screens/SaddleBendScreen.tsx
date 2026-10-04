@@ -9,6 +9,7 @@ import { ControlRow, GhostButton } from '../components/Buttons';
 import { FooterNote, MetaBar, ResultBanner, StatGrid } from '../components/Results';
 import { useTheme } from '../theme/ThemeProvider';
 import { useUnits } from '../hooks/useUnits';
+import { figureText, useSpokenFigures } from '../voice/figures';
 import { SaddleDiagram } from '../components/diagram/SaddleDiagram';
 import { SaddleType, solveSaddle } from '../calc/saddle';
 import { parseNumber } from '../calc/format';
@@ -22,6 +23,16 @@ export function SaddleBendScreen() {
   const [width, setWidth] = useState('');
   const [distance, setDistance] = useState('');
   const [angleText, setAngleText] = useState('45');
+  // Spoken: "saddle, 4 inch depth, 30 to obstruction".
+  useSpokenFigures('SaddleBend', (f) => {
+    if (f.depth) setDepth(figureText(f.depth, u.num));
+    if (f.distance) setDistance(figureText(f.distance, u.num));
+    if (f.width) {
+      setWidth(figureText(f.width, u.num));
+      setType('four');
+    }
+    if (f.angle) setAngleText(figureText(f.angle, u.num));
+  });
 
   const centerAngle = parseNumber(angleText);
 

@@ -25,6 +25,8 @@ import { testName } from '../state/pressureLog';
 import { applyShift, applyTest } from './apply';
 import { VoiceCommand, localIntent } from './intent';
 import { canListen, heardWords, listenOn, listenOnce, stopListening } from './listen';
+import { publishFigures } from './figures';
+import { FigureSpec, Figures, TOOL_FIGURES, isFigureRoute } from './toolFigures';
 
 export type BoltAct = 'done' | 'undo' | 'repeat';
 /** What the bolt-up screen does with a spoken bolt command: what to say back. */
@@ -57,6 +59,22 @@ type Ctx = {
 };
 
 const VoiceCtx = createContext<Ctx | null>(null);
+
+/** "Rise 12, roll 8.5" — what was filled in, to read back. */
+function figuresSaid(route: string, f: Figures): string {
+  if (!isFigureRoute(route)) return '';
+  const specs = TOOL_FIGURES[route] as Record<string, FigureSpec>;
+  return Object.entries(f)
+    .map(([k, v]) => `${specs[k]?.label ?? k} ${Math.round(v.n * 1000) / 1000}${v.inches ? ' in' : specs[k]?.kind === 'angle' ? '°' : ''}`)
+    .join(', ');
+}
+
+/** Go to a screen, and hand it any figures said for it. */
+function openWith(route: string, figures?: Figures) {
+  if (!nav.isReady()) return;
+  if (nav.getCurrentRoute()?.name !== route) nav.navigate(route as never);
+  if (figures && Object.keys(figures).length && isFigureRoute(route)) publishFigures(route, figures);
+}
 
 const titleOf = (route: string): string => tool(route)?.title ?? (route === 'Home' ? 'Home' : route === 'Settings' ? 'Settings' : route);
 
@@ -96,12 +114,12 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
           if (!h) return finish(heard, 'Open the bolt-up first.', { tone: 'warn' });
           return finish(heard, h(cmd.act));
         }
-        case 'open':
-          if (!nav.isReady()) return;
-          if (cmd.route === 'RollingOffset') nav.navigate('RollingOffset', cmd.params);
-          else nav.navigate(cmd.route as never);
-          // Opening a screen is answer enough; nothing is said.
-          return setSheet({ phase: 'done', heard, reply: titleOf(cmd.route), tone: 'ok' });
+        case 'open': {
+          openWith(cmd.route, cmd.figures);
+          // Opening a screen is answer enough; figures are shown, not said.
+          const said = cmd.figures ? figuresSaid(cmd.route, cmd.figures) : '';
+          return setSheet({ phase: 'done', heard, reply: said ? `${titleOf(cmd.route)}: ${said}` : titleOf(cmd.route), tone: 'ok' });
+        }
       }
     },
     [finish],
@@ -117,10 +135,7 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
       const now = Date.now();
       switch (a.action) {
         case 'open':
-          if (nav.isReady()) {
-            if (a.route === 'RollingOffset') nav.navigate('RollingOffset', a.params);
-            else nav.navigate(a.route as never);
-          }
+          openWith(a.route, a.figures);
           return finish(heard, a.say || titleOf(a.route));
         case 'answer':
           if (a.table && nav.isReady()) nav.navigate('ReferenceTable', { id: a.table });
@@ -242,6 +257,11 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
     [enabled, sheet, talk, handsFree, setHandsFree, useBolts],
   );
   return <VoiceCtx.Provider value={value}>{children}</VoiceCtx.Provider>;
+}
+
+/** The voice controls, or null outside the provider (a component rendered on its own). */
+export function useVoiceMaybe(): Ctx | null {
+  return useContext(VoiceCtx);
 }
 
 export function useVoice(): Ctx {
