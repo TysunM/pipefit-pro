@@ -121,7 +121,7 @@ export function RootNavigator() {
         <Stack.Screen name="ShiftReport" component={ShiftReportScreen} options={{ title: 'Shift report' }} />
         <Stack.Screen name="Calculator" component={CalculatorScreen} options={{ title: 'Calculator' }} />
         <Stack.Screen name="Level" component={LevelScreen} options={{ title: 'Level' }} />
-        <Stack.Screen name="Measure" component={MeasureScreen} options={{ title: 'AR measure' }} />
+        <Stack.Screen name="Measure" component={MeasureScreen} options={{ title: 'Measure' }} />
         <Stack.Screen name="SpoolBuilder" component={SpoolBuilderScreen} options={{ title: '3D spool' }} />
         <Stack.Screen name="OrderSheet" component={OrderSheetScreen} options={{ title: 'Order sheet' }} />
         <Stack.Screen name="IsoSketch" component={IsoSketchScreen} options={{ title: 'Iso sketch' }} />

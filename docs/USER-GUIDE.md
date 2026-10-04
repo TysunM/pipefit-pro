@@ -1093,11 +1093,26 @@ The heading above the log then reads one of three things: *Not checked since it 
 
 ---
 
-## AR measure
+## Measure: laser meter and AR
 
-Trace a run with the phone's camera before the tape comes out: Tools → **AR measure**.
+Tools → **Measure**. Both run in **Chrome on Android**, not in the installed app; in the app, the button opens the web app in Chrome on this screen.
 
-It runs in **Chrome on Android**, not in the installed app. In the app, the button opens the web app in Chrome on this screen. The phone needs **Google Play Services for AR** from the Play Store.
+### Laser meter
+
+Connect a **Leica DISTO** (D1, D2, D110, D510, X-series) or a **Bosch GLM** (50 C, 100-25 C, 120 C) once: turn the meter's Bluetooth on, tap **Connect a laser meter**, and pick it from the list. Each reading shows on the Measure screen with its time (and tilt, on a DISTO that has one).
+
+While the meter is connected, **every length field in the app** shows a blue **⤓ Laser** chip under it with the last reading. Tap it to fill the field. A reading older than ten minutes is not offered.
+
+- **DISTO:** set the meter's unit to metres. The app shows every reading in your own units anyway.
+- **Bosch:** Bosch keeps its protocol private; the app reads it the way it has been worked out from the wire. If readings don't appear, the screen shows the bytes it could not read. Screenshot that and it can be fixed.
+
+A laser reading is good to about 1.5 mm. That one you can cut from.
+
+### AR tracing
+
+Trace a run with the phone's camera before the tape comes out.
+
+The phone needs **Google Play Services for AR** from the Play Store.
 
 ### Step by step
 

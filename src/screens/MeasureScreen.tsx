@@ -10,20 +10,23 @@
 // across a room, and the screen says so every time it shows a number.
 
 import React, { useState } from 'react';
-import { Pressable, Share, Text, View } from 'react-native';
+import { Linking, Pressable, Share, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { RootStackParamList } from '../navigation/types';
 import { Screen } from '../components/Screen';
 import { HintRow } from '../components/HintRow';
 import { SectionHeader } from '../components/SectionHeader';
-import { ControlRow, GhostButton } from '../components/Buttons';
+import { AccentButton, ControlRow, GhostButton } from '../components/Buttons';
 import { FooterNote } from '../components/Results';
 import { Banner } from '../components/FormFields';
 import { ArCapture } from '../components/ArCapture';
 import { useTheme } from '../theme/ThemeProvider';
 import { useUnits } from '../hooks/useUnits';
-import { V3, trace } from '../calc/spatial';
+import { M_TO_IN, V3, trace } from '../calc/spatial';
+import { useLaser } from '../state/laser';
+import { clockLabel } from '../calc/days';
+import { WEB_APP_URL } from '../ai/apiBase';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Measure'>;
 
@@ -31,6 +34,7 @@ export function MeasureScreen({ navigation }: Props) {
   const t = useTheme();
   const u = useUnits();
   const [points, setPoints] = useState<V3[]>([]);
+  const laser = useLaser();
   const r = trace(points);
   // One way to write a length everywhere on the screen and in the camera: 64 1/4" or 1632.0 mm.
   const len = (inches: number) => {
@@ -50,9 +54,51 @@ export function MeasureScreen({ navigation }: Props) {
 
   return (
     <Screen>
-      <HintRow text="Mark points along the route with the camera. Each leg comes back as length, run, rise and slope; each turn as an offset you can work in Rolling offset. Plan with it, then tape it before you cut." />
+      <HintRow text="A laser meter for figures you cut from, and the camera for tracing a route before the tape comes out. Connect the meter once and every length field in the app offers its last reading." />
 
-      <SectionHeader title="Measure" meta={points.length ? `${points.length} POINTS` : undefined} />
+      <SectionHeader title="Laser meter" meta={laser.status === 'on' ? laser.name.toUpperCase() : laser.status === 'connecting' ? 'CONNECTING' : undefined} />
+      <View style={{ paddingHorizontal: t.layout.screenPadding, gap: t.space.md, marginBottom: t.space.lg }}>
+        {laser.note ? <Banner tone="warn" icon="information-circle-outline" text={laser.note} action="OK" onAction={laser.clearNote} /> : null}
+        {!laser.supported ? (
+          <>
+            <Text style={[t.type.body, { color: t.colors.textMuted }]}>
+              A Leica DISTO or a Bosch GLM connects in Chrome, not in the installed app. This opens the web app in Chrome on this screen.
+            </Text>
+            <AccentButton label="Open in Chrome" icon="open-outline" onPress={() => void Linking.openURL(`${WEB_APP_URL}/#measure`)} />
+          </>
+        ) : laser.status === 'on' ? (
+          <>
+            <Text style={[t.type.body, { color: t.colors.text }]}>
+              {laser.readings.length
+                ? 'Take a reading on the meter. Any length field on any screen shows it as a blue chip; tap the chip to fill the field.'
+                : `Connected to ${laser.name}. Press the measure button on the meter.`}
+            </Text>
+            {laser.readings.map((r, i) => (
+              <View key={r.at} style={{ flexDirection: 'row', alignItems: 'baseline', gap: t.space.md }}>
+                <Text style={[i ? t.type.body : t.type.displaySmall, { color: i ? t.colors.textMuted : t.colors.data }]}>{len(r.metres * M_TO_IN)}</Text>
+                <Text style={[t.type.caption, { color: t.colors.textFaint }]}>
+                  {[clockLabel(r.at), r.tilt !== null ? `${r.tilt.toFixed(1)}° tilt` : ''].filter(Boolean).join(' · ')}
+                </Text>
+              </View>
+            ))}
+            {laser.raw ? (
+              <Text style={[t.type.caption, { color: t.colors.warnText }]} selectable>
+                {`A frame the app could not read: ${laser.raw}. Screenshot this if readings are not showing.`}
+              </Text>
+            ) : null}
+            <GhostButton label="Disconnect" icon="close-outline" onPress={laser.disconnect} />
+          </>
+        ) : (
+          <>
+            <Text style={[t.type.body, { color: t.colors.textMuted }]}>
+              Turn the meter on with its Bluetooth on, then connect. Leica DISTO (D1, D2, D110, D510, X-series) and Bosch GLM (50 C, 100-25 C, 120 C).
+            </Text>
+            <AccentButton label={laser.status === 'connecting' ? 'Connecting…' : 'Connect a laser meter'} icon="bluetooth-outline" onPress={() => void laser.connect()} />
+          </>
+        )}
+      </View>
+
+      <SectionHeader title="AR tracing" meta={points.length ? `${points.length} POINTS` : undefined} />
       <View style={{ paddingHorizontal: t.layout.screenPadding, marginBottom: t.space.lg }}>
         <ArCapture onDone={(p) => setPoints(p)} format={len} />
       </View>

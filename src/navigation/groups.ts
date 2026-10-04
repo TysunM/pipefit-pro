@@ -52,7 +52,7 @@ export const TOOLS: Tool[] = [
   { route: 'Calculator', title: 'Calculator', subtitle: 'Feet, inches and fractions', icon: 'calculator-outline' },
   { route: 'Reference', title: 'Handbook', subtitle: 'Material specs and tables', icon: 'book-outline' },
   { route: 'Level', title: 'Level', subtitle: 'Lay phone on pipe to read angle', icon: 'git-commit-outline' },
-  { route: 'Measure', title: 'AR measure', subtitle: 'Trace a run with the camera', icon: 'scan-outline' },
+  { route: 'Measure', title: 'Measure', subtitle: 'AR tracing and the laser meter', icon: 'scan-outline' },
   { route: 'OrderSheet', title: 'Order sheet', subtitle: 'Combine spools into one order', icon: 'receipt-outline' },
   { route: 'SpoolBuilder', title: '3D spool', subtitle: 'Build a run and spin it in 3D', icon: 'cube-outline' },
   { route: 'Joints', title: 'Joint log', subtitle: 'Every bolt-up on the job', icon: 'pricetags-outline' },
@@ -87,7 +87,7 @@ export const GROUPS: Group[] = [
   {
     id: 'tools',
     title: 'Tools',
-    subtitle: 'The iso paper, the spool, the bolt-up, the level and AR measure, then every bend and offset.',
+    subtitle: 'The iso paper, the spool, the bolt-up, the level and the measure, then every bend and offset.',
     sections: [
       { title: 'Layout & fit-up', size: 'big', tools: pick(['IsoSketch', 'SpoolBuilder', 'FlangeBoltUp', 'Level', 'Measure']) },
       {
