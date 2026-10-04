@@ -10,9 +10,24 @@
 
 export type FigureKind = 'length' | 'angle' | 'count';
 
-export type FigureSpec = { label: string; kind: FigureKind; words: readonly string[] };
+export type FigureSpec = {
+  label: string;
+  kind: FigureKind;
+  words: readonly string[];
+  /** Bounds a value must be inside, and a step it must fall on (bolt counts go in fours). */
+  min?: number;
+  max?: number;
+  step?: number;
+};
 
 export const TOOL_FIGURES = {
+  // "Flange bolt-up, 12 bolt", "6 inch, class 125": the bolt count, or the
+  // size and class the handbook takes the count from.
+  FlangeBoltUp: {
+    bolts: { label: 'Bolts', kind: 'count', words: ['bolts', 'bolt', 'holes', 'hole', 'studs', 'stud', 'bolt holes'], min: 4, max: 68, step: 4 },
+    size: { label: 'Size', kind: 'length', words: ['inch', 'inches', 'size', 'nps', 'pipe size'], max: 60 },
+    cls: { label: 'Class', kind: 'count', words: ['class', 'pound', 'lb', 'lbs'], min: 125, max: 250, step: 125 },
+  },
   SimpleOffset: {
     offset: { label: 'Offset', kind: 'length', words: ['offset', 'set', 'rise', 'drop', 'jog'] },
     angle: { label: 'Fitting angle', kind: 'angle', words: ['angle', 'degree', 'degrees', 'fitting', 'elbow', 'ell'] },
@@ -76,9 +91,12 @@ export function figureNames(route: FigureRoute): { key: string; words: string[] 
 export const primaryFigure = (route: FigureRoute): string => Object.keys(TOOL_FIGURES[route])[0]!;
 
 /** Whether a value is one a field of that kind can hold. */
-export function plausible(kind: FigureKind, f: Figure): boolean {
+export function plausible(spec: Pick<FigureSpec, 'kind' | 'min' | 'max' | 'step'>, f: Figure): boolean {
   if (!Number.isFinite(f.n) || f.n <= 0) return false;
-  if (kind === 'angle') return f.n <= 180;
-  if (kind === 'count') return Number.isInteger(f.n) && f.n <= 20;
+  if (spec.min !== undefined && f.n < spec.min) return false;
+  if (spec.max !== undefined && f.n > spec.max) return false;
+  if (spec.step !== undefined && Math.abs(f.n / spec.step - Math.round(f.n / spec.step)) > 1e-9) return false;
+  if (spec.kind === 'angle') return f.n <= 180;
+  if (spec.kind === 'count') return Number.isInteger(f.n) && f.n <= (spec.max ?? 20);
   return f.n < 100_000;
 }

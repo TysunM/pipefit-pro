@@ -230,7 +230,7 @@ export function readVoice(v: unknown): VoiceAnswer | null {
       for (const f of arr(v.figures).filter(isRec)) {
         const spec = typeof f.name === 'string' ? specs[f.name] : undefined;
         const fig = { n: Number(f.value), inches: spec?.kind === 'length' };
-        if (spec && figures[f.name as string] === undefined && plausible(spec.kind, fig)) figures[f.name as string] = fig;
+        if (spec && figures[f.name as string] === undefined && plausible(spec, fig)) figures[f.name as string] = fig;
       }
       return Object.keys(figures).length ? { action: 'open', say, route, figures } : { action: 'open', say, route };
     }

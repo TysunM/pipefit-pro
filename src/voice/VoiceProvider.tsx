@@ -69,11 +69,11 @@ function figuresSaid(route: string, f: Figures): string {
     .join(', ');
 }
 
-/** Go to a screen, and hand it any figures said for it. */
-function openWith(route: string, figures?: Figures) {
-  if (!nav.isReady()) return;
+/** Go to a screen, and hand it any figures said for it. Returns the screen's reason if it refused them. */
+function openWith(route: string, figures?: Figures): string | undefined {
+  if (!nav.isReady()) return undefined;
   if (nav.getCurrentRoute()?.name !== route) nav.navigate(route as never);
-  if (figures && Object.keys(figures).length && isFigureRoute(route)) publishFigures(route, figures);
+  return figures && Object.keys(figures).length && isFigureRoute(route) ? publishFigures(route, figures) : undefined;
 }
 
 const titleOf = (route: string): string => tool(route)?.title ?? (route === 'Home' ? 'Home' : route === 'Settings' ? 'Settings' : route);
@@ -115,7 +115,8 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
           return finish(heard, h(cmd.act));
         }
         case 'open': {
-          openWith(cmd.route, cmd.figures);
+          const refused = openWith(cmd.route, cmd.figures);
+          if (refused) return finish(heard, refused, { tone: 'warn' });
           // Opening a screen is answer enough; figures are shown, not said.
           const said = cmd.figures ? figuresSaid(cmd.route, cmd.figures) : '';
           return setSheet({ phase: 'done', heard, reply: said ? `${titleOf(cmd.route)}: ${said}` : titleOf(cmd.route), tone: 'ok' });
@@ -135,8 +136,7 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
       const now = Date.now();
       switch (a.action) {
         case 'open':
-          openWith(a.route, a.figures);
-          return finish(heard, a.say || titleOf(a.route));
+          return finish(heard, openWith(a.route, a.figures) ?? (a.say || titleOf(a.route)));
         case 'answer':
           if (a.table && nav.isReady()) nav.navigate('ReferenceTable', { id: a.table });
           return finish(heard, a.say);

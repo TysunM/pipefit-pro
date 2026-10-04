@@ -9,7 +9,8 @@
 import { useEffect, useRef } from 'react';
 import type { FigureRoute, Figures } from './toolFigures';
 
-type Take = (f: Figures) => void;
+/** A screen takes the figures, or says why it will not. */
+type Take = (f: Figures) => string | void;
 
 const listening = new Map<FigureRoute, Set<Take>>();
 const waiting = new Map<FigureRoute, { f: Figures; at: number }>();
@@ -17,10 +18,18 @@ const waiting = new Map<FigureRoute, { f: Figures; at: number }>();
 /** How long figures wait for their screen to open. */
 const WAIT_MS = 10_000;
 
-export function publishFigures(route: FigureRoute, f: Figures, now = Date.now()): void {
+/** Hand figures to a tool's screen. What comes back is the screen's reason for refusing them, if it did. */
+export function publishFigures(route: FigureRoute, f: Figures, now = Date.now()): string | undefined {
   const subs = listening.get(route);
-  if (subs?.size) subs.forEach((take) => take(f));
-  else waiting.set(route, { f, at: now });
+  if (!subs?.size) {
+    waiting.set(route, { f, at: now });
+    return undefined;
+  }
+  let refused: string | undefined;
+  subs.forEach((take) => {
+    refused = take(f) || refused;
+  });
+  return refused;
 }
 
 /** On a tool's screen: take any figures said for it. */

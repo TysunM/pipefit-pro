@@ -60,6 +60,7 @@ import {
 } from '../state/register';
 import { PERSON_MAX } from '../state/readSettings';
 import { useVoice } from '../voice/VoiceProvider';
+import { useSpokenFigures } from '../voice/figures';
 import { FaceLayout, boltCentre, fittedFace, flangeFace } from '../components/flange/face';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'FlangeBoltUp'>;
@@ -233,6 +234,27 @@ function Bolting({
     setFlange({ cls, nps: f.nps, bolts: f.bolts });
     setShowDone(false);
   };
+
+  // Spoken: "flange bolt-up, 12 bolt", or "6 inch, class 125" for the
+  // handbook's flange. A new flange starts the bolt-up over, so once a bolt
+  // is logged a spoken one is refused rather than wiping the record.
+  useSpokenFigures('FlangeBoltUp', (f) => {
+    const c: CastIronFlangeClass = f.cls ? (f.cls.n === 250 ? '250' : '125') : cls;
+    let spec: JointSpec | null = null;
+    if (f.size) {
+      const t = boltUp(f.size.n, c);
+      if (!t) return `No ${f.size.n} inch flange in the class ${c} table. Sizes run ${boltUp(boltUpSizes(c)[0] ?? 1, c)?.label ?? ''} to ${boltUp(boltUpSizes(c).at(-1) ?? 1, c)?.label ?? ''}.`;
+      spec = { cls: c, nps: t.nps, bolts: t.bolts };
+    } else if (f.bolts) spec = { cls: c, nps: null, bolts: f.bolts.n };
+    else if (f.cls) {
+      const t = boltUp(nps ?? NaN, c) ?? boltUp(boltUpSizes(c)[0] ?? 1, c);
+      if (t) spec = { cls: c, nps: t.nps, bolts: t.bolts };
+    }
+    if (!spec || (spec.bolts === bolts && spec.nps === nps && spec.cls === cls)) return;
+    if (progress.done > 0 && !done) return `Bolt-up in progress, ${progress.done} logged. Tap Start over first, then say the flange.`;
+    setFlange(spec);
+    setShowDone(false);
+  });
 
   const pickClass = (c: CastIronFlangeClass) => {
     const f = boltUp(nps ?? NaN, c) ?? boltUp(boltUpSizes(c)[0] ?? 1, c);

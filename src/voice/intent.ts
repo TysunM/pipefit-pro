@@ -194,7 +194,7 @@ export function readFigures(ws: readonly string[], route: FigureRoute): Figures 
       if (used.slice(s, i).some(Boolean)) continue;
       const before = valueAt(ws, s, spec.kind);
       if (!before || (before.next !== i && before.next !== end)) continue;
-      if (!plausible(spec.kind, before.f)) return null;
+      if (!plausible(spec, before.f)) return null;
       out[name.key] = before.f;
       take(s, end);
       found = true;
@@ -205,7 +205,7 @@ export function readFigures(ws: readonly string[], route: FigureRoute): Figures 
     while (LEAD.has(ws[j] ?? '')) j += 1;
     const after = valueAt(ws, j, spec.kind);
     // A value said against a name that no field could hold is a mishearing: let Claude have it.
-    if (after && !plausible(spec.kind, after.f)) return null;
+    if (after && !plausible(spec, after.f)) return null;
     if (after) {
       out[name.key] = after.f;
       take(i, after.next);
@@ -224,7 +224,7 @@ export function readFigures(ws: readonly string[], route: FigureRoute): Figures 
       if (used[i]) continue;
       const v = valueAt(ws, i, spec.kind);
       if (!v) continue;
-      if (!plausible(spec.kind, v.f)) return null;
+      if (!plausible(spec, v.f)) return null;
       out[key] = v.f;
       take(i, v.next);
     }
@@ -244,7 +244,7 @@ export function spokenValue(text: string, kind: FigureSpec['kind']): Figure | nu
   const ws = tokens(text);
   for (let i = 0; i < ws.length; i++) {
     const v = valueAt(ws, i, kind);
-    if (v) return plausible(kind, v.f) ? v.f : null;
+    if (v) return plausible({ kind }, v.f) ? v.f : null;
   }
   return null;
 }

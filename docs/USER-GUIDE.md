@@ -1246,12 +1246,15 @@ Every bend and offset tool takes its figures by name. Say the tool and the figur
 
 | Tool | Say |
 |---|---|
+| Flange bolt-up | bolts (4 to 68, in fours) — "flange bolt-up, 12 bolt"; or size and class — "6 inch, class 250" takes the bolt count from the handbook |
 | Simple offset | offset (or set, rise, drop), angle / degrees, run, gap |
 | Rolling offset | rise (or set), roll, run, angle, gap |
 | Cut length | center to center (or length), gap — "cut length, 4 foot 2" |
 | Saddle bend | depth, to obstruction (or distance), width, angle |
 | Miter bend | degrees (or turn), segments, radius — "miter, 90 degrees, 4 segments" |
 | Pipe bend | degrees, leg a, leg b, radius, springback, stock |
+
+A new flange starts the bolt-up over, so once a bolt is logged a spoken flange is refused with the reason; tap Start over first.
 
 A value is matched to the name next to it: "4 inch depth, 30 to obstruction" and "depth 4, obstruction 30" both work. Said with a unit ("3 foot 6", "350 millimetres") it is converted to your units; a bare number goes in as said. Anything the phone cannot place goes to Claude, which knows the same fields.
 
