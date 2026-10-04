@@ -4,6 +4,9 @@ import { useTheme } from '../theme/ThemeProvider';
 import { useSettings } from '../state/settings';
 import { Well } from './metal';
 import { GloveKeypad } from './GloveKeypad';
+import { freshReading, useLaser } from '../state/laser';
+import { useUnits } from '../hooks/useUnits';
+import { M_TO_IN } from '../calc/spatial';
 
 export function DimensionInput({
   label,
@@ -45,6 +48,10 @@ export function DimensionInput({
   const tape = settings.unitSystem === 'imperial' && suffix === '"';
   const [keypad, setKeypad] = useState(false);
   const lit = focused || keypad;
+  // A length field takes the laser meter's last reading with one tap, while one is connected.
+  const u = useUnits();
+  const reading = freshReading(useLaser());
+  const laser = reading && editable && onChangeText && suffix === u.suffix ? reading.metres * M_TO_IN : null;
   return (
     <View style={[{ flex: 1, minWidth: 96 }, style]}>
       <Text style={[t.type.label, { color: t.colors.textMuted, marginBottom: t.space.sm }]} numberOfLines={1}>
@@ -107,6 +114,19 @@ export function DimensionInput({
             if (next) onChangeText?.(next);
           }}
         />
+      ) : null}
+      {laser !== null ? (
+        <Pressable
+          onPress={() => onChangeText?.(u.num(laser))}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel={`Use the laser reading, ${u.num(laser)} ${u.unitName}, for ${label}`}
+          style={{ alignSelf: 'flex-start', marginTop: 6, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999, backgroundColor: t.colors.dataSoft }}
+        >
+          <Text style={[t.type.captionStrong, { color: t.colors.data }]} numberOfLines={1}>
+            {`⤓ Laser ${u.frac(laser) || `${u.num(laser)}${u.suffix}`}`}
+          </Text>
+        </Pressable>
       ) : null}
       {readout ? (
         <Text style={[t.type.caption, { color: t.colors.data, marginTop: 6 }]} numberOfLines={1}>
