@@ -46,6 +46,7 @@ describe('what Claude is told', () => {
   });
 
   test('the schema only takes what the app can do', () => {
+    expect(VOICE_SYSTEM).toContain('HandBender: angle (Angle, degrees), legA (Leg A, inches)');
     expect(VOICE_SCHEMA.required).toEqual(['action', 'say']);
     expect(VOICE_SCHEMA.additionalProperties).toBe(false);
   });
@@ -53,11 +54,25 @@ describe('what Claude is told', () => {
 
 describe("reading Claude's answer", () => {
   test('an open, with rolling offset figures', () => {
-    expect(readVoice({ action: 'open', say: 'Opening.', route: 'RollingOffset', rise: 12, roll: 8, run: 0 })).toEqual({
+    expect(
+      readVoice({
+        action: 'open',
+        say: 'Opening.',
+        route: 'RollingOffset',
+        figures: [
+          { name: 'rise', value: 12 },
+          { name: 'roll', value: 8 },
+          { name: 'run', value: 0 },
+          { name: 'segments', value: 4 },
+          { name: 'angle', value: 45 },
+        ],
+      }),
+    ).toEqual({
       action: 'open',
       say: 'Opening.',
       route: 'RollingOffset',
-      params: { rise: 12, roll: 8 },
+      // Lengths come from Claude in inches; a zero and a name the tool lacks are dropped.
+      figures: { rise: { n: 12, inches: true }, roll: { n: 8, inches: true }, angle: { n: 45, inches: false } },
     });
     expect(readVoice({ action: 'open', say: 'x', route: 'Nowhere' })).toEqual({ action: 'none', say: 'x' });
   });

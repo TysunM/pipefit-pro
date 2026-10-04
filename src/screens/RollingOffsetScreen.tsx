@@ -11,6 +11,7 @@ import { FooterNote, MetaBar, ResultBanner, SpoolBar, StatGrid, SummaryRow, Warn
 import { PipeSheet } from '../components/PipeSheet';
 import { RollingDiagram } from '../components/diagram/RollingDiagram';
 import { useUnits } from '../hooks/useUnits';
+import { figureText, useSpokenFigures } from '../voice/figures';
 import { usePipeConfig } from '../hooks/usePipeConfig';
 import { useSettings } from '../state/settings';
 import { StockNote } from '../components/StockNote';
@@ -37,6 +38,21 @@ export function RollingOffsetScreen({ route }: Props) {
   const [mode, setMode] = useState<'pipe' | 'elbow'>('pipe');
 
   const fittingAngle = parseNumber(angleText);
+  // Spoken: "rolling offset, rise 12, roll 8 and a half, run 30".
+  useSpokenFigures('RollingOffset', (f) => {
+    const text = (k: keyof typeof f) => figureText(f[k]!, u.num);
+    if (f.rise) setRise(text('rise'));
+    if (f.roll) setRoll(text('roll'));
+    if (f.gap) setGap(text('gap'));
+    if (f.run) {
+      setRun(text('run'));
+      setUseFittingAngle(false);
+    }
+    if (f.angle) {
+      setAngleText(text('angle'));
+      if (!f.run) setUseFittingAngle(true);
+    }
+  });
 
   const gapInches = Number.isFinite(u.parse(gap)) ? u.parse(gap) : settings.defaultGap;
 

@@ -10,6 +10,7 @@ import { FooterNote, MetaBar, ResultBanner, SpoolBar, StatGrid, WarningBanner } 
 import { PipeSheet } from '../components/PipeSheet';
 import { OffsetDiagram } from '../components/diagram/OffsetDiagram';
 import { useUnits } from '../hooks/useUnits';
+import { figureText, useSpokenFigures } from '../voice/figures';
 import { usePipeConfig } from '../hooks/usePipeConfig';
 import { useSettings } from '../state/settings';
 import { StockNote } from '../components/StockNote';
@@ -31,6 +32,17 @@ export function SimpleOffsetScreen() {
   const [mode, setMode] = useState<'pipe' | 'elbow'>('pipe');
 
   const fittingAngle = parseNumber(angleText);
+  // Spoken: "simple offset, 14 and a half at 22 and a half degrees".
+  useSpokenFigures('SimpleOffset', (f) => {
+    const text = (k: keyof typeof f) => figureText(f[k]!, u.num);
+    if (f.offset) setOffset(text('offset'));
+    if (f.angle) setAngleText(text('angle'));
+    if (f.gap) setGap(text('gap'));
+    if (f.run) {
+      setRunOverride(text('run'));
+      setLockRun(true);
+    } else if (f.angle) setLockRun(false);
+  });
 
   const result = useMemo(
     () =>

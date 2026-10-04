@@ -1229,7 +1229,9 @@ The round mic low on the right of every screen. Tap it, say it, and the app does
 | Say | What happens |
 |---|---|
 | "Bolt up", "hydro", "heat book", "shift report" | That tool opens. Works with no signal. |
-| "Rolling offset, rise 12, roll 8 and a half, run 30" | Rolling offset opens with the figures in. "3 foot 6" and "12 and 3/8" are understood. |
+| "Rolling offset, rise 12, roll 8 and a half, run 30" | Rolling offset opens with the figures in. "3 foot 6", "12 and 3/8" and "350 millimetres" are understood. |
+| "Simple offset, 14 and a half at 22 and a half degrees" | Any bend or offset tool opens filled in — see the table below. |
+| "Rise 12", "leg b 3 foot 6" (with the tool open) | Fills that field on the screen you are on. |
 | "Two 6 inch welds, weld 14 rejected for porosity" | Added to today's shift report for the job on the home screen. |
 | "Safety note: fire watch posted at the tank" | Added under Safety on today's report. Issues, Tomorrow and Notes work the same way. |
 | "Hold started at 225", "reading 224", "hold ended at 224", "test passed" | Written on the pressure test on screen, or the job's latest open test. |
@@ -1237,6 +1239,23 @@ The round mic low on the right of every screen. Tap it, say it, and the app does
 | "Back", "cancel" | Goes back a screen, or closes the panel. |
 
 Tool names are matched on the phone, at once. Everything else is read by Claude through the app's server, which needs signal.
+
+### Figures by voice
+
+Every bend and offset tool takes its figures by name. Say the tool and the figures together, or open the tool and say just the figures. A number with no name goes in the first field.
+
+| Tool | Say |
+|---|---|
+| Simple offset | offset (or set, rise, drop), angle / degrees, run, gap |
+| Rolling offset | rise (or set), roll, run, angle, gap |
+| Cut length | center to center (or length), gap — "cut length, 4 foot 2" |
+| Saddle bend | depth, to obstruction (or distance), width, angle |
+| Miter bend | degrees (or turn), segments, radius — "miter, 90 degrees, 4 segments" |
+| Pipe bend | degrees, leg a, leg b, radius, springback, stock |
+
+A value is matched to the name next to it: "4 inch depth, 30 to obstruction" and "depth 4, obstruction 30" both work. Said with a unit ("3 foot 6", "350 millimetres") it is converted to your units; a bare number goes in as said. Anything the phone cannot place goes to Claude, which knows the same fields.
+
+**One field at a time:** every number field has a small mic beside its label. Tap it and say the figure — "3 foot 6 and a quarter" — and that field fills. Works with no signal.
 
 ### Nothing is written without you hearing it
 

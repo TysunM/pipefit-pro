@@ -8,6 +8,7 @@ import { ControlRow, GhostButton, SelectorButton } from '../components/Buttons';
 import { FooterNote, MetaBar, ResultBanner, SpoolBar, StatGrid } from '../components/Results';
 import { PipeSheet } from '../components/PipeSheet';
 import { useUnits } from '../hooks/useUnits';
+import { figureText, useSpokenFigures } from '../voice/figures';
 import { usePipeConfig } from '../hooks/usePipeConfig';
 import { useSettings } from '../state/settings';
 import { StockNote } from '../components/StockNote';
@@ -28,6 +29,11 @@ export function CutLengthScreen() {
   const [endB, setEndB] = useState<EndFitting>('weld90');
   const [customA, setCustomA] = useState('');
   const [customB, setCustomB] = useState('');
+  // Spoken: "cut length, 4 foot 2".
+  useSpokenFigures('CutLength', (f) => {
+    if (f.c2c) setC2c(figureText(f.c2c, u.num));
+    if (f.gap) setGap(figureText(f.gap, u.num));
+  });
 
   const gapInches = Number.isFinite(u.parse(gap)) ? u.parse(gap) : settings.defaultGap;
 

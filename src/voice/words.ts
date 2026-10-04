@@ -105,15 +105,22 @@ export function numberAt(ws: readonly string[], i: number): { value: number; nex
   return Number.isFinite(value) ? { value, next } : null;
 }
 
+const MM = new Set(['mm', 'millimeter', 'millimeters', 'millimetre', 'millimetres', 'mil', 'mils']);
+const CM = new Set(['cm', 'centimeter', 'centimeters', 'centimetre', 'centimetres']);
+const METRE = new Set(['meter', 'meters', 'metre', 'metres']);
+
 /**
- * A length at `i`, in inches: "42", "3 foot 6", "3 feet 6 and a half inches",
- * "4 foot". A bare number is inches.
+ * A length at `i`: "42", "3 foot 6", "3 feet 6 and a half inches", "350
+ * millimetres". With a unit said, `explicit` is true and `inches` is the
+ * length in inches; a bare number is not converted (`explicit` false), to go
+ * into a field in that field's own units.
  */
-export function lengthAt(ws: readonly string[], i: number): { inches: number; next: number } | null {
+export function lengthAt(ws: readonly string[], i: number): { inches: number; next: number; explicit: boolean } | null {
   const a = numberAt(ws, i);
   if (!a) return null;
   let next = a.next;
-  if (FOOT.has(ws[next] ?? '')) {
+  const unit = ws[next] ?? '';
+  if (FOOT.has(unit)) {
     next += 1;
     const b = numberAt(ws, next);
     let inches = a.value * 12;
@@ -122,46 +129,13 @@ export function lengthAt(ws: readonly string[], i: number): { inches: number; ne
       next = b.next;
     }
     if (INCH.has(ws[next] ?? '')) next += 1;
-    return { inches, next };
+    return { inches, next, explicit: true };
   }
-  if (INCH.has(ws[next] ?? '')) next += 1;
-  return { inches: a.value, next };
-}
-
-/**
- * The lengths said against the names given: "rise 12 roll 8 and a half run
- * 30" or "12 inch rise". Each name takes the length after it, or failing that
- * the one just before it.
- */
-export function namedLengths<K extends string>(text: string, names: Record<K, readonly string[]>): Partial<Record<K, number>> {
-  const ws = tokens(text);
-  const out: Partial<Record<K, number>> = {};
-  const used = new Set<number>();
-  for (let i = 0; i < ws.length; i++) {
-    const key = (Object.keys(names) as K[]).find((k) => names[k].includes(ws[i]!));
-    if (!key || out[key] !== undefined) continue;
-    // After the name: "rise 12", "rise of 12", "rise is 12".
-    let j = i + 1;
-    if (ws[j] === 'of' || ws[j] === 'is' || ws[j] === 'at') j += 1;
-    const after = lengthAt(ws, j);
-    if (after) {
-      out[key] = after.inches;
-      for (let k = j; k < after.next; k++) used.add(k);
-      i = after.next - 1;
-      continue;
-    }
-    // Before it: "12 inch rise". Walk back to the start of the number.
-    for (let s = Math.max(0, i - 6); s < i; s++) {
-      if (used.has(s)) continue;
-      const before = lengthAt(ws, s);
-      if (before && before.next === i) {
-        out[key] = before.inches;
-        for (let k = s; k < i; k++) used.add(k);
-        break;
-      }
-    }
-  }
-  return out;
+  if (INCH.has(unit)) return { inches: a.value, next: next + 1, explicit: true };
+  if (MM.has(unit)) return { inches: a.value / 25.4, next: next + 1, explicit: true };
+  if (CM.has(unit)) return { inches: a.value / 2.54, next: next + 1, explicit: true };
+  if (METRE.has(unit)) return { inches: a.value / 0.0254, next: next + 1, explicit: true };
+  return { inches: a.value, next, explicit: false };
 }
 
 /** Whether every word of `phrase` appears, in order and together, in `ws`. */

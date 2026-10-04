@@ -2,6 +2,8 @@ import React from 'react';
 import { ScrollView, StyleSheet, View, ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/ThemeProvider';
+import { useVoiceMaybe } from '../voice/VoiceProvider';
+import { TAB_BAR_HEIGHT } from './TabBar';
 
 export function Screen({
   children,
@@ -18,6 +20,8 @@ export function Screen({
   const t = useTheme();
   const insets = useSafeAreaInsets();
   const base: ViewStyle = { flex: 1, backgroundColor: t.colors.bg };
+  // The mic floats over the foot of every page; room to scroll the last button clear of it.
+  const mic = useVoiceMaybe()?.enabled ? (tabbed ? 0 : TAB_BAR_HEIGHT) + 84 : 0;
 
   if (!scroll)
     return (
@@ -30,7 +34,7 @@ export function Screen({
     <View style={base}>
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={[{ paddingBottom: (tabbed ? 0 : insets.bottom) + t.space.xxxl }, style]}
+        contentContainerStyle={[{ paddingBottom: (tabbed ? 0 : insets.bottom) + t.space.xxxl + mic }, style]}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
       >
