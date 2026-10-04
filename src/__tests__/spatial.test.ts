@@ -1,4 +1,4 @@
-import { M_TO_IN, leg, offsetFrom, project, trace, type V3 } from '../calc/spatial';
+import { M_TO_IN, POINT_ERROR_M, leg, offsetFrom, project, slopeBand, steadyPoint, trace, wobble, type V3 } from '../calc/spatial';
 
 const IN = 1 / M_TO_IN; // one inch, in metres
 const at = (x: number, y: number, z: number): V3 => [x * IN, y * IN, z * IN];
@@ -86,5 +86,43 @@ describe('from the world to the screen', () => {
 
   test('behind the camera is nowhere', () => {
     expect(project([0, 0, 2], persp, identity, 400, 800)).toBeNull();
+  });
+});
+
+describe('the steady point under the ring', () => {
+  test('is the per-axis median, so one wild frame cannot move it', () => {
+    const p = steadyPoint([at(10, 0, 0), at(10.1, 0, 0), at(9.9, 0, 0), at(80, 40, -60), at(10, 0, 0)])!;
+    close(p[0] / IN, 10, 1e-9);
+    close(p[1], 0);
+    close(p[2], 0);
+  });
+
+  test('an even count takes the middle two, nothing gives nothing', () => {
+    close(steadyPoint([at(1, 0, 0), at(3, 0, 0)])![0] / IN, 2, 1e-9);
+    expect(steadyPoint([])).toBeNull();
+  });
+
+  test('wobble is the furthest sample from the centre, in metres', () => {
+    close(wobble([at(0, 0, 0), at(3, 4, 0)], at(0, 0, 0)), 5 * IN);
+  });
+});
+
+describe('the band on a slope', () => {
+  test('narrows as the run gets longer', () => {
+    // Each end off by a centimetre: atan(√2 cm / run).
+    close(slopeBand(3 * M_TO_IN), (Math.atan2(Math.SQRT2 * POINT_ERROR_M, 3) * 180) / Math.PI);
+    expect(slopeBand(0.5 * M_TO_IN)).toBeGreaterThan(1.5);
+    expect(slopeBand(3 * M_TO_IN)).toBeLessThan(0.3);
+    expect(slopeBand(0)).toBe(90);
+  });
+});
+
+describe('figures are exact from mark to mark', () => {
+  test('a 10 ft run with a 15" drop reads back exactly', () => {
+    const l = leg(at(0, 0, 0), at(72, -15, -96)); // 120" level run, 15" drop
+    close(l.run, 120, 1e-9);
+    close(l.rise, -15, 1e-9);
+    close(l.fallPerFt!, 1.5, 1e-9);
+    close(l.length, Math.hypot(120, 15), 1e-9);
   });
 });

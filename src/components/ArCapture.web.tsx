@@ -11,12 +11,27 @@
 // frame by projecting the world points through the camera (calc/spatial.ts).
 // The GL layer exists only because WebXR will not run a session without one.
 //
+// Two things keep the figures true over a long trace:
+//
+//   Every mark is an anchor. ARCore keeps correcting its map of the room as
+//   it sees more of it; a mark kept as plain coordinates stays where the old
+//   map put it while everything new lands on the corrected one, and a level
+//   run stops reading level after the first correction. An anchor is moved
+//   with every correction, so the marks and the ring stay on the same map.
+//
+//   The ring is the median of the last few hits, and a mark is refused while
+//   the ring is wobbling more than a centimetre and a half — one frame's hit
+//   on a pipe jumps about; the median of a handful does not.
+//
+// The hit test asks for feature points as well as planes, so the ring lands
+// on the pipe the centre of the screen is on and not the floor behind it.
+//
 // The whole session is driven from refs, not React state: it runs at the
 // camera's frame rate, and React is only told when the count of marks or the
 // status line changes.
 
 import React, { useEffect, useRef, useState } from 'react';
-import { V3, leg, project } from '../calc/spatial';
+import { V3, leg, project, slopeBand, steadyPoint, wobble } from '../calc/spatial';
 import type { ArCaptureProps } from './arTypes';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -41,6 +56,13 @@ const SUPPORT_WORDS: Record<Exclude<Support, 'checking' | 'ok'>, string> = {
 };
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
+/** Hits the ring is the median of: about a sixth of a second. */
+const SAMPLES = 10;
+/** Most the ring may wobble, in metres, for a mark to be taken. */
+const STEADY_M = 0.015;
+
+/** A mark: where it is now, and the anchor that keeps it there as the map is corrected. */
+type Mark = { p: V3; anchor: any | null };
 const ORANGE = '#F58220';
 
 export function ArCapture({ onDone, format }: ArCaptureProps) {
@@ -53,8 +75,11 @@ export function ArCapture({ onDone, format }: ArCaptureProps) {
   const overlay = useRef<HTMLDivElement | null>(null);
   const svg = useRef<SVGSVGElement | null>(null);
   const session = useRef<any>(null);
-  const points = useRef<V3[]>([]);
+  const marks = useRef<Mark[]>([]);
+  const samples = useRef<V3[]>([]);
   const hit = useRef<V3 | null>(null);
+  const wanted = useRef(false);
+  const anchored = useRef(false);
   const fmt = useRef(format);
   fmt.current = format;
   const done = useRef(onDone);
@@ -82,7 +107,7 @@ export function ArCapture({ onDone, format }: ArCaptureProps) {
     const parts: string[] = [];
     const label = (x: number, y: number, text: string) =>
       `<text x="${x}" y="${y}" text-anchor="middle" font-family="sans-serif" font-size="17" font-weight="700" fill="#fff" stroke="#000" stroke-width="4" paint-order="stroke">${text}</text>`;
-    const pts = points.current;
+    const pts = marks.current.map((m) => m.p);
     for (let i = 1; i < pts.length; i++) {
       const a = at(pts[i - 1]!);
       const b = at(pts[i]!);
@@ -101,7 +126,7 @@ export function ArCapture({ onDone, format }: ArCaptureProps) {
       if (last && l) {
         parts.push(`<line x1="${l[0]}" y1="${l[1]}" x2="${ring[0]}" y2="${ring[1]}" stroke="${ORANGE}" stroke-width="2" stroke-dasharray="6 5"/>`);
         const g = leg(last, hit.current!);
-        parts.push(label(ring[0], ring[1] - 30, `${fmt.current(g.length)} · ${Math.abs(g.slope).toFixed(1)}°`));
+        parts.push(label(ring[0], ring[1] - 30, `${fmt.current(g.length)} · ${Math.abs(g.slope).toFixed(1)}° ±${slopeBand(g.run).toFixed(1)}`));
       }
       parts.push(`<circle cx="${ring[0]}" cy="${ring[1]}" r="18" fill="none" stroke="#fff" stroke-width="3"/>`);
       parts.push(`<circle cx="${ring[0]}" cy="${ring[1]}" r="3" fill="#fff"/>`);
@@ -118,12 +143,15 @@ export function ArCapture({ onDone, format }: ArCaptureProps) {
     try {
       const s = await xr.requestSession('immersive-ar', {
         requiredFeatures: ['hit-test', 'local'],
-        optionalFeatures: ['dom-overlay'],
+        optionalFeatures: ['dom-overlay', 'anchors'],
         domOverlay: { root },
       });
       session.current = s;
-      points.current = [];
+      marks.current = [];
+      samples.current = [];
       hit.current = null;
+      wanted.current = false;
+      anchored.current = typeof s.enabledFeatures === 'undefined' ? true : [...s.enabledFeatures].includes('anchors');
       setCount(0);
       setRunning(true);
 
@@ -133,7 +161,10 @@ export function ArCapture({ onDone, format }: ArCaptureProps) {
       s.updateRenderState({ baseLayer: new (window as any).XRWebGLLayer(s, gl) });
       const local = await s.requestReferenceSpace('local');
       const viewer = await s.requestReferenceSpace('viewer');
-      const source = await s.requestHitTestSource({ space: viewer });
+      // Feature points land on the pipe itself; a browser that only knows planes gets planes.
+      const source = await s
+        .requestHitTestSource({ space: viewer, entityTypes: ['point', 'plane'] })
+        .catch(() => s.requestHitTestSource({ space: viewer }));
 
       let found = false;
       const frame = (_t: number, f: any) => {
@@ -144,9 +175,21 @@ export function ArCapture({ onDone, format }: ArCaptureProps) {
         gl.clear(gl.COLOR_BUFFER_BIT);
         const pose = f.getViewerPose(local);
         if (!pose) return;
+        // Marks follow their anchors as the map is corrected.
+        for (const m of marks.current) {
+          if (!m.anchor || (f.trackedAnchors && !f.trackedAnchors.has(m.anchor))) continue;
+          const ap = f.getPose(m.anchor.anchorSpace, local)?.transform.position;
+          if (ap) m.p = [ap.x, ap.y, ap.z];
+        }
         const hits = f.getHitTestResults(source);
         const hp = hits[0]?.getPose(local)?.transform.position;
-        hit.current = hp ? [hp.x, hp.y, hp.z] : null;
+        if (hp) samples.current = [...samples.current, [hp.x, hp.y, hp.z] as V3].slice(-SAMPLES);
+        else samples.current = [];
+        hit.current = steadyPoint(samples.current);
+        if (wanted.current) {
+          wanted.current = false;
+          take(f, local);
+        }
         if (!!hit.current !== found) {
           found = !!hit.current;
           setStatus(found ? 'Put the ring on the first point and tap Mark.' : 'Lost the surface. Move slowly, closer to something with texture.');
@@ -160,7 +203,8 @@ export function ArCapture({ onDone, format }: ArCaptureProps) {
         session.current = null;
         root.style.display = 'none';
         setRunning(false);
-        done.current(points.current.slice());
+        for (const m of marks.current) m.anchor?.delete?.();
+        done.current(marks.current.map((m) => m.p));
       });
     } catch (e) {
       root.style.display = 'none';
@@ -169,16 +213,39 @@ export function ArCapture({ onDone, format }: ArCaptureProps) {
     }
   };
 
-  const mark = () => {
-    if (!hit.current) return;
-    points.current = [...points.current, hit.current];
-    setCount(points.current.length);
-    setStatus(points.current.length === 1 ? 'Now the next point. Same face of the pipe each time: top, or side.' : 'Keep going, or tap Done.');
+  /** Take the mark inside a frame, where an anchor can be made. */
+  const take = (f: any, local: any) => {
+    const p = hit.current;
+    if (!p) return;
+    if (samples.current.length < SAMPLES / 2 || wobble(samples.current, p) > STEADY_M) {
+      setStatus('Hold the phone still on the point, then tap Mark.');
+      (navigator as any).vibrate?.([10, 60, 10]);
+      return;
+    }
+    const m: Mark = { p, anchor: null };
+    marks.current = [...marks.current, m];
+    const R = (window as any).XRRigidTransform;
+    if (anchored.current && f.createAnchor && R) {
+      void f
+        .createAnchor(new R({ x: p[0], y: p[1], z: p[2] }), local)
+        .then((a: any) => {
+          if (marks.current.includes(m)) m.anchor = a;
+          else a.delete?.();
+        })
+        .catch(() => undefined);
+    }
+    const n = marks.current.length;
+    setCount(n);
+    setStatus(n === 1 ? 'Now the next point. Same face of the pipe each time: top, or side.' : 'Keep going, or tap Done.');
     (navigator as any).vibrate?.(15);
   };
+  const mark = () => {
+    if (hit.current) wanted.current = true;
+  };
   const undo = () => {
-    points.current = points.current.slice(0, -1);
-    setCount(points.current.length);
+    marks.current.at(-1)?.anchor?.delete?.();
+    marks.current = marks.current.slice(0, -1);
+    setCount(marks.current.length);
   };
 
   const button = (label: string, onClick: () => void, strong = false, disabled = false): React.ReactElement => (

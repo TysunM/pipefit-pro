@@ -91,6 +91,41 @@ export function trace(points: readonly V3[]): Traced {
 }
 
 /**
+ * The steady point under the ring: the per-axis median of the last few hit
+ * results. One frame's hit jumps by a centimetre or more on a pipe; the median
+ * of a handful does not, and one wild frame cannot move it.
+ */
+export function steadyPoint(samples: readonly V3[]): V3 | null {
+  if (!samples.length) return null;
+  const mid = (k: 0 | 1 | 2) => {
+    const v = samples.map((p) => p[k]).sort((a, b) => a - b);
+    const n = v.length;
+    return n % 2 ? v[(n - 1) / 2]! : (v[n / 2 - 1]! + v[n / 2]!) / 2;
+  };
+  return [mid(0), mid(1), mid(2)];
+}
+
+/** How far, in metres, the furthest sample sits from the steady point: the ring's wobble. */
+export function wobble(samples: readonly V3[], centre: V3): number {
+  return samples.reduce((m, p) => Math.max(m, Math.hypot(p[0] - centre[0], p[1] - centre[1], p[2] - centre[2])), 0);
+}
+
+/** What one marked point can be off by on a phone, in metres: a centimetre at arm's length on a textured surface. */
+export const POINT_ERROR_M = 0.01;
+
+/**
+ * How many degrees a leg's slope can be off by, given that each end can be
+ * off by POINT_ERROR_M up or down. It is the honest band on the figure: 0.3°
+ * over three metres of run, 1.6° over half a metre, which is why a short leg
+ * never quite reads level and the level tool, laid on the pipe, is the one to
+ * trust for fall.
+ */
+export function slopeBand(runInches: number): number {
+  const runM = Math.abs(runInches) / M_TO_IN;
+  return runM > 0 ? (Math.atan2(Math.SQRT2 * POINT_ERROR_M, runM) * 180) / Math.PI : 90;
+}
+
+/**
  * A point in the world to a point on the screen, or null when it is behind
  * the camera. `projection` and `view` are WebXR's column-major 4×4 matrices
  * (the view being the camera transform's inverse).
