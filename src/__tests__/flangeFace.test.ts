@@ -1,4 +1,4 @@
-import { MARKER_MAX, MARKER_MIN, MIN_PITCH, boltCentre, flangeFace } from '../components/flange/face';
+import { MARKER_MAX, MARKER_MIN, MIN_PITCH, boltCentre, fittedFace, flangeFace } from '../components/flange/face';
 import { BOLT_UP_125, BOLT_UP_250, boltHoleAngles } from '../calc/boltUp';
 
 const FLANGES = [...BOLT_UP_125, ...BOLT_UP_250];
@@ -124,5 +124,42 @@ describe('nonsense in, nothing drawn', () => {
       const L = flangeFace(8, 360, bad);
       expect(L.bcR).toBeCloseTo(L.odR * 0.85, 9);
     }
+  });
+});
+
+describe('a fitted face shows the whole flange on the page', () => {
+  const counts = [...FLANGES.map((f) => [f.bolts, f.boltCircle / f.flangeOd] as const), [68, 0.95] as const, [68, 0.5] as const];
+
+  it('never grows past the width, and no two markers overlap', () => {
+    for (const [bolts, frac] of counts) {
+      for (const w of WIDTHS) {
+        const L = fittedFace(bolts, w, frac);
+        expect(L.face).toBeLessThanOrEqual(w);
+        expect(L.scrolls).toBe(false);
+        expect(L.marker + 2 * L.slop).toBeLessThanOrEqual(L.pitch + 1e-9);
+        // Every marker sits inside the square it is drawn in.
+        for (const deg of boltHoleAngles(bolts)) {
+          const p = boltCentre(L, deg);
+          expect(p.x - L.marker / 2).toBeGreaterThanOrEqual(-1e-9);
+          expect(p.y - L.marker / 2).toBeGreaterThanOrEqual(-1e-9);
+          expect(p.x + L.marker / 2).toBeLessThanOrEqual(L.face + 1e-9);
+          expect(p.y + L.marker / 2).toBeLessThanOrEqual(L.face + 1e-9);
+        }
+      }
+    }
+  });
+
+  it('is the ordinary face whenever that fits', () => {
+    expect(fittedFace(8, 360, 0.86)).toEqual(flangeFace(8, 360, 0.86));
+  });
+
+  it('keeps a 68 bolt flange readable on a phone', () => {
+    expect(fittedFace(68, 380, 0.95).marker).toBeGreaterThan(15);
+  });
+
+  it('draws full screen at a gloved pitch', () => {
+    const L = flangeFace(68, 412, 0.95, 40);
+    expect(L.pitch).toBeGreaterThanOrEqual(40 - 1e-9);
+    expect(L.marker).toBeCloseTo(32, 0);
   });
 });

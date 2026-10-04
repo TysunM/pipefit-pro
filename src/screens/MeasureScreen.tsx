@@ -23,7 +23,7 @@ import { Banner } from '../components/FormFields';
 import { ArCapture } from '../components/ArCapture';
 import { useTheme } from '../theme/ThemeProvider';
 import { useUnits } from '../hooks/useUnits';
-import { M_TO_IN, V3, trace } from '../calc/spatial';
+import { M_TO_IN, V3, slopeBand, trace } from '../calc/spatial';
 import { useLaser } from '../state/laser';
 import { clockLabel } from '../calc/days';
 import { WEB_APP_URL } from '../ai/apiBase';
@@ -46,7 +46,7 @@ export function MeasureScreen({ navigation }: Props) {
     [
       `${i + 1} → ${i + 2}: ${len(l.length)}`,
       `run ${len(l.run)}, ${l.rise >= 0 ? 'rise' : 'drop'} ${len(l.rise)}`,
-      `${Math.abs(l.slope).toFixed(1)}° ${l.slope >= 0 ? 'up' : 'down'}`,
+      `${Math.abs(l.slope).toFixed(1)}° ±${slopeBand(l.run).toFixed(1)}° ${l.slope >= 0 ? 'up' : 'down'}`,
     ].join(' · '),
   );
   const share = () =>
@@ -107,6 +107,7 @@ export function MeasureScreen({ navigation }: Props) {
           'Mark the same face of the pipe every time: all on top, or all on the side. Top to top is centre to centre.',
           'Stand within two or three metres and move the phone slowly before you mark. Bare steel and white walls track worst; tape or chalk on the pipe helps.',
           'Mark a point on the run first, then where it ends, then the next point: the turn is worked against the run before it.',
+          'Hold the phone still on each point as you tap Mark. For fall, lay the phone on the pipe in the Level tool: it reads a tenth of a degree, the camera only a degree or so over a short leg.',
         ].map((s) => (
           <View key={s} style={{ flexDirection: 'row', gap: t.space.sm }}>
             <Text style={[t.type.caption, { color: t.colors.textMuted }]}>•</Text>
@@ -122,7 +123,7 @@ export function MeasureScreen({ navigation }: Props) {
             <View key={i} style={{ paddingHorizontal: t.layout.screenPadding, paddingVertical: t.space.md, borderTopWidth: t.hairline, borderTopColor: t.colors.border, gap: 2 }}>
               <Text style={[t.type.bodyStrong, { color: t.colors.text }]}>{`${i + 1} → ${i + 2}   ${len(l.length)}`}</Text>
               <Text style={[t.type.caption, { color: t.colors.textMuted }]}>
-                {`Run ${len(l.run)} · ${l.rise >= 0 ? 'Rise' : 'Drop'} ${len(l.rise)} · ${Math.abs(l.slope).toFixed(1)}° ${l.slope >= 0 ? 'up' : 'down'}`}
+                {`Run ${len(l.run)} · ${l.rise >= 0 ? 'Rise' : 'Drop'} ${len(l.rise)} · ${Math.abs(l.slope).toFixed(1)}° ±${slopeBand(l.run).toFixed(1)}° ${l.slope >= 0 ? 'up' : 'down'}`}
                 {l.fallPerFt !== null && Math.abs(l.slope) < 10 ? ` · ${Math.abs(l.fallPerFt).toFixed(2)}"/ft ${l.fallPerFt >= 0 ? 'fall' : 'rise'}` : ''}
               </Text>
               {i > 0 && r.offsets[i - 1] ? (

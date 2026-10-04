@@ -7,8 +7,10 @@
 // than useless.
 //
 // So the face is sized from the bolt count rather than the other way round. If
-// the pitch on the available width would be too tight, the face grows and the
-// row scrolls sideways. Below, `pitch` is the centre-to-centre distance between
+// the pitch on the available width would be too tight, the face grows: the
+// full-screen view draws it that size and follows the bolt being asked for.
+// On the page it is drawn fitted instead (fittedFace), small, with the whole
+// flange in view, and the bolt is logged from a button rather than a fingertip. Below, `pitch` is the centre-to-centre distance between
 // neighbouring bolts, and `marker` and `slop` are always divided out of it, so
 // the targets tile the circle exactly and never past it.
 
@@ -44,8 +46,9 @@ export type FaceLayout = {
  * @param bolts how many holes are in the flange
  * @param available the width the face may use before it has to scroll
  * @param bcFrac bolt circle over flange OD, from the table when there is one
+ * @param minPitch closest two bolts may be drawn; the full-screen view asks for more
  */
-export function flangeFace(bolts: number, available: number, bcFrac: number): FaceLayout {
+export function flangeFace(bolts: number, available: number, bcFrac: number, minPitch = MIN_PITCH): FaceLayout {
   const avail = Math.max(1, available);
   const frac = Number.isFinite(bcFrac) && bcFrac > 0 && bcFrac < 1 ? bcFrac : 0.85;
 
@@ -66,7 +69,7 @@ export function flangeFace(bolts: number, available: number, bcFrac: number): Fa
 
   // The width at which the pitch comes out at exactly MIN_PITCH. Same relation
   // as `pitch` below, rearranged, so the two cannot drift apart.
-  const needed = bolts > 1 ? 2 * (MIN_PITCH / (2 * Math.sin(Math.PI / bolts) * frac) + RIM_PAD) : 0;
+  const needed = bolts > 1 ? 2 * (minPitch / (2 * Math.sin(Math.PI / bolts) * frac) + RIM_PAD) : 0;
   const face = Math.max(avail, Math.ceil(needed));
 
   const odR = Math.max(0, face / 2 - RIM_PAD);
@@ -85,4 +88,26 @@ export function flangeFace(bolts: number, available: number, bcFrac: number): Fa
 export function boltCentre(layout: FaceLayout, deg: number): { x: number; y: number } {
   const rad = (deg * Math.PI) / 180;
   return { x: layout.c + layout.bcR * Math.sin(rad), y: layout.c - layout.bcR * Math.cos(rad) };
+}
+
+/**
+ * The whole flange in the width given, however many bolts it has. Below the
+ * pitch flangeFace keeps, each marker shrinks to exactly its share of the
+ * circle and loses its touch slop, so they still never overlap: they are for
+ * seeing where the bolt is, and the bolt is logged from the button under the
+ * face. A flange that fits anyway comes back exactly as flangeFace draws it.
+ */
+export function fittedFace(bolts: number, available: number, bcFrac: number): FaceLayout {
+  const L = flangeFace(bolts, available, bcFrac);
+  if (!L.scrolls) return L;
+  const face = Math.max(1, available);
+  const c = face / 2;
+  const frac = Number.isFinite(bcFrac) && bcFrac > 0 && bcFrac < 1 ? bcFrac : 0.85;
+  const sin = Math.sin(Math.PI / bolts);
+  // A marker on the bolt circle has to stay inside the face: bcR + pitch / 2 + 2 <= c.
+  const odR = c - 2;
+  const bcR = Math.min(odR * frac, (c - 2) / (1 + sin));
+  const pitch = 2 * bcR * sin;
+  const marker = Math.min(MARKER_MAX, pitch);
+  return { face, c, odR, bcR, pitch, marker, slop: 0, ring: marker, scrolls: false };
 }
