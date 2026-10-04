@@ -94,6 +94,20 @@ export function SettingsScreen() {
         knuckle, a capacitive stylus or touchscreen gloves — no phone screen reads through plain leather.
       </Text>
       <ChipRow
+        label="Voice"
+        options={[
+          { value: 'on', label: 'Mic button' },
+          { value: 'off', label: 'Off' },
+        ]}
+        selected={settings.voice ? 'on' : 'off'}
+        onSelect={(v) => update({ voice: v === 'on' })}
+      />
+      <Text style={[t.type.caption, { color: t.colors.textMuted, paddingHorizontal: t.layout.screenPadding, marginTop: -t.space.sm, marginBottom: t.space.lg }]}>
+        Tap the mic on any screen and say it: a tool ("bolt up", "rolling offset, rise 12, roll 8, run 30"), a weld ("two 6 inch welds,
+        weld 14 rejected for porosity"), a test reading ("hold started at 225") or a handbook question. Tool names work on the phone
+        with no signal; the rest is read by Claude, said back, and kept on screen with an Undo.
+      </Text>
+      <ChipRow
         label="Read aloud"
         options={[
           { value: 'off', label: 'Off' },

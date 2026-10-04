@@ -58,6 +58,7 @@ import {
   recentNames,
 } from '../state/register';
 import { PERSON_MAX } from '../state/readSettings';
+import { useVoice } from '../voice/VoiceProvider';
 import { FaceLayout, boltCentre, fittedFace, flangeFace } from '../components/flange/face';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'FlangeBoltUp'>;
@@ -291,6 +292,42 @@ function Bolting({
     }
   };
 
+  // Hands-free: "done" is the button, "undo" is Undo, "repeat" says the bolt
+  // again. Each answer is what the phone says back, worked out from the state
+  // the command leaves, so it never lags a render behind.
+  const voice = useVoice();
+  const spoken = (s: BoltUpState): string => {
+    if (isFinished(s)) return 'That was the last bolt. Joint complete.';
+    const p = currentPass(s);
+    const tq = passTorque(finalTorque, s.pass);
+    const bolt = `Bolt ${expectedBolt(s)}.${Number.isFinite(tq) ? ` ${Math.round(tq)} foot pounds.` : ''}`;
+    return s.step === 0 && p ? `Pass ${p.number}, ${Math.round(p.target * 100)} percent. ${bolt}` : bolt;
+  };
+  useEffect(() => {
+    voice.useBolts((act) => {
+      if (act === 'repeat') return spoken(state);
+      if (act === 'undo') {
+        const back = undoBolt(state);
+        setState(back);
+        setShowDone(false);
+        return `Back. ${spoken(back)}`;
+      }
+      if (done) return 'The joint is complete.';
+      const r = tapBolt(state, expected);
+      onBolt(expected);
+      return spoken(r.state);
+    });
+  });
+  const { useBolts, setHandsFree } = voice;
+  useEffect(() => {
+    const off = navigation.addListener('blur', () => setHandsFree(false));
+    return () => {
+      off();
+      useBolts(null);
+      setHandsFree(false);
+    };
+  }, [navigation, useBolts, setHandsFree]);
+
   // The picture is the flange in front of you: the bolt circle sits inside the
   // rim at the ratio the table gives, so a 2" joint reads narrow and a 24" one
   // reads wide. A flange with too many bolts to draw at a fingertip's pitch is
@@ -347,6 +384,13 @@ function Bolting({
 
       <View style={{ paddingHorizontal: t.layout.screenPadding, gap: t.space.md, marginBottom: t.space.md }}>
         {logButton}
+        {voice.enabled && !done ? (
+          <GhostButton
+            label={voice.handsFree ? 'Stop hands-free' : 'Hands-free: say “done”'}
+            icon={voice.handsFree ? 'stop-circle-outline' : 'mic-outline'}
+            onPress={() => voice.setHandsFree(!voice.handsFree)}
+          />
+        ) : null}
         {crowded ? (
           <GhostButton label={`Full screen · ${bolts} bolts at full size`} icon="expand-outline" onPress={() => setFull(true)} />
         ) : null}

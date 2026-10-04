@@ -466,7 +466,7 @@ still works; the two features simply say the server is not set up.
 | Name | Kind | For |
 |---|---|---|
 | `TYPESAFE_API_KEY` | Secret | Jev: smart fill on a heat scan, and the handbook search |
-| `ANTHROPIC_API_KEY` | Secret | Claude: the shift report summary |
+| `ANTHROPIC_API_KEY` | Secret | Claude: the shift report summary, and spoken commands |
 | `CLAUDE_MODEL` | Variable (plain text) | Which Claude model writes it. Changing it needs no build and no deploy. |
 
 `wrangler.jsonc` sets `keep_vars: true`, so a deploy keeps the plain
@@ -477,8 +477,14 @@ the dashboard is where it is meant to be changed.
 Neither key goes in the repo, in a chat, in a screenshot, or in a plain
 Variable. Put the name in the Name field and the key in the Value field, and
 pick **Secret**. On the Anthropic console set a monthly spend limit on the
-key: the endpoint takes one fixed question about one shift's facts and
-nothing else, but a limit costs nothing.
+key: each endpoint takes one fixed kind of question (one shift's facts, or
+one spoken command of at most 400 characters) and nothing else, but a limit
+costs nothing.
+
+Spoken commands send the whole handbook (about 15,000 tokens) as a cached
+system prompt. The first command in five minutes writes the cache; the rest
+read it at a small fraction of the price, so a day of commands costs cents, not
+dollars. Tool names never reach the Worker: the phone matches those itself.
 
 **GitHub Pages, if the repo ever goes public or the account goes Pro:**
 Settings → Pages → Source: GitHub Actions, then add a repository variable

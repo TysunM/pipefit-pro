@@ -1,0 +1,116 @@
+import { lengthAt, namedLengths, normalise, numberAt, tokens } from '../voice/words';
+import { LISTEN_FOR, TOOL_WORDS, localIntent } from '../voice/intent';
+import { TOOLS } from '../navigation/groups';
+
+const num = (s: string) => numberAt(tokens(s), 0)?.value;
+const len = (s: string) => lengthAt(tokens(s), 0)?.inches;
+
+describe('numbers as a recogniser writes them', () => {
+  test('digits, decimals and fractions', () => {
+    expect(num('12')).toBe(12);
+    expect(num('12.5')).toBe(12.5);
+    expect(num('12 1/2')).toBe(12.5);
+    expect(num('12-1/2')).toBe(12.5);
+    expect(num('3/8')).toBe(0.375);
+  });
+
+  test('words, and the parts said after them', () => {
+    expect(num('twelve')).toBe(12);
+    expect(num('twenty four')).toBe(24);
+    expect(num('one hundred and twenty')).toBe(120);
+    expect(num('12 and a half')).toBe(12.5);
+    expect(num('six and three eighths')).toBe(6.375);
+    expect(num('6 and 3/8')).toBe(6.375);
+    expect(num('three quarters')).toBe(0.75);
+    expect(num('a half')).toBe(0.5);
+    expect(num('2 point 5')).toBe(2.5);
+  });
+
+  test('nothing that is not a number', () => {
+    expect(numberAt(tokens('rise'), 0)).toBeNull();
+    expect(numberAt([], 0)).toBeNull();
+  });
+});
+
+describe('lengths, in inches', () => {
+  test('feet and inches', () => {
+    expect(len('3 foot 6')).toBe(42);
+    expect(len("3' 6\"")).toBe(42);
+    expect(len('4 feet')).toBe(48);
+    expect(len('3 feet 6 and a half inches')).toBe(42.5);
+    expect(len('30 inches')).toBe(30);
+  });
+
+  test('named either side of the figure', () => {
+    const names = { rise: ['rise'], roll: ['roll'], run: ['run'] };
+    expect(namedLengths('rise 12 roll 8 and a half run 30', names)).toEqual({ rise: 12, roll: 8.5, run: 30 });
+    expect(namedLengths('12 inch rise and a roll of 8', names)).toEqual({ rise: 12, roll: 8 });
+    expect(namedLengths('run 2 foot 6', names)).toEqual({ run: 30 });
+  });
+
+  test('normalising keeps what matters', () => {
+    expect(normalise('Open the Flange Bolt-Up, please!')).toBe('open the flange bolt up please');
+  });
+});
+
+describe('a tool by name opens on the phone', () => {
+  test('every tool has a name to call it by', () => {
+    for (const t of TOOLS) expect(TOOL_WORDS[t.route].length).toBeGreaterThan(0);
+  });
+
+  test('plain names and the words round them', () => {
+    expect(localIntent('bolt up', null)).toEqual({ kind: 'open', route: 'FlangeBoltUp' });
+    expect(localIntent('Open the flange bolt-up please', null)).toEqual({ kind: 'open', route: 'FlangeBoltUp' });
+    expect(localIntent('bring up the hydro test', null)).toEqual({ kind: 'open', route: 'PressureTests' });
+    expect(localIntent('shift report', null)).toEqual({ kind: 'open', route: 'ShiftReport' });
+    expect(localIntent('go to the level', null)).toEqual({ kind: 'open', route: 'Level' });
+  });
+
+  test('the longest name wins', () => {
+    expect(localIntent('heat book', null)).toEqual({ kind: 'open', route: 'Heats' });
+    expect(localIntent('handbook', null)).toEqual({ kind: 'open', route: 'Reference' });
+    expect(localIntent('rolling offset', null)).toEqual({ kind: 'open', route: 'RollingOffset' });
+    expect(localIntent('simple offset', null)).toEqual({ kind: 'open', route: 'SimpleOffset' });
+  });
+
+  test('a rolling offset takes its figures', () => {
+    expect(localIntent('rolling offset rise 12 roll 8 and a half run 30', null)).toEqual({
+      kind: 'open',
+      route: 'RollingOffset',
+      params: { rise: 12, roll: 8.5, run: 30 },
+    });
+    expect(localIntent('rolling offset with a 2 foot rise', null)).toEqual({ kind: 'open', route: 'RollingOffset', params: { rise: 24 } });
+  });
+
+  test('anything more than a name goes to Claude', () => {
+    expect(localIntent('weld 14 rejected for porosity', null)).toBeNull();
+    expect(localIntent("what's the takeout on a 2 inch 90", null)).toBeNull();
+    expect(localIntent('add a safety note to the shift report', null)).toBeNull();
+    expect(localIntent('hydro passed at 225', null)).toBeNull();
+    expect(localIntent('', null)).toBeNull();
+    expect(localIntent('the weather', null)).toBeNull();
+  });
+});
+
+describe('the bolt-up, hands free', () => {
+  test('done, undo and repeat, only on that screen', () => {
+    expect(localIntent('done', 'FlangeBoltUp')).toEqual({ kind: 'bolt', act: 'done' });
+    expect(localIntent('next', 'FlangeBoltUp')).toEqual({ kind: 'bolt', act: 'done' });
+    expect(localIntent('got it', 'FlangeBoltUp')).toEqual({ kind: 'bolt', act: 'done' });
+    expect(localIntent('undo', 'FlangeBoltUp')).toEqual({ kind: 'bolt', act: 'undo' });
+    expect(localIntent('go back', 'FlangeBoltUp')).toEqual({ kind: 'bolt', act: 'undo' });
+    expect(localIntent('say again', 'FlangeBoltUp')).toEqual({ kind: 'bolt', act: 'repeat' });
+    expect(localIntent('done', 'Level')).toBeNull();
+    expect(localIntent('go back', 'Level')).toEqual({ kind: 'back' });
+  });
+
+  test('a stop is a stop everywhere', () => {
+    expect(localIntent('cancel', 'FlangeBoltUp')).toEqual({ kind: 'cancel' });
+    expect(localIntent('never mind', null)).toEqual({ kind: 'cancel' });
+  });
+});
+
+test('the recogniser is told the tool names', () => {
+  expect(LISTEN_FOR).toContain('rolling offset');
+  expect(new Set(LISTEN_FOR).size).toBe(LISTEN_FOR.length);
+});
