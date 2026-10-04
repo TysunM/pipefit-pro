@@ -28,7 +28,7 @@ import { solderTakeout } from './solderFitting';
 // added; a welded joint has a root gap at each end; a soldered tube bottoms
 // in its socket. Getting that wrong is worth more than any rounding.
 
-export type JointKind = 'screwed' | 'welded' | 'flanged' | 'soldered';
+export type JointKind = 'screwed' | 'welded' | 'flanged' | 'soldered' | 'socket' | 'nohub';
 
 export type TakeoffFamily = {
   id: JointKind;
@@ -43,6 +43,8 @@ export const TAKEOFF_FAMILIES: TakeoffFamily[] = [
   { id: 'welded', label: 'Butt weld', hasGap: true, gapLabel: 'Root gap at each weld' },
   { id: 'flanged', label: 'Flanged', hasGap: true, gapLabel: 'Gasket at each flange' },
   { id: 'soldered', label: 'Solder', hasGap: false, gapLabel: 'Tube bottoms in the socket' },
+  { id: 'socket', label: 'PVC socket', hasGap: false, gapLabel: 'Pipe bottoms in the socket' },
+  { id: 'nohub', label: 'No-hub', hasGap: true, gapLabel: 'Coupling centre stop at each joint' },
 ];
 
 export type TakeoffOption = {
@@ -62,6 +64,12 @@ export type TakeoffOptions = {
   flangeClass: FlangeClass;
   /** A measured figure, for the custom option. */
   custom: number;
+  /**
+   * The fitting library's figure for a socket or no-hub fitting at a size, or
+   * undefined when none has been set (state/fittingLibrary.ts). Those makeups
+   * are the maker's, so they are set once by the fitter, never assumed here.
+   */
+  library?: (fitting: string, nps: number) => number | undefined;
 };
 
 export const DEFAULT_TAKEOFF_OPTIONS: TakeoffOptions = {
@@ -105,6 +113,24 @@ const flangedCenterToFace = (nps: number, cls: FlangeClass, key: 'a' | 'b' | 'c'
   const f = flangedFitting(nps, cls);
   return f ? f[key] : NaN;
 };
+
+/** Fittings whose takeout comes from the fitting library, set once per line and size. */
+export const LIBRARY_FITTINGS: { id: string; family: 'socket' | 'nohub'; label: string; how: string }[] = [
+  { id: 'sock90', family: 'socket', label: '90° elbow', how: 'centre to the bottom of the socket' },
+  { id: 'sock45', family: 'socket', label: '45° elbow', how: 'centre to the bottom of the socket' },
+  { id: 'sockTee', family: 'socket', label: 'Tee', how: 'centre to the bottom of the socket' },
+  { id: 'sockStreet90', family: 'socket', label: '90° street elbow', how: 'centre to the end of the spigot' },
+  { id: 'nh14', family: 'nohub', label: '1/4 bend', how: 'centre to the end of the fitting' },
+  { id: 'nh18', family: 'nohub', label: '1/8 bend', how: 'centre to the end of the fitting' },
+  { id: 'nh116', family: 'nohub', label: '1/16 bend', how: 'centre to the end of the fitting' },
+  { id: 'nhLong14', family: 'nohub', label: 'Long sweep 1/4', how: 'centre to the end of the fitting' },
+  { id: 'nhSanRun', family: 'nohub', label: 'San tee, run', how: 'centre of the branch to the end of the run' },
+  { id: 'nhSanBranch', family: 'nohub', label: 'San tee, branch', how: 'centre of the run to the end of the branch' },
+  { id: 'nhWyeRun', family: 'nohub', label: 'Wye, run', how: 'branch centreline crossing to the end of the run' },
+  { id: 'nhWyeBranch', family: 'nohub', label: 'Wye, branch', how: 'branch centreline crossing to the end of the branch' },
+];
+
+export const isLibraryFitting = (id: string): boolean => LIBRARY_FITTINGS.some((f) => f.id === id);
 
 export const TAKEOFF_OPTIONS: TakeoffOption[] = [
   {
@@ -265,6 +291,17 @@ export const TAKEOFF_OPTIONS: TakeoffOption[] = [
     source: 'Handbook 3-6 — an eighth over a plain elbow',
     takeout: (nps) => solderTakeout(nps, 'street90'),
   },
+
+  // Socket (PVC, CPVC) and no-hub: the maker's figures, from the fitting library.
+  ...LIBRARY_FITTINGS.map(
+    (f): TakeoffOption => ({
+      id: f.id,
+      family: f.family,
+      label: f.label,
+      source: f.family === 'socket' ? 'Your fitting library — centre to the bottom of the socket' : 'Your fitting library — centre to the end of the fitting',
+      takeout: (nps, o) => o.library?.(f.id, nps) ?? NaN,
+    }),
+  ),
 
   {
     id: 'custom',

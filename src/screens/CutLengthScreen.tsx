@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { Pressable, Text, View } from 'react-native';
 import { Screen } from '../components/Screen';
 import { HintRow } from '../components/HintRow';
 import { SectionHeader } from '../components/SectionHeader';
@@ -13,7 +14,17 @@ import { usePipeConfig } from '../hooks/usePipeConfig';
 import { useSettings } from '../state/settings';
 import { StockNote } from '../components/StockNote';
 import { END_FITTINGS, EndFitting, FITTING_SOURCE, endHasGap, solveCutLength } from '../calc/cutLength';
-import { JointKind, TAKEOFF_FAMILIES, optionsForFamily } from '../calc/takeoffCatalog';
+import { JointKind, LIBRARY_FITTINGS, TAKEOFF_FAMILIES, isLibraryFitting, optionsForFamily } from '../calc/takeoffCatalog';
+import { MaterialId, material, pipeSpec, sizeLabel, wallLabel } from '../calc/materials';
+import { useFittings } from '../state/fittings';
+import { clearTakeout, lookup, setTakeout } from '../state/fittingLibrary';
+import { useTheme } from '../theme/ThemeProvider';
+import { AccentButton } from '../components/Buttons';
+
+/** How a material is joined, as Cut Length first offers it. */
+const FAMILY_FOR: Partial<Record<MaterialId, JointKind>> = { pvc: 'socket', cpvc: 'socket', 'ci-soil': 'nohub' };
+const firstOf = (family: JointKind): string =>
+  optionsForFamily(family).find((o) => o.id !== 'none' && o.id !== 'custom')?.id ?? 'custom';
 import { FlangeClass, flangedClasses } from '../calc/flangedFitting';
 
 export function CutLengthScreen() {
@@ -23,10 +34,17 @@ export function CutLengthScreen() {
 
   const [c2c, setC2c] = useState('');
   const [gap, setGap] = useState('');
-  const [family, setFamily] = useState<JointKind>('welded');
+  // A PVC job opens on socket fittings, a no-hub job on no-hub, the rest on butt weld.
+  const startFamily = FAMILY_FOR[settings.material] ?? 'welded';
+  const [family, setFamily] = useState<JointKind>(startFamily);
   const [flangeClass, setFlangeClass] = useState<FlangeClass>('150');
-  const [endA, setEndA] = useState<EndFitting>('weld90');
-  const [endB, setEndB] = useState<EndFitting>('weld90');
+  const [endA, setEndA] = useState<EndFitting>(startFamily === 'welded' ? 'weld90' : firstOf(startFamily));
+  const [endB, setEndB] = useState<EndFitting>(startFamily === 'welded' ? 'weld90' : firstOf(startFamily));
+  // Socket and no-hub makeups are the maker's: set once per line and size, kept on the phone.
+  const fittings = useFittings();
+  const line = `${settings.material}:${settings.wall}`;
+  const lineName = `${material(settings.material).short} ${wallLabel(settings.wall)}`;
+  const library = useMemo(() => (id: string, nps: number) => lookup(fittings.library, line, id, nps), [fittings.library, line]);
   const [customA, setCustomA] = useState('');
   const [customB, setCustomB] = useState('');
   // Spoken: "cut length, 4 foot 2".
@@ -35,7 +53,8 @@ export function CutLengthScreen() {
     if (f.gap) setGap(figureText(f.gap, u.num));
   });
 
-  const gapInches = Number.isFinite(u.parse(gap)) ? u.parse(gap) : settings.defaultGap;
+  // A no-hub joint's "gap" is the coupling's centre stop, not a root gap: nothing unless it is entered.
+  const gapInches = Number.isFinite(u.parse(gap)) ? u.parse(gap) : family === 'nohub' ? 0 : settings.defaultGap;
 
   const result = useMemo(
     () =>
@@ -50,11 +69,14 @@ export function CutLengthScreen() {
         kind: pipe.kind,
         schedule: pipe.schedule,
         flangeClass,
+        library,
       }),
-    [c2c, endA, endB, customA, customB, gapInches, flangeClass, pipe.nps, pipe.kind, pipe.schedule, u]
+    [c2c, endA, endB, customA, customB, gapInches, flangeClass, pipe.nps, pipe.kind, pipe.schedule, u, library]
   );
 
   const pristine = !c2c.trim();
+  // Weight in the job's material where it comes in this size; steel otherwise.
+  const jobSpec = pipeSpec(settings.material, pipe.nps, settings.wall);
 
   // The fittings offered follow how the run is being joined. Switching the
   // family moves both ends onto something that family actually makes.
@@ -95,7 +117,7 @@ export function CutLengthScreen() {
           value={gap}
           onChangeText={setGap}
           suffix={u.suffix}
-          placeholder={gapApplies ? u.num(settings.defaultGap) : '—'}
+          placeholder={gapApplies ? (family === 'nohub' ? '0' : u.num(settings.defaultGap)) : '—'}
           editable={gapApplies}
         />
       </FieldRow>
@@ -119,6 +141,18 @@ export function CutLengthScreen() {
         </FieldRow>
       ) : null}
 
+      {[...new Set([endA, endB])].filter(isLibraryFitting).map((id) => (
+        <SetTakeout
+          key={id}
+          fitting={id}
+          nps={pipe.nps}
+          lineName={lineName}
+          value={library(id, pipe.nps)}
+          onSave={(v) => fittings.apply((l) => setTakeout(l, line, id, pipe.nps, v, Date.now()))}
+          onClear={() => fittings.apply((l) => clearTakeout(l, line, id, pipe.nps))}
+        />
+      ))}
+
       <ControlRow>
         <SelectorButton primary={pipe.label} badge={pipe.kind} onPress={pipe.openSheet} style={{ flex: 1 }} />
         <GhostButton
@@ -129,9 +163,9 @@ export function CutLengthScreen() {
             setGap('');
             setCustomA('');
             setCustomB('');
-            setFamily('welded');
-            setEndA('weld90');
-            setEndB('weld90');
+            setFamily(startFamily);
+            setEndA(startFamily === 'welded' ? 'weld90' : firstOf(startFamily));
+            setEndB(startFamily === 'welded' ? 'weld90' : firstOf(startFamily));
           }}
           style={{ flex: 1 }}
         />
@@ -172,7 +206,11 @@ export function CutLengthScreen() {
 
       <SpoolBar
         badge={`SCH ${pipe.schedule}`}
-        text={result.valid ? `Pipe weight ${u.weight(result.weight, 2)} for this cut` : 'Pipe weight unavailable'}
+        text={
+          result.valid
+            ? `Pipe weight ${u.weight(jobSpec ? (result.pipeCut / 12) * jobSpec.lbPerFt : result.weight, 2)} for this cut`
+            : 'Pipe weight unavailable'
+        }
       />
 
       <FooterNote
@@ -188,5 +226,120 @@ export function CutLengthScreen() {
         onChange={pipe.change}
       />
     </Screen>
+  );
+}
+
+/**
+ * Setting a socket or no-hub fitting's takeout, once, for the line and size on
+ * screen. A socket fitting can be measured: centre to the face, less the
+ * socket depth. Saved on the phone and used every time after.
+ */
+function SetTakeout({
+  fitting,
+  nps,
+  lineName,
+  value,
+  onSave,
+  onClear,
+}: {
+  fitting: string;
+  nps: number;
+  lineName: string;
+  value: number | undefined;
+  onSave: (inches: number) => void;
+  onClear: () => void;
+}) {
+  const t = useTheme();
+  const u = useUnits();
+  const f = LIBRARY_FITTINGS.find((x) => x.id === fitting)!;
+  const [editing, setEditing] = useState(false);
+  const [takeout, setTake] = useState('');
+  const [face, setFace] = useState('');
+  const [depth, setDepth] = useState('');
+  const socket = f.family === 'socket' && f.id !== 'sockStreet90';
+  const fromFace = u.parse(face) - u.parse(depth);
+  const typed = u.parse(takeout);
+  const next = Number.isFinite(typed) ? typed : Number.isFinite(fromFace) && fromFace > 0 ? fromFace : NaN;
+  const title = `${sizeLabel(nps)} ${lineName} ${f.label}`;
+  // 1 1/8" in inches; the decimal with its unit otherwise.
+  const len = (v: number) => u.frac(v) || u.full(v);
+
+  if (value !== undefined && !editing) {
+    return (
+      <View style={{ marginHorizontal: t.layout.screenPadding, marginBottom: t.space.md, flexDirection: 'row', alignItems: 'center', gap: t.space.sm }}>
+        <Text style={[t.type.caption, { color: t.colors.textMuted, flex: 1 }]}>
+          {`${title}: takeout ${len(value)}, from your fitting library.`}
+        </Text>
+        <Pressable onPress={() => setEditing(true)} hitSlop={10} accessibilityRole="button" accessibilityLabel={`Change the ${title} takeout`}>
+          <Text style={[t.type.captionStrong, { color: t.colors.data }]}>Change</Text>
+        </Pressable>
+      </View>
+    );
+  }
+
+  return (
+    <View
+      style={{
+        marginHorizontal: t.layout.screenPadding,
+        marginBottom: t.space.lg,
+        padding: t.space.md,
+        borderRadius: t.radius.md,
+        borderWidth: 1,
+        borderColor: t.colors.warnText,
+        gap: t.space.sm,
+      }}
+    >
+      <Text style={[t.type.bodyStrong, { color: t.colors.text }]}>{`Set the ${title} takeout`}</Text>
+      <Text style={[t.type.caption, { color: t.colors.textMuted }]}>
+        {`Makers differ, so this is set once for this size and kept: ${f.how}. From the maker’s sheet or the box, or measured off the fitting.`}
+      </Text>
+      <FieldRow>
+        <DimensionInput label="Takeout" value={takeout} onChangeText={setTake} suffix={u.suffix} placeholder="0" readout={u.frac(typed)} />
+      </FieldRow>
+      {socket ? (
+        <>
+          <Text style={[t.type.caption, { color: t.colors.textMuted }]}>Or measure it: centre to the face of the socket, and how deep the socket is.</Text>
+          <FieldRow>
+            <DimensionInput label="Centre to face" value={face} onChangeText={setFace} suffix={u.suffix} placeholder="0" />
+            <DimensionInput
+              label="Socket depth"
+              value={depth}
+              onChangeText={setDepth}
+              suffix={u.suffix}
+              placeholder="0"
+              readout={Number.isFinite(fromFace) && fromFace > 0 ? `Takeout ${len(fromFace)}` : undefined}
+            />
+          </FieldRow>
+        </>
+      ) : null}
+      <View style={{ flexDirection: 'row', gap: t.space.md }}>
+        <View style={{ flex: 1 }}>
+          <AccentButton
+            label={Number.isFinite(next) ? `Save ${len(next)}` : 'Save'}
+            icon="bookmark-outline"
+            onPress={() => {
+              if (!Number.isFinite(next) || next < 0) return;
+              onSave(next);
+              setEditing(false);
+              setTake('');
+              setFace('');
+              setDepth('');
+            }}
+          />
+        </View>
+        {value !== undefined ? (
+          <View style={{ flex: 1 }}>
+            <GhostButton
+              label="Remove"
+              icon="trash-outline"
+              onPress={() => {
+                onClear();
+                setEditing(false);
+              }}
+            />
+          </View>
+        ) : null}
+      </View>
+    </View>
   );
 }

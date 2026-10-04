@@ -260,7 +260,7 @@ Then the **true offset** and the **run** form a second right triangle whose hypo
 1. Tap **Cut length**.
 2. Set the pipe.
 3. Type **C2C length**.
-4. Pick **Joint** — screwed, welded, flanged or soldered.
+4. Pick **Joint** — screwed, welded, flanged, soldered, PVC socket or no-hub. PVC/CPVC specs start on PVC socket; cast iron soil starts on no-hub.
 5. If flanged, pick the **Class** — 150, 300, 600 and up.
 6. Pick **End A** and **End B**.
 7. Read **PIPE CUT**.
@@ -287,6 +287,21 @@ That second one was a real bug once. It is now a rule in the code and a test.
 | Weight | 5.48 lb |
 
 With a 1/8" gap on both ends: **17.75"**
+
+### PVC socket and no-hub — your fitting library
+
+Socket and no-hub makeups differ by maker (Charlotte, Spears, Tyler, AB&I…), so the app does not guess them. **You set each one once and it is kept**, per material, wall and size.
+
+1. Pick **PVC socket** or **No-hub**, and the fitting on each end.
+2. The first time, a box asks for that fitting's **takeout**. Type it from the maker's sheet, or for socket fittings measure **Centre to face** and **Socket depth** and the app subtracts them.
+3. Tap **Save**. From then on that fitting in that size reads straight from your library — **Change** to correct it, **Remove** to clear it.
+
+| Family | Takeout is | Gap |
+|---|---|---|
+| PVC socket | Centre to the bottom of the socket (pipe bottoms out) | None |
+| No-hub | Centre to the end of the fitting | Coupling centre stop, usually 0 |
+
+**Worked example — 2" PVC sch 40, socket 90 both ends, 48" C2C:** centre to face 2, socket depth 7/8 → takeout **1 1/8"** each end, **PIPE CUT 45.75"**.
 
 ### Anything not on the list
 

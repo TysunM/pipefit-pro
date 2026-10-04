@@ -12,6 +12,7 @@ import { LevelsProvider } from "./src/state/levels";
 import { PressureTestsProvider } from "./src/state/pressureTests";
 import { ShiftsProvider } from "./src/state/shifts";
 import { LaserProvider } from "./src/state/laser";
+import { FittingsProvider } from "./src/state/fittings";
 import { RecentsProvider } from "./src/state/recents";
 import { JobPickProvider } from "./src/state/jobPick";
 import { ThemeProvider, useTheme } from "./src/theme/ThemeProvider";
@@ -68,6 +69,7 @@ export default function App() {
                 <LevelsProvider>
                   <PressureTestsProvider>
                     <ShiftsProvider>
+                      <FittingsProvider>
                       <RecentsProvider>
                         <JobPickProvider>
                           <LaserProvider>
@@ -79,6 +81,7 @@ export default function App() {
                           </LaserProvider>
                         </JobPickProvider>
                       </RecentsProvider>
+                      </FittingsProvider>
                     </ShiftsProvider>
                   </PressureTestsProvider>
                 </LevelsProvider>
