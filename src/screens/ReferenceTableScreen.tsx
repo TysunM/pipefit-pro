@@ -41,7 +41,7 @@ export function ReferenceTableScreen({ route }: Props) {
     <Screen scroll={false}>
       <View style={{ paddingHorizontal: t.layout.screenPadding, paddingTop: t.space.md }}>
         <Text style={[t.type.labelSmall, { color: t.colors.textFaint }]}>
-          {`${table.group} · page ${table.page}`}
+          {`${table.group} · ${/^\d/.test(table.page) ? `page ${table.page}` : table.page}`}
         </Text>
         {table.note ? (
           <Text style={[t.type.caption, { color: t.colors.textMuted, marginTop: t.space.sm }]}>

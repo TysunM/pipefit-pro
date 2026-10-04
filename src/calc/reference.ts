@@ -1,3 +1,4 @@
+import { MATERIAL_TABLES } from './materialTables';
 import { toFraction } from './format';
 import { NPT_TABLE } from './thread';
 import { SCREWED_STANDARD, SCREWED_HEAVY, screwedFitting } from './screwedFitting';
@@ -48,7 +49,8 @@ export type ReferenceGroup =
   | 'Welded fittings'
   | 'Valves'
   | 'Pipe and tube'
-  | 'Hanging and bending';
+  | 'Hanging and bending'
+  | 'Materials and welding';
 
 export type ReferenceColumn = { key: string; label: string; wide?: boolean };
 
@@ -1102,6 +1104,9 @@ REFERENCE_TABLES.push(
       })),
   }
 );
+
+// The materials and their walls, from the same figures the job's specs use.
+REFERENCE_TABLES.push(...MATERIAL_TABLES);
 
 export const referenceGroups = (): ReferenceGroup[] => [
   ...new Set(REFERENCE_TABLES.map((t) => t.group)),

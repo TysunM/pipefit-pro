@@ -16,6 +16,7 @@
 
 import type { ToolRoute } from '../navigation/groups';
 import { hasPhrase, lengthAt, numberAt, tokens } from './words';
+import { readSpecs, type SpecCommand } from './specs';
 import { Figure, FigureRoute, FigureSpec, Figures, TOOL_FIGURES, figureNames, isFigureRoute, plausible, primaryFigure } from './toolFigures';
 
 export type OpenRoute = ToolRoute | 'Home' | 'Settings';
@@ -25,6 +26,8 @@ export type VoiceCommand =
   | { kind: 'open'; route: OpenRoute; figures?: Figures }
   /** On the bolt-up screen: the bolt asked for is torqued, take the last one back, or say it again. */
   | { kind: 'bolt'; act: 'done' | 'undo' | 'repeat' }
+  /** The job's pipe: "half inch stainless 40S", "6 inch P22 schedule 80". */
+  | ({ kind: 'specs' } & SpecCommand)
   | { kind: 'back' }
   | { kind: 'cancel' };
 
@@ -116,6 +119,9 @@ export function localIntent(text: string, screen: string | null): VoiceCommand |
   }
 
   if (ws.length <= 3 && sayingOnly(ws, [['back'], ['go', 'back']])) return { kind: 'back' };
+
+  const specs = readSpecs(text);
+  if (specs) return { kind: 'specs', ...specs };
 
   // With a tool open, its own figures come first: on the saddle, "bend 45"
   // is the saddle's angle, not the pipe bend tool.

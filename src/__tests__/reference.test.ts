@@ -14,6 +14,7 @@ describe('the handbook index', () => {
       'Valves',
       'Pipe and tube',
       'Hanging and bending',
+      'Materials and welding',
     ]);
   });
 

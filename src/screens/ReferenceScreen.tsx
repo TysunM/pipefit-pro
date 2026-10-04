@@ -26,6 +26,7 @@ const GROUP_ICON: Record<ReferenceGroup, keyof typeof Ionicons.glyphMap> = {
   Valves: 'toggle-outline',
   'Pipe and tube': 'reorder-four-outline',
   'Hanging and bending': 'git-commit-outline',
+  'Materials and welding': 'flame-outline',
 };
 
 export function ReferenceScreen({ navigation }: Props) {
@@ -65,7 +66,7 @@ export function ReferenceScreen({ navigation }: Props) {
       key={key}
       onPress={() => navigation.navigate('ReferenceTable', { id: x.id })}
       accessibilityRole="button"
-      accessibilityLabel={`${x.title}, handbook page ${x.page}`}
+      accessibilityLabel={`${x.title}, ${/^\d/.test(x.page) ? `handbook page ${x.page}` : x.page}`}
       style={{ marginHorizontal: t.layout.screenPadding, marginBottom: t.space.sm }}
     >
       {({ pressed }) => (
@@ -73,7 +74,7 @@ export function ReferenceScreen({ navigation }: Props) {
           <Ionicons name={GROUP_ICON[x.group]} size={19} color={t.colors.textMuted} />
           <View style={{ flex: 1 }}>
             <Text style={[t.type.bodyStrong, { color: t.colors.text }]}>{x.title}</Text>
-            <Text style={[t.type.caption, { color: t.colors.textMuted, marginTop: 2 }]}>{`Page ${x.page} · ${x.rows().length} rows`}</Text>
+            <Text style={[t.type.caption, { color: t.colors.textMuted, marginTop: 2 }]}>{`${/^\d/.test(x.page) ? `Page ${x.page}` : x.page} · ${x.rows().length} rows`}</Text>
           </View>
           <Ionicons name="chevron-forward" size={18} color={t.colors.textMuted} />
         </Plate>

@@ -1,3 +1,5 @@
+import { calcSchedule, material, resolveSpec, sizeLabel, wallLabel } from '../calc/materials';
+import { wallFor } from '../voice/specs';
 import React from 'react';
 import { Platform, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -170,8 +172,8 @@ export function SettingsScreen() {
       <SectionHeader title="Defaults" meta="Applied to every calculator" />
       <ControlRow>
         <SelectorButton
-          primary={findSize(settings.defaultNps).label}
-          badge={`${settings.defaultKind} · SCH ${settings.defaultSchedule}`}
+          primary={sizeLabel(settings.defaultNps)}
+          badge={`${material(settings.material).short} · ${wallLabel(settings.wall)} · ${settings.defaultKind}`}
           onPress={() => setSheetOpen(true)}
           style={{ flex: 1 }}
         />
@@ -310,6 +312,15 @@ export function SettingsScreen() {
         nps={settings.defaultNps}
         kind={settings.defaultKind}
         schedule={settings.defaultSchedule}
+        material={settings.material}
+        wall={settings.wall}
+        onSpec={(patch) => {
+          // A new material keeps the wall in its own terms where it has it: Sch 40 steel becomes 40S stainless.
+          const m = material(patch.material ?? settings.material);
+          const w = patch.wall ?? wallFor(m.walls, settings.wall) ?? m.defaultWall;
+          const r = resolveSpec(m.id, patch.nps ?? settings.defaultNps, w);
+          update({ material: r.material, defaultNps: r.nps, wall: r.wall, defaultSchedule: calcSchedule(r.wall) });
+        }}
         onChange={(patch) =>
           update({
             ...(patch.nps !== undefined ? { defaultNps: patch.nps } : {}),

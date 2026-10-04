@@ -27,6 +27,7 @@ import { VoiceCommand, localIntent } from './intent';
 import { canListen, heardWords, listenOn, listenOnce, stopListening } from './listen';
 import { publishFigures } from './figures';
 import { FigureSpec, Figures, TOOL_FIGURES, isFigureRoute } from './toolFigures';
+import { specPatch, type SpecCommand } from './specs';
 
 export type BoltAct = 'done' | 'undo' | 'repeat';
 /** What the bolt-up screen does with a spoken bolt command: what to say back. */
@@ -79,7 +80,7 @@ function openWith(route: string, figures?: Figures): string | undefined {
 const titleOf = (route: string): string => tool(route)?.title ?? (route === 'Home' ? 'Home' : route === 'Settings' ? 'Settings' : route);
 
 export function VoiceProvider({ children }: { children: React.ReactNode }) {
-  const { settings } = useSettings();
+  const { settings, update } = useSettings();
   const shifts = useShifts();
   const tests = usePressureTests();
   const [sheet, setSheet] = useState<VoiceSheet | null>(null);
@@ -88,8 +89,8 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
   const listening = useRef(false);
   const freeOn = useRef(false);
   // The stores move on; the command runs against what they hold when it lands.
-  const latest = useRef({ shifts, tests, project: settings.projectId });
-  latest.current = { shifts, tests, project: settings.projectId };
+  const latest = useRef({ shifts, tests, project: settings.projectId, settings, update });
+  latest.current = { shifts, tests, project: settings.projectId, settings, update };
 
   const enabled = settings.voice && canListen();
 
@@ -98,6 +99,24 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
     if (reply) say(reply);
   }, []);
 
+  /** Set the job's pipe, said back, with an Undo that puts the old specs back. */
+  const setSpecs = useCallback(
+    (heard: string, cmd: SpecCommand) => {
+      const { settings: cur, update: put } = latest.current;
+      const before = { material: cur.material, defaultNps: cur.defaultNps, wall: cur.wall, defaultKind: cur.defaultKind, defaultSchedule: cur.defaultSchedule };
+      const { patch, said, moved } = specPatch(cur, cmd);
+      put(patch);
+      finish(heard, `Specs: ${said}`, {
+        tone: moved.length ? 'warn' : 'ok',
+        undo: () => {
+          put(before);
+          setSheet({ phase: 'done', heard, reply: 'Specs put back.', tone: 'warn' });
+        },
+      });
+    },
+    [finish],
+  );
+
   /** What the phone can do on its own. */
   const runLocal = useCallback(
     (heard: string, cmd: VoiceCommand) => {
@@ -105,6 +124,8 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
         case 'cancel':
           setSheet(null);
           return;
+        case 'specs':
+          return setSpecs(heard, cmd);
         case 'back':
           if (nav.isReady() && nav.canGoBack()) nav.goBack();
           setSheet(null);
@@ -123,7 +144,7 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
         }
       }
     },
-    [finish],
+    [finish, setSpecs],
   );
 
   /** What needs Claude. */
@@ -170,11 +191,13 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
                 : { label: 'Test', go: () => nav.isReady() && nav.navigate('PressureTest', { testId: out.test.id }) },
           });
         }
+        case 'specs':
+          return setSpecs(heard, { material: a.material, nps: a.nps, wall: a.wall, elbow: a.elbow });
         case 'none':
           return finish(heard, a.say, { tone: 'warn' });
       }
     },
-    [finish],
+    [finish, setSpecs],
   );
 
   const run = useCallback(

@@ -2,7 +2,7 @@ import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { useTheme } from '../theme/ThemeProvider';
 import { useSettings } from '../state/settings';
-import { findSize, pipeWeightPerFoot } from '../calc/pipe';
+import { material, pipeSpec, sizeLabel, wallLabel } from '../calc/materials';
 import { SpoolThumb } from './ToolArt';
 import { SHOP, Workshop } from './Workshop';
 import { Plate } from './metal';
@@ -21,18 +21,19 @@ import { Plate } from './metal';
 export function ProjectCard({ onEdit }: { onEdit: () => void }) {
   const t = useTheme();
   const { settings } = useSettings();
-  const size = findSize(settings.defaultNps);
-  const wall = size.wall[settings.defaultSchedule];
+  const m = material(settings.material);
+  // Settings are kept as a set that exists (readSettings), so this is never null in practice.
+  const spec = pipeSpec(m.id, settings.defaultNps, settings.wall) ?? pipeSpec('cs', 2, '40')!;
   const metric = settings.unitSystem === 'metric';
 
   const inch = (v: number) => (metric ? `${(v * 25.4).toFixed(1)} mm` : `${v.toFixed(3)}"`);
-  const weight = pipeWeightPerFoot(size.od, wall);
+  const weight = spec.lbPerFt;
   const perLength = metric ? `${(weight * 1.48816).toFixed(2)} kg/m` : `${weight.toFixed(2)} lb/ft`;
 
   const facts = [
-    { k: 'OD', v: inch(size.od) },
-    { k: 'Wall', v: inch(wall) },
-    { k: 'Bore', v: inch(size.od - 2 * wall) },
+    { k: 'OD', v: inch(spec.od) },
+    { k: 'Wall', v: inch(spec.wall) },
+    { k: 'Bore', v: inch(spec.id) },
     { k: 'Wt', v: perLength },
     { k: 'Gap', v: inch(settings.defaultGap) },
   ];
@@ -77,7 +78,8 @@ export function ProjectCard({ onEdit }: { onEdit: () => void }) {
         </View>
         <View style={{ flex: 1, gap: 4 }}>
           <Line t={t} k="Project ID" v={project || 'Not set'} faint={!project} />
-          <Line t={t} k="Pipe" v={`${size.label} ${settings.defaultKind} SCH ${settings.defaultSchedule}`} />
+          <Line t={t} k="Pipe" v={`${sizeLabel(spec.nps)} ${m.short} ${wallLabel(spec.wallId)} ${settings.defaultKind}`} />
+          <Line t={t} k="Spec" v={m.spec.replace(/^ASTM /, '')} />
           <Line t={t} k="Unit" v={metric ? 'Metric' : 'Imperial'} />
         </View>
         <Pressable onPress={onEdit} accessibilityRole="button" accessibilityLabel="Edit project and pipe specs">

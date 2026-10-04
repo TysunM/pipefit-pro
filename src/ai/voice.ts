@@ -18,6 +18,7 @@
 import { REFERENCE_TABLES } from '../calc/reference';
 import { isRec } from '../state/clean';
 import { NOTE_KEYS, WELD_SIZES, type ShiftNotes } from '../state/shiftLog';
+import { MATERIALS, type MaterialId } from '../calc/materials';
 import { FIGURE_ROUTES, TOOL_FIGURES, isFigureRoute, plausible, type FigureSpec, type Figures } from '../voice/toolFigures';
 
 /** Every figure name any tool takes. */
@@ -100,7 +101,7 @@ export function cleanVoiceBody(v: unknown): VoiceBody | null {
 export function handbookText(): string {
   return REFERENCE_TABLES.map((t) =>
     [
-      `### ${t.id}: ${t.title} (${t.group}, handbook page ${t.page})${t.note ? ` ${t.note}` : ''}`,
+      `### ${t.id}: ${t.title} (${t.group}, ${/^\d/.test(t.page) ? `handbook page ${t.page}` : t.page})${t.note ? ` ${t.note}` : ''}`,
       t.columns.map((c) => c.label).join(' | '),
       ...t.rows().map((r) => t.columns.map((c) => r[c.key] ?? '').join(' | ')),
     ].join('\n'),
@@ -115,6 +116,7 @@ export const VOICE_SYSTEM = [
   '- answer: a question the handbook below answers. Set table to the id of the table you used, and say the answer, naming the table and its page.',
   "- shift: something for today's shift report. welds: welds made, by nominal pipe size in inches and count. rejects: a rejected weld, as its id or mark and the reason. spools: spool numbers completed. noteKey and noteText: a note, filed under issues, safety, tomorrow (the plan for tomorrow) or notes. crew: people on the crew. hours: hours worked.",
   '- test: a step on the open pressure test. testOp: start_hold (the hold started, at psi), reading (a gauge reading, psi), end_hold (the hold ended, at psi), pass or fail. leaks: what leaked, when they say.',
+  '- specs: they are setting the job\'s pipe: material, nominal size, wall and elbow radius, any of them. specMaterial is one of the material ids below; specNps the nominal size in inches (1/2 is 0.5, inch and a half is 1.5); specWall the wall as written: 10, 40, 80, 160, STD, XS, XXS, 5S, 10S, 40S, 80S, DR7, DR9, DR11, DR17, PC (ductile pressure class), TC52, CISPI; specElbow LR or SR. Only the parts they said.',
   '- none: you cannot tell what they want, or the app cannot do it. Say so briefly and suggest what they could say instead.',
   '',
   'Rules:',
@@ -122,6 +124,9 @@ export const VOICE_SYSTEM = [
   '- Only use figures they said or the handbook holds. Never guess a number. If a figure the action needs is missing or unclear, use none and ask for it.',
   '- Answer only from the handbook below. If it does not hold the answer, use none and say the handbook does not cover it; do not answer from general knowledge.',
   '- Weld sizes are nominal pipe sizes: 1/2, 3/4, 1, 1-1/4, 1-1/2, 2, 2-1/2, 3, 4, 6, 8, 10, 12 and up. A "2 inch weld" is nps 2.',
+  '',
+  'Materials (id: name, pipe spec, walls):',
+  ...MATERIALS.map((m) => `- ${m.id}: ${m.name}, ${m.spec}, walls ${m.walls.join(' ')}`),
   '',
   'Screens (route: what it is):',
   ...VOICE_ROUTES.map((r) => `- ${r}: ${ROUTE_WORDS[r]}`),
@@ -142,7 +147,11 @@ export const VOICE_SYSTEM = [
 export const VOICE_SCHEMA = {
   type: 'object',
   properties: {
-    action: { type: 'string', enum: ['open', 'answer', 'shift', 'test', 'none'] },
+    action: { type: 'string', enum: ['open', 'answer', 'shift', 'test', 'specs', 'none'] },
+    specMaterial: { type: 'string', enum: MATERIALS.map((m) => m.id) },
+    specNps: { type: 'number' },
+    specWall: { type: 'string' },
+    specElbow: { type: 'string', enum: ['LR', 'SR'] },
     say: { type: 'string' },
     route: { type: 'string', enum: [...VOICE_ROUTES] },
     figures: {
@@ -204,6 +213,7 @@ export type VoiceAnswer =
       hours: number | null;
     }
   | { action: 'test'; say: string; op: TestOp; psi: number | null; leaks: string }
+  | { action: 'specs'; say: string; material?: MaterialId; nps?: number; wall?: string; elbow?: 'LR' | 'SR' }
   | { action: 'none'; say: string };
 
 const num = (v: unknown, max: number, min = 0): number | null =>
@@ -264,6 +274,17 @@ export function readVoice(v: unknown): VoiceAnswer | null {
       // A hold or a reading is nothing without its pressure.
       if (op !== 'pass' && op !== 'fail' && psi === null) return none;
       return { action: 'test', say, op, psi, leaks: clean(v.leaks, 400) };
+    }
+    case 'specs': {
+      const out: Extract<VoiceAnswer, { action: 'specs' }> = { action: 'specs', say };
+      const m = MATERIALS.find((x) => x.id === v.specMaterial);
+      if (m) out.material = m.id;
+      const n = num(v.specNps, 60);
+      if (n !== null) out.nps = n;
+      const w = clean(v.specWall, 8).toUpperCase().replace(/\s+/g, '');
+      if (/^(\d+S?|STD|XS|XXS|DR\d+|PC|TC52|CISPI)$/.test(w)) out.wall = w;
+      if (v.specElbow === 'LR' || v.specElbow === 'SR') out.elbow = v.specElbow;
+      return out.material || out.nps !== undefined || out.wall || out.elbow ? out : none;
     }
     case 'none':
       return none;

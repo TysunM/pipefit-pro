@@ -1,4 +1,5 @@
 import type { Settings } from './settings';
+import { calcSchedule, resolveSpec } from '../calc/materials';
 
 /**
  * Which look the stored settings were written under.
@@ -46,6 +47,13 @@ export function readSettings(
   merged.readAloud = stored.readAloud === 'off' || stored.readAloud === 'tap' || stored.readAloud === 'auto' ? stored.readAloud : defaults.readAloud;
   merged.gloveMode = typeof stored.gloveMode === 'boolean' ? stored.gloveMode : defaults.gloveMode;
   merged.voice = typeof stored.voice === 'boolean' ? stored.voice : defaults.voice;
+  // Material, size and wall are kept as a set that exists. Settings from before
+  // materials are carbon steel at the schedule they already had.
+  const spec = resolveSpec(stored.material ?? 'cs', merged.defaultNps, stored.wall ?? merged.defaultSchedule);
+  merged.material = spec.material;
+  merged.defaultNps = spec.nps;
+  merged.wall = spec.wall;
+  merged.defaultSchedule = calcSchedule(spec.wall);
   if (stored.look === LOOK) return { settings: merged, migrated: false };
   return { settings: { ...merged, themePreference: defaults.themePreference, look: LOOK }, migrated: true };
 }

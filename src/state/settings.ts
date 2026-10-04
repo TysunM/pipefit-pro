@@ -1,3 +1,4 @@
+import type { MaterialId } from '../calc/materials';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { UnitSystem } from '../calc/units';
@@ -20,6 +21,14 @@ export type Settings = {
   defaultNps: number;
   defaultKind: ElbowRadius;
   defaultSchedule: Schedule;
+  /**
+   * What the pipe is made of (calc/materials.ts) and its wall in that
+   * material's own designation: "40S" for stainless, "DR11" for HDPE, "PC"
+   * for ductile iron. defaultSchedule follows it, as the nearest of 10, 40
+   * and 80, for the elbow geometry the calculators work in.
+   */
+  material: MaterialId;
+  wall: string;
   defaultGap: number;
   stockLength: number;
   /**
@@ -79,6 +88,8 @@ export const DEFAULT_SETTINGS: Settings = {
   defaultNps: 2,
   defaultKind: 'LR',
   defaultSchedule: '40',
+  material: 'cs',
+  wall: '40',
   defaultGap: 0.09375,
   stockLength: 240,
   cutAllowance: 0.125,
