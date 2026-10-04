@@ -197,6 +197,22 @@ const art: Partial<Record<ToolRoute, (k: Ink) => React.ReactNode>> = {
     );
   },
 
+  Measure: (k) => (
+    // A phone held up to a run: two marks on the pipe and the line between them.
+    <G fill="none" strokeLinecap="round" strokeLinejoin="round">
+      <Path d="M6 50 H74" stroke={k.soft} strokeWidth={1.4} />
+      <Path d="M6 44 H74" stroke={k.soft} strokeWidth={1.4} />
+      <Rect x={22} y={4} width={36} height={58} rx={6} stroke={k.line} strokeWidth={2.4} fill={k.plate} />
+      <Path d="M22 47 H58 M22 41 H58" stroke={k.line} strokeWidth={1.6} />
+      <Path d="M29 44 H51" stroke={k.accent} strokeWidth={2} strokeDasharray="3 3" />
+      <Circle cx={29} cy={44} r={2.8} fill={k.accent} />
+      <Circle cx={51} cy={44} r={2.8} fill={k.accent} />
+      <Circle cx={40} cy={24} r={7} stroke={k.line} strokeWidth={1.8} />
+      <Circle cx={40} cy={24} r={1.4} fill={k.line} />
+      <Path d="M40 13 V16 M40 32 V35 M29 24 H32 M48 24 H51" stroke={k.line} strokeWidth={1.6} />
+    </G>
+  ),
+
   ShiftReport: (k) => (
     <G fill="none" strokeLinecap="round" strokeLinejoin="round">
       <Path d="M22 6 H50 L58 14 V58 H22 Z" stroke={k.line} strokeWidth={2.4} />

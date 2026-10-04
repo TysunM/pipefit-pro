@@ -1093,6 +1093,31 @@ The heading above the log then reads one of three things: *Not checked since it 
 
 ---
 
+## AR measure
+
+Trace a run with the phone's camera before the tape comes out: Tools → **AR measure**.
+
+It runs in **Chrome on Android**, not in the installed app. In the app, the button opens the web app in Chrome on this screen. The phone needs **Google Play Services for AR** from the Play Store.
+
+### Step by step
+
+1. **Start measuring.** Move the phone slowly over the surface until a ring appears where the centre of the screen meets it.
+2. Put the ring on the first point and tap **Mark**. Do the same for each point along the route. The camera shows each leg's length, and a live length and angle from the last mark to the ring.
+3. **Done** closes the camera. Each leg comes back as length, run, rise or drop, slope, and fall per foot on a near-level line.
+4. Each turn after the first leg shows the offset from the run before it: advance, roll, rise and true offset. Tap it to open **Rolling offset** with those figures filled in.
+
+### Getting good figures
+
+- Mark the same face of the pipe every time: all on top, or all on the side. Top to top is centre to centre.
+- Stay within two or three metres and move the phone before you mark. Bare steel and white walls track worst; a strip of tape or a chalk mark helps.
+- Mark a point back along the run first, then where it ends, then the next point. The turn is measured against the run before it.
+
+### What it is good for
+
+Phone AR is good to a centimetre or two on a textured surface at arm's length. That is enough to plan, order and rough out an offset, not to cut from. Tape the run before you cut.
+
+---
+
 ## Pressure tests
 
 Every hydro and pneumatic test on the job, as a record QC signs: Logs → **Pressure tests**.

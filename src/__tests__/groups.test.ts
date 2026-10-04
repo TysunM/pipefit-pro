@@ -2,7 +2,7 @@ import { GROUPS, PROJECT_TOOLS, RECORDABLE, START, TAB_TOOLS, TOOLS, group, grou
 
 // The tabs, held honest
 // ---------------------
-// Seventeen tools are spread over the Tools tab, the Logs tab, the Projects page
+// Eighteen tools are spread over the Tools tab, the Logs tab, the Projects page
 // and the Calculator tab. The thing that goes wrong with that is quiet — a
 // tool is added to the list and forgotten, or moved and left in two places —
 // and nobody notices because every screen still looks right. Every one of
@@ -12,6 +12,7 @@ import { GROUPS, PROJECT_TOOLS, RECORDABLE, START, TAB_TOOLS, TOOLS, group, grou
 const EXPECTED: ToolRoute[] = [
   'Calculator',
   'Level',
+  'Measure',
   'Reference',
   'SpoolBuilder',
   'OrderSheet',
@@ -34,7 +35,7 @@ const sorted = (xs: string[]) => [...xs].sort();
 const reach = [...GROUPS.flatMap(groupTools), ...PROJECT_TOOLS, ...TAB_TOOLS];
 
 describe('every tool is listed once', () => {
-  test('the list holds all seventeen and nothing else', () => {
+  test('the list holds all eighteen and nothing else', () => {
     expect(sorted(routes(TOOLS))).toEqual(sorted(EXPECTED));
     expect(new Set(routes(TOOLS)).size).toBe(TOOLS.length);
   });
@@ -60,9 +61,9 @@ describe('the tabs reach every tool, once', () => {
     }
   });
 
-  test('tools: the iso paper, the spool, the bolt-up and the level, then every bend and offset', () => {
+  test('tools: the iso paper, the spool, the bolt-up, the level and AR measure, then every bend and offset', () => {
     const g = group('tools');
-    expect(routes(g?.sections[0]?.tools ?? [])).toEqual(['IsoSketch', 'SpoolBuilder', 'FlangeBoltUp', 'Level']);
+    expect(routes(g?.sections[0]?.tools ?? [])).toEqual(['IsoSketch', 'SpoolBuilder', 'FlangeBoltUp', 'Level', 'Measure']);
     expect(routes(g?.sections[1]?.tools ?? [])).toEqual(['SimpleOffset', 'RollingOffset', 'CutLength', 'SaddleBend', 'MiterBend', 'HandBender']);
   });
 

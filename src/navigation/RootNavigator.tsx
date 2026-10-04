@@ -1,8 +1,10 @@
 import React, { useCallback } from 'react';
+import { Platform } from 'react-native';
 import {
   DarkTheme,
   DefaultTheme,
   NavigationContainer,
+  createNavigationContainerRef,
   type NavigationState,
   type Theme as NavTheme,
 } from '@react-navigation/native';
@@ -29,6 +31,7 @@ import { HeatsScreen } from '../screens/HeatsScreen';
 import { PressureTestsScreen } from '../screens/PressureTestsScreen';
 import { PressureTestScreen } from '../screens/PressureTestScreen';
 import { ShiftReportScreen } from '../screens/ShiftReportScreen';
+import { MeasureScreen } from '../screens/MeasureScreen';
 import { SpoolBuilderScreen } from '../screens/SpoolBuilderScreen';
 import { OrderSheetScreen } from '../screens/OrderSheetScreen';
 import { IsoSketchScreen } from '../screens/IsoSketchScreen';
@@ -39,6 +42,19 @@ import { ReferenceScreen } from '../screens/ReferenceScreen';
 import { ReferenceTableScreen } from '../screens/ReferenceTableScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
+
+const nav = createNavigationContainerRef<RootStackParamList>();
+
+/**
+ * The installed app opens AR measure in Chrome as the web app's address with
+ * #measure on the end, since AR runs in the browser and not in the APK. The
+ * web app goes straight there, and drops the mark so a reload starts at home.
+ */
+function openFromLink() {
+  if (Platform.OS !== 'web' || typeof window === 'undefined' || window.location.hash !== '#measure') return;
+  window.history.replaceState(null, '', window.location.pathname + window.location.search);
+  nav.navigate('Measure');
+}
 
 /** The tabs: places reached from the tab bar, so none of them has a back arrow. */
 const TAB_ROUTES = new Set<string>(['Group', 'Projects', 'Calculator']);
@@ -69,7 +85,7 @@ export function RootNavigator() {
   };
 
   return (
-    <NavigationContainer theme={navTheme} onStateChange={record}>
+    <NavigationContainer ref={nav} theme={navTheme} onStateChange={record} onReady={openFromLink}>
       <Stack.Navigator
         screenOptions={({ navigation, route }) => ({
           contentStyle: { backgroundColor: t.colors.bg },
@@ -105,6 +121,7 @@ export function RootNavigator() {
         <Stack.Screen name="ShiftReport" component={ShiftReportScreen} options={{ title: 'Shift report' }} />
         <Stack.Screen name="Calculator" component={CalculatorScreen} options={{ title: 'Calculator' }} />
         <Stack.Screen name="Level" component={LevelScreen} options={{ title: 'Level' }} />
+        <Stack.Screen name="Measure" component={MeasureScreen} options={{ title: 'AR measure' }} />
         <Stack.Screen name="SpoolBuilder" component={SpoolBuilderScreen} options={{ title: '3D spool' }} />
         <Stack.Screen name="OrderSheet" component={OrderSheetScreen} options={{ title: 'Order sheet' }} />
         <Stack.Screen name="IsoSketch" component={IsoSketchScreen} options={{ title: 'Iso sketch' }} />

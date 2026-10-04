@@ -5,7 +5,8 @@ export type RootStackParamList = {
   /** Everything saved on the phone, one card per kind. */
   Projects: undefined;
   SimpleOffset: undefined;
-  RollingOffset: undefined;
+  /** Figures to start from, in inches: an offset measured with AR measure. */
+  RollingOffset: { rise?: number; roll?: number; run?: number } | undefined;
   CutLength: undefined;
   SaddleBend: undefined;
   MiterBend: undefined;
@@ -23,6 +24,8 @@ export type RootStackParamList = {
   OrderSheet: undefined;
   Calculator: undefined;
   Level: undefined;
+  /** AR measure: trace a route with the camera (the web app, in Chrome). */
+  Measure: undefined;
   /** A saved spool to open on arrival. Absent means the one on screen. */
   SpoolBuilder: { spoolId?: string } | undefined;
   /** The sketch book: every iso drawn on the phone. */
