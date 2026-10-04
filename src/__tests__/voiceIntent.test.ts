@@ -116,6 +116,36 @@ describe('a tool by name opens on the phone', () => {
     expect(localIntent('rolling offset', 'SimpleOffset')).toEqual({ kind: 'open', route: 'RollingOffset' });
   });
 
+  test('the bolt-up takes its bolt count, every one from 4 to 68', () => {
+    for (let n = 4; n <= 68; n += 4) {
+      expect(localIntent(`flange bolt up, ${n} bolt`, null)).toEqual({ kind: 'open', route: 'FlangeBoltUp', figures: { bolts: bare(n) } });
+    }
+    expect(localIntent('flange bolt up twelve bolts', null)).toEqual({ kind: 'open', route: 'FlangeBoltUp', figures: { bolts: bare(12) } });
+    expect(localIntent('sixty eight bolt flange', null)).toEqual({ kind: 'open', route: 'FlangeBoltUp', figures: { bolts: bare(68) } });
+    expect(localIntent('12-bolt pattern', null)).toEqual({ kind: 'open', route: 'FlangeBoltUp', figures: { bolts: bare(12) } });
+    expect(localIntent('bolt up 16', null)).toEqual({ kind: 'open', route: 'FlangeBoltUp', figures: { bolts: bare(16) } });
+  });
+
+  test('or its size and class, for the handbook flange', () => {
+    expect(localIntent('6 inch flange class 250', null)).toEqual({
+      kind: 'open',
+      route: 'FlangeBoltUp',
+      figures: { size: inch(6), cls: bare(250) },
+    });
+    expect(localIntent('bolt up 2 and a half inch', null)).toEqual({ kind: 'open', route: 'FlangeBoltUp', figures: { size: inch(2.5) } });
+  });
+
+  test('a bolt count no flange has goes to Claude, not into the pattern', () => {
+    expect(localIntent('flange 10 bolts', null)).toBeNull();
+    expect(localIntent('flange 72 bolts', null)).toBeNull();
+    expect(localIntent('flange class 150', null)).toBeNull();
+  });
+
+  test('on the bolt-up, a count alone changes it, and done is still a bolt', () => {
+    expect(localIntent('20 bolts', 'FlangeBoltUp')).toEqual({ kind: 'open', route: 'FlangeBoltUp', figures: { bolts: bare(20) } });
+    expect(localIntent('done', 'FlangeBoltUp')).toEqual({ kind: 'bolt', act: 'done' });
+  });
+
   test('a figure no field could hold is not taken', () => {
     expect(readFigures(tokens('miter 400 degrees'), 'MiterBend')).toBeNull();
     expect(localIntent('miter 3.5 segments', null)).toBeNull();

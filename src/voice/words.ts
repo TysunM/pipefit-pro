@@ -68,6 +68,8 @@ function whole(ws: readonly string[], i: number): { value: number; next: number 
 function part(ws: readonly string[], i: number): { value: number; next: number } | null {
   const w = ws[i];
   if (isFraction(w)) return { value: fraction(w!), next: i + 1 };
+  // "half inch", said with no "a".
+  if (w === 'half') return { value: 0.5, next: i + 1 };
   const n = w === 'a' || w === 'an' ? { value: 1, next: i + 1 } : whole(ws, i);
   const d = n ? ws[n.next] : undefined;
   if (n && d && d in PARTS) return { value: n.value / PARTS[d]!, next: n.next + 1 };

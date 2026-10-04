@@ -9,6 +9,8 @@ const DEFAULTS: Settings = {
   defaultNps: 2,
   defaultKind: 'LR',
   defaultSchedule: '40',
+  material: 'cs',
+  wall: '40',
   defaultGap: 0.09375,
   stockLength: 240,
   cutAllowance: 0.125,

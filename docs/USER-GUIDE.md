@@ -1236,6 +1236,7 @@ The round mic low on the right of every screen. Tap it, say it, and the app does
 | "Safety note: fire watch posted at the tank" | Added under Safety on today's report. Issues, Tomorrow and Notes work the same way. |
 | "Hold started at 225", "reading 224", "hold ended at 224", "test passed" | Written on the pressure test on screen, or the job's latest open test. |
 | "What's the takeout on a 2 inch screwed 90?" | Answered out loud from the handbook, and the table opens with its page number. |
+| "Half inch stainless 40S", "6 inch chrome moly P22 schedule 80 long radius", "4 inch PVC" | Sets the job's pipe: size, material, wall, elbow radius — any of them. Said back with an Undo. |
 | "Back", "cancel" | Goes back a screen, or closes the panel. |
 
 Tool names are matched on the phone, at once. Everything else is read by Claude through the app's server, which needs signal.
@@ -1246,12 +1247,15 @@ Every bend and offset tool takes its figures by name. Say the tool and the figur
 
 | Tool | Say |
 |---|---|
+| Flange bolt-up | bolts (4 to 68, in fours) — "flange bolt-up, 12 bolt"; or size and class — "6 inch, class 250" takes the bolt count from the handbook |
 | Simple offset | offset (or set, rise, drop), angle / degrees, run, gap |
 | Rolling offset | rise (or set), roll, run, angle, gap |
 | Cut length | center to center (or length), gap — "cut length, 4 foot 2" |
 | Saddle bend | depth, to obstruction (or distance), width, angle |
 | Miter bend | degrees (or turn), segments, radius — "miter, 90 degrees, 4 segments" |
 | Pipe bend | degrees, leg a, leg b, radius, springback, stock |
+
+A new flange starts the bolt-up over, so once a bolt is logged a spoken flange is refused with the reason; tap Start over first.
 
 A value is matched to the name next to it: "4 inch depth, 30 to obstruction" and "depth 4, obstruction 30" both work. Said with a unit ("3 foot 6", "350 millimetres") it is converted to your units; a bare number goes in as said. Anything the phone cannot place goes to Claude, which knows the same fields.
 
@@ -1291,7 +1295,7 @@ Anything else it hears is shown and ignored, so a conversation nearby does not l
 | **Units** | Imperial or metric |
 | **Fractions** | Off, 1/8, 1/16, 1/32, 1/64 |
 | **Length readout** | Inches, or feet + inches, for the calculator |
-| **Default size** | Pipe every screen opens on |
+| **Pipe & fitting** | Material, size, wall and elbow radius the job runs. Each material shows its own walls and sizes — see Materials below. |
 | **Weld gap** | Your standard root gap |
 | **Stock length** | The length you buy. The cut list packs onto it, and the offset and cut-length screens check against it. |
 | **Saw cut** | What the blade takes, default 1/8". Charged on every cut in the cut list. |
@@ -1299,6 +1303,27 @@ Anything else it hears is shown and ignored, so a conversation nearby does not l
 | **Updates** | What is running, and a manual check |
 
 Settings are stored on the phone only. Nothing leaves it.
+
+## Materials
+
+Pick the material with the size and wall (Settings → Pipe & fitting, or **Edit specs** on the home card, or say it). The home card's OD, wall, bore and weight are then that material's, not carbon steel's.
+
+| Group | Materials | Walls offered | Joined by |
+|---|---|---|---|
+| Steels | Carbon steel (A106/A53), galvanized, stainless 304L and 316L (A312) | Steel: 10, 40, STD, 80, XS, 160, XXS. Stainless: 5S, 10S, 40S, 80S, 160, XXS | Welding |
+| Chrome-moly | P11, P22, P9, P91 (A335) | 10, 40, STD, 80, XS, 160, XXS | Welding, with preheat and PWHT |
+| Iron | Cast iron soil pipe, no-hub (CISPI 301); ductile iron (AWWA C151) | CISPI 301; pressure class or class 52 | No-hub couplings; push-on or mechanical joint |
+| Plastics & lined | PVC (D1785), CPVC (F441), HDPE (DR), PTFE-lined steel | 40, 80; DR 7, 9, 11, 17 | Solvent cement; butt fusion; flanged spools |
+
+Things the app gets right that are easy to get wrong:
+
+- **Stainless walls are not steel walls from 12" up.** 12" 40S is 0.375"; 12" Sch 40 is 0.406". The app will not offer "Sch 40" on stainless.
+- **Cast iron and ductile iron are not on the steel OD.** 4" no-hub is 4.38"; 4" ductile is 4.80"; 4" steel is 4.50".
+- **Plastics move.** HDPE grows about 12" per 100 ft for a 100 °F rise; steel about 3/4".
+
+The handbook's **Materials and welding** group has every wall table and a welding reference per material: P-number, typical filler, and the B31.3 preheat and PWHT. **That is a reference, not a procedure** — the job's WPS governs, and the B31.3 tables have changed between editions. Where a figure moved between editions, the table is named instead of a number.
+
+The bend and offset calculators still work their elbow geometry in steel butt-weld fittings. For PVC socket fittings, no-hub and flanged spools, take the fitting makeup from the maker's catalog.
 
 ---
 

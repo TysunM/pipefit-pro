@@ -16,6 +16,7 @@
 
 import type { ToolRoute } from '../navigation/groups';
 import { hasPhrase, lengthAt, numberAt, tokens } from './words';
+import { readSpecs, type SpecCommand } from './specs';
 import { Figure, FigureRoute, FigureSpec, Figures, TOOL_FIGURES, figureNames, isFigureRoute, plausible, primaryFigure } from './toolFigures';
 
 export type OpenRoute = ToolRoute | 'Home' | 'Settings';
@@ -25,6 +26,8 @@ export type VoiceCommand =
   | { kind: 'open'; route: OpenRoute; figures?: Figures }
   /** On the bolt-up screen: the bolt asked for is torqued, take the last one back, or say it again. */
   | { kind: 'bolt'; act: 'done' | 'undo' | 'repeat' }
+  /** The job's pipe: "half inch stainless 40S", "6 inch P22 schedule 80". */
+  | ({ kind: 'specs' } & SpecCommand)
   | { kind: 'back' }
   | { kind: 'cancel' };
 
@@ -117,6 +120,9 @@ export function localIntent(text: string, screen: string | null): VoiceCommand |
 
   if (ws.length <= 3 && sayingOnly(ws, [['back'], ['go', 'back']])) return { kind: 'back' };
 
+  const specs = readSpecs(text);
+  if (specs) return { kind: 'specs', ...specs };
+
   // With a tool open, its own figures come first: on the saddle, "bend 45"
   // is the saddle's angle, not the pipe bend tool.
   if (isFigureRoute(screen)) {
@@ -194,7 +200,7 @@ export function readFigures(ws: readonly string[], route: FigureRoute): Figures 
       if (used.slice(s, i).some(Boolean)) continue;
       const before = valueAt(ws, s, spec.kind);
       if (!before || (before.next !== i && before.next !== end)) continue;
-      if (!plausible(spec.kind, before.f)) return null;
+      if (!plausible(spec, before.f)) return null;
       out[name.key] = before.f;
       take(s, end);
       found = true;
@@ -205,7 +211,7 @@ export function readFigures(ws: readonly string[], route: FigureRoute): Figures 
     while (LEAD.has(ws[j] ?? '')) j += 1;
     const after = valueAt(ws, j, spec.kind);
     // A value said against a name that no field could hold is a mishearing: let Claude have it.
-    if (after && !plausible(spec.kind, after.f)) return null;
+    if (after && !plausible(spec, after.f)) return null;
     if (after) {
       out[name.key] = after.f;
       take(i, after.next);
@@ -224,7 +230,7 @@ export function readFigures(ws: readonly string[], route: FigureRoute): Figures 
       if (used[i]) continue;
       const v = valueAt(ws, i, spec.kind);
       if (!v) continue;
-      if (!plausible(spec.kind, v.f)) return null;
+      if (!plausible(spec, v.f)) return null;
       out[key] = v.f;
       take(i, v.next);
     }
@@ -244,7 +250,7 @@ export function spokenValue(text: string, kind: FigureSpec['kind']): Figure | nu
   const ws = tokens(text);
   for (let i = 0; i < ws.length; i++) {
     const v = valueAt(ws, i, kind);
-    if (v) return plausible(kind, v.f) ? v.f : null;
+    if (v) return plausible({ kind }, v.f) ? v.f : null;
   }
   return null;
 }
