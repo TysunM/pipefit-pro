@@ -6,7 +6,6 @@
     "orientation": "portrait",
     "scheme": "pipefitpro",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
     "icon": "./assets/icon.png",
     "runtimeVersion": {
       "policy": "fingerprint"
