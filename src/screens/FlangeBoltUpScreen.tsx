@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, Modal, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { Animated, Modal, Pressable, ScrollView, Text, TextInput, View, useWindowDimensions } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import Svg, { Circle, Defs, Line, RadialGradient, Stop } from 'react-native-svg';
@@ -57,7 +58,7 @@ import {
   recentNames,
 } from '../state/register';
 import { PERSON_MAX } from '../state/readSettings';
-import { boltCentre, flangeFace } from '../components/flange/face';
+import { FaceLayout, boltCentre, fittedFace, flangeFace } from '../components/flange/face';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'FlangeBoltUp'>;
 
@@ -66,6 +67,8 @@ const COUNTS = [4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 52, 60, 64, 68];
 
 const FACE_MIN = 300;
 const FACE_MAX = 360;
+/** Closest two bolts are drawn full screen: a gloved fingertip apart. */
+const FULL_PITCH = 40;
 
 type BoltSkin = { fill: string; border: string; text: string; width: number };
 
@@ -170,6 +173,7 @@ function Bolting({
   const [torque, setTorque] = useState(joint.torque === null ? '' : String(joint.torque));
   const [width, setWidth] = useState(FACE_MAX);
   const [showDone, setShowDone] = useState(false);
+  const [full, setFull] = useState(false);
   const [naming, setNaming] = useState(false);
   const [checking, setChecking] = useState(false);
 
@@ -289,27 +293,35 @@ function Bolting({
 
   // The picture is the flange in front of you: the bolt circle sits inside the
   // rim at the ratio the table gives, so a 2" joint reads narrow and a 24" one
-  // reads wide.
+  // reads wide. A flange with too many bolts to draw at a fingertip's pitch is
+  // drawn fitted on the page, whole and small, and full screen at full size.
   const bcFrac = flange ? flange.boltCircle / flange.flangeOd : 0.85;
   const avail = Math.max(FACE_MIN, Math.min(width - t.layout.screenPadding * 2, FACE_MAX));
-  const L = flangeFace(bolts, avail, bcFrac);
-  const { face, c, odR, bcR, marker } = L;
+  const crowded = flangeFace(bolts, avail, bcFrac).scrolls;
+  const L = fittedFace(bolts, avail, bcFrac);
+  const angles = useMemo(() => boltHoleAngles(bolts), [bolts]);
+  const after = order[order.indexOf(expected) + 1];
 
-  const scale = flange ? odR / (flange.flangeOd / 2) : 0;
-  const gasketOdR = flange ? (flange.gasketOd / 2) * scale : bcR * 0.82;
-  const gasketIdR = flange ? (flange.gasketId / 2) * scale : bcR * 0.58;
-
-  const angles = boltHoleAngles(bolts);
-  const gid = useSvgIds('glow');
-
-  // The bolt being asked for is lit, and a line runs from it to the one that
-  // follows, so the eye is already on the far side of the flange before the
-  // wrench is. Both are drawn under the markers, never over a number.
-  const angleOf = (bolt: number | undefined) => (bolt === undefined ? undefined : angles[bolt - 1]);
-  const atDeg = angleOf(expected);
-  const toDeg = angleOf(order[order.indexOf(expected) + 1]);
-  const at = atDeg === undefined ? null : boltCentre(L, atDeg);
-  const to = toDeg === undefined ? null : boltCentre(L, toDeg);
+  const face = (layout: FaceLayout) => (
+    <BoltFace
+      t={t}
+      L={layout}
+      flange={flange}
+      angles={angles}
+      state={state}
+      expected={done ? undefined : expected}
+      after={done ? undefined : after}
+      flash={flash}
+      onBolt={onBolt}
+    />
+  );
+  const logButton = done ? null : (
+    <AccentButton label={`Bolt ${expected} torqued`} icon="checkmark-outline" onPress={() => onBolt(expected)} />
+  );
+  const undo = () => {
+    setState(undoBolt(state));
+    setShowDone(false);
+  };
 
   return (
     <Screen>
@@ -331,94 +343,13 @@ function Bolting({
         order={order}
       />
 
-      <View style={{ alignItems: 'center', paddingBottom: t.space.lg }}>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={L.scrolls}
-          contentContainerStyle={{ paddingHorizontal: t.space.md }}
-        >
-          <View style={{ width: face, height: face }}>
-            <Svg width={face} height={face}>
-              <Circle cx={c} cy={c} r={odR} fill={t.colors.bgSubtle} stroke={t.colors.border} strokeWidth={1} />
-              {/* The gasket, so the sealing face is the thing the bolts surround. */}
-              <Circle
-                cx={c}
-                cy={c}
-                r={gasketOdR}
-                fill={t.colors.dataSoft}
-                stroke={t.colors.borderStrong}
-                strokeWidth={1}
-              />
-              {/* The bore, which is a hole and should read as one. */}
-              <Circle
-                cx={c}
-                cy={c}
-                r={gasketIdR}
-                fill={t.colors.bg}
-                stroke={t.colors.borderStrong}
-                strokeWidth={1.5}
-              />
-              <Circle
-                cx={c}
-                cy={c}
-                r={bcR}
-                fill="none"
-                stroke={t.colors.textFaint}
-                strokeWidth={1}
-                strokeDasharray="4 5"
-                opacity={0.7}
-              />
-              <Line x1={c} y1={c - odR} x2={c} y2={c + odR} stroke={t.colors.textFaint} strokeWidth={0.75} opacity={0.4} />
-              <Line x1={c - odR} y1={c} x2={c + odR} y2={c} stroke={t.colors.textFaint} strokeWidth={0.75} opacity={0.4} />
-              {!done && at ? (
-                <>
-                  <Defs>
-                    <RadialGradient id={gid('a')} cx="50%" cy="50%" rx="50%" ry="50%">
-                      <Stop offset="0" stopColor={t.colors.primary} stopOpacity={0.75} />
-                      <Stop offset="0.55" stopColor={t.colors.primary} stopOpacity={0.28} />
-                      <Stop offset="1" stopColor={t.colors.primary} stopOpacity={0} />
-                    </RadialGradient>
-                  </Defs>
-                  {to ? (
-                    <Line
-                      x1={at.x}
-                      y1={at.y}
-                      x2={to.x}
-                      y2={to.y}
-                      stroke={t.colors.accent}
-                      strokeWidth={2}
-                      strokeDasharray="7 5"
-                      strokeLinecap="round"
-                      opacity={0.9}
-                    />
-                  ) : null}
-                  <Circle cx={at.x} cy={at.y} r={L.ring * 1.15} fill={`url(#${gid('a')})`} />
-                </>
-              ) : null}
-            </Svg>
+      <View style={{ alignItems: 'center', paddingBottom: t.space.lg }}>{face(L)}</View>
 
-            {angles.map((deg, i) => {
-              const bolt = i + 1;
-              const { x, y } = boltCentre(L, deg);
-              return (
-                <BoltMarker
-                  key={bolt}
-                  t={t}
-                  bolt={bolt}
-                  level={boltLevel(state, bolt)}
-                  size={marker}
-                  ring={L.ring}
-                  slop={L.slop}
-                  x={x}
-                  y={y}
-                  next={!done && bolt === expected}
-                  flash={flash}
-                  onPress={() => onBolt(bolt)}
-                />
-              );
-            })}
-          </View>
-        </ScrollView>
+      <View style={{ paddingHorizontal: t.layout.screenPadding, gap: t.space.md, marginBottom: t.space.md }}>
+        {logButton}
+        {crowded ? (
+          <GhostButton label={`Full screen · ${bolts} bolts at full size`} icon="expand-outline" onPress={() => setFull(true)} />
+        ) : null}
       </View>
 
       <ControlRow>
@@ -426,10 +357,7 @@ function Bolting({
           label="Undo"
           icon="arrow-undo-outline"
           style={{ flex: 1 }}
-          onPress={() => {
-            setState(undoBolt(state));
-            setShowDone(false);
-          }}
+          onPress={undo}
         />
         <GhostButton
           label="Start over"
@@ -580,6 +508,19 @@ function Bolting({
         })}
       </View>
 
+      <FullFace
+        t={t}
+        visible={full && crowded}
+        onClose={() => setFull(false)}
+        L={flangeFace(bolts, Math.max(FACE_MIN, width), bcFrac, FULL_PITCH)}
+        at={done ? null : angles[expected - 1] ?? null}
+        banner={
+          <PassBanner t={t} state={state} expected={expected} target={target} progress={progress} order={order} />
+        }
+        face={face}
+        logButton={logButton}
+        onUndo={undo}
+      />
       <DoneSheet t={t} visible={showDone} bolts={bolts} onClose={() => setShowDone(false)} />
       <NameSheet
         t={t}
@@ -601,6 +542,176 @@ function Bolting({
         }}
       />
     </Screen>
+  );
+}
+
+/**
+ * The flange face: rim, gasket, bore, bolt circle and the bolts on it. The
+ * bolt being asked for is lit, and a line runs from it to the one that
+ * follows, so the eye is already on the far side of the flange before the
+ * wrench is. Both are drawn under the markers, never over a number.
+ */
+function BoltFace({
+  t,
+  L,
+  flange,
+  angles,
+  state,
+  expected,
+  after,
+  flash,
+  onBolt,
+}: {
+  t: Theme;
+  L: FaceLayout;
+  flange: ReturnType<typeof boltUp>;
+  angles: number[];
+  state: BoltUpState;
+  expected: number | undefined;
+  after: number | undefined;
+  flash: Animated.Value;
+  onBolt: (bolt: number) => void;
+}) {
+  const gid = useSvgIds('glow');
+  const { face, c, odR, bcR, marker } = L;
+  const scale = flange ? odR / (flange.flangeOd / 2) : 0;
+  const gasketOdR = flange ? (flange.gasketOd / 2) * scale : bcR * 0.82;
+  const gasketIdR = flange ? (flange.gasketId / 2) * scale : bcR * 0.58;
+  const centre = (bolt: number | undefined) => {
+    const deg = bolt === undefined ? undefined : angles[bolt - 1];
+    return deg === undefined ? null : boltCentre(L, deg);
+  };
+  const at = centre(expected);
+  const to = centre(after);
+
+  return (
+    <View style={{ width: face, height: face }}>
+      <Svg width={face} height={face}>
+        <Circle cx={c} cy={c} r={odR} fill={t.colors.bgSubtle} stroke={t.colors.border} strokeWidth={1} />
+        {/* The gasket, so the sealing face is the thing the bolts surround. */}
+        <Circle cx={c} cy={c} r={gasketOdR} fill={t.colors.dataSoft} stroke={t.colors.borderStrong} strokeWidth={1} />
+        {/* The bore, which is a hole and should read as one. */}
+        <Circle cx={c} cy={c} r={gasketIdR} fill={t.colors.bg} stroke={t.colors.borderStrong} strokeWidth={1.5} />
+        <Circle cx={c} cy={c} r={bcR} fill="none" stroke={t.colors.textFaint} strokeWidth={1} strokeDasharray="4 5" opacity={0.7} />
+        <Line x1={c} y1={c - odR} x2={c} y2={c + odR} stroke={t.colors.textFaint} strokeWidth={0.75} opacity={0.4} />
+        <Line x1={c - odR} y1={c} x2={c + odR} y2={c} stroke={t.colors.textFaint} strokeWidth={0.75} opacity={0.4} />
+        {at ? (
+          <>
+            <Defs>
+              <RadialGradient id={gid('a')} cx="50%" cy="50%" rx="50%" ry="50%">
+                <Stop offset="0" stopColor={t.colors.primary} stopOpacity={0.75} />
+                <Stop offset="0.55" stopColor={t.colors.primary} stopOpacity={0.28} />
+                <Stop offset="1" stopColor={t.colors.primary} stopOpacity={0} />
+              </RadialGradient>
+            </Defs>
+            {to ? (
+              <Line
+                x1={at.x}
+                y1={at.y}
+                x2={to.x}
+                y2={to.y}
+                stroke={t.colors.accent}
+                strokeWidth={2}
+                strokeDasharray="7 5"
+                strokeLinecap="round"
+                opacity={0.9}
+              />
+            ) : null}
+            <Circle cx={at.x} cy={at.y} r={Math.max(L.ring * 1.15, 22)} fill={`url(#${gid('a')})`} />
+          </>
+        ) : null}
+      </Svg>
+
+      {angles.map((deg, i) => {
+        const bolt = i + 1;
+        const { x, y } = boltCentre(L, deg);
+        return (
+          <BoltMarker
+            key={bolt}
+            t={t}
+            bolt={bolt}
+            level={boltLevel(state, bolt)}
+            size={marker}
+            ring={L.ring}
+            slop={L.slop}
+            x={x}
+            y={y}
+            next={bolt === expected}
+            flash={flash}
+            onPress={() => onBolt(bolt)}
+          />
+        );
+      })}
+    </View>
+  );
+}
+
+/**
+ * A crowded flange at full size, over the whole phone. The face is bigger
+ * than the screen, so it pans both ways under a finger and glides to the bolt
+ * being asked for each time one is logged. The banner and the log button stay
+ * put above and below it.
+ */
+function FullFace({
+  t,
+  visible,
+  onClose,
+  L,
+  at,
+  banner,
+  face,
+  logButton,
+  onUndo,
+}: {
+  t: Theme;
+  visible: boolean;
+  onClose: () => void;
+  L: FaceLayout;
+  at: number | null;
+  banner: React.ReactNode;
+  face: (L: FaceLayout) => React.ReactNode;
+  logButton: React.ReactNode;
+  onUndo: () => void;
+}) {
+  const insets = useSafeAreaInsets();
+  const win = useWindowDimensions();
+  const across = useRef<ScrollView | null>(null);
+  const down = useRef<ScrollView | null>(null);
+  const [view, setView] = useState({ w: win.width, h: win.height / 2 });
+
+  // Follow the bolt: centre it in the window whenever it changes.
+  useEffect(() => {
+    if (!visible || at === null) return;
+    const p = boltCentre(L, at);
+    const go = () => {
+      across.current?.scrollTo({ x: Math.max(0, p.x - view.w / 2), animated: true });
+      down.current?.scrollTo({ y: Math.max(0, p.y - view.h / 2), animated: true });
+    };
+    // The first time, the scroll views are only just laid out.
+    const id = setTimeout(go, 60);
+    return () => clearTimeout(id);
+  }, [visible, at, L, view.w, view.h]);
+
+  return (
+    <Modal visible={visible} animationType="fade" onRequestClose={onClose} statusBarTranslucent>
+      <View style={{ flex: 1, backgroundColor: t.colors.bg, paddingTop: insets.top, paddingBottom: insets.bottom }}>
+        {banner}
+        <View style={{ flex: 1 }} onLayout={(e) => setView({ w: e.nativeEvent.layout.width, h: e.nativeEvent.layout.height })}>
+          <ScrollView ref={down} showsVerticalScrollIndicator={false}>
+            <ScrollView ref={across} horizontal showsHorizontalScrollIndicator={false}>
+              {face(L)}
+            </ScrollView>
+          </ScrollView>
+        </View>
+        <View style={{ paddingVertical: t.layout.screenPadding, gap: t.space.md }}>
+          <View style={{ paddingHorizontal: t.layout.screenPadding }}>{logButton}</View>
+          <ControlRow>
+            <GhostButton label="Undo" icon="arrow-undo-outline" style={{ flex: 1 }} onPress={onUndo} />
+            <GhostButton label="Leave full screen" icon="contract-outline" style={{ flex: 1 }} onPress={onClose} />
+          </ControlRow>
+        </View>
+      </View>
+    </Modal>
   );
 }
 
@@ -806,7 +917,7 @@ function BoltMarker({
           opacity: pressed ? 0.65 : 1,
         })}
       >
-        <Text style={{ fontFamily: t.font.sans, color: skin.text, fontSize: Math.max(9, Math.min(15, size * 0.45)), ...t.weight('700') }}>
+        <Text style={{ fontFamily: t.font.sans, color: skin.text, fontSize: Math.max(8, Math.min(15, size * (size < 20 ? 0.56 : 0.45))), ...t.weight('700') }}>
           {bolt}
         </Text>
       </Pressable>
