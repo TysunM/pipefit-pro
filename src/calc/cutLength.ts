@@ -8,6 +8,7 @@ import {
   TakeoffOptions,
   endHasGap,
   endTakeout,
+  isLibraryFitting,
   takeoffOption,
 } from './takeoffCatalog';
 
@@ -39,9 +40,10 @@ export function endTakeoff(
   nps: number,
   kind: ElbowRadius,
   custom: number,
-  flangeClass: FlangeClass = '150'
+  flangeClass: FlangeClass = '150',
+  library?: TakeoffOptions['library'],
 ): number {
-  const opts: TakeoffOptions = { radius: kind, flangeClass, custom };
+  const opts: TakeoffOptions = { radius: kind, flangeClass, custom, library };
   // The two legacy flange ids carry their own class.
   if (fitting === 'flange150') return endTakeout('weldNeck', nps, { ...opts, flangeClass: '150' });
   if (fitting === 'flange300') return endTakeout('weldNeck', nps, { ...opts, flangeClass: '300' });
@@ -64,6 +66,8 @@ export type CutLengthInput = {
   kind: ElbowRadius;
   schedule: Schedule;
   flangeClass?: FlangeClass;
+  /** Socket and no-hub takeouts, from the fitting library. */
+  library?: TakeoffOptions['library'];
 };
 
 export type CutLengthResult = {
@@ -86,8 +90,8 @@ export function solveCutLength(input: CutLengthInput): CutLengthResult {
   const { centerToCenter, gap, nps, kind, schedule } = input;
   const flangeClass = input.flangeClass ?? DEFAULT_TAKEOFF_OPTIONS.flangeClass;
 
-  const takeoffA = endTakeoff(input.endA, nps, kind, input.customA, flangeClass);
-  const takeoffB = endTakeoff(input.endB, nps, kind, input.customB, flangeClass);
+  const takeoffA = endTakeoff(input.endA, nps, kind, input.customA, flangeClass, input.library);
+  const takeoffB = endTakeoff(input.endB, nps, kind, input.customB, flangeClass, input.library);
   const gapValue = Number.isFinite(gap) ? gap : 0;
 
   // A screwed or soldered end leaves no gap: the takeout already reaches the
@@ -97,10 +101,12 @@ export function solveCutLength(input: CutLengthInput): CutLengthResult {
   const base = { takeoffA, takeoffB, gapEnds, totalDeduction };
 
   if (!Number.isFinite(takeoffA) || !Number.isFinite(takeoffB)) {
+    const unset = [input.endA, input.endB].some((e) => isLibraryFitting(e));
     return {
       valid: false,
-      error:
-        'That fitting is not made in this size — pick another, or use Custom and enter the measured takeout.',
+      error: unset
+        ? 'Set this fitting’s takeout once, below — from the maker’s sheet or measured.'
+        : 'That fitting is not made in this size — pick another, or use Custom and enter the measured takeout.',
       ...base,
       pipeCut: NaN,
       weight: NaN,

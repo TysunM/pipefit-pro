@@ -22,7 +22,7 @@ const SIZES = PIPE_SIZES.map((s) => s.nps);
 
 describe('the takeout catalogue', () => {
   test('every way of joining pipe is offered', () => {
-    expect(TAKEOFF_FAMILIES.map((f) => f.id)).toEqual(['screwed', 'welded', 'flanged', 'soldered']);
+    expect(TAKEOFF_FAMILIES.map((f) => f.id)).toEqual(['screwed', 'welded', 'flanged', 'soldered', 'socket', 'nohub']);
     for (const f of TAKEOFF_FAMILIES) {
       expect(optionsForFamily(f.id).length).toBeGreaterThan(2);
     }
