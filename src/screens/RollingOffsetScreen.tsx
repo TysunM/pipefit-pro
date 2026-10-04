@@ -1,4 +1,6 @@
 import React, { useMemo, useState } from 'react';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import type { RootStackParamList } from '../navigation/types';
 import { Screen } from '../components/Screen';
 import { HintRow } from '../components/HintRow';
 import { SectionHeader } from '../components/SectionHeader';
@@ -16,14 +18,19 @@ import { FITTING_ANGLES } from '../calc/pipe';
 import { solveRolling } from '../calc/rolling';
 import { parseNumber } from '../calc/format';
 
-export function RollingOffsetScreen() {
+type Props = NativeStackScreenProps<RootStackParamList, 'RollingOffset'>;
+
+export function RollingOffsetScreen({ route }: Props) {
   const u = useUnits();
+  // Figures handed over by AR measure, in inches, shown in the reader's units.
+  const given = route.params;
+  const start = (inches: number | undefined) => (inches !== undefined && Number.isFinite(inches) ? u.num(inches) : '');
   const pipe = usePipeConfig();
   const { settings } = useSettings();
 
-  const [rise, setRise] = useState('');
-  const [roll, setRoll] = useState('');
-  const [run, setRun] = useState('');
+  const [rise, setRise] = useState(() => start(given?.rise));
+  const [roll, setRoll] = useState(() => start(given?.roll));
+  const [run, setRun] = useState(() => start(given?.run));
   const [gap, setGap] = useState('');
   const [angleText, setAngleText] = useState('45');
   const [useFittingAngle, setUseFittingAngle] = useState(false);
