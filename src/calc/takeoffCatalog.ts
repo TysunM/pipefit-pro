@@ -133,6 +133,18 @@ export const LIBRARY_FITTINGS: { id: string; family: 'socket' | 'nohub'; label: 
 /** Which library family a material's fittings are: PVC and CPVC socket, cast iron soil no-hub. */
 export const LIBRARY_FAMILY: Readonly<Record<string, 'socket' | 'nohub'>> = { pvc: 'socket', cpvc: 'socket', 'ci-soil': 'nohub' };
 
+/**
+ * When the job's material changes under an open Cut Length, the joint family
+ * it should move to — or null to leave the fitter's choice alone. Only a move
+ * between kinds of joining (steel to PVC, PVC to cast iron) changes it: steel
+ * to stainless keeps the flanged or screwed joint the fitter picked.
+ */
+export function familyAfterMaterial(before: string, after: string): 'socket' | 'nohub' | 'welded' | null {
+  const a = LIBRARY_FAMILY[before] ?? null;
+  const b = LIBRARY_FAMILY[after] ?? null;
+  return a === b ? null : (b ?? 'welded');
+}
+
 export const isLibraryFitting = (id: string): boolean => LIBRARY_FITTINGS.some((f) => f.id === id);
 
 export const TAKEOFF_OPTIONS: TakeoffOption[] = [

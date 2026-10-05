@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigation } from '@react-navigation/native';
 import { Pressable, Text, View } from 'react-native';
 import { Screen } from '../components/Screen';
@@ -15,7 +15,7 @@ import { usePipeConfig } from '../hooks/usePipeConfig';
 import { useSettings } from '../state/settings';
 import { StockNote } from '../components/StockNote';
 import { END_FITTINGS, EndFitting, FITTING_SOURCE, endHasGap, solveCutLength } from '../calc/cutLength';
-import { JointKind, LIBRARY_FAMILY, LIBRARY_FITTINGS, TAKEOFF_FAMILIES, isLibraryFitting, optionsForFamily } from '../calc/takeoffCatalog';
+import { JointKind, LIBRARY_FAMILY, LIBRARY_FITTINGS, familyAfterMaterial, TAKEOFF_FAMILIES, isLibraryFitting, optionsForFamily } from '../calc/takeoffCatalog';
 import { MaterialId, material, pipeSpec, sizeLabel, sizesFor, wallLabel } from '../calc/materials';
 import { FittingSheetReader } from '../components/FittingSheetReader';
 import { useFittings } from '../state/fittings';
@@ -42,6 +42,16 @@ export function CutLengthScreen() {
   const [flangeClass, setFlangeClass] = useState<FlangeClass>('150');
   const [endA, setEndA] = useState<EndFitting>(startFamily === 'welded' ? 'weld90' : firstOf(startFamily));
   const [endB, setEndB] = useState<EndFitting>(startFamily === 'welded' ? 'weld90' : firstOf(startFamily));
+  // The job's material changed with this open ("4 inch cast iron"): move to its joints.
+  const lastMaterial = useRef(settings.material);
+  useEffect(() => {
+    const moveTo = familyAfterMaterial(lastMaterial.current, settings.material);
+    lastMaterial.current = settings.material;
+    if (!moveTo) return;
+    setFamily(moveTo);
+    setEndA(moveTo === 'welded' ? 'weld90' : firstOf(moveTo));
+    setEndB(moveTo === 'welded' ? 'weld90' : firstOf(moveTo));
+  }, [settings.material]);
   // Socket and no-hub makeups are the maker's: set once per line and size, kept on the phone.
   const fittings = useFittings();
   const line = `${settings.material}:${settings.wall}`;

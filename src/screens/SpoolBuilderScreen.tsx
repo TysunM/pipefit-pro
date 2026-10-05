@@ -72,7 +72,9 @@ type Props = NativeStackScreenProps<RootStackParamList, 'SpoolBuilder'>;
 export function SpoolBuilderScreen({ route, navigation }: Props) {
   const t = useTheme();
   const u = useUnits();
-  const pipe = usePipeConfig();
+  const [loadedId, setLoadedId] = useState<string | null>(null);
+  // A saved spool's pipe is the spool's: a change to the job's specs does not move it.
+  const pipe = usePipeConfig({ follow: loadedId === null });
   const { settings } = useSettings();
 
   const [legs, setLegs] = useState<DirLeg[]>(START);
@@ -85,7 +87,6 @@ export function SpoolBuilderScreen({ route, navigation }: Props) {
   // lose, so what is on screen can be kept by name and comes back as it was.
   const spoolsCtx = useSpools();
   const shelf = spoolsCtx.shelf;
-  const [loadedId, setLoadedId] = useState<string | null>(null);
   const [saveOpen, setSaveOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
 
