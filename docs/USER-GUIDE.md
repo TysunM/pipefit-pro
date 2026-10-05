@@ -301,6 +301,13 @@ Socket and no-hub makeups differ by maker (Charlotte, Spears, Tyler, AB&I…), s
 | PVC socket | Centre to the bottom of the socket (pipe bottoms out) | None |
 | No-hub | Centre to the end of the fitting | Coupling centre stop, usually 0 |
 
+**Faster: photograph the maker's sheet.** In the takeout box, tap **Photograph the maker's sheet** and shoot the dimension table (or the box label) flat and square. Claude reads every fitting and size on it at once, and you get a list to check against the paper:
+
+- **Ticked** rows are new or change a saved figure. Only ticked rows are saved, and only when you tap **Save**.
+- **Unticked, in orange**: two figures for one fitting (tick the right one), a figure too long for the size (usually millimetres read as inches), a size the line doesn't come in, or a sheet for another schedule than the job's.
+- Where a sheet gives centre-to-face and socket depth instead of the takeout, the app does the subtraction and shows it.
+- Millimetre sheets are converted. The photo is read and not kept. Needs signal.
+
 **Worked example — 2" PVC sch 40, socket 90 both ends, 48" C2C:** centre to face 2, socket depth 7/8 → takeout **1 1/8"** each end, **PIPE CUT 45.75"**.
 
 ### Anything not on the list

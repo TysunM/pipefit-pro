@@ -4,8 +4,8 @@
 // reason: an API key cannot live in the app, because anyone can pull a key out
 // of an APK or a web bundle. So the keys are Worker secrets — TypeSafe's for
 // Jev, set with `npx wrangler secret put TYPESAFE_API_KEY`, and Anthropic's for
-// the shift report summary and spoken commands (see claude.ts) — and the app
-// calls here.
+// the shift report summary, spoken commands and fitting sheets (see
+// claude.ts) — and the app calls here.
 //
 // It is not a general relay. Each route takes one small, fixed shape of input
 // and builds the question Jev is asked itself, from the same code the app
@@ -16,8 +16,9 @@
 import { HEAT_FILL_PATH, MAX_TEXT, heatRequest } from '../src/ai/heatFill';
 import { HANDBOOK_PICK_PATH, MAX_QUERY, cleanQuery, handbookRequest, readHandbookAnswer } from '../src/ai/handbookPick';
 import { SHIFT_POLISH_PATH } from '../src/ai/shiftPolish';
-import { MODEL_ID, shiftPolish, voiceCommand } from './claude';
+import { MODEL_ID, fittingSheet, shiftPolish, voiceCommand, type Reply } from './claude';
 import { VOICE_PATH } from '../src/ai/voice';
+import { FITTING_SHEET_PATH, MAX_SHEET_BODY } from '../src/ai/fittingSheet';
 
 export interface Env {
   /** Set with `npx wrangler secret put TYPESAFE_API_KEY`. Never in the repo. */
@@ -66,6 +67,15 @@ const ROUTES: Record<string, Route> = {
   },
 };
 
+/** Claude's routes: each its own fixed question, its own cap on what it takes. */
+type ClaudeRoute = (raw: string, apiKey: string, model: string, fetchImpl: typeof fetch) => Promise<Reply>;
+const CLAUDE: Record<string, { run: ClaudeRoute; maxBody: number }> = {
+  [SHIFT_POLISH_PATH]: { run: shiftPolish, maxBody: Infinity },
+  [VOICE_PATH]: { run: voiceCommand, maxBody: Infinity },
+  // A photograph: refused on its stated length before a byte of it is read.
+  [FITTING_SHEET_PATH]: { run: fittingSheet, maxBody: MAX_SHEET_BODY },
+};
+
 const CORS = {
   'access-control-allow-origin': '*',
   'access-control-allow-methods': 'POST, OPTIONS',
@@ -81,7 +91,7 @@ export async function handle(req: Request, env: Env, fetchImpl: typeof fetch = f
   if (!url.pathname.startsWith('/api/')) {
     return env.ASSETS ? env.ASSETS.fetch(req) : new Response('Not found', { status: 404 });
   }
-  const claude = url.pathname === SHIFT_POLISH_PATH || url.pathname === VOICE_PATH;
+  const claude = CLAUDE[url.pathname];
   const route = ROUTES[url.pathname];
   if (!route && !claude) return json(404, { error: 'not_found' });
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
@@ -93,9 +103,9 @@ export async function handle(req: Request, env: Env, fetchImpl: typeof fetch = f
     const model = env.CLAUDE_MODEL?.trim() ?? '';
     const missing = [!apiKey && 'ANTHROPIC_API_KEY', !MODEL_ID.test(model) && 'CLAUDE_MODEL'].filter(Boolean);
     if (!apiKey || missing.length) return json(503, { error: 'not_configured', missing });
+    if (Number(req.headers.get('content-length') ?? 0) > claude.maxBody) return json(413, { error: 'too_large' });
     const raw = await req.text();
-    const out =
-      url.pathname === VOICE_PATH ? await voiceCommand(raw, apiKey, model, fetchImpl) : await shiftPolish(raw, apiKey, model, fetchImpl);
+    const out = await claude.run(raw, apiKey, model, fetchImpl);
     return json(out.status, out.body);
   }
   if (!route) return json(404, { error: 'not_found' });

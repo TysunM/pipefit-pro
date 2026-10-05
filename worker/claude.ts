@@ -21,6 +21,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { MAX_POLISH_BODY, POLISH_SCHEMA, POLISH_SYSTEM, cleanPolishBody, polishMessage, readPolish } from '../src/ai/shiftPolish';
 import { MAX_VOICE_BODY, VOICE_SCHEMA, VOICE_SYSTEM, cleanVoiceBody, readVoice, voiceMessage } from '../src/ai/voice';
+import { MAX_IMAGE_B64, MAX_SHEET_BODY, SHEET_SCHEMA, SHEET_SYSTEM, bareBase64, cleanSheetBody, readSheet, sheetPrompt } from '../src/ai/fittingSheet';
 
 /**
  * How long Claude gets. A summary usually comes back in seconds; this is for
@@ -30,6 +31,9 @@ const UPSTREAM_MS = 50_000;
 
 /** How long a spoken command waits: inside the twenty seconds the app gives it. */
 const VOICE_MS = 15_000;
+
+/** How long a sheet read gets: a page of small print is read carefully, inside the app's 75 seconds. */
+const SHEET_MS = 60_000;
 
 export type Reply = { status: number; body: unknown };
 
@@ -117,6 +121,60 @@ export async function voiceCommand(raw: string, apiKey: string, model: string, f
     }
     const answer = readVoice(out);
     return answer ? { status: 200, body: { answer } } : { status: 502, body: { error: 'bad_answer' } };
+  } catch (e) {
+    if (e instanceof Anthropic.APIConnectionError) return { status: 504, body: { error: 'upstream_unreachable' } };
+    if (e instanceof Anthropic.APIError) return { status: 502, body: { error: 'upstream', status: e.status ?? null } };
+    return { status: 502, body: { error: 'upstream' } };
+  }
+}
+
+/**
+ * A photographed dimension sheet, read into takeouts. The route takes a
+ * picture and which family to look for, nothing else; the question is fixed
+ * here and the answer is held to the schema, then read again before it goes.
+ */
+export async function fittingSheet(raw: string, apiKey: string, model: string, fetchImpl: typeof fetch): Promise<Reply> {
+  if (raw.length > MAX_SHEET_BODY) return { status: 413, body: { error: 'too_large' } };
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return { status: 400, body: { error: 'bad_json' } };
+  }
+  const image = typeof (parsed as { image?: unknown } | null)?.image === 'string' ? bareBase64((parsed as { image: string }).image) : '';
+  if (image.length > MAX_IMAGE_B64) return { status: 413, body: { error: 'too_large' } };
+  const body = cleanSheetBody(parsed);
+  if (!body) return { status: 400, body: { error: 'not_image' } };
+
+  const client = new Anthropic({ apiKey, fetch: fetchImpl, maxRetries: 1, timeout: SHEET_MS });
+  try {
+    const msg = await client.beta.messages.create({
+      model,
+      max_tokens: 8000,
+      betas: ['server-side-fallback-2026-07-01'],
+      fallbacks: 'default',
+      // Small print photographed at an angle: worth reading with care.
+      output_config: { effort: 'medium', format: { type: 'json_schema', schema: SHEET_SCHEMA } },
+      system: SHEET_SYSTEM,
+      messages: [
+        {
+          role: 'user',
+          content: [
+            { type: 'image', source: { type: 'base64', media_type: body.media, data: body.image } },
+            { type: 'text', text: sheetPrompt(body.family) },
+          ],
+        },
+      ],
+    });
+    if (msg.stop_reason === 'refusal') return { status: 502, body: { error: 'declined' } };
+    let out: unknown;
+    try {
+      out = JSON.parse(msg.content.map((b) => (b.type === 'text' ? b.text : '')).join(''));
+    } catch {
+      return { status: 502, body: { error: 'bad_answer' } };
+    }
+    const sheet = readSheet(out, body.family);
+    return sheet ? { status: 200, body: { sheet } } : { status: 502, body: { error: 'bad_answer' } };
   } catch (e) {
     if (e instanceof Anthropic.APIConnectionError) return { status: 504, body: { error: 'upstream_unreachable' } };
     if (e instanceof Anthropic.APIError) return { status: 502, body: { error: 'upstream', status: e.status ?? null } };

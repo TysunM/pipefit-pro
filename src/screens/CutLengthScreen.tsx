@@ -15,7 +15,8 @@ import { useSettings } from '../state/settings';
 import { StockNote } from '../components/StockNote';
 import { END_FITTINGS, EndFitting, FITTING_SOURCE, endHasGap, solveCutLength } from '../calc/cutLength';
 import { JointKind, LIBRARY_FITTINGS, TAKEOFF_FAMILIES, isLibraryFitting, optionsForFamily } from '../calc/takeoffCatalog';
-import { MaterialId, material, pipeSpec, sizeLabel, wallLabel } from '../calc/materials';
+import { MaterialId, material, pipeSpec, sizeLabel, sizesFor, wallLabel } from '../calc/materials';
+import { FittingSheetReader } from '../components/FittingSheetReader';
 import { useFittings } from '../state/fittings';
 import { clearTakeout, lookup, setTakeout } from '../state/fittingLibrary';
 import { useTheme } from '../theme/ThemeProvider';
@@ -147,6 +148,9 @@ export function CutLengthScreen() {
           fitting={id}
           nps={pipe.nps}
           lineName={lineName}
+          line={line}
+          wall={settings.wall}
+          sizes={sizesFor(material(settings.material))}
           value={library(id, pipe.nps)}
           onSave={(v) => fittings.apply((l) => setTakeout(l, line, id, pipe.nps, v, Date.now()))}
           onClear={() => fittings.apply((l) => clearTakeout(l, line, id, pipe.nps))}
@@ -238,6 +242,9 @@ function SetTakeout({
   fitting,
   nps,
   lineName,
+  line,
+  wall,
+  sizes,
   value,
   onSave,
   onClear,
@@ -245,6 +252,9 @@ function SetTakeout({
   fitting: string;
   nps: number;
   lineName: string;
+  line: string;
+  wall: string;
+  sizes: readonly number[];
   value: number | undefined;
   onSave: (inches: number) => void;
   onClear: () => void;
@@ -253,6 +263,7 @@ function SetTakeout({
   const u = useUnits();
   const f = LIBRARY_FITTINGS.find((x) => x.id === fitting)!;
   const [editing, setEditing] = useState(false);
+  const [reading, setReading] = useState(false);
   const [takeout, setTake] = useState('');
   const [face, setFace] = useState('');
   const [depth, setDepth] = useState('');
@@ -264,82 +275,106 @@ function SetTakeout({
   // 1 1/8" in inches; the decimal with its unit otherwise.
   const len = (v: number) => u.frac(v) || u.full(v);
 
+  // Ahead of both views, so it stays put when saving from it folds the panel away.
+  const reader = (
+    <FittingSheetReader
+      visible={reading}
+      onClose={() => {
+        setReading(false);
+        setEditing(false);
+      }}
+      family={f.family}
+      line={line}
+      lineName={lineName}
+      wall={wall}
+      sizes={sizes}
+    />
+  );
+
   if (value !== undefined && !editing) {
     return (
-      <View style={{ marginHorizontal: t.layout.screenPadding, marginBottom: t.space.md, flexDirection: 'row', alignItems: 'center', gap: t.space.sm }}>
-        <Text style={[t.type.caption, { color: t.colors.textMuted, flex: 1 }]}>
-          {`${title}: takeout ${len(value)}, from your fitting library.`}
-        </Text>
-        <Pressable onPress={() => setEditing(true)} hitSlop={10} accessibilityRole="button" accessibilityLabel={`Change the ${title} takeout`}>
-          <Text style={[t.type.captionStrong, { color: t.colors.data }]}>Change</Text>
-        </Pressable>
-      </View>
+      <>
+        {reader}
+        <View style={{ marginHorizontal: t.layout.screenPadding, marginBottom: t.space.md, flexDirection: 'row', alignItems: 'center', gap: t.space.sm }}>
+          <Text style={[t.type.caption, { color: t.colors.textMuted, flex: 1 }]}>
+            {`${title}: takeout ${len(value)}, from your fitting library.`}
+          </Text>
+          <Pressable onPress={() => setEditing(true)} hitSlop={10} accessibilityRole="button" accessibilityLabel={`Change the ${title} takeout`}>
+            <Text style={[t.type.captionStrong, { color: t.colors.data }]}>Change</Text>
+          </Pressable>
+        </View>
+      </>
     );
   }
 
   return (
-    <View
-      style={{
-        marginHorizontal: t.layout.screenPadding,
-        marginBottom: t.space.lg,
-        padding: t.space.md,
-        borderRadius: t.radius.md,
-        borderWidth: 1,
-        borderColor: t.colors.warnText,
-        gap: t.space.sm,
-      }}
-    >
-      <Text style={[t.type.bodyStrong, { color: t.colors.text }]}>{`Set the ${title} takeout`}</Text>
-      <Text style={[t.type.caption, { color: t.colors.textMuted }]}>
-        {`Makers differ, so this is set once for this size and kept: ${f.how}. From the maker’s sheet or the box, or measured off the fitting.`}
-      </Text>
-      <FieldRow>
-        <DimensionInput label="Takeout" value={takeout} onChangeText={setTake} suffix={u.suffix} placeholder="0" readout={u.frac(typed)} />
-      </FieldRow>
-      {socket ? (
-        <>
-          <Text style={[t.type.caption, { color: t.colors.textMuted }]}>Or measure it: centre to the face of the socket, and how deep the socket is.</Text>
-          <FieldRow>
-            <DimensionInput label="Centre to face" value={face} onChangeText={setFace} suffix={u.suffix} placeholder="0" />
-            <DimensionInput
-              label="Socket depth"
-              value={depth}
-              onChangeText={setDepth}
-              suffix={u.suffix}
-              placeholder="0"
-              readout={Number.isFinite(fromFace) && fromFace > 0 ? `Takeout ${len(fromFace)}` : undefined}
-            />
-          </FieldRow>
-        </>
-      ) : null}
-      <View style={{ flexDirection: 'row', gap: t.space.md }}>
-        <View style={{ flex: 1 }}>
-          <AccentButton
-            label={Number.isFinite(next) ? `Save ${len(next)}` : 'Save'}
-            icon="bookmark-outline"
-            onPress={() => {
-              if (!Number.isFinite(next) || next < 0) return;
-              onSave(next);
-              setEditing(false);
-              setTake('');
-              setFace('');
-              setDepth('');
-            }}
-          />
-        </View>
-        {value !== undefined ? (
+    <>
+      {reader}
+      <View
+        style={{
+          marginHorizontal: t.layout.screenPadding,
+          marginBottom: t.space.lg,
+          padding: t.space.md,
+          borderRadius: t.radius.md,
+          borderWidth: 1,
+          borderColor: t.colors.warnText,
+          gap: t.space.sm,
+        }}
+      >
+        <Text style={[t.type.bodyStrong, { color: t.colors.text }]}>{`Set the ${title} takeout`}</Text>
+        <Text style={[t.type.caption, { color: t.colors.textMuted }]}>
+          {`Makers differ, so this is set once for this size and kept: ${f.how}. From the maker’s sheet or the box, or measured off the fitting.`}
+        </Text>
+        <GhostButton label="Photograph the maker’s sheet" icon="camera-outline" onPress={() => setReading(true)} />
+        <Text style={[t.type.caption, { color: t.colors.textMuted }]}>Or type it:</Text>
+        <FieldRow>
+          <DimensionInput label="Takeout" value={takeout} onChangeText={setTake} suffix={u.suffix} placeholder="0" readout={u.frac(typed)} />
+        </FieldRow>
+        {socket ? (
+          <>
+            <Text style={[t.type.caption, { color: t.colors.textMuted }]}>Or measure it: centre to the face of the socket, and how deep the socket is.</Text>
+            <FieldRow>
+              <DimensionInput label="Centre to face" value={face} onChangeText={setFace} suffix={u.suffix} placeholder="0" />
+              <DimensionInput
+                label="Socket depth"
+                value={depth}
+                onChangeText={setDepth}
+                suffix={u.suffix}
+                placeholder="0"
+                readout={Number.isFinite(fromFace) && fromFace > 0 ? `Takeout ${len(fromFace)}` : undefined}
+              />
+            </FieldRow>
+          </>
+        ) : null}
+        <View style={{ flexDirection: 'row', gap: t.space.md }}>
           <View style={{ flex: 1 }}>
-            <GhostButton
-              label="Remove"
-              icon="trash-outline"
+            <AccentButton
+              label={Number.isFinite(next) ? `Save ${len(next)}` : 'Save'}
+              icon="bookmark-outline"
               onPress={() => {
-                onClear();
+                if (!Number.isFinite(next) || next < 0) return;
+                onSave(next);
                 setEditing(false);
+                setTake('');
+                setFace('');
+                setDepth('');
               }}
             />
           </View>
-        ) : null}
+          {value !== undefined ? (
+            <View style={{ flex: 1 }}>
+              <GhostButton
+                label="Remove"
+                icon="trash-outline"
+                onPress={() => {
+                  onClear();
+                  setEditing(false);
+                }}
+              />
+            </View>
+          ) : null}
+        </View>
       </View>
-    </View>
+    </>
   );
 }
