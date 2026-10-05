@@ -130,6 +130,9 @@ export const LIBRARY_FITTINGS: { id: string; family: 'socket' | 'nohub'; label: 
   { id: 'nhWyeBranch', family: 'nohub', label: 'Wye, branch', how: 'branch centreline crossing to the end of the branch' },
 ];
 
+/** Which library family a material's fittings are: PVC and CPVC socket, cast iron soil no-hub. */
+export const LIBRARY_FAMILY: Readonly<Record<string, 'socket' | 'nohub'>> = { pvc: 'socket', cpvc: 'socket', 'ci-soil': 'nohub' };
+
 export const isLibraryFitting = (id: string): boolean => LIBRARY_FITTINGS.some((f) => f.id === id);
 
 export const TAKEOFF_OPTIONS: TakeoffOption[] = [

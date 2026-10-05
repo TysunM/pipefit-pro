@@ -2,7 +2,7 @@ import { GROUPS, PROJECT_TOOLS, RECORDABLE, START, TAB_TOOLS, TOOLS, group, grou
 
 // The tabs, held honest
 // ---------------------
-// Eighteen tools are spread over the Tools tab, the Logs tab, the Projects page
+// Nineteen tools are spread over the Tools tab, the Logs tab, the Projects page
 // and the Calculator tab. The thing that goes wrong with that is quiet — a
 // tool is added to the list and forgotten, or moved and left in two places —
 // and nobody notices because every screen still looks right. Every one of
@@ -28,6 +28,7 @@ const EXPECTED: ToolRoute[] = [
   'SaddleBend',
   'MiterBend',
   'HandBender',
+  'FittingLibrary',
 ];
 
 const routes = (xs: { route: ToolRoute }[]) => xs.map((x) => x.route);
@@ -35,7 +36,7 @@ const sorted = (xs: string[]) => [...xs].sort();
 const reach = [...GROUPS.flatMap(groupTools), ...PROJECT_TOOLS, ...TAB_TOOLS];
 
 describe('every tool is listed once', () => {
-  test('the list holds all eighteen and nothing else', () => {
+  test('the list holds all nineteen and nothing else', () => {
     expect(sorted(routes(TOOLS))).toEqual(sorted(EXPECTED));
     expect(new Set(routes(TOOLS)).size).toBe(TOOLS.length);
   });
@@ -67,8 +68,8 @@ describe('the tabs reach every tool, once', () => {
     expect(routes(g?.sections[1]?.tools ?? [])).toEqual(['SimpleOffset', 'RollingOffset', 'CutLength', 'SaddleBend', 'MiterBend', 'HandBender']);
   });
 
-  test('logs: the tests, the joint log, the heat book, the shift report and the handbook', () => {
-    expect(sorted(routes(groupTools(group('logs')!)))).toEqual(sorted(['PressureTests', 'Joints', 'Heats', 'ShiftReport', 'Reference']));
+  test('logs: the tests, the joint log, the heat book, the shift report, the handbook and the fitting library', () => {
+    expect(sorted(routes(groupTools(group('logs')!)))).toEqual(sorted(['PressureTests', 'Joints', 'Heats', 'ShiftReport', 'Reference', 'FittingLibrary']));
   });
 
   test('small tiles come in whole rows', () => {

@@ -34,7 +34,8 @@ export type ToolRoute =
   | 'ShiftReport'
   | 'SpoolBuilder'
   | 'OrderSheet'
-  | 'IsoSketch';
+  | 'IsoSketch'
+  | 'FittingLibrary';
 
 // Every tool route is a real route. If one is renamed this stops compiling.
 const _routesExist: readonly (keyof RootStackParamList)[] = [] as readonly ToolRoute[];
@@ -67,6 +68,7 @@ export const TOOLS: Tool[] = [
   { route: 'SaddleBend', title: 'Saddle bend', subtitle: 'Three and four point saddles', icon: 'trending-up-outline' },
   { route: 'MiterBend', title: 'Miter bend', subtitle: 'Segmented elbow cuts, code checked', icon: 'triangle-outline' },
   { route: 'HandBender', title: 'Pipe bend', subtitle: 'Setback, arc length and gain', icon: 'analytics-outline' },
+  { route: 'FittingLibrary', title: 'Fitting library', subtitle: 'Your socket and no-hub takeouts', icon: 'library-outline' },
 ];
 
 export function tool(route: string): Tool | undefined {
@@ -100,10 +102,10 @@ export const GROUPS: Group[] = [
   {
     id: 'logs',
     title: 'Logs',
-    subtitle: 'The books the job keeps: every test, every joint bolted up, the heats in them, the shift report, and the handbook.',
+    subtitle: 'The books the job keeps: every test, every joint bolted up, the heats in them, the shift report, the handbook and your fitting takeouts.',
     sections: [
       { title: 'Records', size: 'big', tools: pick(['PressureTests', 'Joints', 'Heats', 'ShiftReport']) },
-      { title: 'Look-up', size: 'wide', tools: pick(['Reference']) },
+      { title: 'Look-up', size: 'wide', tools: pick(['Reference', 'FittingLibrary']) },
     ],
   },
 ];

@@ -33,6 +33,8 @@ export type RootStackParamList = {
   /** One sketch, open to draw on. */
   IsoDraw: { id: string };
   Reference: undefined;
+  /** Saved socket and no-hub takeouts; a line to open on, or the job's. */
+  FittingLibrary: { line?: string } | undefined;
   ReferenceTable: { id: string };
   Settings: undefined;
 };

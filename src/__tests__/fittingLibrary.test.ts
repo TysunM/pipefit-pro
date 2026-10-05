@@ -1,4 +1,4 @@
-import { clearTakeout, emptyLibrary, lookup, parseLibrary, serialiseLibrary, setTakeout } from '../state/fittingLibrary';
+import { clearLine, clearTakeout, emptyLibrary, entriesFor, libraryText, linesIn, lookup, parseKey, parseLibrary, serialiseLibrary, setTakeout } from '../state/fittingLibrary';
 import { solveCutLength } from '../calc/cutLength';
 import { LIBRARY_FITTINGS, TAKEOFF_FAMILIES, endHasGap, optionsForFamily } from '../calc/takeoffCatalog';
 
@@ -62,5 +62,49 @@ describe('socket and no-hub in cut length', () => {
     expect(r.error).toMatch(/Set this fitting/);
     // Sch 80 is its own line: the Sch 40 figure never stands in for it.
     expect(solveCutLength({ ...base, centerToCenter: 48, endA: 'sock90', endB: 'sock90', gap: 0, nps: 2, library: library('pvc:80') }).valid).toBe(false);
+  });
+});
+
+describe('reading the library back', () => {
+  const lib = [
+    ['pvc:40', 'sock90', 2, 1.125, 3],
+    ['pvc:40', 'sock90', 1, 0.688, 2],
+    ['pvc:40', 'sockTee', 1, 0.688, 1],
+    ['ci-soil:CISPI', 'nh14', 4, 4.5, 5],
+    ['pvc:80', 'sock45', 2, 0.6, 4],
+  ].reduce((l, [line, f, n, v, at]) => setTakeout(l, line as string, f as string, n as number, v as number, at as number), emptyLibrary());
+
+  test('a key comes apart, and a bad one does not', () => {
+    expect(parseKey('pvc:40|sock90|1.25')).toEqual({ line: 'pvc:40', fitting: 'sock90', nps: 1.25 });
+    expect(parseKey('pvc:40|sock90')).toBeNull();
+    expect(parseKey('pvc:40|sock90|0')).toBeNull();
+  });
+
+  test('lines, most recently set first, with counts', () => {
+    expect(linesIn(lib)).toEqual([
+      { line: 'ci-soil:CISPI', count: 1 },
+      { line: 'pvc:80', count: 1 },
+      { line: 'pvc:40', count: 3 },
+    ]);
+  });
+
+  test("one line's figures by fitting order then size", () => {
+    const rows = entriesFor(lib, 'pvc:40', ['sockTee', 'sock90']);
+    expect(rows.map((r) => `${r.fitting} ${r.nps}`)).toEqual(['sockTee 1', 'sock90 1', 'sock90 2']);
+  });
+
+  test('clearing a line leaves the others', () => {
+    const left = clearLine(lib, 'pvc:40');
+    expect(linesIn(left).map((x) => x.line)).toEqual(['ci-soil:CISPI', 'pvc:80']);
+  });
+
+  test('as text, one fitting to a paragraph', () => {
+    const text = libraryText(entriesFor(lib, 'pvc:40', ['sock90', 'sockTee']), {
+      title: 'PVC SCH 40',
+      fittingName: (id) => (id === 'sock90' ? '90° elbow' : 'Tee'),
+      size: (n) => `${n}"`,
+      length: (v) => `${v}"`,
+    });
+    expect(text).toBe('PVC SCH 40 — takeouts\n\n90° elbow\n  1"  0.688"\n  2"  1.125"\n\nTee\n  1"  0.688"');
   });
 });

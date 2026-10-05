@@ -57,6 +57,7 @@ export const TOOL_WORDS: Record<OpenRoute, readonly string[]> = {
   SaddleBend: ['saddle bend', 'saddle', 'saddles'],
   MiterBend: ['miter bend', 'miter', 'mitre', 'segmented elbow', 'lobster back'],
   HandBender: ['pipe bend', 'bend', 'bender', 'hand bender', 'setback'],
+  FittingLibrary: ['fitting library', 'fittings library', 'takeout library', 'saved takeouts', 'fitting takeouts', 'library'],
 };
 
 /** The words people put round a command. They are allowed to be left over. */
