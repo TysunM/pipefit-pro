@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { useNavigation } from '@react-navigation/native';
 import { Pressable, Text, View } from 'react-native';
 import { Screen } from '../components/Screen';
 import { HintRow } from '../components/HintRow';
@@ -14,7 +15,7 @@ import { usePipeConfig } from '../hooks/usePipeConfig';
 import { useSettings } from '../state/settings';
 import { StockNote } from '../components/StockNote';
 import { END_FITTINGS, EndFitting, FITTING_SOURCE, endHasGap, solveCutLength } from '../calc/cutLength';
-import { JointKind, LIBRARY_FITTINGS, TAKEOFF_FAMILIES, isLibraryFitting, optionsForFamily } from '../calc/takeoffCatalog';
+import { JointKind, LIBRARY_FAMILY, LIBRARY_FITTINGS, TAKEOFF_FAMILIES, isLibraryFitting, optionsForFamily } from '../calc/takeoffCatalog';
 import { MaterialId, material, pipeSpec, sizeLabel, sizesFor, wallLabel } from '../calc/materials';
 import { FittingSheetReader } from '../components/FittingSheetReader';
 import { useFittings } from '../state/fittings';
@@ -23,7 +24,7 @@ import { useTheme } from '../theme/ThemeProvider';
 import { AccentButton } from '../components/Buttons';
 
 /** How a material is joined, as Cut Length first offers it. */
-const FAMILY_FOR: Partial<Record<MaterialId, JointKind>> = { pvc: 'socket', cpvc: 'socket', 'ci-soil': 'nohub' };
+const FAMILY_FOR: Partial<Record<MaterialId, JointKind>> = LIBRARY_FAMILY;
 const firstOf = (family: JointKind): string =>
   optionsForFamily(family).find((o) => o.id !== 'none' && o.id !== 'custom')?.id ?? 'custom';
 import { FlangeClass, flangedClasses } from '../calc/flangedFitting';
@@ -264,6 +265,7 @@ function SetTakeout({
   const f = LIBRARY_FITTINGS.find((x) => x.id === fitting)!;
   const [editing, setEditing] = useState(false);
   const [reading, setReading] = useState(false);
+  const navigation = useNavigation();
   const [takeout, setTake] = useState('');
   const [face, setFace] = useState('');
   const [depth, setDepth] = useState('');
@@ -326,7 +328,10 @@ function SetTakeout({
           {`Makers differ, so this is set once for this size and kept: ${f.how}. From the maker’s sheet or the box, or measured off the fitting.`}
         </Text>
         <GhostButton label="Photograph the maker’s sheet" icon="camera-outline" onPress={() => setReading(true)} />
-        <Text style={[t.type.caption, { color: t.colors.textMuted }]}>Or type it:</Text>
+        <Pressable onPress={() => navigation.navigate('FittingLibrary', { line })} accessibilityRole="link" hitSlop={8}>
+        <Text style={[t.type.captionStrong, { color: t.colors.data }]}>{`Every saved ${lineName} takeout, and a table at a time →`}</Text>
+      </Pressable>
+      <Text style={[t.type.caption, { color: t.colors.textMuted }]}>Or type it:</Text>
         <FieldRow>
           <DimensionInput label="Takeout" value={takeout} onChangeText={setTake} suffix={u.suffix} placeholder="0" readout={u.frac(typed)} />
         </FieldRow>

@@ -54,6 +54,7 @@ export const VOICE_ROUTES = [
   'SpoolBuilder',
   'OrderSheet',
   'IsoSketch',
+  'FittingLibrary',
 ] as const;
 export type VoiceRoute = (typeof VOICE_ROUTES)[number];
 
@@ -79,6 +80,7 @@ const ROUTE_WORDS: Record<VoiceRoute, string> = {
   SpoolBuilder: '3D spool builder',
   OrderSheet: 'order sheet: material for the saved spools',
   IsoSketch: 'iso sketch: isometric drawing paper',
+  FittingLibrary: "fitting library: the fitter's saved socket and no-hub takeouts, by line",
 };
 
 export const TEST_OPS = ['start_hold', 'reading', 'end_hold', 'pass', 'fail'] as const;

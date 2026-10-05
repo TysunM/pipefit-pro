@@ -73,3 +73,66 @@ export function clearTakeout(l: FittingLibrary, line: string, fitting: string, n
   const key = fittingKey(line, fitting, nps);
   return { ...l, entries: l.entries.filter((e) => e.key !== key) };
 }
+
+// ------------------------------------------------------------ reading it back
+
+export type KeyParts = { line: string; fitting: string; nps: number };
+
+/** A key taken apart, or null if it is not one. */
+export function parseKey(key: string): KeyParts | null {
+  const m = /^([a-z0-9-]+:[A-Za-z0-9]+)\|([A-Za-z0-9]+)\|([0-9.]+)$/.exec(key);
+  const nps = m ? Number(m[3]) : NaN;
+  return m && Number.isFinite(nps) && nps > 0 ? { line: m[1]!, fitting: m[2]!, nps } : null;
+}
+
+/** Every line with something saved, with how many, most recently set first. */
+export function linesIn(l: FittingLibrary): { line: string; count: number }[] {
+  const by = new Map<string, { count: number; last: number }>();
+  for (const e of l.entries) {
+    const p = parseKey(e.key);
+    if (!p) continue;
+    const cur = by.get(p.line) ?? { count: 0, last: 0 };
+    by.set(p.line, { count: cur.count + 1, last: Math.max(cur.last, e.setAt) });
+  }
+  return [...by.entries()].sort((a, b) => b[1].last - a[1].last).map(([line, v]) => ({ line, count: v.count }));
+}
+
+export type SavedTakeout = KeyParts & { takeout: number; setAt: number };
+
+/** One line's figures, by fitting in the order given, then by size. */
+export function entriesFor(l: FittingLibrary, line: string, fittingOrder: readonly string[]): SavedTakeout[] {
+  const rank = (f: string) => {
+    const i = fittingOrder.indexOf(f);
+    return i < 0 ? fittingOrder.length : i;
+  };
+  return l.entries
+    .map((e) => ({ p: parseKey(e.key), e }))
+    .filter((x): x is { p: KeyParts; e: FittingEntry } => x.p !== null && x.p.line === line)
+    .map(({ p, e }) => ({ ...p, takeout: e.takeout, setAt: e.setAt }))
+    .sort((a, b) => rank(a.fitting) - rank(b.fitting) || a.fitting.localeCompare(b.fitting) || a.nps - b.nps);
+}
+
+/** Everything saved for a line, gone. */
+export function clearLine(l: FittingLibrary, line: string): FittingLibrary {
+  return { ...l, entries: l.entries.filter((e) => parseKey(e.key)?.line !== line) };
+}
+
+/**
+ * A line's figures as plain text, to send to the foreman or another fitter:
+ * one fitting to a paragraph, one size to a line.
+ */
+export function libraryText(
+  rows: readonly SavedTakeout[],
+  opts: { title: string; fittingName: (id: string) => string; size: (nps: number) => string; length: (inches: number) => string },
+): string {
+  const out = [`${opts.title} — takeouts`];
+  let last = '';
+  for (const r of rows) {
+    if (r.fitting !== last) {
+      out.push('', opts.fittingName(r.fitting));
+      last = r.fitting;
+    }
+    out.push(`  ${opts.size(r.nps)}  ${opts.length(r.takeout)}`);
+  }
+  return out.join('\n');
+}

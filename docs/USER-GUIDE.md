@@ -308,6 +308,14 @@ Socket and no-hub makeups differ by maker (Charlotte, Spears, Tyler, AB&I…), s
 - Where a sheet gives centre-to-face and socket depth instead of the takeout, the app does the subtraction and shows it.
 - Millimetre sheets are converted. The photo is read and not kept. Needs signal.
 
+**The fitting library screen** (Logs tab → Fitting library, or say "fitting library") shows every saved takeout by line (PVC SCH 40, CI CISPI 301…):
+
+- Tap a size to change or remove its figure.
+- **Add a figure**: pick the fitting and size, type the takeout, Save. The size moves on to the next one up, so a maker's table goes in row after row.
+- **Photograph a sheet** reads a whole table in at once, the same as from Cut Length.
+- **Send** shares the line's takeouts as text to the foreman or another fitter.
+- **Clear** removes a whole line; it asks for a second tap first.
+
 **Worked example — 2" PVC sch 40, socket 90 both ends, 48" C2C:** centre to face 2, socket depth 7/8 → takeout **1 1/8"** each end, **PIPE CUT 45.75"**.
 
 ### Anything not on the list
