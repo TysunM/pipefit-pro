@@ -2,7 +2,7 @@
   "expo": {
     "name": "PipeFit Pro",
     "slug": "pipefit-pro",
-    "version": "1.2.0",
+    "version": "1.3.0",
     "orientation": "portrait",
     "scheme": "pipefitpro",
     "userInterfaceStyle": "automatic",
@@ -18,15 +18,19 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.pipefitpro.app",
-      "buildNumber": "3"
+      "buildNumber": "4"
     },
     "android": {
       "package": "com.pipefitpro.app",
-      "versionCode": 3,
+      "versionCode": 4,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#4A2C14"
-      }
+      },
+      "permissions": [
+        "android.permission.SCHEDULE_EXACT_ALARM",
+        "android.permission.USE_EXACT_ALARM"
+      ]
     },
     "web": {
       "bundler": "metro",
@@ -50,7 +54,10 @@
         {
           "microphonePermission": "PipeFit listens when you tap the mic, so you can call up a tool or log a weld with gloves on.",
           "speechRecognitionPermission": "PipeFit turns what you say into a command when you tap the mic.",
-          "androidSpeechServicePackages": ["com.google.android.googlequicksearchbox", "com.google.android.as"]
+          "androidSpeechServicePackages": [
+            "com.google.android.googlequicksearchbox",
+            "com.google.android.as"
+          ]
         }
       ],
       [
@@ -59,6 +66,13 @@
           "cameraPermission": "PipeFit Pro reads heat numbers off stencils and mill certs with the camera. Nothing leaves the phone.",
           "recordAudioAndroid": false,
           "microphonePermission": false
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#F5841F"
         }
       ]
     ],

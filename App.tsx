@@ -10,6 +10,7 @@ import { SpoolsProvider } from "./src/state/spools";
 import { SketchesProvider } from "./src/state/sketches";
 import { LevelsProvider } from "./src/state/levels";
 import { PressureTestsProvider } from "./src/state/pressureTests";
+import { HoldAlertsProvider } from "./src/state/holdAlerts";
 import { ShiftsProvider } from "./src/state/shifts";
 import { LaserProvider } from "./src/state/laser";
 import { FittingsProvider } from "./src/state/fittings";
@@ -71,6 +72,7 @@ export default function App() {
               <SketchesProvider>
                 <LevelsProvider>
                   <PressureTestsProvider>
+                    <HoldAlertsProvider>
                     <ShiftsProvider>
                       <FittingsProvider>
                       <CutsProvider>
@@ -88,6 +90,7 @@ export default function App() {
                       </CutsProvider>
                       </FittingsProvider>
                     </ShiftsProvider>
+                  </HoldAlertsProvider>
                   </PressureTestsProvider>
                 </LevelsProvider>
               </SketchesProvider>
