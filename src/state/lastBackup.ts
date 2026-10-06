@@ -40,3 +40,28 @@ export function useLastBackup(): { at: number | null; mark: (at: number) => void
   }, []);
   return { at, mark };
 }
+
+const SNOOZE_KEY = 'pipefit.backupSnooze.v1';
+let snoozeCached: number | null | undefined;
+
+/** "Not today" on the Home nudge: hidden for a day, then asked again. */
+export function useBackupSnooze(): { until: number | null; snooze: (now: number) => void } {
+  const [until, setUntil] = useState<number | null>(snoozeCached ?? null);
+  useEffect(() => {
+    if (snoozeCached !== undefined) return;
+    void AsyncStorage.getItem(SNOOZE_KEY)
+      .then((raw) => {
+        const n = Number(raw);
+        snoozeCached = raw && Number.isFinite(n) ? n : null;
+        setUntil(snoozeCached);
+      })
+      .catch(() => undefined);
+  }, []);
+  const snooze = useCallback((now: number) => {
+    const next = now + 86_400_000;
+    snoozeCached = next;
+    setUntil(next);
+    void AsyncStorage.setItem(SNOOZE_KEY, String(next)).catch(() => undefined);
+  }, []);
+  return { until, snooze };
+}

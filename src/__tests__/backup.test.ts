@@ -122,3 +122,20 @@ test('counts read as a man would say them', () => {
   expect(counted(3, 'spools')).toBe('3 spools');
   expect(counted(1, 'isos')).toBe('1 iso');
 });
+
+describe('the Home nudge', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { shouldNudge } = require('../state/backup');
+  const DAY = 86_400_000;
+  const now = 1_760_000_000_000;
+  test('asks when never backed up, or a week since, with records to lose', () => {
+    expect(shouldNudge({ lastAt: null, snoozedUntil: null, records: 3, now })).toEqual({ show: true, days: null });
+    expect(shouldNudge({ lastAt: now - 8 * DAY, snoozedUntil: null, records: 3, now })).toEqual({ show: true, days: 8 });
+    expect(shouldNudge({ lastAt: now - 2 * DAY, snoozedUntil: null, records: 3, now }).show).toBe(false);
+  });
+  test('not with nothing on the phone, nor the day it was put off', () => {
+    expect(shouldNudge({ lastAt: null, snoozedUntil: null, records: 0, now }).show).toBe(false);
+    expect(shouldNudge({ lastAt: null, snoozedUntil: now + DAY / 2, records: 3, now }).show).toBe(false);
+    expect(shouldNudge({ lastAt: null, snoozedUntil: now - 1, records: 3, now }).show).toBe(true);
+  });
+});

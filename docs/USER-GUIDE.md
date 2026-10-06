@@ -78,6 +78,7 @@ Everything you save lives on this phone only: pressure tests and signatures, the
 
 - **Settings → Back up and restore → Back up now** (or say "back up my phone"). It makes one file and opens the share sheet: email it to yourself or save it to Drive.
 - Settings shows when you last backed up, and turns to a warning after a week.
+- **Home asks too:** with records on the phone and no backup in a week (or ever), an amber card on Home says what would be lost. **Back up now** makes the file right there; **Not today** hides it for a day.
 - **Restore** on this phone or a new one: **Restore from a backup file**, pick it, and the app shows what it would add for each kind of record before anything is written. A backup that came as text can be pasted instead.
 - **Restore only ever adds.** A record already on the phone stays as it is, so an old backup cannot undo newer work, and restoring the same file twice adds nothing the second time.
 - Settings come back only if you tick **Also put back the settings**.

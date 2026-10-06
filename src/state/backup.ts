@@ -165,3 +165,20 @@ export function restorePlan(read: Extract<ReadBackup, { ok: true }>, current: Re
     return { key: s.key, label: s.label, inFile, adds: added };
   });
 }
+
+// ------------------------------------------------------------ the nudge
+
+/** Days without a backup before Home asks for one. */
+export const NUDGE_AFTER_DAYS = 7;
+
+/**
+ * Whether Home asks for a backup: there is something on the phone worth
+ * keeping, the last backup is a week old or there never was one, and it was
+ * not put off ("Not today") within the last day.
+ */
+export function shouldNudge(o: { lastAt: number | null; snoozedUntil: number | null; records: number; now: number }): { show: boolean; days: number | null } {
+  const days = o.lastAt ? Math.floor((o.now - o.lastAt) / 86_400_000) : null;
+  if (o.records <= 0) return { show: false, days };
+  if (o.snoozedUntil && o.now < o.snoozedUntil) return { show: false, days };
+  return { show: days === null || days >= NUDGE_AFTER_DAYS, days };
+}

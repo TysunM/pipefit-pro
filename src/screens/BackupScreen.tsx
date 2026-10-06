@@ -15,54 +15,19 @@ import { AccentButton, ControlRow, GhostButton } from '../components/Buttons';
 import { useTheme } from '../theme/ThemeProvider';
 import { DEFAULT_SETTINGS, useSettings } from '../state/settings';
 import { readSettings } from '../state/readSettings';
-import { useJoints } from '../state/joints';
-import { useHeats } from '../state/heats';
-import { useSpools } from '../state/spools';
-import { useSketches } from '../state/sketches';
-import { useLevels } from '../state/levels';
-import { usePressureTests } from '../state/pressureTests';
-import { useShifts } from '../state/shifts';
-import { useFittings } from '../state/fittings';
-import { useCuts } from '../state/cuts';
-import { ReadBackup, backupFileName, counted, backupSummary, makeBackup, mergeStore, readBackup, restorePlan } from '../state/backup';
-import { pickBackupText, shareBackup } from '../state/backupFile';
-import { backupAge, useLastBackup } from '../state/lastBackup';
+import { ReadBackup, counted, mergeStore, readBackup, restorePlan } from '../state/backup';
+import { pickBackupText } from '../state/backupFile';
+import { useBackupNow } from '../state/useBackupNow';
+import { backupAge } from '../state/lastBackup';
 
 type Read = Extract<ReadBackup, { ok: true }>;
 
 export function BackupScreen() {
   const t = useTheme();
   const { settings, update } = useSettings();
-  const joints = useJoints();
-  const heats = useHeats();
-  const spools = useSpools();
-  const sketches = useSketches();
-  const levels = useLevels();
-  const tests = usePressureTests();
-  const shifts = useShifts();
-  const fittings = useFittings();
-  const cuts = useCuts();
-  const last = useLastBackup();
+  const { stores, values, summary, total, backUp: shareNow, busy, lastAt } = useBackupNow();
+  const age = backupAge(lastAt, Date.now());
 
-  // Each store: what it holds now, and how to change it.
-  /* eslint-disable @typescript-eslint/no-explicit-any */
-  const stores: Record<string, { value: any; apply: (f: (v: any) => any) => void }> = {
-    'pipefit.pressure.v1': { value: tests.log, apply: tests.apply as any },
-    'pipefit.joints.v1': { value: joints.register, apply: joints.apply as any },
-    'pipefit.heats.v1': { value: heats.book, apply: heats.apply as any },
-    'pipefit.spools.v1': { value: spools.shelf, apply: spools.apply as any },
-    'pipefit.sketches.v1': { value: sketches.book, apply: sketches.apply as any },
-    'pipefit.levels.v1': { value: levels.log, apply: levels.apply as any },
-    'pipefit.shifts.v1': { value: shifts.log, apply: shifts.apply as any },
-    'pipefit.fittings.v1': { value: fittings.library, apply: fittings.apply as any },
-    'pipefit.cuts.v1': { value: cuts.log, apply: cuts.apply as any },
-  };
-  const values = Object.fromEntries(Object.entries(stores).map(([k, s]) => [k, s.value]));
-  const summary = backupSummary(values);
-  const total = summary.reduce((n, s) => n + s.count, 0);
-  const age = backupAge(last.at, Date.now());
-
-  const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<{ text: string; warn: boolean } | null>(null);
   const [read, setRead] = useState<Read | null>(null);
   const [withSettings, setWithSettings] = useState(false);
@@ -73,14 +38,9 @@ export function BackupScreen() {
   const adds = plan.reduce((n, p) => n + p.adds, 0);
 
   const backUp = async () => {
-    setBusy(true);
     setNote(null);
-    const now = new Date();
-    const out = await shareBackup(makeBackup(values, settings, now), backupFileName(now, settings.projectId));
-    setBusy(false);
+    const out = await shareNow();
     if (!out.ok) return setNote({ text: out.why, warn: true });
-    last.mark(now.getTime());
-    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
     setNote({ text: 'Backup made. Keep it somewhere off this phone — email it to yourself, or put it in Drive.', warn: false });
   };
 
@@ -127,7 +87,7 @@ export function BackupScreen() {
     <Screen>
       <HintRow text="Everything on this phone — tests, joints, heats, spools, isos, readings, reports, takeouts and cuts — in one file. Lose the phone, keep the records." />
 
-      <SectionHeader title="Back up" meta={last.at ? (age.days === 0 ? 'Last: today' : `Last: ${age.days} day${age.days === 1 ? '' : 's'} ago`) : 'Never backed up'} />
+      <SectionHeader title="Back up" meta={lastAt ? (age.days === 0 ? 'Last: today' : `Last: ${age.days} day${age.days === 1 ? '' : 's'} ago`) : 'Never backed up'} />
       <Text style={[t.type.body, { color: age.due ? t.colors.warnText : t.colors.textMuted, paddingHorizontal: t.layout.screenPadding, paddingBottom: t.space.md }]}>
         {total
           ? `On this phone: ${summary.map((s) => counted(s.count, s.label)).join(', ')}.`
