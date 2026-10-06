@@ -1266,7 +1266,7 @@ The round mic low on the right of every screen. Tap it, say it, and the app does
 | "Safety note: fire watch posted at the tank" | Added under Safety on today's report. Issues, Tomorrow and Notes work the same way. |
 | "Hold started at 225", "reading 224", "hold ended at 224", "test passed" | Written on the pressure test on screen, or the job's latest open test. |
 | "What's the takeout on a 2 inch screwed 90?" | Answered out loud from the handbook, and the table opens with its page number. |
-| "Half inch stainless 40S", "6 inch chrome moly P22 schedule 80 long radius", "4 inch PVC" | Sets the job's pipe: size, material, wall, elbow radius — any of them. Said back with an Undo. A calculator already open follows it straight away (Cut Length also moves to the new material's joints); a saved spool keeps its own pipe. |
+| "Half inch stainless 40S", "6 inch chrome moly P22 schedule 80 long radius", "4 inch PVC" | Sets the job's pipe: size, material, wall, elbow radius — any of them. Said back with an Undo. A calculator already open follows it straight away (Cut Length also moves to the new material's joints) and shows an amber "Pipe changed to …" bar with a buzz, so it is seen as well as heard; changed from Settings, the bar shows when you go back to the calculator. A saved spool keeps its own pipe. |
 | "Back", "cancel" | Goes back a screen, or closes the panel. |
 
 Tool names are matched on the phone, at once. Everything else is read by Claude through the app's server, which needs signal.

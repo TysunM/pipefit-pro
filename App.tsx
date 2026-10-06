@@ -21,6 +21,7 @@ import { RootNavigator } from "./src/navigation/RootNavigator";
 import { UpdateBanner } from "./src/components/UpdateBanner";
 import { VoiceProvider } from "./src/voice/VoiceProvider";
 import { VoiceButton } from "./src/components/VoiceButton";
+import { NoticeToast } from "./src/components/NoticeToast";
 
 function Shell() {
   const t = useTheme();
@@ -30,6 +31,7 @@ function Shell() {
       <StatusBar style={t.mode === "dark" ? "light" : "dark"} />
       <View style={{ flex: 1, paddingBottom: visible ? bannerHeight : 0 }}>
         <RootNavigator />
+        <NoticeToast />
         <VoiceButton />
       </View>
       <UpdateBanner />
