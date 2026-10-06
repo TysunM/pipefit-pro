@@ -25,6 +25,10 @@ import { sinceLabel } from '../state/register';
 import { MAX_LEGS, solveSpool } from '../calc/spool';
 import { findSize } from '../calc/pipe';
 import { planCuts } from '../calc/cutList';
+import { useCuts } from '../state/cuts';
+import { pipeLine, putCuts, spoolLegCuts } from '../state/cutLog';
+import { useCutAdder } from '../voice/useCutAdder';
+import * as Haptics from 'expo-haptics';
 import { AimPad } from '../components/AimPad';
 import { SightSheet } from '../components/SightSheet';
 import { AXES, aimRun, flatAxes, flattenDirs, isFlat, planeOf, sameAim } from '../calc/aim';
@@ -441,6 +445,40 @@ export function SpoolBuilderScreen({ route, navigation }: Props) {
   const gapLabel = () =>
     u.system === 'imperial' ? toFraction(gapInches, 64) : `${u.num(gapInches)} ${u.unitName}`;
 
+  // The legs to the cut list, marked by the spool. Sent again after a change,
+  // the legs not yet cut are updated in place; one already cut is left alone.
+  const cutList = useCuts();
+  const [listNote, setListNote] = useState<string | null>(null);
+  const sendLegs = (): { said: string; ok: boolean } => {
+    if (!valid) return { said: 'The spool has a problem to fix before its legs can go on the cut list.', ok: false };
+    if (!loaded) {
+      setSaveOpen(true);
+      const said = 'Save the spool first: its legs are marked by its name.';
+      setListNote(said);
+      return { said, ok: false };
+    }
+    const listed = spoolLegCuts(spool.runs, {
+      spool: loaded.name,
+      ...pipeLine(settings, pipe.nps, pipe.schedule),
+      fittingAt: (v) => {
+        const e = spool.elbows.find((x) => x.index === v);
+        return e ? fittingFor(e.angle).label : 'Open end';
+      },
+    });
+    const out = putCuts(cutList.log, listed, Date.now(), settings.projectId);
+    cutList.apply(() => out.log);
+    const bits = [
+      out.added ? `${out.added} added` : '',
+      out.replaced ? `${out.replaced} updated` : '',
+      out.alreadyCut ? `${out.alreadyCut} already cut, left alone` : '',
+    ].filter(Boolean);
+    const said = `${loaded.name} on the cut list: ${bits.join(', ') || 'nothing to send'}.`;
+    setListNote(said);
+    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
+    return { said, ok: true };
+  };
+  useCutAdder(sendLegs);
+
   const share = async () => {
     if (!valid || sharing) return;
     setSharing(true);
@@ -610,6 +648,19 @@ export function SpoolBuilderScreen({ route, navigation }: Props) {
         />
       </ControlRow>
       {shareNote ? <WarningBanner text={shareNote} /> : null}
+      <ControlRow>
+        <GhostButton
+          label={loaded ? `Send ${legs.length} leg${legs.length === 1 ? '' : 's'} to cut list` : 'Save, then send legs to cut list'}
+          icon="list-outline"
+          onPress={() => void sendLegs()}
+          style={{ flex: 1, opacity: valid ? 1 : 0.4 }}
+        />
+      </ControlRow>
+      {listNote ? (
+        <Pressable onPress={() => navigation.navigate('CutList')} accessibilityRole="link" style={{ marginHorizontal: t.layout.screenPadding }}>
+          <Text style={[t.type.captionStrong, { color: t.colors.data }]}>{`${listNote} Open the cut list →`}</Text>
+        </Pressable>
+      ) : null}
 
       <MetaBar text={`${pipe.label} ${pipe.kind} · SCH ${pipe.schedule} · Gap ${u.num(gapInches)} ${u.unitName}`} />
       {gapInches <= 0 ? <WarningBanner text={`No weld gap set (0 ${u.unitName}).`} /> : null}

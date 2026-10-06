@@ -124,8 +124,8 @@ export function localIntent(text: string, screen: string | null): VoiceCommand |
     for (const act of ['undo', 'repeat', 'done'] as const) if (sayingOnly(ws, BOLT[act])) return { kind: 'bolt', act };
   }
 
-  // On Cut Length, "add it", "add to the cut list", "save that cut": the cut on screen goes on the list.
-  if (screen === 'CutLength' && ws.length <= 8 && (ws.includes('add') || ws.includes('save')) && ws.every((w) => ADD_CUT.has(w) || FILLER.has(w)))
+  // On Cut Length or a 3D spool, "add it", "add to the cut list", "save that cut": the cut on screen goes on the list.
+  if ((screen === 'CutLength' || screen === 'SpoolBuilder') && ws.length <= 8 && (ws.includes('add') || ws.includes('save')) && ws.every((w) => ADD_CUT.has(w) || FILLER.has(w)))
     return { kind: 'addCut' };
 
   if (ws.length <= 3 && sayingOnly(ws, [['back'], ['go', 'back']])) return { kind: 'back' };

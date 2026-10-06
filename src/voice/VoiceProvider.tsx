@@ -59,8 +59,10 @@ type Ctx = {
   setHandsFree: (on: boolean) => void;
   /** The bolt-up screen, while it is open, takes done, undo and repeat. */
   useBolts: (handler: BoltHandler | null) => void;
-  /** Cut Length, while it is open, takes “add it to the cut list”. */
+  /** The screen in front that takes “add it to the cut list” (Cut Length, the 3D spool). */
   useCutAdder: (handler: CutAdder | null) => void;
+  /** Let go of it, if it is still this screen's: another screen may have taken it already. */
+  releaseCutAdder: (handler: CutAdder) => void;
 };
 
 const VoiceCtx = createContext<Ctx | null>(null);
@@ -142,7 +144,7 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
         }
         case 'addCut': {
           const h = cutAdder.current;
-          if (!h) return finish(heard, 'Open Cut Length first.', { tone: 'warn' });
+          if (!h) return finish(heard, 'Open Cut Length or a 3D spool first.', { tone: 'warn' });
           const r = h();
           return finish(heard, r.said, { tone: r.ok ? 'ok' : 'warn', open: r.ok ? { label: 'Cut list', go: () => nav.isReady() && nav.navigate('CutList') } : undefined });
         }
@@ -289,10 +291,13 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
   const useCutAdder = useCallback((handler: CutAdder | null) => {
     cutAdder.current = handler;
   }, []);
+  const releaseCutAdder = useCallback((handler: CutAdder) => {
+    if (cutAdder.current === handler) cutAdder.current = null;
+  }, []);
 
   const value = useMemo<Ctx>(
-    () => ({ enabled, sheet, talk, dismiss: () => setSheet(null), handsFree, setHandsFree, useBolts, useCutAdder }),
-    [enabled, sheet, talk, handsFree, setHandsFree, useBolts, useCutAdder],
+    () => ({ enabled, sheet, talk, dismiss: () => setSheet(null), handsFree, setHandsFree, useBolts, useCutAdder, releaseCutAdder }),
+    [enabled, sheet, talk, handsFree, setHandsFree, useBolts, useCutAdder, releaseCutAdder],
   );
   return <VoiceCtx.Provider value={value}>{children}</VoiceCtx.Provider>;
 }

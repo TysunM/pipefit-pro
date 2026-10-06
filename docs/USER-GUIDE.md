@@ -330,6 +330,8 @@ The **Cut list** (Projects page, the link under the answer, or say "cut list"):
 - **Print / PDF** for the saw, or **Send text** to a phone.
 - **Clear the cut ones** or **Clear all**, each with a second tap to confirm.
 
+**From a 3D spool:** tap **Send N legs to cut list** under the drawing (or say **"add it"** with the spool open). Each leg goes on marked by the spool, SP-12-1, SP-12-2…, with its elbows named. Change the spool and send it again: legs not yet cut are updated in place, never listed twice, and a leg already cut is left alone. An unsaved spool is saved first, because its name is the mark.
+
 ### Anything not on the list
 
 Pick **Custom** on that end and type the takeout yourself. Use it for a valve, a strainer, a specialty fitting, or anything a vendor drawing gives you directly.

@@ -16,11 +16,11 @@ import { useSettings } from '../state/settings';
 import { StockNote } from '../components/StockNote';
 import { END_FITTINGS, EndFitting, FITTING_SOURCE, endHasGap, solveCutLength } from '../calc/cutLength';
 import { JointKind, LIBRARY_FAMILY, LIBRARY_FITTINGS, familyAfterMaterial, TAKEOFF_FAMILIES, isLibraryFitting, optionsForFamily } from '../calc/takeoffCatalog';
-import { MaterialId, calcSchedule, material, pipeSpec, sizeLabel, sizesFor, wallLabel } from '../calc/materials';
+import { MaterialId, material, pipeSpec, sizeLabel, sizesFor, wallLabel } from '../calc/materials';
 import { useCuts } from '../state/cuts';
-import { addCut, nextMark } from '../state/cutLog';
+import { addCut, nextMark, pipeLine } from '../state/cutLog';
 import { sameProject } from '../state/project';
-import { useVoiceMaybe } from '../voice/VoiceProvider';
+import { useCutAdder } from '../voice/useCutAdder';
 import * as Haptics from 'expo-haptics';
 import { FittingSheetReader } from '../components/FittingSheetReader';
 import { useFittings } from '../state/fittings';
@@ -101,8 +101,7 @@ export function CutLengthScreen() {
   const [added, setAdded] = useState<string | null>(null);
   const project = settings.projectId;
   const upNext = nextMark(cuts.log, project);
-  const wallShown = calcSchedule(settings.wall) === pipe.schedule ? settings.wall : pipe.schedule;
-  const pipeName = `${sizeLabel(pipe.nps)} ${material(settings.material).short} ${wallLabel(wallShown)}`;
+  const listedAs = pipeLine(settings, pipe.nps, pipe.schedule);
   const endName = (id: string) => END_FITTINGS.find((f) => f.id === id)?.label ?? id;
   const addThis = (): { said: string; ok: boolean } => {
     if (pristine || !result.valid) return { said: 'Nothing to add yet: work a cut first.', ok: false };
@@ -110,7 +109,7 @@ export function CutLengthScreen() {
     cuts.apply((l) =>
       addCut(
         l,
-        { pipeKey: `${settings.material}:${wallShown}|${pipe.nps}`, pipe: pipeName, c2c: u.parse(c2c), cut: result.pipeCut, ends: `${endName(endA)} × ${endName(endB)}`, mark: m },
+        { ...listedAs, c2c: u.parse(c2c), cut: result.pipeCut, ends: `${endName(endA)} × ${endName(endB)}`, mark: m },
         Date.now(),
         project,
       ),
@@ -122,14 +121,7 @@ export function CutLengthScreen() {
     return { said, ok: true };
   };
   // "Add it": the voice takes the same button.
-  const voice = useVoiceMaybe();
-  const adder = useRef(addThis);
-  adder.current = addThis;
-  useEffect(() => {
-    voice?.useCutAdder(() => adder.current());
-    return () => voice?.useCutAdder(null);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [voice?.useCutAdder]);
+  useCutAdder(addThis);
   useEffect(() => setAdded(null), [c2c, endA, endB, pipe.nps]);
   const open = cuts.log.cuts.filter((c) => !c.done && sameProject(c.project, project)).length;
   // Weight in the job's material where it comes in this size; steel otherwise.

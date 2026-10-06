@@ -11,6 +11,7 @@
 // Everything here is pure; cuts.tsx binds it to the shared store.
 
 import { CutPiece, planCuts, type CutPlan } from '../calc/cutList';
+import { calcSchedule, material, sizeLabel, wallLabel } from '../calc/materials';
 import { cleanProject, sameProject } from './project';
 
 export const CUTS_VERSION = 1;
@@ -37,6 +38,16 @@ export type Cut = {
   /** The Project ID active when it was added; '' for none. */
   project: string;
 };
+
+/**
+ * The pipe a cut is listed under: the job's material and wall at the size on
+ * screen — or, when the screen's schedule has been changed from the job's,
+ * that schedule, so a Sch 80 cut never lands in the Sch 40 group.
+ */
+export function pipeLine(job: { material: string; wall: string }, nps: number, schedule: string): { pipeKey: string; pipe: string } {
+  const wall = calcSchedule(job.wall) === schedule ? job.wall : schedule;
+  return { pipeKey: `${job.material}:${wall}|${nps}`, pipe: `${sizeLabel(nps)} ${material(job.material).short} ${wallLabel(wall)}` };
+}
 
 export type CutLog = { cuts: Cut[]; foreign: boolean; dropped: number };
 
@@ -161,4 +172,72 @@ export function cutListText(groups: readonly CutGroup[], opts: { title: string; 
     for (const c of g.cuts) out.push(`${c.done ? '  ✓ ' : '  ☐ '}${c.mark}: ${opts.length(c.cut)}  (C-C ${opts.length(c.c2c)}${c.ends ? `, ${c.ends}` : ''})`);
   }
   return out.join('\n');
+}
+
+// ------------------------------------------------------------ from a spool
+
+/** A leg of a solved spool, as much of it as the list needs. */
+export type SpoolLegCut = { index: number; centerToCenter: number; cutLength: number; takeoffStart: number; takeoffEnd: number };
+
+/**
+ * A spool's legs as cuts, marked by the spool: "SP-12-1", "SP-12-2". The
+ * mark is cut short at the front of the name, never the leg number, so two
+ * legs can never share one.
+ */
+export type MarkedCut = NewCut & { mark: string };
+
+export function spoolLegCuts(
+  runs: readonly SpoolLegCut[],
+  opts: { spool: string; pipeKey: string; pipe: string; fittingAt: (vertex: number) => string },
+): MarkedCut[] {
+  const name = text(opts.spool, MARK_MAX) || 'Spool';
+  return runs.map((r) => {
+    const leg = `-${r.index + 1}`;
+    const start = r.takeoffStart > 0 ? opts.fittingAt(r.index) : 'Open end';
+    const end = r.takeoffEnd > 0 ? opts.fittingAt(r.index + 1) : 'Open end';
+    return {
+      mark: `${name.slice(0, MARK_MAX - leg.length)}${leg}`,
+      pipeKey: opts.pipeKey,
+      pipe: opts.pipe,
+      c2c: r.centerToCenter,
+      cut: r.cutLength,
+      ends: `${start} × ${end}`,
+    };
+  });
+}
+
+/**
+ * Put marked cuts on the list. A mark already there and not yet cut is
+ * replaced where it stands, so sending a spool again after changing it
+ * updates its legs rather than listing them twice. A mark already cut is left
+ * alone: that pipe is off the saw, and listing it again would cut it twice.
+ */
+export function putCuts(
+  l: CutLog,
+  cuts: readonly MarkedCut[],
+  now: number,
+  project = '',
+): { log: CutLog; added: number; replaced: number; alreadyCut: number } {
+  let log = l;
+  let added = 0;
+  let replaced = 0;
+  let alreadyCut = 0;
+  cuts.forEach((c, i) => {
+    const there = log.cuts.find((x) => x.mark === text(c.mark, MARK_MAX) && sameProject(x.project, project));
+    if (there?.done) {
+      alreadyCut += 1;
+      return;
+    }
+    if (there) {
+      const next = validCut({ ...there, ...c, mark: there.mark, id: there.id, done: false, createdAt: there.createdAt, project: there.project });
+      if (!next) return;
+      log = { ...log, cuts: log.cuts.map((x) => (x.id === there.id ? next : x)) };
+      replaced += 1;
+      return;
+    }
+    const before = log;
+    log = addCut(log, c, now + i, project);
+    if (log !== before) added += 1;
+  });
+  return { log, added, replaced, alreadyCut };
 }
