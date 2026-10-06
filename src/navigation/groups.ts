@@ -35,7 +35,8 @@ export type ToolRoute =
   | 'SpoolBuilder'
   | 'OrderSheet'
   | 'IsoSketch'
-  | 'FittingLibrary';
+  | 'FittingLibrary'
+  | 'CutList';
 
 // Every tool route is a real route. If one is renamed this stops compiling.
 const _routesExist: readonly (keyof RootStackParamList)[] = [] as readonly ToolRoute[];
@@ -68,6 +69,7 @@ export const TOOLS: Tool[] = [
   { route: 'SaddleBend', title: 'Saddle bend', subtitle: 'Three and four point saddles', icon: 'trending-up-outline' },
   { route: 'MiterBend', title: 'Miter bend', subtitle: 'Segmented elbow cuts, code checked', icon: 'triangle-outline' },
   { route: 'HandBender', title: 'Pipe bend', subtitle: 'Setback, arc length and gain', icon: 'analytics-outline' },
+  { route: 'CutList', title: 'Cut list', subtitle: 'Cuts for the saw, ticked off as cut', icon: 'list-outline' },
   { route: 'FittingLibrary', title: 'Fitting library', subtitle: 'Your socket and no-hub takeouts', icon: 'library-outline' },
 ];
 
@@ -118,7 +120,7 @@ export function group(id: GroupId): Group | undefined {
 export const groupTools = (g: Group): Tool[] => g.sections.flatMap((s) => s.tools);
 
 /** Reached from the Projects page, not a tab: the order is worked out of the saved spools. */
-export const PROJECT_TOOLS: Tool[] = pick(['OrderSheet']);
+export const PROJECT_TOOLS: Tool[] = pick(['OrderSheet', 'CutList']);
 
 /** The one tool that is its own tab. */
 export const TAB_TOOLS: Tool[] = pick(['Calculator']);

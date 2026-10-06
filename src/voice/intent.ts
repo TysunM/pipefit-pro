@@ -26,6 +26,7 @@ export type VoiceCommand =
   | { kind: 'open'; route: OpenRoute; figures?: Figures }
   /** On the bolt-up screen: the bolt asked for is torqued, take the last one back, or say it again. */
   | { kind: 'bolt'; act: 'done' | 'undo' | 'repeat' }
+  | { kind: 'addCut' }
   /** The job's pipe: "half inch stainless 40S", "6 inch P22 schedule 80". */
   | ({ kind: 'specs' } & SpecCommand)
   | { kind: 'back' }
@@ -57,6 +58,7 @@ export const TOOL_WORDS: Record<OpenRoute, readonly string[]> = {
   SaddleBend: ['saddle bend', 'saddle', 'saddles'],
   MiterBend: ['miter bend', 'miter', 'mitre', 'segmented elbow', 'lobster back'],
   HandBender: ['pipe bend', 'bend', 'bender', 'hand bender', 'setback'],
+  CutList: ['cut list', 'cut sheet', 'saw list', 'cutting list', 'cuts list'],
   FittingLibrary: ['fitting library', 'fittings library', 'takeout library', 'saved takeouts', 'fitting takeouts', 'library'],
 };
 
@@ -99,6 +101,9 @@ function onlyFillerAndFigures(ws: readonly string[], figureWords: ReadonlySet<st
   return true;
 }
 
+/** The words of “add it to the cut list”, beside the filler. */
+const ADD_CUT = new Set(['add', 'save', 'cut', 'list', 'this', 'that', 'one', 'piece']);
+
 const sayingOnly = (ws: readonly string[], phrases: readonly (readonly string[])[]): boolean =>
   phrases.some((p) => {
     const at = hasPhrase(ws, p);
@@ -118,6 +123,10 @@ export function localIntent(text: string, screen: string | null): VoiceCommand |
   if (screen === 'FlangeBoltUp' && ws.length <= 4) {
     for (const act of ['undo', 'repeat', 'done'] as const) if (sayingOnly(ws, BOLT[act])) return { kind: 'bolt', act };
   }
+
+  // On Cut Length, "add it", "add to the cut list", "save that cut": the cut on screen goes on the list.
+  if (screen === 'CutLength' && ws.length <= 8 && (ws.includes('add') || ws.includes('save')) && ws.every((w) => ADD_CUT.has(w) || FILLER.has(w)))
+    return { kind: 'addCut' };
 
   if (ws.length <= 3 && sayingOnly(ws, [['back'], ['go', 'back']])) return { kind: 'back' };
 

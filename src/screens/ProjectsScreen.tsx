@@ -27,6 +27,7 @@ import { usePressureTests } from '../state/pressureTests';
 import { sortTests } from '../state/pressureLog';
 import { day, openItems, turnoverHtml } from '../print/turnover';
 import { shareSheet } from '../print/share';
+import { useCuts } from '../state/cuts';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Projects'>;
 
@@ -54,9 +55,10 @@ export function ProjectsScreen({ navigation }: Props) {
   const { log, hydrated: lIn, apply: applyLevels } = useLevels();
   const { book: heatBook } = useHeats();
   const { log: testLog, apply: applyTests } = usePressureTests();
+  const { log: cutLog, hydrated: cIn, apply: applyCuts } = useCuts();
   const go = (route: ToolRoute) => navigation.navigate(route as never);
 
-  const everything = [...listed(register), ...book.sketches, ...shelf.spools, ...log.readings, ...testLog.tests];
+  const everything = [...listed(register), ...book.sketches, ...shelf.spools, ...log.readings, ...testLog.tests, ...cutLog.cuts];
   const f = useJobFilter(everything);
   const { active, filter, mine } = f;
   const loose = untagged(everything);
@@ -108,6 +110,7 @@ export function ProjectsScreen({ navigation }: Props) {
     applySpools((sh) => ({ ...sh, spools: claimUntagged(sh.spools, active) }));
     applyLevels((l) => ({ ...l, readings: claimUntagged(l.readings, active) }));
     applyTests((l) => ({ ...l, tests: claimUntagged(l.tests, active) }));
+    applyCuts((l) => ({ ...l, cuts: claimUntagged(l.cuts, active) }));
     setClaiming(false);
   };
 
@@ -137,6 +140,18 @@ export function ProjectsScreen({ navigation }: Props) {
     when: sinceLabel(s.updatedAt, now),
     job: jobOf(s.project),
     onPress: () => navigation.navigate('SpoolBuilder', { spoolId: s.id }),
+  }));
+
+  // Newest first on the card; the list itself reads in the order added.
+  const cutsHere = mine(cutLog.cuts);
+  const cutsToGo = cutsHere.filter((c) => !c.done).length;
+  const cutRows: Row[] = [...cutsHere].reverse().slice(0, SHOWN).map((c) => ({
+    key: c.id,
+    title: `Mark ${c.mark} · ${c.pipe}`,
+    sub: c.done ? 'Cut' : 'To cut',
+    when: sinceLabel(c.createdAt, now),
+    job: jobOf(c.project),
+    onPress: () => go('CutList'),
   }));
 
   const levelRows: Row[] = readings.slice(0, SHOWN).map((r) => {
@@ -249,6 +264,15 @@ export function ProjectsScreen({ navigation }: Props) {
             empty="No spools saved yet. Build one and save it by its mark."
             onNew={() => go('SpoolBuilder')}
             more={{ label: 'Order sheet', onPress: () => go('OrderSheet') }}
+          />
+          <Card
+            art="CutList"
+            title="Cut list"
+            count={cIn ? cutsHere.length : null}
+            rows={cutRows}
+            empty="No cuts listed yet. Work one in Cut Length and add it to the list."
+            onNew={() => go('CutLength')}
+            more={{ label: cutsToGo ? `Cut list · ${cutsToGo} to cut` : 'Cut list', onPress: () => go('CutList') }}
           />
           <Card
             art="Level"

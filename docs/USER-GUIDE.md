@@ -318,6 +318,18 @@ Socket and no-hub makeups differ by maker (Charlotte, Spears, Tyler, AB&I…), s
 
 **Worked example — 2" PVC sch 40, socket 90 both ends, 48" C2C:** centre to face 2, socket depth 7/8 → takeout **1 1/8"** each end, **PIPE CUT 45.75"**.
 
+### The cut list
+
+Work a cut, then tap **Add to cut list** under the answer (or say **"add it"**). It goes on with a mark to write on the pipe: the next number on the job, or type your own (L12-3) in **Mark** first.
+
+The **Cut list** (Projects page, the link under the answer, or say "cut list"):
+
+- Cuts grouped by pipe, in the order added: mark, length to cut, and the C-C and fittings it came from.
+- Tick each one as it comes off the saw.
+- Under each pipe, **Pull for…** packs what is still to cut onto sticks of your stock length, kerf included, so the rack is pulled once.
+- **Print / PDF** for the saw, or **Send text** to a phone.
+- **Clear the cut ones** or **Clear all**, each with a second tap to confirm.
+
 ### Anything not on the list
 
 Pick **Custom** on that end and type the takeout yourself. Use it for a valve, a strainer, a specialty fitting, or anything a vendor drawing gives you directly.
@@ -1280,7 +1292,7 @@ Every bend and offset tool takes its figures by name. Say the tool and the figur
 | Flange bolt-up | bolts (4 to 68, in fours) — "flange bolt-up, 12 bolt"; or size and class — "6 inch, class 250" takes the bolt count from the handbook |
 | Simple offset | offset (or set, rise, drop), angle / degrees, run, gap |
 | Rolling offset | rise (or set), roll, run, angle, gap |
-| Cut length | center to center (or length), gap — "cut length, 4 foot 2" |
+| Cut length | center to center (or length), gap — "cut length, 4 foot 2"; then "add it" puts the cut on the cut list |
 | Saddle bend | depth, to obstruction (or distance), width, angle |
 | Miter bend | degrees (or turn), segments, radius — "miter, 90 degrees, 4 segments" |
 | Pipe bend | degrees, leg a, leg b, radius, springback, stock |

@@ -2,7 +2,7 @@ import { GROUPS, PROJECT_TOOLS, RECORDABLE, START, TAB_TOOLS, TOOLS, group, grou
 
 // The tabs, held honest
 // ---------------------
-// Nineteen tools are spread over the Tools tab, the Logs tab, the Projects page
+// Twenty tools are spread over the Tools tab, the Logs tab, the Projects page
 // and the Calculator tab. The thing that goes wrong with that is quiet — a
 // tool is added to the list and forgotten, or moved and left in two places —
 // and nobody notices because every screen still looks right. Every one of
@@ -29,6 +29,7 @@ const EXPECTED: ToolRoute[] = [
   'MiterBend',
   'HandBender',
   'FittingLibrary',
+  'CutList',
 ];
 
 const routes = (xs: { route: ToolRoute }[]) => xs.map((x) => x.route);
@@ -36,7 +37,7 @@ const sorted = (xs: string[]) => [...xs].sort();
 const reach = [...GROUPS.flatMap(groupTools), ...PROJECT_TOOLS, ...TAB_TOOLS];
 
 describe('every tool is listed once', () => {
-  test('the list holds all nineteen and nothing else', () => {
+  test('the list holds all twenty and nothing else', () => {
     expect(sorted(routes(TOOLS))).toEqual(sorted(EXPECTED));
     expect(new Set(routes(TOOLS)).size).toBe(TOOLS.length);
   });

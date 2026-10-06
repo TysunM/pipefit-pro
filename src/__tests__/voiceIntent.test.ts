@@ -193,3 +193,20 @@ test('the recogniser is told the tool names', () => {
   expect(LISTEN_FOR).toContain('rolling offset');
   expect(new Set(LISTEN_FOR).size).toBe(LISTEN_FOR.length);
 });
+
+describe('the cut list by voice', () => {
+  test('on Cut Length, "add it" puts the cut on the list', () => {
+    for (const s of ['add it', 'add it to the cut list', 'add to cut list', 'save that cut', 'add this one'])
+      expect(localIntent(s, 'CutLength')).toEqual({ kind: 'addCut' });
+  });
+
+  test('anywhere else, or with a figure in it, it is not an add', () => {
+    expect(localIntent('add it', 'SimpleOffset')).not.toEqual({ kind: 'addCut' });
+    expect(localIntent('add 4 foot', 'CutLength')).not.toEqual({ kind: 'addCut' });
+  });
+
+  test('"cut list" opens the list, and "cut length" still opens Cut Length', () => {
+    expect(localIntent('open the cut list', null)).toEqual({ kind: 'open', route: 'CutList' });
+    expect(localIntent('cut length', null)).toEqual({ kind: 'open', route: 'CutLength' });
+  });
+});
