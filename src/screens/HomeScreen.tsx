@@ -7,6 +7,7 @@ import { Screen } from '../components/Screen';
 import { GridLabel, ToolGrid } from '../components/ToolTile';
 import { LiveTile } from '../components/LiveTile';
 import { ProjectCard } from '../components/ProjectCard';
+import { BackupNudge } from '../components/BackupNudge';
 import { TabBar } from '../components/TabBar';
 import { useTheme } from '../theme/ThemeProvider';
 import { useRecents } from '../state/recents';
@@ -35,6 +36,7 @@ export function HomeScreen({ navigation }: Props) {
     <View style={{ flex: 1, backgroundColor: t.colors.bg }}>
       <Screen tabbed>
         <ProjectCard onEdit={() => navigation.navigate('Settings')} />
+        <BackupNudge />
         <GridLabel text={fresh ? 'Start here' : 'Recently used'} />
         <ToolGrid>{(fresh ? START : used).map(tile)}</ToolGrid>
         {hydrated && more.length ? (
