@@ -357,6 +357,15 @@ The **Cut list** (Projects page, the link under the answer, or say "cut list"):
 
 **From a 3D spool:** tap **Send N legs to cut list** under the drawing (or say **"add it"** with the spool open). Each leg goes on marked by the spool, SP-12-1, SP-12-2…, with its elbows named. Change the spool and send it again: legs not yet cut are updated in place, never listed twice, and a leg already cut is left alone. An unsaved spool is saved first, because its name is the mark.
 
+**From an iso sketch:** open the sketch and tap **Cuts** under the paper. The app reads the run lines as pipe:
+
+- **One piece between two fittings.** A line drawn in two goes, dead in line, is one piece. A branch drawn off the middle of a line splits it at a tee. Two lines crossing that were never joined are no fitting.
+- **The fittings come from the drawing.** A square turn is a 90, a diagonal off an axis is a 45, a branch is a tee or cross, a 45 branch on no-hub is a wye. Another angle is flagged; redraw it as 90s and 45s.
+- **Give each piece its centre to centre.** Tap it on the drawing (or the row under it), type the C-C, fitting to fitting, the way it is written on the iso. An open end is measured to the end of the pipe. On the sketch itself, the **Dim** tool does the same, and the figures stay on the paper and print with **Share**.
+- **Figures already written as notes** beside a piece are offered: check each is a length, not a pipe size, then tap **Use these**.
+- **Joints:** butt weld or screwed, or the line's own socket or no-hub when the job is PVC, CPVC or cast iron. Welds take the root gap from Settings. Socket and no-hub figures come from your fitting library; any missing are named, with a button to open the library.
+- **Send N to the cut list** (or say **"add it"**). Pieces go on marked by the sketch, L7-CW-1, L7-CW-2…, in the order they were drawn. A sketch still called "Sketch 6 Oct 14:30" is named first. Sending again updates the pieces not yet cut. If a piece already cut would now be cut to another length, its mark is named so the pipe can be checked.
+
 ### Anything not on the list
 
 Pick **Custom** on that end and type the takeout yourself. Use it for a valve, a strainer, a specialty fitting, or anything a vendor drawing gives you directly.

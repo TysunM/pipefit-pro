@@ -22,10 +22,22 @@ import {
   toScreen,
   wrapAngle,
 } from '../../calc/iso';
-import { Placed, Stroke, flipPlaced, place, runNodes, storedStroke } from '../../state/sketchStore';
+import { Placed, Stroke, dimSpot, flipPlaced, place, runNodes, storedStroke } from '../../state/sketchStore';
 import { onEdge, startsTwoFingers } from '../../calc/palm';
 
-export type SketchMode = 'run' | 'pen' | 'note' | 'move';
+export type SketchMode = 'run' | 'pen' | 'note' | 'dim' | 'move';
+
+/** A piece of pipe as the paper shows it: its ends on the page as drawn, and what is written by it. */
+export type PieceLabel = { key: string; a: Pt; b: Pt; text: string; missing: boolean };
+
+/** How far a point is from the segment a–b. */
+function offSegment(p: Pt, a: Pt, b: Pt): number {
+  const dx = b[0] - a[0];
+  const dy = b[1] - a[1];
+  const l2 = dx * dx + dy * dy;
+  const k = l2 ? Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / l2)) : 0;
+  return Math.hypot(p[0] - a[0] - k * dx, p[1] - a[1] - k * dy);
+}
 
 /** How close a finger has to land, on screen, to pick up a run where it was left. */
 const PICK_UP = 26;
@@ -78,6 +90,8 @@ export function IsoCanvas({
   onViewport,
   onStroke,
   onNote,
+  pieces = [],
+  onPiece,
 }: {
   width: number;
   height: number;
@@ -91,6 +105,10 @@ export function IsoCanvas({
   onStroke: (stroke: Stroke) => void;
   /** A note wanted at a page point, or the note at `index` to change. */
   onNote: (at: Pt, anchor: L3 | null, index: number | undefined) => void;
+  /** Every piece of pipe, for its dimension on the paper and for the Dim tool to pick. */
+  pieces?: readonly PieceLabel[];
+  /** A piece tapped with the Dim tool. */
+  onPiece?: (key: string) => void;
 }) {
   const t = useTheme();
   const g = ISO_GRID;
@@ -98,8 +116,8 @@ export function IsoCanvas({
 
   // The responder is made once and reads what it needs through refs, so a
   // change of tool or of the window never leaves it holding a stale closure.
-  const live = useRef({ mode, strokes, corner, flip, viewport, onViewport, onStroke, onNote });
-  live.current = { mode, strokes, corner, flip, viewport, onViewport, onStroke, onNote };
+  const live = useRef({ mode, strokes, corner, flip, viewport, onViewport, onStroke, onNote, pieces, onPiece });
+  live.current = { mode, strokes, corner, flip, viewport, onViewport, onStroke, onNote, pieces, onPiece };
 
   /**
    * The drawn page point under a screen point. On a turned sheet the finger
@@ -308,6 +326,21 @@ export function IsoCanvas({
               const base: Pt = anchor ? toScreen(anchor, c, g) : [0, 0];
               commit(storedStroke({ kind: 'pen', pts: pts.map((q) => [q[0] - base[0], q[1] - base[1]] as Pt), anchor }));
             }
+          } else if (m === 'dim' && !moved.current) {
+            // The piece under the finger, by its line on the page, near enough to mean it.
+            let hit: string | null = null;
+            let best = 28 / v.scale;
+            const f = live.current.flip;
+            for (const pc of live.current.pieces) {
+              // The line, or the figure written by it: a finger goes for either.
+              const spot = flipPt(dimSpot(flipPt(pc.a, f), flipPt(pc.b, f), 11 / v.scale), f);
+              const d = Math.min(offSegment(p, pc.a, pc.b), distance(p, spot));
+              if (d < best) {
+                best = d;
+                hit = pc.key;
+              }
+            }
+            if (hit) live.current.onPiece?.(hit);
           } else if (m === 'note' && !moved.current) {
             let hit: number | undefined;
             let best = 28 / v.scale;
@@ -459,6 +492,8 @@ export function IsoCanvas({
         ? 'Iso paper. Draw freehand.'
         : mode === 'note'
           ? 'Iso paper. Tap to place a note.'
+          : mode === 'dim'
+            ? 'Iso paper. Tap a piece of pipe to give its dimension.'
           : 'Iso paper. Drag to move the page. Two fingers turn it.';
 
   return (
@@ -488,6 +523,30 @@ export function IsoCanvas({
             <Circle cx={0} cy={0} r={2.4 / s} fill={c.textFaint} />
           </G>
           {strokes.map((st, i) => drawPlaced(place(st, corner, g, flip), `s${i}`, false))}
+          {pieces.map((pc) => {
+            if (pc.missing && mode !== 'dim') return null;
+            const [x, y] = dimSpot(flipPt(pc.a, flip), flipPt(pc.b, flip), 11 / s);
+            const shared = {
+              x,
+              y: y + (13 / s) * 0.36,
+              transform: `rotate(${-deg} ${x} ${y})`,
+              fontFamily: t.font.sansMedium,
+              fontSize: 13 / s,
+              ...(t.fontsLoaded ? {} : { fontWeight: '700' as const }),
+              textAnchor: 'middle' as const,
+              pointerEvents: 'none' as const,
+            };
+            return (
+              <React.Fragment key={`dim-${pc.key}`}>
+                <SvgText {...shared} fill={c.well} stroke={c.well} strokeWidth={4 / s} strokeLinejoin="round">
+                  {pc.text}
+                </SvgText>
+                <SvgText {...shared} fill={pc.missing ? c.warnText : c.data}>
+                  {pc.text}
+                </SvgText>
+              </React.Fragment>
+            );
+          })}
           {/* The letters over the drawing, the arms under it: a run through the rose never hides which way is which. */}
           {(['n', 'e', 's', 'w'] as const).map(roseLetter)}
           {draft ? drawPlaced(flipPlaced(draft, flip), 'draft', true) : null}

@@ -32,6 +32,7 @@ export type RootStackParamList = {
   IsoSketch: undefined;
   /** One sketch, open to draw on. */
   IsoDraw: { id: string };
+  IsoCuts: { id: string };
   Reference: undefined;
   /** The cut list: cuts added from Cut Length, by pipe, for the saw. */
   CutList: undefined;

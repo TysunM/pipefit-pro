@@ -12,6 +12,7 @@
 // Everything here is pure; sketches.tsx binds it to the shared persistence.
 
 import { Bounds, Corner, Flip, L3, NO_FLIP, Pt, bounds, flipPt, lattice, nearestCounts, rotPt, snapRun, tenth, toScreen } from '../calc/iso';
+import { PIECE_KEY } from '../calc/isoPieces';
 import { cleanProject } from './project';
 
 /**
@@ -27,6 +28,10 @@ export const MAX_STROKES = 3000;
 export const MAX_POINTS = 4000;
 export const MAX_NOTE = 80;
 export const MAX_NAME = 60;
+/** Dimensions kept per sketch, a piece each. Kept past an undo, so a redraw gets its figure back. */
+export const MAX_DIMS = 1000;
+/** Inches. Longer than any piece of pipe, short of a typing slip a hundred times over. */
+export const MAX_DIM = 100_000;
 
 export type Stroke =
   /** One straight piece of pipe, dot to dot, in the world. */
@@ -48,6 +53,11 @@ export type SavedSketch = {
   project: string;
   /** How the sheet was last turned over, so it opens and prints the way it was left. Absent is as drawn. */
   flip?: Flip;
+  /**
+   * Centre to centre of each piece of pipe, in inches, by the piece's two
+   * ends (calc/isoPieces.ts). What turns the drawing into a cut list.
+   */
+  dims?: Record<string, number>;
 };
 
 export type SketchBook = {
@@ -165,7 +175,22 @@ export function validSketch(v: unknown, version: number, g: number): SavedSketch
     ok.push(st);
   }
   const flip = validFlip(v.flip);
-  return { id, name: name.trim(), place, strokes: ok, createdAt, updatedAt, project: cleanProject(v.project), ...(flip ? { flip } : {}) };
+  const dims = validDims(v.dims);
+  return { id, name: name.trim(), place, strokes: ok, createdAt, updatedAt, project: cleanProject(v.project), ...(flip ? { flip } : {}), ...(dims ? { dims } : {}) };
+}
+
+/** Stored dimensions, each one checked; a bad one is dropped, not the sketch. */
+export function validDims(v: unknown): Record<string, number> | undefined {
+  if (!isRec(v)) return undefined;
+  const out: Record<string, number> = {};
+  let n = 0;
+  for (const [k, d] of Object.entries(v)) {
+    if (n >= MAX_DIMS) break;
+    if (!PIECE_KEY.test(k) || !isNum(d) || d <= 0 || d > MAX_DIM) continue;
+    out[k] = d;
+    n += 1;
+  }
+  return n ? out : undefined;
 }
 
 /** A stored flip, or undefined for anything that is not one: a bad value opens the sheet as drawn. */
@@ -238,6 +263,9 @@ export function defaultName(now: number): string {
   return `Sketch ${d.getDate()} ${MONTHS[d.getMonth()]} ${hh}:${mm}`;
 }
 
+/** Whether a sketch still has the name it was started with, which is no mark to write on a pipe. */
+export const isDefaultName = (name: string): boolean => /^Sketch \d{1,2} [A-Z][a-z]{2} \d{2}:\d{2}$/.test(name.trim());
+
 /** A sketch with nothing on it yet. */
 export function newSketch(book: SketchBook, now: number, project = ''): SavedSketch {
   const name = defaultName(now);
@@ -282,6 +310,18 @@ export function withStrokes(book: SketchBook, id: string, strokes: Stroke[], now
   const s = getSketch(book, id);
   if (!s) return book;
   return saveSketch(book, { ...s, strokes: strokes.slice(0, MAX_STROKES) }, now);
+}
+
+/** One piece's dimension set, or taken off with null. It is an edit: the sketch moves to the top. */
+export function withDim(book: SketchBook, id: string, key: string, inches: number | null, now: number): SketchBook {
+  const s = getSketch(book, id);
+  if (!s || !PIECE_KEY.test(key)) return book;
+  if (inches !== null && (!Number.isFinite(inches) || inches <= 0 || inches > MAX_DIM)) return book;
+  const { [key]: _old, ...rest } = s.dims ?? {};
+  const dims = inches === null ? rest : { ...rest, [key]: Math.round(inches * 10_000) / 10_000 };
+  if (Object.keys(dims).length > MAX_DIMS) return book;
+  const { dims: _d, ...plain } = s;
+  return saveSketch(book, Object.keys(dims).length ? { ...plain, dims } : plain, now);
 }
 
 export function renameSketch(book: SketchBook, id: string, name: string, place: string, now: number): SketchBook {
@@ -385,6 +425,29 @@ export function sketchBounds(strokes: readonly Stroke[], c: Corner, g: number, f
   return bounds(rot ? pts.map((q) => rotPt(q, rot)) : pts);
 }
 
+/**
+ * Where a piece's dimension is written: beside its middle, off the line on
+ * the side above it (or to the right of an upright one), `off` page points
+ * clear, so the figure never sits on the pipe it measures.
+ */
+export function dimSpot(a: Pt, b: Pt, off: number): Pt {
+  const mx = (a[0] + b[0]) / 2;
+  const my = (a[1] + b[1]) / 2;
+  const dx = b[0] - a[0];
+  const dy = b[1] - a[1];
+  const l = Math.hypot(dx, dy) || 1;
+  let nx = -dy / l;
+  let ny = dx / l;
+  if (ny > 0.01 || (Math.abs(ny) <= 0.01 && nx < 0)) {
+    nx = -nx;
+    ny = -ny;
+  }
+  return [mx + nx * off, my + ny * off];
+}
+
+/** A dimension on the page: the piece's two ends as drawn, and what is written by it. */
+export type DimLabel = { a: Pt; b: Pt; text: string };
+
 // ------------------------------------------------------------------ export
 
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -394,7 +457,7 @@ const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replac
  * from the corner it was being looked at. Framed to what was drawn plus a
  * margin, so a small sketch does not print as a corner of a blank page.
  */
-export function sketchToSvg(sketch: SavedSketch, grid: number, c: Corner = 'SW', f: Flip = sketch.flip ?? NO_FLIP): string {
+export function sketchToSvg(sketch: SavedSketch, grid: number, c: Corner = 'SW', f: Flip = sketch.flip ?? NO_FLIP, dims: readonly DimLabel[] = []): string {
   const b = sketchBounds(sketch.strokes, c, grid, f) ?? { minX: 0, minY: 0, maxX: grid * 10, maxY: grid * 10 };
   const m = grid * 2;
   const x0 = Math.floor((b.minX - m) / grid) * grid;
@@ -411,6 +474,13 @@ export function sketchToSvg(sketch: SavedSketch, grid: number, c: Corner = 'SW',
       return p.kind === 'run'
         ? `<polyline points="${d}" fill="none" stroke="#111" stroke-width="2.4" stroke-linecap="round"/>`
         : `<polyline points="${d}" fill="none" stroke="#333" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>`;
+    })
+    .join('\n');
+  // The dimensions, in the colour a checker marks an iso, so they read apart from the notes.
+  const figures = dims
+    .map((d) => {
+      const [x, y] = dimSpot(flipPt(d.a, f), flipPt(d.b, f), 9);
+      return `<text x="${x}" y="${y + 4}" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="12" font-weight="700" fill="#0a4fa8" stroke="#fff" stroke-width="3" paint-order="stroke">${esc(d.text)}</text>`;
     })
     .join('\n');
   // The compass: north as it lies on this page.
@@ -431,6 +501,7 @@ export function sketchToSvg(sketch: SavedSketch, grid: number, c: Corner = 'SW',
 <rect x="${x0}" y="${y0}" width="${w}" height="${h}" fill="#fff"/>
 <rect x="${x0}" y="${y0}" width="${w}" height="${h}" fill="url(#iso)"/>
 ${body}
+${figures}
 ${compass}
 ${stamp}
 </svg>`;
