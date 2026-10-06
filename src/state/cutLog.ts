@@ -13,6 +13,8 @@
 import { CutPiece, planCuts, type CutPlan } from '../calc/cutList';
 import { calcSchedule, material, sizeLabel, wallLabel } from '../calc/materials';
 import { cleanProject, sameProject } from './project';
+import type { Tick } from '../voice/cutTick';
+import { markKey } from '../voice/cutTick';
 
 export const CUTS_VERSION = 1;
 /** A big job's list, and then some. Past it the oldest finished cut goes first. */
@@ -132,6 +134,8 @@ export function addCut(l: CutLog, c: NewCut, now: number, project = ''): CutLog 
   return { ...l, cuts };
 }
 
+/** Set a cut done or not. Setting, never flipping: hearing "4 done" twice leaves it done. */
+export const setCutDone = (l: CutLog, id: string, done: boolean): CutLog => ({ ...l, cuts: l.cuts.map((c) => (c.id === id && c.done !== done ? { ...c, done } : c)) });
 export const toggleCut = (l: CutLog, id: string): CutLog => ({ ...l, cuts: l.cuts.map((c) => (c.id === id ? { ...c, done: !c.done } : c)) });
 export const deleteCut = (l: CutLog, id: string): CutLog => ({ ...l, cuts: l.cuts.filter((c) => c.id !== id) });
 /** Take away what is shown: the cut ones, or all of them. */
@@ -240,4 +244,32 @@ export function putCuts(
     if (log !== before) added += 1;
   });
   return { log, added, replaced, alreadyCut };
+}
+
+// ------------------------------------------------------------ by voice, at the saw
+
+
+/**
+ * What a spoken tick does to the list shown, and what is said back. Every
+ * reply carries words that are not a mark, a done word or filler, so the
+ * phone's own voice heard back is never taken for a tick (cutTick.ts).
+ */
+export function answerTick(shown: readonly Cut[], tick: Tick, speak: (inches: number) => string): { set?: { id: string; done: boolean }; say: string } {
+  const spokenPipe = (c: Cut) => c.pipe.replace(/"/g, ' inch');
+  const nextAfter = (skip?: string) => shown.find((c) => !c.done && c.id !== skip);
+  const nextLine = (skip?: string) => {
+    const n = nextAfter(skip);
+    return n ? `Next, mark ${n.mark}: ${speak(n.cut)}, ${spokenPipe(n)}.` : "That's the last one. All cut.";
+  };
+  if (tick.kind === 'next') return { say: nextAfter() ? nextLine() : 'All cut. Nothing left on the list.' };
+
+  const same = shown.filter((c) => markKey(c.mark) === tick.key);
+  if (!same.length) return { say: `No mark ${tick.key.toUpperCase()} on this list.` };
+  const want = same.filter((c) => c.done !== tick.done);
+  const shownMark = same[0]!.mark;
+  if (!want.length) return { say: tick.done ? `Mark ${shownMark} is already cut.` : `Mark ${shownMark} hadn't been cut yet.` };
+  if (want.length > 1) return { say: `There are ${want.length} mark ${shownMark}s on this list. Tap the one you mean.` };
+  const c = want[0]!;
+  if (!tick.done) return { set: { id: c.id, done: false }, say: `Mark ${c.mark} is to cut again.` };
+  return { set: { id: c.id, done: true }, say: `Mark ${c.mark} cut. ${nextLine(c.id)}` };
 }
