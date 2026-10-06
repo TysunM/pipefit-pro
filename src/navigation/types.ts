@@ -33,8 +33,11 @@ export type RootStackParamList = {
   /** One sketch, open to draw on. */
   IsoDraw: { id: string };
   Reference: undefined;
+  /** The cut list: cuts added from Cut Length, by pipe, for the saw. */
+  CutList: undefined;
   /** Saved socket and no-hub takeouts; a line to open on, or the job's. */
-  FittingLibrary: { line?: string } | undefined;
+  /** `read`: open the sheet reader at once, listening for “take it”; a time, so asking twice opens it twice. */
+  FittingLibrary: { line?: string; read?: number } | undefined;
   ReferenceTable: { id: string };
   Settings: undefined;
 };

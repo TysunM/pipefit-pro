@@ -308,6 +308,14 @@ Socket and no-hub makeups differ by maker (Charlotte, Spears, Tyler, AB&I…), s
 - Where a sheet gives centre-to-face and socket depth instead of the takeout, the app does the subtraction and shows it.
 - Millimetre sheets are converted. The photo is read and not kept. Needs signal.
 
+**Hands-free: "read this box".** Say **"read this box"** (or "scan the label", "photograph the sheet") and the camera comes up for the job's line, with the mic left open:
+
+- **"Take it"** shoots, once the label or table fills the frame.
+- The read comes back to check on screen, the same as by hand.
+- **"Save"** keeps what is ticked. **"Again"** goes back to the camera. **"Cancel"** closes it.
+- It answers only those words, said on their own. Anything else, including the phone's own voice, is ignored.
+- The job's pipe must be PVC, CPVC or cast iron soil; say it first ("2 inch PVC").
+
 **The fitting library screen** (Logs tab → Fitting library, or say "fitting library") shows every saved takeout by line (PVC SCH 40, CI CISPI 301…):
 
 - Tap a size to change or remove its figure.
@@ -317,6 +325,20 @@ Socket and no-hub makeups differ by maker (Charlotte, Spears, Tyler, AB&I…), s
 - **Clear** removes a whole line; it asks for a second tap first.
 
 **Worked example — 2" PVC sch 40, socket 90 both ends, 48" C2C:** centre to face 2, socket depth 7/8 → takeout **1 1/8"** each end, **PIPE CUT 45.75"**.
+
+### The cut list
+
+Work a cut, then tap **Add to cut list** under the answer (or say **"add it"**). It goes on with a mark to write on the pipe: the next number on the job, or type your own (L12-3) in **Mark** first.
+
+The **Cut list** (Projects page, the link under the answer, or say "cut list"):
+
+- Cuts grouped by pipe, in the order added: mark, length to cut, and the C-C and fittings it came from.
+- Tick each one as it comes off the saw.
+- Under each pipe, **Pull for…** packs what is still to cut onto sticks of your stock length, kerf included, so the rack is pulled once.
+- **Print / PDF** for the saw, or **Send text** to a phone.
+- **Clear the cut ones** or **Clear all**, each with a second tap to confirm.
+
+**From a 3D spool:** tap **Send N legs to cut list** under the drawing (or say **"add it"** with the spool open). Each leg goes on marked by the spool, SP-12-1, SP-12-2…, with its elbows named. Change the spool and send it again: legs not yet cut are updated in place, never listed twice, and a leg already cut is left alone. An unsaved spool is saved first, because its name is the mark.
 
 ### Anything not on the list
 
@@ -1280,7 +1302,7 @@ Every bend and offset tool takes its figures by name. Say the tool and the figur
 | Flange bolt-up | bolts (4 to 68, in fours) — "flange bolt-up, 12 bolt"; or size and class — "6 inch, class 250" takes the bolt count from the handbook |
 | Simple offset | offset (or set, rise, drop), angle / degrees, run, gap |
 | Rolling offset | rise (or set), roll, run, angle, gap |
-| Cut length | center to center (or length), gap — "cut length, 4 foot 2" |
+| Cut length | center to center (or length), gap — "cut length, 4 foot 2"; then "add it" puts the cut on the cut list |
 | Saddle bend | depth, to obstruction (or distance), width, angle |
 | Miter bend | degrees (or turn), segments, radius — "miter, 90 degrees, 4 segments" |
 | Pipe bend | degrees, leg a, leg b, radius, springback, stock |

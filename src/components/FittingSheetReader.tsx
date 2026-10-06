@@ -7,7 +7,7 @@
 //
 // The picture is taken at a size Claude reads in full (no more than 2576 px
 // on the long side) so small print survives and the upload stays small.
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Image, Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -31,6 +31,9 @@ import {
 import { sizeLabel } from '../calc/materials';
 import { useFittings } from '../state/fittings';
 import { setTakeout } from '../state/fittingLibrary';
+import { canListen, listenOn, stopListening } from '../voice/listen';
+import { cameraWord } from '../voice/cameraWords';
+import { say } from '../audio/say';
 
 type Stage =
   | { at: 'camera' }
@@ -47,6 +50,7 @@ export function FittingSheetReader({
   lineName,
   wall,
   sizes,
+  listen = false,
 }: {
   visible: boolean;
   onClose: () => void;
@@ -58,6 +62,11 @@ export function FittingSheetReader({
   wall: string;
   /** The sizes the line comes in. */
   sizes: readonly number[];
+  /**
+   * Opened by voice: keep the mic open while it is up, for "take it",
+   * "again", "save" and "cancel" — a gloved hand never has to find a button.
+   */
+  listen?: boolean;
 }) {
   const t = useTheme();
   const u = useUnits();
@@ -119,7 +128,54 @@ export function FittingSheetReader({
     fittings.apply((l) => keep.reduce((acc, r) => setTakeout(acc, line, r.fitting, r.nps, r.takeout, now), l));
     void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setStage({ at: 'saved', count: keep.length });
+    if (listen) say(`${keep.length} takeout${keep.length === 1 ? '' : 's'} kept.`);
   };
+
+  // Hands-free. What the phone says back never holds a command word, so its
+  // own voice cannot set it off; and listening starts a beat after the camera
+  // opens, past the "Camera up" that opened it.
+  const latest = useRef({ stage, shoot, save, close });
+  latest.current = { stage, shoot, save, close };
+  const [hearing, setHearing] = useState('');
+  useEffect(() => {
+    if (!visible || !listen || !canListen()) return;
+    let live = true;
+    const start = setTimeout(() => {
+      void listenOn(
+        (heard) => {
+          const word = cameraWord(heard);
+          const { stage: st, shoot: go, save: keep, close: shut } = latest.current;
+          setHearing(heard);
+          if (word === 'close') return shut();
+          if (word === 'shoot' && st.at === 'camera') return void go();
+          if (word === 'retake' && (st.at === 'review' || st.at === 'failed' || st.at === 'saved')) return setStage({ at: 'camera' });
+          if (word === 'save' && st.at === 'review') return keep(st.rows);
+        },
+        { still: () => live, onHeard: setHearing },
+      );
+    }, 1200);
+    return () => {
+      live = false;
+      clearTimeout(start);
+      stopListening();
+    };
+  }, [visible, listen]);
+  // Said once a read is back: the count, nothing to act on.
+  useEffect(() => {
+    if (listen && stage.at === 'review') {
+      const n = stage.rows.filter((r) => r.pick).length;
+      say(`${stage.rows.length} figure${stage.rows.length === 1 ? '' : 's'} read, ${n} ticked. Check them against the paper.`);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stage.at]);
+  const voiceHint = (text: string) =>
+    listen ? (
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.sm }}>
+        <Ionicons name="mic" size={18} color={t.colors.accent} />
+        <Text style={[t.type.captionStrong, { color: t.colors.accent, flex: 1 }]}>{text}</Text>
+        {hearing ? <Text style={[t.type.caption, { color: t.colors.textFaint }]} numberOfLines={1}>{`“${hearing}”`}</Text> : null}
+      </View>
+    ) : null;
 
   const button = (label: string, onPress: () => void, opts: { icon?: keyof typeof Ionicons.glyphMap; primary?: boolean; disabled?: boolean } = {}) => (
     <Pressable
@@ -208,6 +264,7 @@ export function FittingSheetReader({
           <Text style={[t.type.caption, { color: t.colors.textFaint }]}>
             {`The dimension table for ${lineName} ${family === 'socket' ? 'socket' : 'no-hub'} fittings, flat and square, filling the frame. One table per photo; a long sheet goes in halves.`}
           </Text>
+          {voiceHint('Listening — say “take it”, or “cancel”.')}
           {button('Read the sheet', () => void shoot(), { icon: 'scan-outline', primary: true })}
         </>
       );
@@ -302,6 +359,7 @@ export function FittingSheetReader({
           primary: true,
           disabled: !picked,
         })}
+        {voiceHint('Listening — say “save” to keep what is ticked, or “again”.')}
         {button('Take it again', () => setStage({ at: 'camera' }), { icon: 'camera-outline' })}
       </>
     );

@@ -28,10 +28,13 @@ import { canListen, heardWords, listenOn, listenOnce, stopListening } from './li
 import { publishFigures } from './figures';
 import { FigureSpec, Figures, TOOL_FIGURES, isFigureRoute } from './toolFigures';
 import { specPatch, type SpecCommand } from './specs';
+import { LIBRARY_FAMILY } from '../calc/takeoffCatalog';
 
 export type BoltAct = 'done' | 'undo' | 'repeat';
 /** What the bolt-up screen does with a spoken bolt command: what to say back. */
 export type BoltHandler = (act: BoltAct) => string;
+/** Cut Length, while it is open, adds the cut on screen to the list: what to say back, and whether it went on. */
+export type CutAdder = () => { said: string; ok: boolean };
 
 export type VoiceSheet = {
   phase: 'listening' | 'thinking' | 'done';
@@ -57,6 +60,10 @@ type Ctx = {
   setHandsFree: (on: boolean) => void;
   /** The bolt-up screen, while it is open, takes done, undo and repeat. */
   useBolts: (handler: BoltHandler | null) => void;
+  /** The screen in front that takes “add it to the cut list” (Cut Length, the 3D spool). */
+  useCutAdder: (handler: CutAdder | null) => void;
+  /** Let go of it, if it is still this screen's: another screen may have taken it already. */
+  releaseCutAdder: (handler: CutAdder) => void;
 };
 
 const VoiceCtx = createContext<Ctx | null>(null);
@@ -86,6 +93,7 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
   const [sheet, setSheet] = useState<VoiceSheet | null>(null);
   const [handsFree, setHandsFreeState] = useState(false);
   const bolts = useRef<BoltHandler | null>(null);
+  const cutAdder = useRef<CutAdder | null>(null);
   const listening = useRef(false);
   const freeOn = useRef(false);
   // The stores move on; the command runs against what they hold when it lands.
@@ -134,6 +142,20 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
           const h = bolts.current;
           if (!h) return finish(heard, 'Open the bolt-up first.', { tone: 'warn' });
           return finish(heard, h(cmd.act));
+        }
+        case 'readBox': {
+          const { settings: cur } = latest.current;
+          if (!LIBRARY_FAMILY[cur.material])
+            return finish(heard, 'Box labels are read for PVC, CPVC and cast iron no-hub. Set the job pipe first, like "2 inch PVC".', { tone: 'warn' });
+          if (nav.isReady()) nav.navigate('FittingLibrary', { line: `${cur.material}:${cur.wall}`, read: Date.now() });
+          setSheet(null);
+          return say('Camera up.');
+        }
+        case 'addCut': {
+          const h = cutAdder.current;
+          if (!h) return finish(heard, 'Open Cut Length or a 3D spool first.', { tone: 'warn' });
+          const r = h();
+          return finish(heard, r.said, { tone: r.ok ? 'ok' : 'warn', open: r.ok ? { label: 'Cut list', go: () => nav.isReady() && nav.navigate('CutList') } : undefined });
         }
         case 'open': {
           const refused = openWith(cmd.route, cmd.figures);
@@ -275,9 +297,16 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
     bolts.current = handler;
   }, []);
 
+  const useCutAdder = useCallback((handler: CutAdder | null) => {
+    cutAdder.current = handler;
+  }, []);
+  const releaseCutAdder = useCallback((handler: CutAdder) => {
+    if (cutAdder.current === handler) cutAdder.current = null;
+  }, []);
+
   const value = useMemo<Ctx>(
-    () => ({ enabled, sheet, talk, dismiss: () => setSheet(null), handsFree, setHandsFree, useBolts }),
-    [enabled, sheet, talk, handsFree, setHandsFree, useBolts],
+    () => ({ enabled, sheet, talk, dismiss: () => setSheet(null), handsFree, setHandsFree, useBolts, useCutAdder, releaseCutAdder }),
+    [enabled, sheet, talk, handsFree, setHandsFree, useBolts, useCutAdder, releaseCutAdder],
   );
   return <VoiceCtx.Provider value={value}>{children}</VoiceCtx.Provider>;
 }
