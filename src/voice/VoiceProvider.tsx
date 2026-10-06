@@ -35,6 +35,8 @@ export type BoltAct = 'done' | 'undo' | 'repeat';
 export type BoltHandler = (act: BoltAct) => string;
 /** Cut Length, while it is open, adds the cut on screen to the list: what to say back, and whether it went on. */
 export type CutAdder = () => { said: string; ok: boolean };
+/** A screen's own words, tried first while it is in front: what to say back, or null when they are not its. */
+export type ScreenVoice = (heard: string) => string | null;
 
 export type VoiceSheet = {
   phase: 'listening' | 'thinking' | 'done';
@@ -64,6 +66,8 @@ type Ctx = {
   useCutAdder: (handler: CutAdder | null) => void;
   /** Let go of it, if it is still this screen's: another screen may have taken it already. */
   releaseCutAdder: (handler: CutAdder) => void;
+  useScreenVoice: (handler: ScreenVoice | null) => void;
+  releaseScreenVoice: (handler: ScreenVoice) => void;
 };
 
 const VoiceCtx = createContext<Ctx | null>(null);
@@ -94,6 +98,7 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
   const [handsFree, setHandsFreeState] = useState(false);
   const bolts = useRef<BoltHandler | null>(null);
   const cutAdder = useRef<CutAdder | null>(null);
+  const screenVoice = useRef<ScreenVoice | null>(null);
   const listening = useRef(false);
   const freeOn = useRef(false);
   // The stores move on; the command runs against what they hold when it lands.
@@ -225,6 +230,8 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
   const run = useCallback(
     (heard: string) => {
       const screen = nav.isReady() ? (nav.getCurrentRoute()?.name ?? null) : null;
+      const own = screenVoice.current?.(heard);
+      if (own) return finish(heard, own);
       const cmd = localIntent(heard, screen);
       if (cmd) runLocal(heard, cmd);
       else void runClaude(heard, screen);
@@ -303,10 +310,16 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
   const releaseCutAdder = useCallback((handler: CutAdder) => {
     if (cutAdder.current === handler) cutAdder.current = null;
   }, []);
+  const useScreenVoice = useCallback((handler: ScreenVoice | null) => {
+    screenVoice.current = handler;
+  }, []);
+  const releaseScreenVoice = useCallback((handler: ScreenVoice) => {
+    if (screenVoice.current === handler) screenVoice.current = null;
+  }, []);
 
   const value = useMemo<Ctx>(
-    () => ({ enabled, sheet, talk, dismiss: () => setSheet(null), handsFree, setHandsFree, useBolts, useCutAdder, releaseCutAdder }),
-    [enabled, sheet, talk, handsFree, setHandsFree, useBolts, useCutAdder, releaseCutAdder],
+    () => ({ enabled, sheet, talk, dismiss: () => setSheet(null), handsFree, setHandsFree, useBolts, useCutAdder, releaseCutAdder, useScreenVoice, releaseScreenVoice }),
+    [enabled, sheet, talk, handsFree, setHandsFree, useBolts, useCutAdder, releaseCutAdder, useScreenVoice, releaseScreenVoice],
   );
   return <VoiceCtx.Provider value={value}>{children}</VoiceCtx.Provider>;
 }

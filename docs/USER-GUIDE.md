@@ -348,6 +348,12 @@ The **Cut list** (Projects page, the link under the answer, or say "cut list"):
 - **Print / PDF** for the saw, or **Send text** to a phone.
 - **Clear the cut ones** or **Clear all**, each with a second tap to confirm.
 
+**At the saw, by voice.** With the cut list open, say **"4 done"** (or "mark 4 is cut", "SP-12-1 done") and it is ticked off and the next cut is read out. **"Next"** reads the next one; **"undo 4"** puts it back. Tap **Hands-free at the saw** to leave the mic open, so the saw hand never touches the phone.
+
+- A mark is matched by its letters and digits: "S P twelve one" finds SP-12-1.
+- Saying "done" sets a cut done; it never flips it, so saying it twice is harmless.
+- Anything else heard is ignored, including the phone's own voice.
+
 **From a 3D spool:** tap **Send N legs to cut list** under the drawing (or say **"add it"** with the spool open). Each leg goes on marked by the spool, SP-12-1, SP-12-2…, with its elbows named. Change the spool and send it again: legs not yet cut are updated in place, never listed twice, and a leg already cut is left alone. An unsaved spool is saved first, because its name is the mark.
 
 ### Anything not on the list
