@@ -72,6 +72,16 @@ The app agrees with every one of them to **four decimal places**, and a test pro
 
 ---
 
+## Back up the phone
+
+Everything you save lives on this phone only: pressure tests and signatures, the joint log, heat book, spools, isos, level readings, shift reports, fitting takeouts and the cut list. **Back it up weekly.**
+
+- **Settings → Back up and restore → Back up now** (or say "back up my phone"). It makes one file and opens the share sheet: email it to yourself or save it to Drive.
+- Settings shows when you last backed up, and turns to a warning after a week.
+- **Restore** on this phone or a new one: **Restore from a backup file**, pick it, and the app shows what it would add for each kind of record before anything is written. A backup that came as text can be pasted instead.
+- **Restore only ever adds.** A record already on the phone stays as it is, so an old backup cannot undo newer work, and restoring the same file twice adds nothing the second time.
+- Settings come back only if you tick **Also put back the settings**.
+
 # Part 2 — The three ideas everything is built on
 
 ## 1. Takeout — why a fitting "eats" length

@@ -19,7 +19,7 @@ import { hasPhrase, lengthAt, numberAt, tokens } from './words';
 import { readSpecs, type SpecCommand } from './specs';
 import { Figure, FigureRoute, FigureSpec, Figures, TOOL_FIGURES, figureNames, isFigureRoute, plausible, primaryFigure } from './toolFigures';
 
-export type OpenRoute = ToolRoute | 'Home' | 'Settings';
+export type OpenRoute = ToolRoute | 'Home' | 'Settings' | 'Backup';
 
 export type VoiceCommand =
   /** Open a screen; for a tool that takes figures, with what was said for them. */
@@ -41,6 +41,7 @@ export type VoiceCommand =
 export const TOOL_WORDS: Record<OpenRoute, readonly string[]> = {
   Home: ['home', 'home screen', 'main menu', 'start screen'],
   Settings: ['settings', 'setting', 'preferences'],
+  Backup: ['backup', 'back up', 'backups', 'restore', 'back up my phone', 'back up the phone'],
   Calculator: ['calculator', 'calc', 'trade calculator', 'fraction calculator'],
   Reference: ['handbook', 'reference', 'reference tables', 'tables', 'look up tables', 'pipe book'],
   Level: ['level', 'digital level', 'inclinometer', 'angle finder', 'slope'],
