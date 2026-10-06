@@ -308,6 +308,14 @@ Socket and no-hub makeups differ by maker (Charlotte, Spears, Tyler, AB&I…), s
 - Where a sheet gives centre-to-face and socket depth instead of the takeout, the app does the subtraction and shows it.
 - Millimetre sheets are converted. The photo is read and not kept. Needs signal.
 
+**Hands-free: "read this box".** Say **"read this box"** (or "scan the label", "photograph the sheet") and the camera comes up for the job's line, with the mic left open:
+
+- **"Take it"** shoots, once the label or table fills the frame.
+- The read comes back to check on screen, the same as by hand.
+- **"Save"** keeps what is ticked. **"Again"** goes back to the camera. **"Cancel"** closes it.
+- It answers only those words, said on their own. Anything else, including the phone's own voice, is ignored.
+- The job's pipe must be PVC, CPVC or cast iron soil; say it first ("2 inch PVC").
+
 **The fitting library screen** (Logs tab → Fitting library, or say "fitting library") shows every saved takeout by line (PVC SCH 40, CI CISPI 301…):
 
 - Tap a size to change or remove its figure.

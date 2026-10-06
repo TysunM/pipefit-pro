@@ -5,7 +5,7 @@
 // maker's sheet, or sent to the foreman as text. Cut Length reads the same
 // figures (state/fittingLibrary.ts), so a figure changed here is the figure
 // the next cut is worked from.
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Pressable, Share, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
@@ -52,6 +52,16 @@ export function FittingLibraryScreen({ route }: Props) {
   const line = picked && lines.all.includes(picked) ? picked : (lines.all[0] ?? null);
 
   const [reading, setReading] = useState(false);
+  // "Read this box": opened on the job's line with the camera up and the mic listening.
+  const [byVoice, setByVoice] = useState(false);
+  const readAt = route.params?.read;
+  useEffect(() => {
+    if (!readAt) return;
+    if (route.params?.line) setPicked(route.params.line);
+    setByVoice(true);
+    setReading(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [readAt]);
   const [editing, setEditing] = useState<string | null>(null);
   const [editText, setEditText] = useState('');
   const [clearArmed, setClearArmed] = useState(false);
@@ -229,12 +239,16 @@ export function FittingLibraryScreen({ route }: Props) {
       {family ? (
         <FittingSheetReader
           visible={reading}
-          onClose={() => setReading(false)}
+          onClose={() => {
+            setReading(false);
+            setByVoice(false);
+          }}
           family={family}
           line={line}
           lineName={title}
           wall={wallOf(line)}
           sizes={sizes}
+          listen={byVoice}
         />
       ) : null}
     </Screen>

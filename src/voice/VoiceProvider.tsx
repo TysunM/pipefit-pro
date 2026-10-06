@@ -28,6 +28,7 @@ import { canListen, heardWords, listenOn, listenOnce, stopListening } from './li
 import { publishFigures } from './figures';
 import { FigureSpec, Figures, TOOL_FIGURES, isFigureRoute } from './toolFigures';
 import { specPatch, type SpecCommand } from './specs';
+import { LIBRARY_FAMILY } from '../calc/takeoffCatalog';
 
 export type BoltAct = 'done' | 'undo' | 'repeat';
 /** What the bolt-up screen does with a spoken bolt command: what to say back. */
@@ -141,6 +142,14 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
           const h = bolts.current;
           if (!h) return finish(heard, 'Open the bolt-up first.', { tone: 'warn' });
           return finish(heard, h(cmd.act));
+        }
+        case 'readBox': {
+          const { settings: cur } = latest.current;
+          if (!LIBRARY_FAMILY[cur.material])
+            return finish(heard, 'Box labels are read for PVC, CPVC and cast iron no-hub. Set the job pipe first, like "2 inch PVC".', { tone: 'warn' });
+          if (nav.isReady()) nav.navigate('FittingLibrary', { line: `${cur.material}:${cur.wall}`, read: Date.now() });
+          setSheet(null);
+          return say('Camera up.');
         }
         case 'addCut': {
           const h = cutAdder.current;

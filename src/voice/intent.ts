@@ -27,6 +27,7 @@ export type VoiceCommand =
   /** On the bolt-up screen: the bolt asked for is torqued, take the last one back, or say it again. */
   | { kind: 'bolt'; act: 'done' | 'undo' | 'repeat' }
   | { kind: 'addCut' }
+  | { kind: 'readBox' }
   /** The job's pipe: "half inch stainless 40S", "6 inch P22 schedule 80". */
   | ({ kind: 'specs' } & SpecCommand)
   | { kind: 'back' }
@@ -101,6 +102,10 @@ function onlyFillerAndFigures(ws: readonly string[], figureWords: ReadonlySet<st
   return true;
 }
 
+/** “Read this box”: a verb and a thing to read, beside the filler. */
+const READ_VERBS = new Set(['read', 'scan', 'photograph', 'photo', 'shoot']);
+const READ_THINGS = new Set(['box', 'label', 'labels', 'sheet', 'sheets', 'tag', 'carton', 'fitting', 'fittings', 'this', 'that', 'maker', 'makers', 'dimension', 'dimensions']);
+
 /** The words of “add it to the cut list”, beside the filler. */
 const ADD_CUT = new Set(['add', 'save', 'cut', 'list', 'this', 'that', 'one', 'piece']);
 
@@ -123,6 +128,10 @@ export function localIntent(text: string, screen: string | null): VoiceCommand |
   if (screen === 'FlangeBoltUp' && ws.length <= 4) {
     for (const act of ['undo', 'repeat', 'done'] as const) if (sayingOnly(ws, BOLT[act])) return { kind: 'bolt', act };
   }
+
+  // "Read this box", "scan the label", "photograph the sheet": the fitting sheet reader, camera up.
+  if (ws.length <= 8 && ws.some((w) => READ_VERBS.has(w)) && ws.some((w) => READ_THINGS.has(w) && w !== 'this' && w !== 'that') && ws.every((w) => READ_VERBS.has(w) || READ_THINGS.has(w) || FILLER.has(w)))
+    return { kind: 'readBox' };
 
   // On Cut Length or a 3D spool, "add it", "add to the cut list", "save that cut": the cut on screen goes on the list.
   if ((screen === 'CutLength' || screen === 'SpoolBuilder') && ws.length <= 8 && (ws.includes('add') || ws.includes('save')) && ws.every((w) => ADD_CUT.has(w) || FILLER.has(w)))
