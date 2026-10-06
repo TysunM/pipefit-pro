@@ -134,8 +134,8 @@ export function localIntent(text: string, screen: string | null): VoiceCommand |
   if (ws.length <= 8 && ws.some((w) => READ_VERBS.has(w)) && ws.some((w) => READ_THINGS.has(w) && w !== 'this' && w !== 'that') && ws.every((w) => READ_VERBS.has(w) || READ_THINGS.has(w) || FILLER.has(w)))
     return { kind: 'readBox' };
 
-  // On Cut Length or a 3D spool, "add it", "add to the cut list", "save that cut": the cut on screen goes on the list.
-  if ((screen === 'CutLength' || screen === 'SpoolBuilder') && ws.length <= 8 && (ws.includes('add') || ws.includes('save')) && ws.every((w) => ADD_CUT.has(w) || FILLER.has(w)))
+  // On Cut Length, a 3D spool or an iso's cuts, "add it", "add to the cut list", "save that cut": what is on screen goes on the list.
+  if ((screen === 'CutLength' || screen === 'SpoolBuilder' || screen === 'IsoCuts') && ws.length <= 8 && (ws.includes('add') || ws.includes('save')) && ws.every((w) => ADD_CUT.has(w) || FILLER.has(w)))
     return { kind: 'addCut' };
 
   if (ws.length <= 3 && sayingOnly(ws, [['back'], ['go', 'back']])) return { kind: 'back' };

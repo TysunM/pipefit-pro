@@ -202,6 +202,7 @@ describe('the cut list by voice', () => {
 
   test('anywhere else, or with a figure in it, it is not an add', () => {
     expect(localIntent('add it', 'SpoolBuilder')).toEqual({ kind: 'addCut' });
+    expect(localIntent('add to the cut list', 'IsoCuts')).toEqual({ kind: 'addCut' });
     expect(localIntent('add it', 'SimpleOffset')).not.toEqual({ kind: 'addCut' });
     expect(localIntent('add 4 foot', 'CutLength')).not.toEqual({ kind: 'addCut' });
   });

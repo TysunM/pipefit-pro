@@ -39,6 +39,7 @@ import { SpoolBuilderScreen } from '../screens/SpoolBuilderScreen';
 import { OrderSheetScreen } from '../screens/OrderSheetScreen';
 import { IsoSketchScreen } from '../screens/IsoSketchScreen';
 import { IsoDrawScreen } from '../screens/IsoDrawScreen';
+import { IsoCutsScreen } from '../screens/IsoCutsScreen';
 import { CalculatorScreen } from '../screens/CalculatorScreen';
 import { LevelScreen } from '../screens/LevelScreen';
 import { ReferenceScreen } from '../screens/ReferenceScreen';
@@ -131,6 +132,7 @@ export function RootNavigator() {
         <Stack.Screen name="OrderSheet" component={OrderSheetScreen} options={{ title: 'Order sheet' }} />
         <Stack.Screen name="IsoSketch" component={IsoSketchScreen} options={{ title: 'Iso sketch' }} />
         <Stack.Screen name="IsoDraw" component={IsoDrawScreen} options={{ title: 'Sketch' }} />
+        <Stack.Screen name="IsoCuts" component={IsoCutsScreen} options={{ title: 'Cuts off the iso' }} />
         <Stack.Screen name="Reference" component={ReferenceScreen} options={{ title: 'Handbook' }} />
         <Stack.Screen
           name="ReferenceTable"

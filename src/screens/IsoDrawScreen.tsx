@@ -12,7 +12,9 @@ import { FlipLabel, PaperKey } from '../components/sketch/PageControls';
 import { Theme, useTheme } from '../theme/ThemeProvider';
 import { useSketches } from '../state/sketches';
 import { Corner, Flip, ISO_GRID, L3, NO_FLIP, Pt, Viewport, contained, fitViewport, holding, tenth, toPage, turnDegrees, turnOver } from '../calc/iso';
-import { MAX_NOTE, Stroke, getSketch, sketchBounds, sketchToSvg, withFlip, withStrokes } from '../state/sketchStore';
+import { MAX_NOTE, Stroke, getSketch, sketchBounds, sketchToSvg, withDim, withFlip, withStrokes } from '../state/sketchStore';
+import { DimAsk, DimSheet } from '../components/sketch/DimSheet';
+import { useIsoPieces } from '../hooks/useIsoPieces';
 import { esc } from '../print/spoolSvg';
 import { shareSheet } from '../print/share';
 
@@ -22,13 +24,15 @@ const HINT: Record<SketchMode, string> = {
   run: 'Drag to draw a line; it follows the nearest axis. Start near the end of a line to carry on from it.',
   pen: 'Draw freehand: a tie-in box, a valve, a cloud round a problem.',
   note: 'Tap where a word or a measurement goes. Tap a word to change it.',
+  dim: 'Tap a piece of pipe for its centre to centre. Every piece is numbered as it goes on the cut list.',
   move: 'Drag to move the page. Two fingers move, zoom and turn it from any tool; N, E, S and W on the paper turn with it.',
 };
 
-const TOOLS: { value: SketchMode; label: string; icon: 'analytics-outline' | 'create-outline' | 'text-outline' | 'hand-left-outline' }[] = [
+const TOOLS: { value: SketchMode; label: string; icon: 'analytics-outline' | 'create-outline' | 'text-outline' | 'resize-outline' | 'hand-left-outline' }[] = [
   { value: 'run', label: 'Run', icon: 'analytics-outline' },
   { value: 'pen', label: 'Pen', icon: 'create-outline' },
   { value: 'note', label: 'Note', icon: 'text-outline' },
+  { value: 'dim', label: 'Dim', icon: 'resize-outline' },
   { value: 'move', label: 'Move', icon: 'hand-left-outline' },
 ];
 
@@ -63,6 +67,8 @@ export function IsoDrawScreen({ navigation, route }: Props) {
   const [note, setNote] = useState<{ at: Pt; anchor: L3 | null; index: number | undefined } | null>(null);
   const [confirmClear, setConfirmClear] = useState(false);
   const [word, setWord] = useState<string | null>(null);
+  const [ask, setAsk] = useState<DimAsk | null>(null);
+  const iso = useIsoPieces(sketch);
   // Full screen: the paper takes the whole phone. The header, the hints and
   // the buttons under the paper go; the tools and undo sit on the paper.
   const [full, setFull] = useState(false);
@@ -186,7 +192,7 @@ export function IsoDrawScreen({ navigation, route }: Props) {
 
   const share = async () => {
     if (!sketch) return;
-    const html = `<!doctype html><html><head><meta charset="utf-8"><title>${esc(sketch.name)}</title><style>body{margin:0;padding:12px;font-family:Helvetica,Arial,sans-serif}h1{font-size:16px;margin:0 0 8px}svg{max-width:100%;height:auto}</style></head><body><h1>${esc(sketch.name)}${sketch.place ? ' · ' + esc(sketch.place) : ''}</h1>${sketchToSvg(sketch, ISO_GRID, corner, flip)}</body></html>`;
+    const html = `<!doctype html><html><head><meta charset="utf-8"><title>${esc(sketch.name)}</title><style>body{margin:0;padding:12px;font-family:Helvetica,Arial,sans-serif}h1{font-size:16px;margin:0 0 8px}svg{max-width:100%;height:auto}</style></head><body><h1>${esc(sketch.name)}${sketch.place ? ' · ' + esc(sketch.place) : ''}</h1>${sketchToSvg(sketch, ISO_GRID, corner, flip, iso.labels(false).filter((l) => !l.missing))}</body></html>`;
     const r = await shareSheet(html, sketch.name);
     if (!r.ok) setWord(r.why);
   };
@@ -254,6 +260,11 @@ export function IsoDrawScreen({ navigation, route }: Props) {
                 onViewport={setViewport}
                 onStroke={(s) => edit((prev) => [...prev, s])}
                 onNote={(at, anchor, index) => setNote({ at, anchor, index })}
+                pieces={iso.labels(mode === 'dim')}
+                onPiece={(key) => {
+                  const p = iso.reading.pieces.find((x) => x.key === key);
+                  if (p) setAsk({ key, n: p.n, current: iso.dims[key] });
+                }}
               />
             </Animated.View>
           ) : null}
@@ -296,11 +307,24 @@ export function IsoDrawScreen({ navigation, route }: Props) {
             <>
               <GhostButton label="Undo" icon="arrow-undo-outline" style={{ flex: 1 }} onPress={() => edit((prev) => prev.slice(0, -1))} />
               <GhostButton label="Clear" icon="trash-outline" style={{ flex: 1 }} onPress={() => setConfirmClear(true)} />
-              <AccentButton label="Share" icon="share-outline" style={{ flex: 1 }} onPress={() => void share()} />
+              <GhostButton label="Share" icon="share-outline" style={{ flex: 1 }} onPress={() => void share()} />
+              <AccentButton label="Cuts" icon="cut-outline" style={{ flex: 1 }} onPress={() => navigation.navigate('IsoCuts', { id })} />
             </>
           )}
         </View>
       )}
+
+      <DimSheet
+        ask={ask}
+        dimText={iso.dimText}
+        readLength={iso.readLength}
+        onCancel={() => setAsk(null)}
+        onSave={(v) => {
+          const a = ask;
+          setAsk(null);
+          if (a) apply((b) => withDim(b, id, a.key, v, Date.now()));
+        }}
+      />
 
       <NoteSheet
         t={t}

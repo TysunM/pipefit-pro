@@ -210,6 +210,29 @@ export function spoolLegCuts(
   });
 }
 
+/** The pieces of an iso sketch as cuts, marked by the sketch the way a spool's legs are. */
+export function isoPieceCuts(
+  pieces: readonly { n: number; c2c: number; cut: number; ends: string }[],
+  opts: { sketch: string; pipeKey: string; pipe: string },
+): MarkedCut[] {
+  const name = text(opts.sketch, MARK_MAX) || 'Iso';
+  return pieces.map((p) => {
+    const n = `-${p.n}`;
+    return { mark: `${name.slice(0, MARK_MAX - n.length).replace(/[\s-]+$/, '')}${n}`, pipeKey: opts.pipeKey, pipe: opts.pipe, c2c: p.c2c, cut: p.cut, ends: p.ends };
+  });
+}
+
+/**
+ * Marks already cut that would now be cut to another length: the drawing or
+ * its dimensions changed after that pipe came off the saw. putCuts leaves a
+ * cut one alone, so these are said out loud rather than passed over.
+ */
+export function cutDifferently(l: CutLog, cuts: readonly MarkedCut[], project = ''): string[] {
+  return cuts
+    .filter((c) => l.cuts.some((x) => x.done && x.mark === text(c.mark, MARK_MAX) && sameProject(x.project, project) && Math.abs(x.cut - c.cut) > 1 / 64))
+    .map((c) => text(c.mark, MARK_MAX));
+}
+
 /**
  * Put marked cuts on the list. A mark already there and not yet cut is
  * replaced where it stands, so sending a spool again after changing it
