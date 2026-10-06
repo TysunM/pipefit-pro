@@ -33,6 +33,7 @@ import { PressureTestScreen } from '../screens/PressureTestScreen';
 import { ShiftReportScreen } from '../screens/ShiftReportScreen';
 import { FittingLibraryScreen } from '../screens/FittingLibraryScreen';
 import { CutListScreen } from '../screens/CutListScreen';
+import { BackupScreen } from '../screens/BackupScreen';
 import { MeasureScreen } from '../screens/MeasureScreen';
 import { SpoolBuilderScreen } from '../screens/SpoolBuilderScreen';
 import { OrderSheetScreen } from '../screens/OrderSheetScreen';
@@ -122,6 +123,7 @@ export function RootNavigator() {
         <Stack.Screen name="ShiftReport" component={ShiftReportScreen} options={{ title: 'Shift report' }} />
         <Stack.Screen name="FittingLibrary" component={FittingLibraryScreen} options={{ title: 'Fitting library' }} />
         <Stack.Screen name="CutList" component={CutListScreen} options={{ title: 'Cut list' }} />
+        <Stack.Screen name="Backup" component={BackupScreen} options={{ title: 'Backup' }} />
         <Stack.Screen name="Calculator" component={CalculatorScreen} options={{ title: 'Calculator' }} />
         <Stack.Screen name="Level" component={LevelScreen} options={{ title: 'Level' }} />
         <Stack.Screen name="Measure" component={MeasureScreen} options={{ title: 'Measure' }} />

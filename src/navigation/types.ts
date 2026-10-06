@@ -40,6 +40,8 @@ export type RootStackParamList = {
   FittingLibrary: { line?: string; read?: number } | undefined;
   ReferenceTable: { id: string };
   Settings: undefined;
+  /** Everything on the phone to one file, and back. */
+  Backup: undefined;
 };
 
 declare global {

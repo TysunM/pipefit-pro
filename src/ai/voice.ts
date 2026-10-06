@@ -36,6 +36,7 @@ export const SAY_MAX = 400;
 export const VOICE_ROUTES = [
   'Home',
   'Settings',
+  'Backup',
   'Calculator',
   'Level',
   'Measure',
@@ -63,6 +64,7 @@ export type VoiceRoute = (typeof VOICE_ROUTES)[number];
 const ROUTE_WORDS: Record<VoiceRoute, string> = {
   Home: 'the home screen',
   Settings: 'settings: units, fractions, theme, the job number, the fitter name',
+  Backup: 'backup and restore: everything on the phone to one file, and back',
   Calculator: 'trade calculator: feet, inches and fractions',
   Level: 'digital level: lay the phone on a pipe to read slope and fall',
   Measure: 'AR tracing with the camera, and a Bluetooth laser meter',

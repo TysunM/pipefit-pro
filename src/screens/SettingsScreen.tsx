@@ -18,12 +18,17 @@ import { findSize } from '../calc/pipe';
 import { FractionDenominator } from '../calc/format';
 import { fromInches } from '../calc/units';
 import { PERSON_MAX, PROJECT_ID_MAX } from '../state/readSettings';
+import { useNavigation } from '@react-navigation/native';
+import { backupAge, useLastBackup } from '../state/lastBackup';
 
 export function SettingsScreen() {
   const t = useTheme();
   const u = useUnits();
   const { settings, update, reset } = useSettings();
   const ota = useOtaUpdate();
+  const navigation = useNavigation();
+  const lastBackup = useLastBackup();
+  const backup = backupAge(lastBackup.at, Date.now());
   const [otaNote, setOtaNote] = React.useState<string | null>(null);
   const [sheetOpen, setSheetOpen] = React.useState(false);
   const [gapText, setGapText] = React.useState(String(fromInches(settings.defaultGap, settings.unitSystem)));
@@ -43,6 +48,19 @@ export function SettingsScreen() {
 
   return (
     <Screen>
+      <SectionHeader
+        title="Backup"
+        meta={lastBackup.at ? (backup.days === 0 ? 'Backed up today' : `Backed up ${backup.days} day${backup.days === 1 ? '' : 's'} ago`) : 'Never backed up'}
+      />
+      <ControlRow>
+        <GhostButton
+          label={backup.due ? 'Back up this phone now' : 'Back up and restore'}
+          icon={backup.due ? 'warning-outline' : 'cloud-upload-outline'}
+          onPress={() => navigation.navigate('Backup')}
+          style={{ flex: 1 }}
+        />
+      </ControlRow>
+
       <SectionHeader title="Project" meta="Shown on the home screen" />
       <FieldRow>
         <DimensionInput
