@@ -62,6 +62,8 @@ import {
 } from '../state/pressureLog';
 import { CODE_HOLD_MIN, checkTest, codeRule, holdState, prelimPsi, problems, reliefMax, requiredHold } from '../calc/pressureTest';
 import { clockLabel, stopwatch } from '../calc/days';
+import { holdAlerts } from '../calc/holdAlerts';
+import { useHoldAlerts } from '../state/holdAlerts';
 import { ISO_GRID } from '../calc/iso';
 import { shareSheet } from '../print/share';
 import { testRecordHtml } from '../print/testRecord';
@@ -261,6 +263,7 @@ export function PressureTestScreen({ route, navigation }: Props) {
             <GhostButton label="Log reading" icon="add-outline" style={{ flex: 1 }} onPress={reading} />
             <AccentButton label="End the hold" icon="stop-circle-outline" style={{ flex: 1 }} onPress={end} />
           </ControlRow>
+          <HoldAlertLine test={test} now={now} />
         </>
       ) : (
         <ControlRow>
@@ -538,5 +541,40 @@ export function PressureTestScreen({ route, navigation }: Props) {
         }}
       />
     </Screen>
+  );
+}
+
+/** Under a running hold: when the phone will ring for it, or why it will not. */
+function HoldAlertLine({ test, now }: { test: PressureTest; now: number }) {
+  const t = useTheme();
+  const { status, allow } = useHoldAlerts();
+  if (status === 'none') return null;
+  const ahead = holdAlerts([test], now);
+  const at = (k: string) => ahead.find((a) => a.kind === k)?.at;
+  const soon = at('soon');
+  const met = at('met');
+  const over = at('over');
+  const words =
+    requiredHold(test) === null
+      ? 'Type the hold the spec asks for, and the phone rings when it is met.'
+      : status === 'on'
+        ? met
+          ? `The phone rings at ${clockLabel(met)} when the hold is met${soon ? `, and at ${clockLabel(soon)} to get back to the gauge` : ''}, locked or not.`
+          : over
+            ? `Hold met. The phone rings again at ${clockLabel(over)} if it is still running.`
+            : 'Hold met long since. End it so the record shows when.'
+        : status === 'ask'
+          ? 'Allow alerts and the phone rings when the hold is met, even locked in a pocket.'
+          : 'Alerts are off for PipeFit in the phone’s settings, so the hold only buzzes with this screen open.';
+  return (
+    <View style={{ paddingHorizontal: t.layout.screenPadding, marginTop: -t.space.sm, marginBottom: t.space.lg, gap: t.space.sm }}>
+      <View style={{ flexDirection: 'row', gap: t.space.sm, alignItems: 'flex-start' }}>
+        <Ionicons name={status === 'on' ? 'alarm-outline' : 'notifications-off-outline'} size={16} color={status === 'on' ? t.colors.accent : t.colors.warnText} />
+        <Text style={[t.type.caption, { color: status === 'on' ? t.colors.textMuted : t.colors.warnText, flex: 1 }]}>{words}</Text>
+      </View>
+      {status !== 'on' && requiredHold(test) !== null ? (
+        <GhostButton label={status === 'ask' ? 'Allow alerts' : 'Open the phone’s settings'} icon="notifications-outline" onPress={() => void allow()} />
+      ) : null}
+    </View>
   );
 }

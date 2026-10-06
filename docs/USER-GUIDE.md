@@ -1227,7 +1227,14 @@ It also does the arithmetic QC does on the back of the form, as you type: whethe
 2. **Fill in the test**: the package number, what is in it (lines, isos), the code, hydro or pneumatic, the medium, the design and test pressures and temperatures, and the hold the job asks for. The code's minimum hold is used if the job's is shorter.
 3. **Gauges and relief valve**: tag, range and calibration due date for each gauge; the relief valve's tag and set pressure.
 4. **Walk-down**: tick each step before pressure goes on. A pneumatic test has two more — the barricade, and the preliminary check at low pressure.
-5. **Start the hold** when the gauge reads test pressure, typing what it reads. The clock runs from the phone's time, so it is right after the phone has been in a pocket, and the phone buzzes when the hold is met. **Log reading** as you take readings through the hold. **End the hold** with the final reading.
+5. **Start the hold** when the gauge reads test pressure, typing what it reads. The clock runs from the phone's time, so it is right after the phone has been in a pocket, and the phone rings when the hold is met. **Log reading** as you take readings through the hold. **End the hold** with the final reading.
+
+   **The phone rings for the hold, locked or not.** Starting a hold sets alarms the phone keeps itself, so they go off with the app closed and the phone in a pocket:
+   - **5 minutes before** the hold is met, on holds of 15 minutes or more, to get back to the gauge.
+   - **When the hold is met**, with the minutes and the start pressure.
+   - **30 minutes after**, if the hold is still running. A hold never ended puts a wrong time on the record.
+
+   Tap an alert to open the test. The alarms move if you change the start time or the hold minutes, and go when the hold is ended or cleared or the test is deleted. The first hold asks for leave to send alerts. Under the hold it says when the phone will ring, or, if alerts are off, has a button to the phone's settings. Alerts use the alarm volume, not the ringer. The web app has no alarms; it buzzes on the hold's own screen only.
 6. **Result**: passed, failed or open, and what was found. A failed test says where it leaked.
 7. **Sign-off**: type each name, then **Sign** draws the signature on the glass. The record carries it, with the time.
 8. **Share the test record**: the PDF, to the inspector, the GC or the job folder. The isos you ticked under Boundary isos go at the back, one to a page.
