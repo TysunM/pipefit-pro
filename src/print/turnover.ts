@@ -26,6 +26,10 @@ import type { PressureTest } from '../state/pressureLog';
 import { KIND_LABEL, RESULT_LABEL, heldMinutes, isSigned, testName } from '../state/pressureLog';
 import { dayLabel } from '../calc/days';
 import { CSS, SheetTable, table } from './sheet';
+import type { Weld, Welder } from '../state/weldLog';
+import { weldName } from '../state/weldLog';
+import { weldOpenItems, weldTables } from './weldLog';
+import { dayKey } from '../calc/days';
 import { esc } from './spoolSvg';
 
 export type TurnoverInput = {
@@ -43,6 +47,9 @@ export type TurnoverInput = {
   tests: readonly PressureTest[];
   /** Dot spacing the isos are drawn at. */
   grid: number;
+  /** The job's welds, and the roster their stamps are read against. */
+  welds?: readonly Weld[];
+  welders?: readonly Welder[];
 };
 
 export type OpenItem = { what: string; needs: string };
@@ -82,7 +89,7 @@ const retestOf = (t: PressureTest, all: readonly PressureTest[]) => all.find((x)
  * order it gets chased — tests not passed, work not finished, then checks not
  * done, then records nobody signed, then paper not in hand.
  */
-export function openItems(joints: readonly Joint[], book: readonly Heat[], tests: readonly PressureTest[] = []): OpenItem[] {
+export function openItems(joints: readonly Joint[], book: readonly Heat[], tests: readonly PressureTest[] = [], welds: readonly Weld[] = []): OpenItem[] {
   const out: OpenItem[] = [];
   for (const t of tests) {
     if (t.result === 'fail' && !retestOf(t, tests)) out.push({ what: testName(t), needs: 'Pressure test failed; no retest recorded' });
@@ -105,6 +112,17 @@ export function openItems(joints: readonly Joint[], book: readonly Heat[], tests
     if (!u.heat) out.push({ what: `Heat ${u.number}`, needs: `Not in the heat book; no cert on file (${u.joints.join(', ')})` });
     else if (!u.heat.certified) out.push({ what: `Heat ${u.number}`, needs: `MTR not in hand${u.heat.mtr ? ` (filed as ${u.heat.mtr})` : ''} (${u.joints.join(', ')})` });
   }
+  for (const needs of weldOpenItems(welds)) out.push({ what: 'Weld log', needs });
+  // Heats welded in that the joints did not already account for.
+  const counted = new Set(heatsUsed(joints, book).map((u) => normaliseHeat(u.number)));
+  const weldHeats = new Map<string, string[]>();
+  for (const w of welds) for (const h of w.heats) if (!counted.has(normaliseHeat(h))) weldHeats.set(normaliseHeat(h), [...(weldHeats.get(normaliseHeat(h)) ?? []), `weld ${weldName(w)}`]);
+  for (const [h, unsorted] of weldHeats) {
+    const where = [...unsorted].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+    const heat = book.find((x) => normaliseHeat(x.heat) === h);
+    if (!heat) out.push({ what: `Heat ${h}`, needs: `Not in the heat book; no cert on file (${where.join(', ')})` });
+    else if (!heat.certified) out.push({ what: `Heat ${h}`, needs: `MTR not in hand (${where.join(', ')})` });
+  }
   return out;
 }
 
@@ -120,7 +138,8 @@ export function turnoverTotals(i: TurnoverInput): { label: string; value: string
     { label: 'Bolted up', value: `${done} / ${i.joints.length}` },
     { label: 'Re-checked', value: `${settled} / ${done}` },
     { label: 'Heats proved', value: `${trace.proved.length} / ${i.joints.length}` },
-    { label: 'Open items', value: String(openItems(i.joints, i.heats, i.tests).length) },
+    ...(i.welds?.length ? [{ label: 'Welds', value: String(i.welds.length) }] : []),
+    { label: 'Open items', value: String(openItems(i.joints, i.heats, i.tests, i.welds).length) },
   ];
 }
 
@@ -131,7 +150,7 @@ function status(j: Joint): string {
 
 export function turnoverHtml(i: TurnoverInput): string {
   const job = i.job || 'All jobs';
-  const open = openItems(i.joints, i.heats, i.tests);
+  const open = openItems(i.joints, i.heats, i.tests, i.welds);
   const used = heatsUsed(i.joints, i.heats);
   const isos = i.sketches.filter((s) => s.strokes.length > 0);
   const tables: SheetTable[] = [];
@@ -253,6 +272,7 @@ export function turnoverHtml(i: TurnoverInput): string {
 
   const contents = [
     ...(i.tests.length ? [plural(i.tests.length, 'pressure test')] : []),
+    ...(i.welds?.length ? [plural(i.welds.length, 'weld')] : []),
     plural(i.joints.length, 'joint'),
     plural(used.length, 'heat'),
     plural(isos.length, 'iso'),
@@ -274,6 +294,7 @@ export function turnoverHtml(i: TurnoverInput): string {
     '</header>' +
     `<div class="totals">${totals}</div>` +
     tables.map(table).join('') +
+    (i.welds?.length ? `<section class="welds"><h2>Weld log</h2>${weldTables(i.welds, i.welders ?? [], dayKey(Date.now()), (n) => findSize(n).label)}</section>` : '') +
     `<section class="sign"><h2>Sign-off</h2><div class="rows">${sign}</div></section>` +
     `<footer>${esc(FOOTER)}</footer>` +
     drawings +

@@ -57,6 +57,7 @@ export const VOICE_ROUTES = [
   'IsoSketch',
   'FittingLibrary',
   'CutList',
+  'WeldLog',
 ] as const;
 export type VoiceRoute = (typeof VOICE_ROUTES)[number];
 
@@ -85,6 +86,7 @@ const ROUTE_WORDS: Record<VoiceRoute, string> = {
   IsoSketch: 'iso sketch: isometric drawing paper',
   FittingLibrary: "fitting library: the fitter's saved socket and no-hub takeouts, by line",
   CutList: 'cut list: cuts added from Cut Length, grouped by pipe, ticked off at the saw',
+  WeldLog: 'weld log: every weld with its welders, heats and NDE results, the random and tracer x-rays owed, and each welder\'s continuity',
 };
 
 export const TEST_OPS = ['start_hold', 'reading', 'end_hold', 'pass', 'fail'] as const;

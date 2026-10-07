@@ -15,6 +15,7 @@ import { useSketches } from '../state/sketches';
 import { useSpools } from '../state/spools';
 import { useLevels } from '../state/levels';
 import { claimUntagged, sameProject, untagged } from '../state/project';
+import { useWelds, useWelders } from '../state/welds';
 import { JobChips, useJobFilter } from '../components/JobChips';
 import { isDone, isScratch, isSettled, jointFlange, jointProgress, listed, sinceLabel, sortJoints } from '../state/register';
 import { sortSketches } from '../state/sketchStore';
@@ -56,9 +57,11 @@ export function ProjectsScreen({ navigation }: Props) {
   const { book: heatBook } = useHeats();
   const { log: testLog, apply: applyTests } = usePressureTests();
   const { log: cutLog, hydrated: cIn, apply: applyCuts } = useCuts();
+  const { log: weldLog, apply: applyWelds } = useWelds();
+  const { roster } = useWelders();
   const go = (route: ToolRoute) => navigation.navigate(route as never);
 
-  const everything = [...listed(register), ...book.sketches, ...shelf.spools, ...log.readings, ...testLog.tests, ...cutLog.cuts];
+  const everything = [...listed(register), ...book.sketches, ...shelf.spools, ...log.readings, ...testLog.tests, ...cutLog.cuts, ...weldLog.welds];
   const f = useJobFilter(everything);
   const { active, filter, mine } = f;
   const loose = untagged(everything);
@@ -77,8 +80,9 @@ export function ProjectsScreen({ navigation }: Props) {
   // them — joints and spools by mark, readings as they were taken.
   const byName = (a: string, b: string) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
   const tpJoints = [...joints].sort((a, b) => byName(a.tag, b.tag));
-  const tpOpen = openItems(tpJoints, heatBook.heats, tests).length;
-  const tpEmpty = !joints.length && !sketches.length && !spools.length && !readings.length && !tests.length;
+  const tpWelds = mine(weldLog.welds);
+  const tpOpen = openItems(tpJoints, heatBook.heats, tests, tpWelds).length;
+  const tpEmpty = !joints.length && !sketches.length && !spools.length && !readings.length && !tests.length && !tpWelds.length;
   const [tpBusy, setTpBusy] = useState(false);
   const [tpNote, setTpNote] = useState<string | null>(null);
   const shareTurnover = async () => {
@@ -96,6 +100,8 @@ export function ProjectsScreen({ navigation }: Props) {
         spools: [...spools].sort((a, b) => byName(a.name, b.name)),
         tests,
         grid: ISO_GRID,
+        welds: tpWelds,
+        welders: roster.welders,
       }),
       `Turnover package ${f.label || 'all jobs'}`
     );
@@ -111,6 +117,7 @@ export function ProjectsScreen({ navigation }: Props) {
     applyLevels((l) => ({ ...l, readings: claimUntagged(l.readings, active) }));
     applyTests((l) => ({ ...l, tests: claimUntagged(l.tests, active) }));
     applyCuts((l) => ({ ...l, cuts: claimUntagged(l.cuts, active) }));
+    applyWelds((l) => ({ ...l, welds: claimUntagged(l.welds, active) }));
     setClaiming(false);
   };
 

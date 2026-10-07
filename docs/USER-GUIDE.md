@@ -1263,6 +1263,44 @@ It does not work the B31.3 stress-ratio increase for a design temperature above 
 
 ---
 
+## Weld log
+
+**Every weld on the job, the welders who made it, and the NDE the code still asks for.** Logs tab → **Weld log**, or say "weld log".
+
+### Logging welds
+1. **Log a weld.** Line or iso, weld number (the next one on the line is filled in), the day, size, joint (butt, socket, fillet, branch), process and WPS.
+2. **Welders:** tap the stamps from the roster, or type one. A stamp not on the roster, without the process, or lapsed is named under it before you save.
+3. **Heats:** the heat numbers either side. One not in the heat book is named, so the MTR gets filed.
+4. **NDE:** the line class's percentage (Visual, 5%, 10%, 20%, 100%) and method (RT, UT, MT, PT). The last weld's values carry over.
+5. **Log weld 14.** It saves and the form stays up on 15, so a run of welds goes in one after another.
+
+The Welds page shows today's welds and **diameter-inches** (the sizes added up), the job total, and every weld by line with its state: Welded, Picked for NDE, Accepted or Repair.
+
+### NDE: what B31.3 still asks for
+The NDE page works it out from the log, by **lot**: one welder's butt welds at one percentage and method. A weld two welders made is in both lots, and one shot serves both.
+- **Random:** 5% means 1 in 20 of each welder's butt welds, rounded up. The welds to shoot are **starred** as a suggestion; tap any weld to pick it.
+- **Tracers after a reject** (B31.3 341.3.4): two more of that welder's welds. If a tracer fails, two more for it. If one of those fails, **every weld in the lot**.
+- **Waiting on results:** **Accept** or **Reject** each picked weld. Report numbers go in on the weld itself.
+- **Repairs:** a rejected weld waits under Repairs. Tap **Repaired** and it becomes 14R1, picked for the same method again.
+- **Send the NDE request:** every picked weld, by method, as text for the NDE crew.
+- Socket and fillet welds are not in the random sample, as in B31.3. Pick them from the weld itself (**Pick for …, by the spec**) when the job calls for it.
+
+### Welders and continuity
+ASME IX QW-322: a welder's qualification on a process **lapses after six months without welding it**.
+- **Add a welder:** stamp, name, the processes qualified, and the day continuity was last shown (the test, or the last signed continuity record).
+- Every weld logged with that process carries continuity on. Each welder shows the date it holds to; red when lapsed, amber inside 30 days. A banner on every page names who is running out.
+- **The phone alerts** 14 days before a lapse and on the last good day, at 7 am, with the app closed. Tap it to open the roster. Alarms need the 1.3.0 APK.
+- Each welder also shows welds made, diameter-inches, and how many of their shot welds were rejected, with the rate.
+
+### On paper
+- **Print / PDF** on the Welds page: every weld by line, with stamps, heats and every examination; the welder table with continuity; the sampling by lot; and anything still owed at the top.
+- The **turnover package** (Projects) now carries the job's weld log. What the welds still owe goes in its open items, and a heat welded in with no cert on file shows as one too.
+
+### Where people go wrong
+- **The job spec governs.** The app follows B31.3 normal fluid service at the percentage you set. Category M, severe cyclic, B31.1 and owner specs can ask for more: set the line's percentage to match.
+- **Stamps typed two ways.** "W-12" and "W12" are the same welder here, but keep the roster tidy so the PDF reads right.
+- **A weld deleted is gone from the sampling.** Delete only a weld logged by mistake.
+
 ## Shift report
 
 The day, written up once at the end of it: Logs → **Shift report**.

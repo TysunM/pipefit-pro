@@ -36,6 +36,8 @@ export type RootStackParamList = {
   Reference: undefined;
   /** The cut list: cuts added from Cut Length, by pipe, for the saw. */
   CutList: undefined;
+  WeldLog: { tab?: 'welds' | 'nde' | 'welders' } | undefined;
+  Weld: { id?: string; line?: string };
   /** Saved socket and no-hub takeouts; a line to open on, or the job's. */
   /** `read`: open the sheet reader at once, listening for “take it”; a time, so asking twice opens it twice. */
   FittingLibrary: { line?: string; read?: number } | undefined;
