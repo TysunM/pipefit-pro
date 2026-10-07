@@ -1276,6 +1276,16 @@ It does not work the B31.3 stress-ratio increase for a design temperature above 
 
 The Welds page shows today's welds and **diameter-inches** (the sizes added up), the job total, and every weld by line with its state: Welded, Picked for NDE, Accepted or Repair.
 
+### The weld map
+Welds go on the iso the way they go on a paper weld map.
+- **On the sketch, tap Weld**, then tap the pipe where each weld goes. Each tap drops the next number on the line, using the iso's name as the line. The weld goes in the log as **Not welded yet**, with the size, process, WPS and NDE carried over from your last weld.
+- **Tap a weld on the map** to open it: stamps, heats, the rest.
+- **Welded today** on a planned weld ticks it off with the day and the stamps. Only made welds count: planned ones add no diameter-inches and are in no NDE lot.
+- The markers are coloured by state: grey planned, orange welded, blue picked for NDE, green accepted, red repair. The line headers read "12 of 18 welded".
+- **Place on the iso / Move on the iso** on a weld opens its sketch with the Weld tool ready; the next tap puts it there. **Take it off the map** leaves it in the log.
+- A weld is pinned to the point on the pipe, not to a piece. It stays put when a branch is added or a line is redrawn round it.
+- **Share** on the sketch prints the map with every weld numbered. The turnover package's isos carry them too.
+
 ### NDE: what B31.3 still asks for
 The NDE page works it out from the log, by **lot**: one welder's butt welds at one percentage and method. A weld two welders made is in both lots, and one shot serves both.
 - **Random:** 5% means 1 in 20 of each welder's butt welds, rounded up. The welds to shoot are **starred** as a suggestion; tap any weld to pick it.

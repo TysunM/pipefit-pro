@@ -25,18 +25,26 @@ import {
 import { Placed, Stroke, dimSpot, flipPlaced, place, runNodes, storedStroke } from '../../state/sketchStore';
 import { onEdge, startsTwoFingers } from '../../calc/palm';
 
-export type SketchMode = 'run' | 'pen' | 'note' | 'dim' | 'move';
+export type SketchMode = 'run' | 'pen' | 'note' | 'dim' | 'weld' | 'move';
 
-/** A piece of pipe as the paper shows it: its ends on the page as drawn, and what is written by it. */
-export type PieceLabel = { key: string; a: Pt; b: Pt; text: string; missing: boolean };
+/** A piece of pipe as the paper shows it: its ends on the page as drawn and in the world, and what is written by it. */
+export type PieceLabel = { key: string; a: Pt; b: Pt; from: L3; to: L3; text: string; missing: boolean };
 
-/** How far a point is from the segment a–b. */
-function offSegment(p: Pt, a: Pt, b: Pt): number {
+/** A weld on the map: where it is on the page as drawn, its number, and the colour of its state. */
+export type WeldMark = { id: string; at: Pt; text: string; ink: string };
+
+/** How far along the segment a–b the point nearest p is, 0 to 1. */
+function along(p: Pt, a: Pt, b: Pt): number {
   const dx = b[0] - a[0];
   const dy = b[1] - a[1];
   const l2 = dx * dx + dy * dy;
-  const k = l2 ? Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / l2)) : 0;
-  return Math.hypot(p[0] - a[0] - k * dx, p[1] - a[1] - k * dy);
+  return l2 ? Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / l2)) : 0;
+}
+
+/** How far a point is from the segment a–b. */
+function offSegment(p: Pt, a: Pt, b: Pt): number {
+  const k = along(p, a, b);
+  return Math.hypot(p[0] - a[0] - k * (b[0] - a[0]), p[1] - a[1] - k * (b[1] - a[1]));
 }
 
 /** How close a finger has to land, on screen, to pick up a run where it was left. */
@@ -92,6 +100,9 @@ export function IsoCanvas({
   onNote,
   pieces = [],
   onPiece,
+  welds = [],
+  onWeld,
+  onPlace,
 }: {
   width: number;
   height: number;
@@ -109,6 +120,12 @@ export function IsoCanvas({
   pieces?: readonly PieceLabel[];
   /** A piece tapped with the Dim tool. */
   onPiece?: (key: string) => void;
+  /** The welds on this iso, drawn whatever the tool. */
+  welds?: readonly WeldMark[];
+  /** A weld tapped with the Weld tool. */
+  onWeld?: (id: string) => void;
+  /** A pipe tapped with the Weld tool, where there is no weld: the world point under the finger. */
+  onPlace?: (at: [number, number, number]) => void;
 }) {
   const t = useTheme();
   const g = ISO_GRID;
@@ -116,8 +133,8 @@ export function IsoCanvas({
 
   // The responder is made once and reads what it needs through refs, so a
   // change of tool or of the window never leaves it holding a stale closure.
-  const live = useRef({ mode, strokes, corner, flip, viewport, onViewport, onStroke, onNote, pieces, onPiece });
-  live.current = { mode, strokes, corner, flip, viewport, onViewport, onStroke, onNote, pieces, onPiece };
+  const live = useRef({ mode, strokes, corner, flip, viewport, onViewport, onStroke, onNote, pieces, onPiece, welds, onWeld, onPlace });
+  live.current = { mode, strokes, corner, flip, viewport, onViewport, onStroke, onNote, pieces, onPiece, welds, onWeld, onPlace };
 
   /**
    * The drawn page point under a screen point. On a turned sheet the finger
@@ -326,6 +343,34 @@ export function IsoCanvas({
               const base: Pt = anchor ? toScreen(anchor, c, g) : [0, 0];
               commit(storedStroke({ kind: 'pen', pts: pts.map((q) => [q[0] - base[0], q[1] - base[1]] as Pt), anchor }));
             }
+          } else if (m === 'weld' && !moved.current) {
+            // A weld under the finger opens; otherwise a new one goes on the pipe there.
+            let hitWeld: string | null = null;
+            let near = 26 / v.scale;
+            for (const w of live.current.welds) {
+              const d = distance(p, w.at);
+              if (d < near) {
+                near = d;
+                hitWeld = w.id;
+              }
+            }
+            if (hitWeld) live.current.onWeld?.(hitWeld);
+            else {
+              let best: PieceLabel | null = null;
+              let bd = 28 / v.scale;
+              for (const pc of live.current.pieces) {
+                const d = offSegment(p, pc.a, pc.b);
+                if (d < bd) {
+                  bd = d;
+                  best = pc;
+                }
+              }
+              if (best) {
+                const k = along(p, best.a, best.b);
+                const w3 = [0, 1, 2].map((i) => best!.from[i]! + k * (best!.to[i]! - best!.from[i]!)) as [number, number, number];
+                live.current.onPlace?.(w3);
+              }
+            }
           } else if (m === 'dim' && !moved.current) {
             // The piece under the finger, by its line on the page, near enough to mean it.
             let hit: string | null = null;
@@ -494,6 +539,8 @@ export function IsoCanvas({
           ? 'Iso paper. Tap to place a note.'
           : mode === 'dim'
             ? 'Iso paper. Tap a piece of pipe to give its dimension.'
+            : mode === 'weld'
+              ? 'Iso paper. Tap a pipe to put a weld on it, or a weld to open it.'
           : 'Iso paper. Drag to move the page. Two fingers turn it.';
 
   return (
@@ -543,6 +590,31 @@ export function IsoCanvas({
                 </SvgText>
                 <SvgText {...shared} fill={pc.missing ? c.warnText : c.data}>
                   {pc.text}
+                </SvgText>
+              </React.Fragment>
+            );
+          })}
+          {welds.map((w) => {
+            const [x, y] = flipPt(w.at, flip);
+            const lx = x + 9 / s;
+            const ly = y - 9 / s;
+            const shared = {
+              x: lx,
+              y: ly,
+              transform: `rotate(${-deg} ${x} ${y})`,
+              fontFamily: t.font.sansMedium,
+              fontSize: 12 / s,
+              ...(t.fontsLoaded ? {} : { fontWeight: '700' as const }),
+              pointerEvents: 'none' as const,
+            };
+            return (
+              <React.Fragment key={`weld-${w.id}`}>
+                <Circle cx={x} cy={y} r={5 / s} fill={w.ink} stroke={c.well} strokeWidth={2 / s} />
+                <SvgText {...shared} fill={c.well} stroke={c.well} strokeWidth={4 / s} strokeLinejoin="round">
+                  {w.text}
+                </SvgText>
+                <SvgText {...shared} fill={w.ink}>
+                  {w.text}
                 </SvgText>
               </React.Fragment>
             );

@@ -47,7 +47,8 @@ const initial = (r: ExamReason) => r === 'random' || r === 'spec' || r === 'lot'
 export function lotsOf(welds: readonly Weld[]): Lot[] {
   const by = new Map<string, Lot>();
   for (const w of welds) {
-    if (w.type !== 'BW' || w.pct <= 0) continue;
+    // Only what is made can be shot: a weld planned on the map is in no lot yet.
+    if (w.type !== 'BW' || w.pct <= 0 || !w.day) continue;
     for (const s of w.welders) {
       const key = `${stampKey(s)}|${w.pct}|${w.method}`;
       const lot = by.get(key) ?? { key, stamp: s.toUpperCase(), pct: w.pct, method: w.method, welds: [] };

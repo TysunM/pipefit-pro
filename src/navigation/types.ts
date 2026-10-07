@@ -31,7 +31,7 @@ export type RootStackParamList = {
   /** The sketch book: every iso drawn on the phone. */
   IsoSketch: undefined;
   /** One sketch, open to draw on. */
-  IsoDraw: { id: string };
+  IsoDraw: { id: string; place?: string };
   IsoCuts: { id: string };
   Reference: undefined;
   /** The cut list: cuts added from Cut Length, by pipe, for the saw. */

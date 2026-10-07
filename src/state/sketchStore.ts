@@ -448,6 +448,9 @@ export function dimSpot(a: Pt, b: Pt, off: number): Pt {
 /** A dimension on the page: the piece's two ends as drawn, and what is written by it. */
 export type DimLabel = { a: Pt; b: Pt; text: string };
 
+/** A weld on the page as drawn, and its number. */
+export type WeldLabel = { at: Pt; text: string };
+
 // ------------------------------------------------------------------ export
 
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -457,7 +460,7 @@ const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replac
  * from the corner it was being looked at. Framed to what was drawn plus a
  * margin, so a small sketch does not print as a corner of a blank page.
  */
-export function sketchToSvg(sketch: SavedSketch, grid: number, c: Corner = 'SW', f: Flip = sketch.flip ?? NO_FLIP, dims: readonly DimLabel[] = []): string {
+export function sketchToSvg(sketch: SavedSketch, grid: number, c: Corner = 'SW', f: Flip = sketch.flip ?? NO_FLIP, dims: readonly DimLabel[] = [], welds: readonly WeldLabel[] = []): string {
   const b = sketchBounds(sketch.strokes, c, grid, f) ?? { minX: 0, minY: 0, maxX: grid * 10, maxY: grid * 10 };
   const m = grid * 2;
   const x0 = Math.floor((b.minX - m) / grid) * grid;
@@ -483,6 +486,14 @@ export function sketchToSvg(sketch: SavedSketch, grid: number, c: Corner = 'SW',
       return `<text x="${x}" y="${y + 4}" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="12" font-weight="700" fill="#0a4fa8" stroke="#fff" stroke-width="3" paint-order="stroke">${esc(d.text)}</text>`;
     })
     .join('\n');
+  // The weld map: a dot on the pipe and its number boxed beside it, the way a weld map marks them.
+  const weldMarks = welds
+    .map((w) => {
+      const [x, y] = flipPt(w.at, f);
+      const tw = 8 + w.text.length * 6.6;
+      return `<circle cx="${x}" cy="${y}" r="3.2" fill="#111"/><rect x="${x + 6}" y="${y - 19}" width="${tw}" height="14" fill="#fff" stroke="#111" stroke-width="1"/><text x="${x + 6 + tw / 2}" y="${y - 8.5}" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="10.5" font-weight="700" fill="#111">${esc(w.text)}</text>`;
+    })
+    .join('\n');
   // The compass: north as it lies on this page.
   const n = flipPt(toScreen([0, 1, 0], c, 1), f);
   const cx = x0 + w - grid * 1.6;
@@ -502,6 +513,7 @@ export function sketchToSvg(sketch: SavedSketch, grid: number, c: Corner = 'SW',
 <rect x="${x0}" y="${y0}" width="${w}" height="${h}" fill="url(#iso)"/>
 ${body}
 ${figures}
+${weldMarks}
 ${compass}
 ${stamp}
 </svg>`;

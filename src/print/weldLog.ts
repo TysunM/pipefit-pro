@@ -27,7 +27,7 @@ export function weldTables(welds: readonly Weld[], welders: readonly Welder[], t
         .sort((a, b) => a.number.localeCompare(b.number, undefined, { numeric: true }))
         .map((w) => [
           weldName(w),
-          usDate(w.day),
+          w.day ? usDate(w.day) : 'planned',
           w.nps ? size(w.nps) : '—',
           w.type,
           [w.process, w.wps].filter(Boolean).join(' / '),

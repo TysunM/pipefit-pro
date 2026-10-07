@@ -257,3 +257,46 @@ test('the printed weld log leads with what is owed and escapes what was typed', 
   expect(html).toContain('not on roster');
   expect(html).not.toContain('<1>');
 });
+
+describe('the weld map', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const W = require('../state/weldLog') as typeof import('../state/weldLog');
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { sketchToSvg, newSketch, emptyBook } = require('../state/sketchStore') as typeof import('../state/sketchStore');
+
+  test('a weld planned on the map has no day, is in no lot, and adds no inches until it is made', () => {
+    let l = logOf(2);
+    const r = addWeld(l, base('3', { day: '', welders: [], sketchId: 'sk1', mapAt: [1.25, 0, 0] }), T);
+    expect(r.ok).toBe(true);
+    l = r.log;
+    const p = byNo(l, '3');
+    expect(weldState(p)).toBe('planned');
+    expect(diameterInches(l.welds)).toBe(4);
+    expect(lotsOf(l.welds)[0]!.welds).toHaveLength(2);
+    // Stored and read back as planned, on the map.
+    expect(parseWelds(serialiseWelds(l)).welds.find((w) => w.number === '3')).toMatchObject({ day: '', mapAt: [1.25, 0, 0], sketchId: 'sk1' });
+    l = W.markWelded(l, p.id, '2026-10-08', ['w-07'], T + 5);
+    expect(byNo(l, '3')).toMatchObject({ day: '2026-10-08', welders: ['W-07'] });
+    expect(weldState(byNo(l, '3'))).toBe('welded');
+    expect(diameterInches(l.welds)).toBe(6);
+  });
+
+  test('placed, moved and taken off; a damaged point is no point', () => {
+    let l = logOf(1);
+    const id = l.welds[0]!.id;
+    l = W.placeWeld(l, id, 'sk1', [2.33333, 1, 0], T);
+    expect(l.welds[0]).toMatchObject({ sketchId: 'sk1', mapAt: [2.333, 1, 0] });
+    expect(W.weldsOn(l.welds, 'sk1')).toHaveLength(1);
+    l = W.placeWeld(l, id, 'sk1', null, T);
+    expect(l.welds[0]!.mapAt).toBeNull();
+    expect(W.weldsOn(l.welds, 'sk1')).toHaveLength(0);
+    expect(W.validWeld({ ...l.welds[0], mapAt: [1, 'x', 0] })!.mapAt).toBeNull();
+  });
+
+  test('the shared iso marks each weld with its number', () => {
+    const s = newSketch(emptyBook(), T);
+    const svg = sketchToSvg(s, 20, 'SW', undefined, [], [{ at: [10, -5], text: '14R1' }]);
+    expect(svg).toContain('>14R1</text>');
+    expect(svg).toContain('<circle cx="10" cy="-5" r="3.2"');
+  });
+});

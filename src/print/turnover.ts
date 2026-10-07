@@ -30,6 +30,7 @@ import type { Weld, Welder } from '../state/weldLog';
 import { weldName } from '../state/weldLog';
 import { weldOpenItems, weldTables } from './weldLog';
 import { dayKey } from '../calc/days';
+import { toScreen } from '../calc/iso';
 import { esc } from './spoolSvg';
 
 export type TurnoverInput = {
@@ -262,7 +263,7 @@ export function turnoverHtml(i: TurnoverInput): string {
     .map(
       (s, n) =>
         `<section class="iso"><h2>Iso ${n + 1} of ${isos.length}: ${esc(s.name)}${s.place ? ` · ${esc(s.place)}` : ''}</h2>` +
-        `<p class="note">Last changed ${esc(day(s.updatedAt))}</p><div class="frame">${sketchToSvg(s, i.grid)}</div></section>`
+        `<p class="note">Last changed ${esc(day(s.updatedAt))}</p><div class="frame">${sketchToSvg(s, i.grid, 'SW', undefined, [], (i.welds ?? []).filter((w) => w.sketchId === s.id && w.mapAt).map((w) => ({ at: toScreen(w.mapAt!, 'SW', i.grid), text: weldName(w) })))}</div></section>`
     )
     .join('');
 
