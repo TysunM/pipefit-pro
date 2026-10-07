@@ -91,7 +91,7 @@ The job chips pick what the page shows: the active job, another job, All jobs, o
 
 ## The skills passport
 
-**Logs → Skills passport.** What you can do, proved two ways, and yours to carry from job to job.
+**Edu → Skills passport.** What you can do, proved two ways, and yours to carry from job to job.
 
 - **Records.** The work saved on this phone counts toward the skill it shows: every joint bolted up to pattern, every hydro held and signed, every iso drawn, every cut listed, every heat entered. Nothing is typed twice; the passport reads the records.
 - **Sign-offs.** Tap a skill, put in the name of whoever watched it done, their role, a note if you like, and hand them the phone to sign. A skill with a sign-off stands as **Signed off**, whatever the count.
@@ -103,7 +103,7 @@ The job chips pick what the page shows: the active job, another job, All jobs, o
 
 ## Site orientation
 
-**Logs → Orientation.** The course a new hire takes before the gate, on the phone, in English or Spanish. It is plug and play for any company.
+**Edu → Orientation.** The course a new hire takes before the gate, on the phone, in English or Spanish. It is plug and play for any company.
 
 - **Nine modules are built in** and work with no signal: your first day on site, PPE, working at height, lockout/tagout and stored energy, hot work and fire, confined spaces and excavations, chemicals and the SDS, hands, tools, lifting and rigging, and heat, cold, weather and fatigue. They say general practice as OSHA and the trade hold it. **Your site's rules come first**, and the first module says so. Tap the eye to drop a module your site does not need.
 - **The company's own rules go beside them.** **Add the company's rules**: a title, then paste or type the text, or **Read a page with the camera** to lift it off the printed sheet (the reading is done on the phone). One module is one subject. Claude builds the course and the questions from exactly those words, adding nothing and dropping nothing, and keeps it on the phone, so it is built once per module per language.

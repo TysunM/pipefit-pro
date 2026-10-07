@@ -228,6 +228,106 @@ const art: Partial<Record<ToolRoute, (k: Ink) => React.ReactNode>> = {
     </G>
   ),
 
+  // A pipe with a weld at the joint, and the arc still going.
+  WeldLog: (k) => (
+    <G fill="none" strokeLinecap="round" strokeLinejoin="round">
+      <Path d="M6 26 H74 M6 44 H74" stroke={k.line} strokeWidth={2.4} />
+      <Ellipse cx={6} cy={35} rx={3} ry={9} stroke={k.line} strokeWidth={2} />
+      <Ellipse cx={74} cy={35} rx={3} ry={9} stroke={k.line} strokeWidth={2} />
+      <Path d="M38 26 q2 -2 4 0 q2 2 4 0 M38 44 q2 2 4 0 q2 -2 4 0" stroke={k.accent} strokeWidth={2.2} />
+      <Line x1={42} y1={27} x2={42} y2={43} stroke={k.accent} strokeWidth={2} strokeDasharray="2.5 2.5" />
+      <Path d="M42 24 L46 12 M42 24 L36 14 M42 24 L50 18" stroke={k.accent} strokeWidth={2} />
+      <Rect x={48} y={50} width={24} height={11} rx={2} stroke={k.line} strokeWidth={1.8} />
+      <SvgText x={60} y={58.3} fill={k.line} stroke="none" fontSize={7} fontWeight={k.bold} fontFamily={k.font} textAnchor="middle">
+        W-14
+      </SvgText>
+    </G>
+  ),
+
+  // A test gauge with its calibration sticker, the date to be read off it.
+  Calibration: (k) => (
+    <G fill="none" strokeLinecap="round" strokeLinejoin="round">
+      <Circle cx={30} cy={30} r={22} stroke={k.line} strokeWidth={2.4} />
+      <Circle cx={30} cy={30} r={17} stroke={k.soft} strokeWidth={1.2} />
+      {[-150, -120, -90, -60, -30, 0, 30].map((deg) => {
+        const r = (deg * Math.PI) / 180;
+        return <Line key={deg} x1={30 + 14 * Math.cos(r)} y1={30 + 14 * Math.sin(r)} x2={30 + 17 * Math.cos(r)} y2={30 + 17 * Math.sin(r)} stroke={k.line} strokeWidth={1.6} />;
+      })}
+      <Line x1={30} y1={30} x2={40} y2={19} stroke={k.accent} strokeWidth={2.4} />
+      <Circle cx={30} cy={30} r={2.2} fill={k.accent} />
+      <Path d="M30 52 V58 M22 58 H38" stroke={k.line} strokeWidth={2.2} />
+      <Path d="M50 30 L60 24 H76 V42 H60 Z" fill={k.plate} stroke={k.accent} strokeWidth={2.2} />
+      <SvgText x={67} y={36} fill={k.accent} stroke="none" fontSize={8} fontWeight={k.bold} fontFamily={k.font} textAnchor="middle">
+        CAL
+      </SvgText>
+    </G>
+  ),
+
+  // The passport: a card with the holder on it, and the seal of a sign-off.
+  Passport: (k) => (
+    <G fill="none" strokeLinecap="round" strokeLinejoin="round">
+      <Rect x={10} y={10} width={60} height={44} rx={4} stroke={k.line} strokeWidth={2.4} />
+      <Rect x={17} y={18} width={15} height={17} rx={2} stroke={k.line} strokeWidth={1.8} />
+      <Circle cx={24.5} cy={24.5} r={3} stroke={k.line} strokeWidth={1.6} />
+      <Path d="M19 33 Q24.5 27 30 33" stroke={k.line} strokeWidth={1.6} />
+      <Line x1={38} y1={20} x2={62} y2={20} stroke={k.line} strokeWidth={2} />
+      <Line x1={38} y1={27} x2={56} y2={27} stroke={k.soft} strokeWidth={1.6} />
+      <Line x1={38} y1={33} x2={58} y2={33} stroke={k.soft} strokeWidth={1.6} />
+      <Path d="M17 46 C 21 40, 25 50, 29 44 S 36 42, 42 46" stroke={k.line} strokeWidth={1.8} />
+      <Circle cx={60} cy={46} r={10} fill={k.plate} stroke={k.accent} strokeWidth={2.4} />
+      <Path d="M55.5 46 L58.8 49.3 L65 43" stroke={k.accent} strokeWidth={2.4} />
+    </G>
+  ),
+
+  // A hard hat set down on the rules: what is learned before the gate.
+  Orientation: (k) => (
+    <G fill="none" strokeLinecap="round" strokeLinejoin="round">
+      <Path d="M20 30 H60 L68 38 V60 H20 Z" stroke={k.line} strokeWidth={2.4} />
+      <Line x1={27} y1={42} x2={53} y2={42} stroke={k.soft} strokeWidth={1.6} />
+      <Line x1={27} y1={48} x2={61} y2={48} stroke={k.soft} strokeWidth={1.6} />
+      <Path d="M27 54 l3 3 L36 51" stroke={k.accent} strokeWidth={2.2} />
+      <Path d="M26 26 a14 12 0 0 1 28 0" stroke={k.accent} strokeWidth={2.6} />
+      <Path d="M22 26 H58" stroke={k.accent} strokeWidth={2.6} />
+      <Path d="M40 14 V20" stroke={k.accent} strokeWidth={2} />
+    </G>
+  ),
+
+  // A socket elbow with its takeout dimensioned: the figure the library keeps.
+  FittingLibrary: (k) => (
+    <G fill="none" strokeLinecap="round" strokeLinejoin="round">
+      <Path d="M8 22 H34 A14 14 0 0 1 48 36 V60" stroke={k.line} strokeWidth={2.4} />
+      <Path d="M8 40 H34 A-4 -4 0 0 1 30 36 V60" stroke={k.line} strokeWidth={2.4} />
+      <Path d="M8 22 V40 M30 60 H48" stroke={k.line} strokeWidth={2.4} />
+      <Rect x={8} y={18} width={6} height={26} rx={1} fill={k.plate} stroke={k.line} strokeWidth={2} />
+      <Rect x={26} y={56} width={26} height={6} rx={1} fill={k.plate} stroke={k.line} strokeWidth={2} />
+      <Line x1={56} y1={30} x2={56} y2={59} stroke={k.accent} strokeWidth={2} />
+      <Path d="M53 33 L56 30 L59 33 M53 56 L56 59 L59 56" stroke={k.accent} strokeWidth={2} />
+      <Line x1={48} y1={30} x2={62} y2={30} stroke={k.soft} strokeWidth={1.4} />
+      <SvgText x={68} y={47} fill={k.accent} stroke="none" fontSize={7.5} fontWeight={k.bold} fontFamily={k.font} textAnchor="middle">
+        T/O
+      </SvgText>
+    </G>
+  ),
+
+  // The cut list: the marks ticked off, and the cut itself on the stick.
+  CutList: (k) => (
+    <G fill="none" strokeLinecap="round" strokeLinejoin="round">
+      <Path d="M20 4 H45 L55 14 V38 H20 Z" stroke={k.line} strokeWidth={2.4} />
+      <Path d="M45 4 V14 H55" stroke={k.line} strokeWidth={2} />
+      {[16, 25].map((y, i) => (
+        <G key={y}>
+          <Rect x={25} y={y - 3.5} width={7} height={7} rx={1.5} stroke={k.line} strokeWidth={1.6} />
+          <Line x1={36} y1={y} x2={i === 1 ? 44 : 49} y2={y} stroke={k.line} strokeWidth={1.8} />
+          {i === 0 ? <Path d={`M26.6 ${y} L28.3 ${y + 1.8} L31 ${y - 1.9}`} stroke={k.accent} strokeWidth={1.6} /> : null}
+        </G>
+      ))}
+      <Path d="M8 46 H72 M8 58 H72" stroke={k.line} strokeWidth={2.4} />
+      <Ellipse cx={8} cy={52} rx={2.5} ry={6} stroke={k.line} strokeWidth={2} />
+      <Ellipse cx={72} cy={52} rx={2.5} ry={6} stroke={k.line} strokeWidth={2} />
+      <Line x1={46} y1={42} x2={46} y2={62} stroke={k.accent} strokeWidth={2.4} strokeDasharray="3 2.5" />
+    </G>
+  ),
+
   IsoSketch: (k) => {
     // Iso paper: two families of lines at thirty degrees, cut to the sheet.
     const t30 = Math.tan(Math.PI / 6);

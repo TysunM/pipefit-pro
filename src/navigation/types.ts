@@ -1,7 +1,7 @@
 export type RootStackParamList = {
   Home: undefined;
   /** The Tools or Logs tab — see navigation/groups.ts. */
-  Group: { id: 'tools' | 'logs' };
+  Group: { id: 'tools' | 'logs' | 'edu' };
   /** Everything saved on the phone, one card per kind. */
   Projects: undefined;
   SimpleOffset: undefined;

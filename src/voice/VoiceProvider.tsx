@@ -84,9 +84,10 @@ function figuresSaid(route: string, f: Figures): string {
 /** Go to a screen, and hand it any figures said for it. Returns the screen's reason if it refused them. */
 function openWith(route: string, figures?: Figures): string | undefined {
   if (!nav.isReady()) return undefined;
-  // The Tools and Logs tabs are one screen, shown with either set of tools.
-  if (route === 'Tools' || route === 'Logs') {
-    nav.navigate('Group', { id: route === 'Tools' ? 'tools' : 'logs' });
+  // The Tools, Logs and Edu tabs are one screen, shown with that tab's tools.
+  const tab = { Tools: 'tools', Logs: 'logs', Edu: 'edu' } as const;
+  if (route in tab) {
+    nav.navigate('Group', { id: tab[route as keyof typeof tab] });
     return undefined;
   }
   if (nav.getCurrentRoute()?.name !== route) nav.navigate(route as never);

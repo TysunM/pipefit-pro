@@ -3,13 +3,14 @@ import type { RootStackParamList } from './types';
 
 // What each tab holds
 // -------------------
-// Five tabs across the foot: Home, Projects, Tools, Logs and the Calculator.
+// Six tabs across the foot: Home, Projects, Tools, Logs, the Calculator and Edu.
 //
 //   Home       the job card and the tools this man used last.
 //   Projects   everything saved: bolt-ups, isos, spools, level readings.
 //   Tools      the instruments he works with, and every bend and offset.
 //   Logs       the books he keeps and looks things up in.
 //   Calculator the trade calculator, straight to the keys.
+//   Edu        what a new hire learns and proves: orientation and the passport.
 //
 // This file is the only place that says which tool sits where. The tab
 // screens, the home screen and groups.test.ts all read it, and the test holds
@@ -91,7 +92,7 @@ const pick = (routes: ToolRoute[]): Tool[] => routes.map((r) => tool(r) as Tool)
 export type SectionSize = 'big' | 'wide' | 'small';
 export type Section = { title: string; size: SectionSize; tools: Tool[] };
 
-export type GroupId = 'tools' | 'logs';
+export type GroupId = 'tools' | 'logs' | 'edu';
 export type Group = { id: GroupId; title: string; subtitle: string; sections: Section[] };
 
 /** What the Tools and Logs tabs hold. */
@@ -112,12 +113,17 @@ export const GROUPS: Group[] = [
   {
     id: 'logs',
     title: 'Logs',
-    subtitle: 'The books the job keeps: every weld and its NDE, every test, every joint bolted up, the heats in them, the shift report, your skills passport and orientation, the handbook and your fitting takeouts.',
+    subtitle: 'The books the job keeps: every weld and its NDE, every test, every joint bolted up, the heats in them, the shift report, the handbook and your fitting takeouts.',
     sections: [
       { title: 'Records', size: 'big', tools: pick(['WeldLog', 'PressureTests', 'Joints', 'Heats', 'ShiftReport', 'Calibration']) },
-      { title: 'Training', size: 'big', tools: pick(['Passport', 'Orientation']) },
       { title: 'Look-up', size: 'wide', tools: pick(['Reference', 'FittingLibrary']) },
     ],
+  },
+  {
+    id: 'edu',
+    title: 'Edu',
+    subtitle: 'What a new hire learns and proves: the orientation taken before the gate, and the skills passport that carries what you can do from job to job.',
+    sections: [{ title: 'Learn and prove it', size: 'big', tools: pick(['Orientation', 'Passport']) }],
   },
 ];
 

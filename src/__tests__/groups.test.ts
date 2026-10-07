@@ -74,7 +74,8 @@ describe('the tabs reach every tool, once', () => {
   });
 
   test('logs: the tests, the joint log, the heat book, the shift report, the handbook and the fitting library', () => {
-    expect(sorted(routes(groupTools(group('logs')!)))).toEqual(sorted(['Calibration', 'Passport', 'Orientation', 'WeldLog', 'PressureTests', 'Joints', 'Heats', 'ShiftReport', 'Reference', 'FittingLibrary']));
+    expect(sorted(routes(groupTools(group('logs')!)))).toEqual(sorted(['Calibration', 'WeldLog', 'PressureTests', 'Joints', 'Heats', 'ShiftReport', 'Reference', 'FittingLibrary']));
+    expect(routes(groupTools(group('edu')!))).toEqual(['Orientation', 'Passport']);
   });
 
   test('small tiles come in whole rows', () => {

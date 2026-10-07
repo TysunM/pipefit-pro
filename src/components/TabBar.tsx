@@ -8,8 +8,8 @@ import type { RootStackParamList } from '../navigation/types';
 
 // The tab bar
 // -----------
-// Five ways into the app from its foot, the same five on every tab: home,
-// projects, tools, logs and the calculator. It sits on the tab screens and not
+// Six ways into the app from its foot, the same six on every tab: home,
+// projects, tools, logs, the calculator and edu. It sits on the tab screens and not
 // on a tool: a tool is where a man is working, and the level's dial and the
 // spool's model want every point of the screen they can get. The calculator is
 // the exception because it is a tab, the one tool used all day long.
@@ -18,7 +18,7 @@ import type { RootStackParamList } from '../navigation/types';
 // tab on it, so back from any tab lands on Home, never on a tab two presses
 // ago.
 
-export type TabId = 'home' | 'projects' | 'tools' | 'logs' | 'calc';
+export type TabId = 'home' | 'projects' | 'tools' | 'logs' | 'calc' | 'edu';
 
 type Route = { name: keyof RootStackParamList; params?: object };
 
@@ -28,6 +28,7 @@ const TABS: { id: TabId; label: string; icon: keyof typeof Ionicons.glyphMap; on
   { id: 'tools', label: 'Tools', icon: 'construct-outline', on: 'construct', route: { name: 'Group', params: { id: 'tools' } } },
   { id: 'logs', label: 'Logs', icon: 'journal-outline', on: 'journal', route: { name: 'Group', params: { id: 'logs' } } },
   { id: 'calc', label: 'Calculator', icon: 'calculator-outline', on: 'calculator', route: { name: 'Calculator' } },
+  { id: 'edu', label: 'Edu', icon: 'school-outline', on: 'school', route: { name: 'Group', params: { id: 'edu' } } },
 ];
 
 export const TAB_BAR_HEIGHT = 62;
