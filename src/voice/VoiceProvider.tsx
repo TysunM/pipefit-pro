@@ -195,7 +195,7 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
           return finish(heard, a.say);
         case 'shift': {
           const before = s.log;
-          const out = applyShift(before, a, project, now);
+          const out = applyShift(before, a, project, now, latest.current.settings.shift);
           s.apply(() => out.log);
           return finish(heard, a.say, {
             undo: () => {

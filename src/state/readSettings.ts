@@ -47,6 +47,7 @@ export function readSettings(
   merged.readAloud = stored.readAloud === 'off' || stored.readAloud === 'tap' || stored.readAloud === 'auto' ? stored.readAloud : defaults.readAloud;
   merged.gloveMode = typeof stored.gloveMode === 'boolean' ? stored.gloveMode : defaults.gloveMode;
   merged.voice = typeof stored.voice === 'boolean' ? stored.voice : defaults.voice;
+  merged.shift = stored.shift === 'days' || stored.shift === 'nights' ? stored.shift : defaults.shift;
   // Material, size and wall are kept as a set that exists. Settings from before
   // materials are carbon steel at the schedule they already had.
   const spec = resolveSpec(stored.material ?? 'cs', merged.defaultNps, stored.wall ?? merged.defaultSchedule);

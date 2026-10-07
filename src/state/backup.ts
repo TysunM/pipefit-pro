@@ -28,6 +28,7 @@ import { emptyShifts, parseShifts, serialiseShifts } from './shiftLog';
 import { emptyBook as emptySketches, parseBook as parseSketches, serialiseBook as serialiseSketches } from './sketchStore';
 import { emptyShelf, parseShelf, serialiseShelf } from './spoolStore';
 import { emptyInstruments, parseInstruments, serialiseInstruments, tagKey } from './calibration';
+import { emptyPassport, parsePassport, serialisePassport } from './passport';
 import { emptyWelders, emptyWelds, numberKey, parseWelders, parseWelds, serialiseWelders, serialiseWelds, stampKey } from './weldLog';
 
 export const BACKUP_VERSION = 1;
@@ -65,6 +66,7 @@ export const STORES: readonly Spec[] = [
   { key: 'pipefit.welds.v1', label: 'welds', field: 'welds', idOf: (x) => `${projectKey(String(x.project ?? ''))}|${String(x.line ?? '').toUpperCase()}|${numberKey(String(x.number ?? ''))}`, empty: emptyWelds, parse: parseWelds, serialise: serialiseWelds },
   { key: 'pipefit.instruments.v1', label: 'instruments', field: 'instruments', idOf: (x) => tagKey(String(x.tag ?? '')), empty: emptyInstruments, parse: parseInstruments, serialise: serialiseInstruments },
   { key: 'pipefit.welders.v1', label: 'welders', field: 'welders', idOf: (x) => stampKey(String(x.stamp ?? '')), empty: emptyWelders, parse: parseWelders, serialise: serialiseWelders },
+  { key: 'pipefit.passport.v1', label: 'sign-offs', field: 'attestations', idOf: (x) => x.id, empty: emptyPassport, parse: parsePassport, serialise: serialisePassport },
 ];
 
 export const specOf = (key: string): Spec | undefined => STORES.find((s) => s.key === key);

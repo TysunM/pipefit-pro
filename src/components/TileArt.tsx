@@ -231,6 +231,18 @@ const art: Record<string, (k: Ink) => React.ReactNode> = {
   ),
 
   // A bend with its radius struck from the centre.
+  // A record with a signature on it and a seal beside: somebody signed for it.
+  Passport: (k) => (
+    <G>
+      <Rect x={16} y={11} width={56} height={44} rx={3} fill="none" stroke={k.line} strokeWidth={2} />
+      <Line x1={22} y1={21} x2={48} y2={21} stroke={k.guide} strokeWidth={1.4} />
+      <Line x1={22} y1={29} x2={42} y2={29} stroke={k.guide} strokeWidth={1.4} />
+      <Path d="M22 46 C 26 38, 29 51, 33 43 S 40 41, 46 46" fill="none" stroke={k.line} strokeWidth={1.8} strokeLinecap="round" />
+      <Circle cx={60} cy={41} r={7} fill="none" stroke={k.accent} strokeWidth={2.2} />
+      <Path d="M56.5 41 l2.5 2.5 l4.5 -5" fill="none" stroke={k.accent} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+    </G>
+  ),
+
   HandBender: (k) => (
     <G>
       <Path d="M12 52 L34 52 A22 22 0 0 1 56 30 L56 10" fill="none" stroke={k.line} strokeWidth={3}

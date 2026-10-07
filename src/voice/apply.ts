@@ -5,7 +5,7 @@
 // back when Undo is tapped, and the tests can hold every case.
 
 import type { VoiceAnswer } from '../ai/voice';
-import { dayKey } from '../calc/days';
+import { Shift, workDay } from '../calc/days';
 import { ShiftLog, ShiftReport, newReport, putReport, reportFor } from '../state/shiftLog';
 import { PressureLog, PressureTest, endHold, getTest, holding, logReading, putTest, sortTests, startHold, testName } from '../state/pressureLog';
 import { sameProject } from '../state/project';
@@ -14,8 +14,8 @@ type ShiftAnswer = Extract<VoiceAnswer, { action: 'shift' }>;
 type TestAnswer = Extract<VoiceAnswer, { action: 'test' }>;
 
 /** Today's report for the job, started if it has not been, with what was said added to it. */
-export function applyShift(log: ShiftLog, a: ShiftAnswer, project: string, now: number): { log: ShiftLog; report: ShiftReport } {
-  const day = dayKey(now);
+export function applyShift(log: ShiftLog, a: ShiftAnswer, project: string, now: number, shift: Shift = 'days'): { log: ShiftLog; report: ShiftReport } {
+  const day = workDay(now, shift);
   const r = reportFor(log, day, project) ?? newReport(day, project, now);
   const welds = r.welds.map((w) => ({ ...w }));
   for (const w of a.welds) {

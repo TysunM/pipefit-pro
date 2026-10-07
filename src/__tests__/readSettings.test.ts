@@ -20,6 +20,7 @@ const DEFAULTS: Settings = {
   readAloud: 'tap',
   gloveMode: false,
   voice: true,
+  shift: 'days',
   look: LOOK,
 };
 
@@ -130,5 +131,15 @@ describe('field settings', () => {
     expect(readSettings(JSON.stringify({ ...DEFAULTS, readAloud: 'loud' }), DEFAULTS).settings.readAloud).toBe('tap');
     expect(readSettings(JSON.stringify({ ...DEFAULTS, gloveMode: true }), DEFAULTS).settings.gloveMode).toBe(true);
     expect(readSettings(JSON.stringify({ ...DEFAULTS, gloveMode: 'yes' }), DEFAULTS).settings.gloveMode).toBe(false);
+  });
+});
+
+describe('the shift', () => {
+  test('days unless nights was chosen; anything else stored is days', () => {
+    const { shift, ...before } = DEFAULTS;
+    void shift;
+    expect(readSettings(JSON.stringify(before), DEFAULTS).settings.shift).toBe('days');
+    expect(readSettings(JSON.stringify({ ...DEFAULTS, shift: 'nights' }), DEFAULTS).settings.shift).toBe('nights');
+    expect(readSettings(JSON.stringify({ ...DEFAULTS, shift: 'swing' }), DEFAULTS).settings.shift).toBe('days');
   });
 });
