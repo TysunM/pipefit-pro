@@ -1,4 +1,4 @@
-import { calcSchedule, material, resolveSpec, sizeLabel, wallLabel } from '../calc/materials';
+import { JOINING_LABEL, MATERIALS, MaterialGroup, calcSchedule, material, resolveSpec, sizeLabel, wallLabel, wallsAt } from '../calc/materials';
 import { wallFor } from '../voice/specs';
 import React from 'react';
 import { Platform, Text, View } from 'react-native';
@@ -201,7 +201,33 @@ export function SettingsScreen() {
         onSelect={(v) => update({ fractionDenominator: v as FractionDenominator })}
       />
 
-      <SectionHeader title="Defaults" meta="Applied to every calculator" />
+      <SectionHeader title="Pipe on this job" meta="Material · wall · size" />
+      {(['Steels', 'Chrome-moly', 'Iron', 'Plastics & lined'] as MaterialGroup[]).map((g) => (
+        <ChipRow
+          key={g}
+          label={g}
+          options={MATERIALS.filter((m) => m.group === g).map((m) => ({ value: m.id, label: m.short }))}
+          selected={settings.material}
+          onSelect={(id) => {
+            // A new material keeps the wall in its own terms where it has it: Sch 40 steel becomes 40S stainless.
+            const m = material(id);
+            const r = resolveSpec(m.id, settings.defaultNps, wallFor(m.walls, settings.wall) ?? m.defaultWall);
+            update({ material: r.material, defaultNps: r.nps, wall: r.wall, defaultSchedule: calcSchedule(r.wall) });
+          }}
+        />
+      ))}
+      <Text style={[t.type.caption, { color: t.colors.textMuted, paddingHorizontal: t.layout.screenPadding, marginTop: -t.space.sm, marginBottom: t.space.lg }]}>
+        {`${material(settings.material).name} · ${material(settings.material).spec}. ${JOINING_LABEL[material(settings.material).joining]}. Every calculator, the spool and the cut list work in this pipe until it is changed here or on the screen.`}
+      </Text>
+      <ChipRow
+        label="Wall"
+        options={wallsAt(settings.material, settings.defaultNps).map((w) => ({ value: w, label: wallLabel(w) }))}
+        selected={settings.wall}
+        onSelect={(w) => {
+          const r = resolveSpec(settings.material, settings.defaultNps, w);
+          update({ wall: r.wall, defaultSchedule: calcSchedule(r.wall) });
+        }}
+      />
       <ControlRow>
         <SelectorButton
           primary={sizeLabel(settings.defaultNps)}
