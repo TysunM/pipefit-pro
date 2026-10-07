@@ -28,6 +28,7 @@ import type { Instrument } from './calibration';
 import type { ShiftReport } from './shiftLog';
 import type { FittingEntry } from './fittingLibrary';
 import { passed, type Completion } from './orientation';
+import { isClosed, type Plan } from './pretask';
 import { isSigned } from './pressureLog';
 import { cleanSig, hasSig } from '../calc/signature';
 import { cleanProject } from './project';
@@ -68,7 +69,8 @@ export type SkillId =
   | 'hydro'
   | 'heats'
   | 'calibration'
-  | 'shift';
+  | 'shift'
+  | 'pretask';
 
 export type Skill = {
   id: SkillId;
@@ -103,6 +105,7 @@ export const SKILLS: readonly Skill[] = [
   { id: 'heats', area: 'testing', title: 'Material traceability', nccer: 'Standards and Specifications', level: 3, needs: 10, what: 'Heat numbers entered in the heat book.' },
   { id: 'calibration', area: 'testing', title: 'Instrument calibration control', nccer: 'Testing Piping Systems and Equipment', level: 3, needs: 3, what: 'Calibrations recorded against instruments.' },
   { id: 'shift', area: 'records', title: 'Shift reporting', nccer: 'Introduction to Supervisory Roles', level: 4, needs: 5, what: 'Shift reports written up with something in them.' },
+  { id: 'pretask', area: 'records', title: 'Pre-task planning and toolbox talks', nccer: 'Introduction to Supervisory Roles', level: 4, needs: 5, what: "Pre-task plans closed with the foreman's signature." },
 ];
 
 export const skill = (id: string): Skill | undefined => SKILLS.find((s) => s.id === id);
@@ -125,6 +128,7 @@ export type Records = {
   reports?: readonly ShiftReport[];
   fittings?: readonly FittingEntry[];
   orientations?: readonly Completion[];
+  plans?: readonly Plan[];
 };
 
 const utc = (d: string) => {
@@ -152,6 +156,7 @@ export function evidence(r: Records): Evidence[] {
   for (const h of r.heats ?? []) put('heats', h.createdAt, `${h.heat}${h.material ? ` ${h.material}` : ''}`);
   for (const i of r.instruments ?? []) for (const c of i.history) put('calibration', utc(c.on), `${i.tag}${c.cert ? ` cert ${c.cert}` : ''}`);
   for (const c of r.orientations ?? []) if (passed(c)) put('orientation', c.at, `${c.title}, ${c.score} of ${c.of}${c.lang === 'es' ? ', en español' : ''}`, c.project);
+  for (const p of r.plans ?? []) if (isClosed(p)) put('pretask', p.foreman.signedAt!, p.task || p.day, p.project);
   for (const s of r.reports ?? []) if (s.text.trim() || s.welds.length || s.spools.length) put('shift', s.updatedAt, `${s.day}${s.project ? ` ${s.project}` : ''}`, s.project);
   return out.sort((a, b) => b.at - a.at);
 }

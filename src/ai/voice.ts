@@ -18,6 +18,7 @@
 import { REFERENCE_TABLES } from '../calc/reference';
 import { isRec } from '../state/clean';
 import { NOTE_KEYS, WELD_SIZES, type ShiftNotes } from '../state/shiftLog';
+import { HAZARDS } from '../state/pretask';
 import { MATERIALS, type MaterialId } from '../calc/materials';
 import { FIGURE_ROUTES, TOOL_FIGURES, isFigureRoute, plausible, type FigureSpec, type Figures } from '../voice/toolFigures';
 
@@ -65,6 +66,7 @@ export const VOICE_ROUTES = [
   'Calibration',
   'Passport',
   'Orientation',
+  'PreTask',
 ] as const;
 export type VoiceRoute = (typeof VOICE_ROUTES)[number];
 
@@ -75,7 +77,7 @@ const ROUTE_WORDS: Record<VoiceRoute, string> = {
   Backup: 'backup and restore: everything on the phone to one file, and back',
   Projects: 'the Projects tab: every job\'s saved work, the turnover package PDF, and clearing a job off the phone',
   Tools: 'the Tools tab: iso sketch, 3D spool, bolt-up, level, measure, and every bend and offset',
-  Logs: 'the Logs tab: weld log, pressure tests, joint log, heat book, shift report, calibration, handbook',
+  Logs: 'the Logs tab: weld log, pressure tests, joint log, heat book, shift report, calibration, pre-task plan, handbook',
   Edu: 'the Edu tab: site orientation and the skills passport',
   Calculator: 'trade calculator: feet, inches and fractions',
   Level: 'digital level: lay the phone on a pipe to read slope and fall',
@@ -100,6 +102,7 @@ const ROUTE_WORDS: Record<VoiceRoute, string> = {
   Calibration: 'calibration register: test gauges, torque wrenches and other instruments with their calibration due dates and certificates',
   Passport: "skills passport: what this hand can do, proved by the records on the phone and signed off by a foreman, with a PDF to carry between jobs",
   Orientation: 'site orientation: the modules a new hire takes before the gate, built-in general practice and the company\'s own rules, read or spoken in English or Spanish, with a check at the end',
+  PreTask: "pre-task plan: the morning JSA for the job and day: task, hazards with controls, permits, PPE, muster point, toolbox talk, crew sign-in and the foreman's signature",
   WeldLog: 'weld log: every weld with its welders, heats and NDE results, the random and tracer x-rays owed, and each welder\'s continuity',
 };
 
@@ -137,6 +140,7 @@ export const VOICE_SYSTEM = [
   '- open: they want a screen. Set route. When they gave figures for a tool that takes them (listed below), put each in figures by its name: lengths in inches (convert feet, feet-and-inches and millimetres), angles in degrees, counts as whole numbers. If the screen on top is that tool and they only gave figures, open it with them.',
   '- answer: a question the handbook below answers. Set table to the id of the table you used, and say the answer, naming the table and its page.',
   "- shift: something for today's shift report. welds: welds made, by nominal pipe size in inches and count. rejects: a rejected weld, as its id or mark and the reason. spools: spool numbers completed. noteKey and noteText: a note, filed under issues, safety, tomorrow (the plan for tomorrow) or notes. crew: people on the crew. hours: hours worked.",
+  "- pretask: something for today's pre-task plan (the morning JSA and toolbox talk). task: what the crew is doing today, in their words. hazards: ids from the hazard list below that they named. talk: the toolbox talk topic. crew: names of people on the crew. Only what they said.",
   '- test: a step on the open pressure test. testOp: start_hold (the hold started, at psi), reading (a gauge reading, psi), end_hold (the hold ended, at psi), pass or fail. leaks: what leaked, when they say.',
   '- specs: they are setting the job\'s pipe: material, nominal size, wall and elbow radius, any of them. specMaterial is one of the material ids below; specNps the nominal size in inches (1/2 is 0.5, inch and a half is 1.5); specWall the wall as written: 10, 40, 80, 160, STD, XS, XXS, 5S, 10S, 40S, 80S, DR7, DR9, DR11, DR17, PC (ductile pressure class), TC52, CISPI; specElbow LR or SR. Only the parts they said.',
   '- none: you cannot tell what they want, or the app cannot do it. Say so briefly and suggest what they could say instead.',
@@ -146,6 +150,9 @@ export const VOICE_SYSTEM = [
   '- Only use figures they said or the handbook holds. Never guess a number. If a figure the action needs is missing or unclear, use none and ask for it.',
   '- Answer only from the handbook below. If it does not hold the answer, use none and say the handbook does not cover it; do not answer from general knowledge.',
   '- Weld sizes are nominal pipe sizes: 1/2, 3/4, 1, 1-1/4, 1-1/2, 2, 2-1/2, 3, 4, 6, 8, 10, 12 and up. A "2 inch weld" is nps 2.',
+  '',
+  'Hazards for the pre-task plan (id: name):',
+  ...HAZARDS.map((h) => `- ${h.id}: ${h.label}`),
   '',
   'Materials (id: name, pipe spec, walls):',
   ...MATERIALS.map((m) => `- ${m.id}: ${m.name}, ${m.spec}, walls ${m.walls.join(' ')}`),
@@ -169,7 +176,11 @@ export const VOICE_SYSTEM = [
 export const VOICE_SCHEMA = {
   type: 'object',
   properties: {
-    action: { type: 'string', enum: ['open', 'answer', 'shift', 'test', 'specs', 'none'] },
+    action: { type: 'string', enum: ['open', 'answer', 'shift', 'pretask', 'test', 'specs', 'none'] },
+    task: { type: 'string' },
+    hazards: { type: 'array', items: { type: 'string', enum: HAZARDS.map((h) => h.id) } },
+    talk: { type: 'string' },
+    crewNames: { type: 'array', items: { type: 'string' } },
     specMaterial: { type: 'string', enum: MATERIALS.map((m) => m.id) },
     specNps: { type: 'number' },
     specWall: { type: 'string' },
@@ -234,6 +245,7 @@ export type VoiceAnswer =
       crew: number | null;
       hours: number | null;
     }
+  | { action: 'pretask'; say: string; task: string; hazards: string[]; talk: string; crew: string[] }
   | { action: 'test'; say: string; op: TestOp; psi: number | null; leaks: string }
   | { action: 'specs'; say: string; material?: MaterialId; nps?: number; wall?: string; elbow?: 'LR' | 'SR' }
   | { action: 'none'; say: string };
@@ -288,6 +300,13 @@ export function readVoice(v: unknown): VoiceAnswer | null {
       const hours = num(v.hours, 24);
       const empty = !welds.length && !rejects.length && !spools.length && !note && crew === null && hours === null;
       return empty ? none : { action: 'shift', say, welds, rejects, spools, note, crew: crew !== null && Number.isInteger(crew) ? crew : null, hours };
+    }
+    case 'pretask': {
+      const hazards = [...new Set(arr(v.hazards).map((h) => clean(h, 40)).filter((h) => HAZARDS.some((x) => x.id === h)))];
+      const crew = [...new Set(arr(v.crewNames).map((c) => clean(c, 40)).filter(Boolean))];
+      const task = clean(v.task, 400);
+      const talk = clean(v.talk, 80);
+      return !hazards.length && !crew.length && !task && !talk ? none : { action: 'pretask', say, task, hazards, talk, crew };
     }
     case 'test': {
       const op = TEST_OPS.find((o) => o === v.testOp);

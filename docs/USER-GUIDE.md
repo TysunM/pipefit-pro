@@ -101,6 +101,17 @@ The job chips pick what the page shows: the active job, another job, All jobs, o
 - Put your name in **Settings** first: it heads every page and goes into every record code.
 - The passport is kept through **Clear for a new start** and goes into every backup.
 
+## The pre-task plan
+
+**Logs → Pre-task plan.** The morning sheet, one per job per day: a JSA, a JHA, a tailgate, by whatever name the site uses.
+
+- **The task** and where. **Hazards** are tapped off a library of what hurts pipefitting crews, and each comes with the control a journeyman would name; change it to say what this crew does about it here. Add any other hazard by typing it.
+- **Permits** and **PPE beyond the basics** are chips. **Muster point** and where the eyewash, extinguisher, first aid and rescue are.
+- **Toolbox talk:** the day suggests one of the nine built-in orientation modules in turn, so a crew hears every one over a fortnight; type any other topic, and what was said.
+- **Crew sign-in:** add names, hand each the phone to sign. **Sign and close the plan** takes the foreman's signature. Any change after reopens it, so what was signed is what was read.
+- **By voice:** "pre-task plan: hot work and lifting, toolbox talk on heat, crew Ruiz and Diaz" puts them on today's plan. Hazards are the library's.
+- **Share PDF** prints the sheet with every signature. A closed plan is a record under **Pre-task planning and toolbox talks** in the skills passport. Plans clear with the job and go into every backup.
+
 ## Coaching on real work
 
 The first bolt-ups, pressure tests and cut lengths come with a card at the top of the screen: the steps in order, the next one lit, and the reason under each, the way a journeyman would say it. Nothing is a lesson apart from the work.

@@ -9,9 +9,23 @@ import { Shift, workDay } from '../calc/days';
 import { ShiftLog, ShiftReport, newReport, putReport, reportFor } from '../state/shiftLog';
 import { PressureLog, PressureTest, endHold, getTest, holding, logReading, putTest, sortTests, startHold, testName } from '../state/pressureLog';
 import { sameProject } from '../state/project';
+import { PlanLog, Plan, addCrew, newPlan, planFor, putPlan, reopen, toggleHazard } from '../state/pretask';
 
 type ShiftAnswer = Extract<VoiceAnswer, { action: 'shift' }>;
 type TestAnswer = Extract<VoiceAnswer, { action: 'test' }>;
+type PretaskAnswer = Extract<VoiceAnswer, { action: 'pretask' }>;
+
+/** Today's pre-task plan for the job, started if it has not been, with what was said on it. A closed plan reopens. */
+export function applyPretask(log: PlanLog, a: PretaskAnswer, project: string, now: number, shift: Shift = 'days'): { log: PlanLog; plan: Plan } {
+  const day = workDay(now, shift);
+  let p = planFor(log, day, project) ?? newPlan(day, project, now);
+  for (const id of a.hazards) if (!p.hazards.some((h) => h.id === id)) p = toggleHazard(p, id);
+  for (const name of a.crew) p = addCrew(p, name);
+  if (a.task) p = { ...p, task: a.task };
+  if (a.talk) p = { ...p, talk: { ...p.talk, topic: a.talk } };
+  const out = putPlan(log, reopen(p), now);
+  return { log: out, plan: planFor(out, day, project) ?? p };
+}
 
 /** Today's report for the job, started if it has not been, with what was said added to it. */
 export function applyShift(log: ShiftLog, a: ShiftAnswer, project: string, now: number, shift: Shift = 'days'): { log: ShiftLog; report: ShiftReport } {

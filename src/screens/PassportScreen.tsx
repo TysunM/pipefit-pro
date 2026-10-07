@@ -31,6 +31,7 @@ import { useInstruments } from '../state/instruments';
 import { useShifts } from '../state/shifts';
 import { useFittings } from '../state/fittings';
 import { useOrientationDone } from '../state/orientations';
+import { usePreTasks } from '../state/pretasks';
 import { listed } from '../state/register';
 import { AREAS, AREA_TITLES, ROLES, Role, STANDING_WORDS, SkillStanding, Standing, attest, recordCode, revoke, standingSummary, standings } from '../state/passport';
 import { dayKey, usDate } from '../calc/days';
@@ -57,6 +58,7 @@ export function PassportScreen(_: Props) {
   const { log: shifts } = useShifts();
   const { library } = useFittings();
   const { done } = useOrientationDone();
+  const { log: plans } = usePreTasks();
   const [open, setOpen] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
 
@@ -77,10 +79,11 @@ export function PassportScreen(_: Props) {
           reports: shifts.reports,
           fittings: library.entries,
           orientations: done.completions,
+          plans: plans.plans,
         },
         passport,
       ),
-    [register, tests.tests, welds.welds, cuts.cuts, sketches.sketches, shelf.spools, levels.readings, heats.heats, instruments.instruments, shifts.reports, library.entries, done.completions, passport],
+    [register, tests.tests, welds.welds, cuts.cuts, sketches.sketches, shelf.spools, levels.readings, heats.heats, instruments.instruments, shifts.reports, library.entries, done.completions, plans.plans, passport],
   );
   const shown = rows.find((r) => r.skill.id === open) ?? null;
 

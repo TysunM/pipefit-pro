@@ -16,6 +16,7 @@ import { InstrumentsProvider } from "./src/state/instruments";
 import { PassportProvider } from "./src/state/passports";
 import { OrientationProvider } from "./src/state/orientations";
 import { CoachProvider } from "./src/components/Coach";
+import { PreTasksProvider } from "./src/state/pretasks";
 import { ShiftsProvider } from "./src/state/shifts";
 import { LaserProvider } from "./src/state/laser";
 import { FittingsProvider } from "./src/state/fittings";
@@ -82,6 +83,7 @@ export default function App() {
                     <PassportProvider>
                     <OrientationProvider>
                     <CoachProvider>
+                    <PreTasksProvider>
                     <HoldAlertsProvider>
                     <ShiftsProvider>
                       <FittingsProvider>
@@ -101,6 +103,7 @@ export default function App() {
                       </FittingsProvider>
                     </ShiftsProvider>
                   </HoldAlertsProvider>
+                    </PreTasksProvider>
                     </CoachProvider>
                     </OrientationProvider>
                     </PassportProvider>
