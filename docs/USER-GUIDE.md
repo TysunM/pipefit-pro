@@ -87,7 +87,19 @@ The job chips pick what the page shows: the active job, another job, All jobs, o
 **Clear for a new start** is at the bottom. It takes everything shown under the chosen job off the phone: pressure tests, welds, joints, isos, spools, level readings, cuts and shift reports. With **All jobs** chosen, that is every job.
 - **Back up, then clear** makes the backup file first and clears only once it has gone. Use this one.
 - **Clear with no backup** needs a second tap, and nothing it takes can be got back.
-- Kept every time: the heat book, the welder roster, the calibration register, the fitting library and your settings. They serve every job.
+- Kept every time: the heat book, the welder roster, the calibration register, the fitting library, your skills passport and your settings. They serve every job.
+
+## The skills passport
+
+**Logs → Skills passport.** What you can do, proved two ways, and yours to carry from job to job.
+
+- **Records.** The work saved on this phone counts toward the skill it shows: every joint bolted up to pattern, every hydro held and signed, every iso drawn, every cut listed, every heat entered. Nothing is typed twice; the passport reads the records.
+- **Sign-offs.** Tap a skill, put in the name of whoever watched it done, their role, a note if you like, and hand them the phone to sign. A skill with a sign-off stands as **Signed off**, whatever the count.
+- **Standing.** Without a sign-off, enough records make a skill **Practised**; fewer make it **Started**. Skills the phone keeps no record of (rigging, oxyfuel, valves, orientation) stand only on a sign-off.
+- **NCCER.** Each skill names the NCCER Pipefitting module it belongs to, by title and level, so a training office can read it straight across. Module numbers change between editions, so titles are what is kept.
+- **Share passport PDF** prints the lot: every skill's standing and record counts, and every sign-off with its signature and a **record code**. The code is worked from the sign-off as it is held on the phone, so a printed page can be checked against the phone it came from. It is a checksum, not a seal.
+- Put your name in **Settings** first: it heads every page and goes into every record code.
+- The passport is kept through **Clear for a new start** and goes into every backup.
 
 ## Back up the phone
 

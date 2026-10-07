@@ -32,6 +32,7 @@ const EXPECTED: ToolRoute[] = [
   'CutList',
   'WeldLog',
   'Calibration',
+  'Passport',
 ];
 
 const routes = (xs: { route: ToolRoute }[]) => xs.map((x) => x.route);
@@ -72,7 +73,7 @@ describe('the tabs reach every tool, once', () => {
   });
 
   test('logs: the tests, the joint log, the heat book, the shift report, the handbook and the fitting library', () => {
-    expect(sorted(routes(groupTools(group('logs')!)))).toEqual(sorted(['Calibration', 'WeldLog', 'PressureTests', 'Joints', 'Heats', 'ShiftReport', 'Reference', 'FittingLibrary']));
+    expect(sorted(routes(groupTools(group('logs')!)))).toEqual(sorted(['Calibration', 'Passport', 'WeldLog', 'PressureTests', 'Joints', 'Heats', 'ShiftReport', 'Reference', 'FittingLibrary']));
   });
 
   test('small tiles come in whole rows', () => {

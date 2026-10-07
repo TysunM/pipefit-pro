@@ -39,6 +39,8 @@ export type RootStackParamList = {
   WeldLog: { tab?: 'welds' | 'nde' | 'welders' } | undefined;
   Weld: { id?: string; line?: string };
   Calibration: undefined;
+  /** The skills passport: what this hand can do, proved by the records and signed off. */
+  Passport: undefined;
   /** Saved socket and no-hub takeouts; a line to open on, or the job's. */
   /** `read`: open the sheet reader at once, listening for “take it”; a time, so asking twice opens it twice. */
   FittingLibrary: { line?: string; read?: number } | undefined;

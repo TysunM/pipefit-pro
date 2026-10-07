@@ -37,6 +37,7 @@ import { WeldLogScreen } from '../screens/WeldLogScreen';
 import { WeldScreen } from '../screens/WeldScreen';
 import { CalibrationScreen } from '../screens/CalibrationScreen';
 import { BackupScreen } from '../screens/BackupScreen';
+import { PassportScreen } from '../screens/PassportScreen';
 import { MeasureScreen } from '../screens/MeasureScreen';
 import { SpoolBuilderScreen } from '../screens/SpoolBuilderScreen';
 import { OrderSheetScreen } from '../screens/OrderSheetScreen';
@@ -131,6 +132,7 @@ export function RootNavigator() {
         <Stack.Screen name="Weld" component={WeldScreen} options={{ title: 'Weld' }} />
         <Stack.Screen name="Calibration" component={CalibrationScreen} options={{ title: 'Calibration' }} />
         <Stack.Screen name="Backup" component={BackupScreen} options={{ title: 'Backup' }} />
+        <Stack.Screen name="Passport" component={PassportScreen} options={{ title: 'Skills passport' }} />
         <Stack.Screen name="Calculator" component={CalculatorScreen} options={{ title: 'Calculator' }} />
         <Stack.Screen name="Level" component={LevelScreen} options={{ title: 'Level' }} />
         <Stack.Screen name="Measure" component={MeasureScreen} options={{ title: 'Measure' }} />
