@@ -212,3 +212,23 @@ describe('the cut list by voice', () => {
     expect(localIntent('cut length', null)).toEqual({ kind: 'open', route: 'CutLength' });
   });
 });
+
+describe('every tab along the bottom opens by voice', () => {
+  test.each([
+    ['home', 'Home'],
+    ['projects', 'Projects'],
+    ['open my projects', 'Projects'],
+    ['tools', 'Tools'],
+    ['go to the tools tab', 'Tools'],
+    ['logs', 'Logs'],
+    ['open the log book', 'Logs'],
+    ['calculator', 'Calculator'],
+  ])('"%s" opens %s', (said, route) => {
+    expect(localIntent(said, null)).toEqual({ kind: 'open', route });
+  });
+
+  test('a tool inside a tab still wins over the tab', () => {
+    expect(localIntent('weld log', null)).toEqual({ kind: 'open', route: 'WeldLog' });
+    expect(localIntent('test log', null)).toEqual({ kind: 'open', route: 'PressureTests' });
+  });
+});

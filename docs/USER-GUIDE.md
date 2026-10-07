@@ -72,6 +72,16 @@ The app agrees with every one of them to **four decimal places**, and a test pro
 
 ---
 
+## The Projects tab
+Today's date and the time run across the top, so the page left open on a job all day says what day it is.
+
+The job chips pick what the page shows: the active job, another job, All jobs, or No project. Each card lists the newest work under it. **Share turnover PDF** makes the package for what is shown.
+
+**Clear for a new start** is at the bottom. It takes everything shown under the chosen job off the phone: pressure tests, welds, joints, isos, spools, level readings, cuts and shift reports. With **All jobs** chosen, that is every job.
+- **Back up, then clear** makes the backup file first and clears only once it has gone. Use this one.
+- **Clear with no backup** needs a second tap, and nothing it takes can be got back.
+- Kept every time: the heat book, the welder roster, the calibration register, the fitting library and your settings. They serve every job.
+
 ## Back up the phone
 
 Everything you save lives on this phone only: pressure tests and signatures, the joint log, heat book, spools, isos, level readings, shift reports, fitting takeouts and the cut list. **Back it up weekly.**
@@ -1378,6 +1388,7 @@ The round mic low on the right of every screen. Tap it, say it, and the app does
 | Say | What happens |
 |---|---|
 | "Bolt up", "hydro", "heat book", "shift report" | That tool opens. Works with no signal. |
+| "Home", "projects", "tools", "logs", "calculator" | That tab along the bottom opens. |
 | "Rolling offset, rise 12, roll 8 and a half, run 30" | Rolling offset opens with the figures in. "3 foot 6", "12 and 3/8" and "350 millimetres" are understood. |
 | "Simple offset, 14 and a half at 22 and a half degrees" | Any bend or offset tool opens filled in — see the table below. |
 | "Rise 12", "leg b 3 foot 6" (with the tool open) | Fills that field on the screen you are on. |

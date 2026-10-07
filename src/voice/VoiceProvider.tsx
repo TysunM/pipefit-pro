@@ -84,11 +84,16 @@ function figuresSaid(route: string, f: Figures): string {
 /** Go to a screen, and hand it any figures said for it. Returns the screen's reason if it refused them. */
 function openWith(route: string, figures?: Figures): string | undefined {
   if (!nav.isReady()) return undefined;
+  // The Tools and Logs tabs are one screen, shown with either set of tools.
+  if (route === 'Tools' || route === 'Logs') {
+    nav.navigate('Group', { id: route === 'Tools' ? 'tools' : 'logs' });
+    return undefined;
+  }
   if (nav.getCurrentRoute()?.name !== route) nav.navigate(route as never);
   return figures && Object.keys(figures).length && isFigureRoute(route) ? publishFigures(route, figures) : undefined;
 }
 
-const titleOf = (route: string): string => tool(route)?.title ?? (route === 'Home' ? 'Home' : route === 'Settings' ? 'Settings' : route);
+const titleOf = (route: string): string => tool(route)?.title ?? route;
 
 export function VoiceProvider({ children }: { children: React.ReactNode }) {
   const { settings, update } = useSettings();
