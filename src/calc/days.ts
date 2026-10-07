@@ -28,14 +28,34 @@ export function isDay(s: unknown): s is string {
   return date.getFullYear() === y && date.getMonth() === mo - 1 && date.getDate() === d;
 }
 
-/** The local midnight a day starts at, and the next one. A day is [start, end). */
-export function dayBounds(day: string): { start: number; end: number } {
+/**
+ * The local midnight a day starts at, and the next one. A day is [start, end).
+ * Given a turnover hour, the work day that runs from that hour to the same hour
+ * the next day.
+ */
+export function dayBounds(day: string, hour = 0): { start: number; end: number } {
   const m = DAY_RE.exec(day);
   if (!m) return { start: NaN, end: NaN };
   const y = Number(m[1]);
   const mo = Number(m[2]) - 1;
   const d = Number(m[3]);
-  return { start: new Date(y, mo, d).getTime(), end: new Date(y, mo, d + 1).getTime() };
+  return { start: new Date(y, mo, d, hour).getTime(), end: new Date(y, mo, d + 1, hour).getTime() };
+}
+
+/**
+ * The shift a phone works. A day shift's work day is the calendar day. A night
+ * shift's runs noon to noon and is dated by the night it started, so 6 pm
+ * Tuesday to 6 am Wednesday is all Tuesday's work, on one shift report — the
+ * way a night foreman dates it. Any shift that starts after noon and ends
+ * before the next noon fits.
+ */
+export type Shift = 'days' | 'nights';
+export const TURNOVER: Record<Shift, number> = { days: 0, nights: 12 };
+
+/** The work day a moment belongs to. The calendar day on days; on nights, the day the shift started. */
+export function workDay(at: number, shift: Shift = 'days'): string {
+  const day = dayKey(at);
+  return new Date(at).getHours() < TURNOVER[shift] ? shiftDay(day, -1) : day;
 }
 
 /** The day before or after. Through a month or a year end, and across a clock change. */

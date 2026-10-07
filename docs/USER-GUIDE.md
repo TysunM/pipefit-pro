@@ -77,7 +77,12 @@ Today's date and the time run across the top, so the page left open on a job all
 
 The job chips pick what the page shows: the active job, another job, All jobs, or No project. Each card lists the newest work under it. **Share turnover PDF** makes the package for what is shown.
 
-**Today** and **Everything** sit under the job chips. The page opens on **Today**: each card lists only what was saved, changed or finished today, and the line above the cards counts it. Nothing is deleted. Earlier work is kept, and **Everything** shows it all. At midnight the page rolls over to the new day by itself. The turnover PDF and **Clear for a new start** always take the whole job, every day's work, whichever view is on.
+**Today** and **Everything** sit under the job chips. The page opens on **Today**: each card lists only what was saved, changed or finished today, and the line above the cards counts it. Nothing is deleted. Earlier work is kept, and **Everything** shows it all. The page rolls over to the new day by itself: at midnight on days, at noon on nights (below). The turnover PDF and **Clear for a new start** always take the whole job, every day's work, whichever view is on.
+
+**Night shift.** Set **Settings → In the field → Shift** to **Nights**. The work day then runs noon to noon and is dated by the night it started, so 6 pm Tuesday to 6 am Wednesday is all Tuesday's work.
+- The Projects toggle reads **This shift**, and the clock line says which night it is.
+- The shift report opens on the night's report. A weld count said at 4 am goes on it, and the written report is headed "Night shift of Tue 6 Oct 2026".
+- Weld, test, exam and calibration dates stay the calendar day they happened. A hydro held at 2 am Wednesday is dated Wednesday, and still reported on Tuesday's night shift.
 
 **Clear for a new start** is at the bottom. It takes everything shown under the chosen job off the phone: pressure tests, welds, joints, isos, spools, level readings, cuts and shift reports. With **All jobs** chosen, that is every job.
 - **Back up, then clear** makes the backup file first and clears only once it has gone. Use this one.

@@ -19,7 +19,7 @@
 // against.
 
 import type { Heat } from './heat';
-import { dayBounds, dayLabel } from './days';
+import { dayBounds, dayKey, dayLabel, Shift, TURNOVER, workDay } from './days';
 import type { Joint } from '../state/register';
 import { isNamed } from '../state/register';
 import type { Reading } from '../state/levelLog';
@@ -58,14 +58,24 @@ const inDay = (at: number | null | undefined, b: { start: number; end: number })
   typeof at === 'number' && at >= b.start && at < b.end;
 
 /** Read the day off the records, for one job. */
-export function logFacts(records: DayRecords, day: string, project: string): LogFacts {
-  const b = dayBounds(day);
+/**
+ * The work day a pressure test goes on a report under. Its date, on days. On
+ * nights, the shift its hold was started on, unless the date was changed by
+ * hand from the day it was held — then the date given is the one meant.
+ */
+export function testWorkDay(t: { day: string; createdAt: number; hold: { startAt: number | null } }, shift: Shift): string {
+  const at = t.hold.startAt ?? t.createdAt;
+  return shift === 'days' || dayKey(at) !== t.day ? t.day : workDay(at, shift);
+}
+
+export function logFacts(records: DayRecords, day: string, project: string, shift: Shift = 'days'): LogFacts {
+  const b = dayBounds(day, TURNOVER[shift]);
   const joints = records.joints.filter((j) => isNamed(j) && sameProject(j.project, project));
   const checks: LogFacts['checks'] = [];
   for (const j of joints) for (const c of j.checks) if (inDay(c.at, b)) checks.push({ tag: j.tag, moved: c.moved });
   return {
     tests: records.tests
-      .filter((t) => t.day === day && sameProject(t.project, project))
+      .filter((t) => testWorkDay(t, shift) === day && sameProject(t.project, project))
       .sort((x, y) => (x.hold.startAt ?? x.createdAt) - (y.hold.startAt ?? y.createdAt))
       .map((t) => {
         const held = heldMinutes(t);
@@ -154,9 +164,10 @@ export type ShiftFacts = {
 /** Diameter-inches to one place where it needs it: 52, 4.5. */
 export const di = (n: number): number => Math.round(n * 10) / 10;
 
-export function shiftFacts(r: ShiftReport, log: LogFacts): ShiftFacts {
+export function shiftFacts(r: ShiftReport, log: LogFacts, shift: Shift = 'days'): ShiftFacts {
   return {
-    date: dayLabel(r.day),
+    // A night report is dated by the night it started, and says so.
+    date: shift === 'nights' ? `Night shift of ${dayLabel(r.day)}` : dayLabel(r.day),
     job: r.project || 'No project',
     crew: r.crew,
     hoursEach: r.hours,

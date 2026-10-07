@@ -114,6 +114,20 @@ export function SettingsScreen() {
         knuckle, a capacitive stylus or touchscreen gloves — no phone screen reads through plain leather.
       </Text>
       <ChipRow
+        label="Shift"
+        options={[
+          { value: 'days', label: 'Days' },
+          { value: 'nights', label: 'Nights' },
+        ]}
+        selected={settings.shift}
+        onSelect={(v) => update({ shift: v as 'days' | 'nights' })}
+      />
+      <Text style={[t.type.caption, { color: t.colors.textMuted, paddingHorizontal: t.layout.screenPadding, marginTop: -t.space.sm, marginBottom: t.space.lg }]}>
+        Where "today" turns over. Days: at midnight. Nights: at noon, so 6 pm to 6 am is one shift, dated by the night it
+        started — the Projects Today view and the shift report both keep it together. Weld, test and calibration dates stay the
+        calendar day they happened.
+      </Text>
+      <ChipRow
         label="Voice"
         options={[
           { value: 'on', label: 'Mic button' },

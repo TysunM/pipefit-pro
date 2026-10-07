@@ -226,9 +226,10 @@ export function Banner({
 }
 
 /** The day a record is for, a day at a time. Never past today: nothing is reported before it happens. */
-export function DayStepper({ day, onChange, now = Date.now() }: { day: string; onChange: (day: string) => void; now?: number }) {
+export function DayStepper({ day, onChange, now = Date.now(), today: given }: { day: string; onChange: (day: string) => void; now?: number; today?: string }) {
   const t = useTheme();
-  const today = dayKey(now);
+  // A night shift's today is the night it started, given by the screen.
+  const today = given ?? dayKey(now);
   const atToday = day >= today;
   const rel = day === today ? 'Today' : day === shiftDay(today, -1) ? 'Yesterday' : '';
   const arrow = (dir: -1 | 1, off: boolean) => (

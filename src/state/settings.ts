@@ -5,6 +5,7 @@ import { UnitSystem } from '../calc/units';
 import { FractionDenominator } from '../calc/format';
 import { ElbowRadius, Schedule } from '../calc/pipe';
 import { LOOK, readSettings } from './readSettings';
+import type { Shift } from '../calc/days';
 
 export type ThemePreference = 'light' | 'dark' | 'system';
 
@@ -74,6 +75,12 @@ export type Settings = {
    * reading instead of tapping for it. See voice/VoiceProvider.tsx.
    */
   voice: boolean;
+  /**
+   * Days or nights: where "today" turns over. On nights the work from noon to
+   * noon is one day, dated by the night it started — the Projects Today view
+   * and the shift report both follow it. See calc/days.ts workDay.
+   */
+  shift: Shift;
   /** Which look these were written under — see readSettings. */
   look: number;
 };
@@ -99,6 +106,7 @@ export const DEFAULT_SETTINGS: Settings = {
   readAloud: 'tap',
   gloveMode: false,
   voice: true,
+  shift: 'days',
   look: LOOK,
 };
 

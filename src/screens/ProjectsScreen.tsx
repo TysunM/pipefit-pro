@@ -34,7 +34,8 @@ import { useShifts } from '../state/shifts';
 import { useBackupNow } from '../state/useBackupNow';
 import { clearCounts, countsText, without } from '../state/clearJob';
 import { useNow } from '../components/FormFields';
-import { clockLabel, dayKey } from '../calc/days';
+import { clockLabel, dayLabel, workDay } from '../calc/days';
+import { useSettings } from '../state/settings';
 import { workedOn } from '../state/today';
 import { Segmented } from '../components/Segmented';
 
@@ -81,8 +82,13 @@ export function ProjectsScreen({ navigation }: Props) {
   const [claiming, setClaiming] = useState(false);
 
   // Today, or everything: what the cards show. The turnover package and clearing always take the whole job.
+  // On nights the day is the shift: noon to noon, dated by the night it started.
   const [view, setView] = useState<'today' | 'all'>('today');
-  const today = dayKey(clock);
+  const { shift } = useSettings().settings;
+  const nights = shift === 'nights';
+  const today = workDay(clock, shift);
+  const todayWord = nights ? 'this shift' : 'today';
+  const worked = <T,>(xs: readonly T[], stamps: (x: T) => readonly (number | string | null | undefined)[]) => workedOn(xs, today, stamps, shift);
   const joints = sortJoints(mine(listed(register)));
   const sketches = sortSketches(mine(book.sketches));
   const spools = sortSpools(mine(shelf.spools));
@@ -181,20 +187,20 @@ export function ProjectsScreen({ navigation }: Props) {
   };
 
   const shown = {
-    joints: view === 'all' ? joints : workedOn(joints, today, (j) => [j.updatedAt, j.completedAt]),
-    sketches: view === 'all' ? sketches : workedOn(sketches, today, (s) => [s.updatedAt]),
-    spools: view === 'all' ? spools : workedOn(spools, today, (s) => [s.updatedAt]),
-    readings: view === 'all' ? readings : workedOn(readings, today, (r) => [r.createdAt]),
+    joints: view === 'all' ? joints : worked(joints, (j) => [j.updatedAt, j.completedAt]),
+    sketches: view === 'all' ? sketches : worked(sketches, (s) => [s.updatedAt]),
+    spools: view === 'all' ? spools : worked(spools, (s) => [s.updatedAt]),
+    readings: view === 'all' ? readings : worked(readings, (r) => [r.createdAt]),
   };
   const todays = {
-    tests: workedOn(tests, today, (x) => [x.updatedAt, x.day]),
-    welds: workedOn(mine(weldLog.welds), today, (w) => [w.updatedAt, w.day]),
-    joints: workedOn(joints, today, (j) => [j.updatedAt, j.completedAt]),
-    sketches: workedOn(sketches, today, (s) => [s.updatedAt]),
-    spools: workedOn(spools, today, (s) => [s.updatedAt]),
-    readings: workedOn(readings, today, (r) => [r.createdAt]),
-    cuts: workedOn(mine(cutLog.cuts), today, (c) => [c.createdAt]),
-    shifts: workedOn(mine(shiftLog.reports), today, (r) => [r.day]),
+    tests: worked(tests, (x) => [x.updatedAt, x.hold.startAt]),
+    welds: worked(mine(weldLog.welds), (w) => [w.updatedAt]),
+    joints: worked(joints, (j) => [j.updatedAt, j.completedAt]),
+    sketches: worked(sketches, (s) => [s.updatedAt]),
+    spools: worked(spools, (s) => [s.updatedAt]),
+    readings: worked(readings, (r) => [r.createdAt]),
+    cuts: worked(mine(cutLog.cuts), (c) => [c.createdAt]),
+    shifts: worked(mine(shiftLog.reports), (r) => [r.day]),
   };
   const todayCounts = clearCounts([
     { label: 'pressure tests', items: todays.tests },
@@ -209,7 +215,7 @@ export function ProjectsScreen({ navigation }: Props) {
   const todayTotal = todayCounts.reduce((n, k) => n + k.count, 0);
   const earlier = Math.max(0, doomedCounts.reduce((n, k) => n + k.count, 0) - todayTotal);
   const onToday = view === 'today';
-  const nothingToday = (what: string, before: number) => `Nothing ${what} today.${before ? ` ${before} earlier under Everything.` : ''}`;
+  const nothingToday = (what: string, before: number) => `Nothing ${what} ${todayWord}.${before ? ` ${before} earlier under Everything.` : ''}`;
   const jointRows: Row[] = shown.joints.slice(0, SHOWN).map((j) => ({
     key: j.id,
     title: j.tag || 'Untitled joint',
@@ -269,7 +275,7 @@ export function ProjectsScreen({ navigation }: Props) {
           <Text style={[t.type.sectionTitle, { color: t.colors.text }]}>
             {new Date(clock).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
           </Text>
-          <Text style={[t.type.caption, { color: t.colors.textMuted }]}>{clockLabel(clock)}</Text>
+          <Text style={[t.type.caption, { color: t.colors.textMuted }]}>{nights ? `${clockLabel(clock)} · night shift of ${dayLabel(today)}` : clockLabel(clock)}</Text>
         </View>
         <HintRow
           text={
@@ -282,7 +288,7 @@ export function ProjectsScreen({ navigation }: Props) {
         <View style={{ paddingTop: t.space.md }}>
           <Segmented
             options={[
-              { value: 'today', label: 'Today' },
+              { value: 'today', label: nights ? 'This shift' : 'Today' },
               { value: 'all', label: 'Everything' },
             ]}
             selected={view}
@@ -290,7 +296,7 @@ export function ProjectsScreen({ navigation }: Props) {
           />
           <Text style={[t.type.caption, { color: t.colors.textMuted, paddingHorizontal: t.layout.screenPadding, marginTop: -t.space.sm }]}>
             {onToday
-              ? `${todayTotal ? `Today on ${f.label || 'all jobs'}: ${countsText(todayCounts)}.` : 'Nothing saved today yet.'}${earlier ? ` ${earlier} earlier ${earlier === 1 ? 'record' : 'records'} kept under Everything.` : ''}`
+              ? `${todayTotal ? `${nights ? 'This shift' : 'Today'} on ${f.label || 'all jobs'}: ${countsText(todayCounts)}.` : `Nothing saved ${todayWord} yet.`}${earlier ? ` ${earlier} earlier ${earlier === 1 ? 'record' : 'records'} kept under Everything.` : ''}`
               : `Everything on ${f.label || 'all jobs'}${doomedCounts.length ? `: ${countsText(doomedCounts)}` : ': nothing saved yet'}.`}
           </Text>
         </View>
@@ -361,7 +367,7 @@ export function ProjectsScreen({ navigation }: Props) {
             count={jIn ? shown.joints.length : null}
             rows={jointRows}
             empty={onToday ? nothingToday('bolted', joints.length) : 'No joints logged yet. Name a bolt-up to keep it here.'}
-            today={onToday}
+            today={onToday ? todayWord : undefined}
             onNew={() => go('FlangeBoltUp')}
             more={{ label: 'Joint log', onPress: () => go('Joints') }}
           />
@@ -371,7 +377,7 @@ export function ProjectsScreen({ navigation }: Props) {
             count={kIn ? shown.sketches.length : null}
             rows={sketchRows}
             empty={onToday ? nothingToday('drawn', sketches.length) : 'No isos yet. Start one on iso paper.'}
-            today={onToday}
+            today={onToday ? todayWord : undefined}
             onNew={() => go('IsoSketch')}
             more={{ label: 'Sketch book', onPress: () => go('IsoSketch') }}
           />
@@ -381,7 +387,7 @@ export function ProjectsScreen({ navigation }: Props) {
             count={sIn ? shown.spools.length : null}
             rows={spoolRows}
             empty={onToday ? nothingToday('built', spools.length) : 'No spools saved yet. Build one and save it by its mark.'}
-            today={onToday}
+            today={onToday ? todayWord : undefined}
             onNew={() => go('SpoolBuilder')}
             more={{ label: 'Order sheet', onPress: () => go('OrderSheet') }}
           />
@@ -391,7 +397,7 @@ export function ProjectsScreen({ navigation }: Props) {
             count={cIn ? cutsHere.length : null}
             rows={cutRows}
             empty={onToday ? nothingToday('listed to cut', mine(cutLog.cuts).length) : 'No cuts listed yet. Work one in Cut Length and add it to the list.'}
-            today={onToday}
+            today={onToday ? todayWord : undefined}
             onNew={() => go('CutLength')}
             more={{ label: cutsToGo ? `Cut list · ${cutsToGo} to cut` : 'Cut list', onPress: () => go('CutList') }}
           />
@@ -401,7 +407,7 @@ export function ProjectsScreen({ navigation }: Props) {
             count={lIn ? shown.readings.length : null}
             rows={levelRows}
             empty={onToday ? nothingToday('read', readings.length) : 'No readings saved yet. Lay the phone on a pipe and save it by tag.'}
-            today={onToday}
+            today={onToday ? todayWord : undefined}
             onNew={() => go('Level')}
             more={{ label: 'All readings', onPress: () => go('Level') }}
           />
@@ -421,7 +427,7 @@ export function ProjectsScreen({ navigation }: Props) {
             ) : (
               <>
                 <Text style={[t.type.caption, { color: t.colors.text }]}>
-                  {`Takes ${countsText(doomedCounts)} off this phone, every day's, not only today's.${tpOpen ? ` ${tpOpen} open ${tpOpen === 1 ? 'item goes' : 'items go'} with them.` : ''} Kept: the heat book, welder roster, calibration register, fitting library and settings. A backup file first means any of it can be read back in.`}
+                  {`Takes ${countsText(doomedCounts)} off this phone, every day's, not only ${todayWord === 'today' ? "today's" : "this shift's"}.${tpOpen ? ` ${tpOpen} open ${tpOpen === 1 ? 'item goes' : 'items go'} with them.` : ''} Kept: the heat book, welder roster, calibration register, fitting library and settings. A backup file first means any of it can be read back in.`}
                 </Text>
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
                   <SmallButton label={backup.busy ? 'Backing up…' : 'Back up, then clear'} onPress={() => void backUpThenClear()} strong />
@@ -456,8 +462,8 @@ function Card({
   empty: string;
   onNew: () => void;
   more: { label: string; onPress: () => void };
-  /** Counted as today's work rather than all saved. */
-  today?: boolean;
+  /** Counted as the day's work ("today", "this shift") rather than all saved. */
+  today?: string;
 }) {
   const t = useTheme();
   const c = t.colors;
@@ -483,7 +489,7 @@ function Card({
             {title}
           </Text>
           <Text style={[t.type.caption, { color: c.textMuted, marginTop: 2 }]}>
-            {count === null ? ' ' : count === 0 ? (today ? 'Nothing today' : 'Nothing saved') : `${count} ${today ? 'today' : 'saved'}`}
+            {count === null ? ' ' : count === 0 ? (today ? `Nothing ${today}` : 'Nothing saved') : `${count} ${today ?? 'saved'}`}
           </Text>
         </View>
         <Pressable onPress={onNew} accessibilityRole="button" accessibilityLabel={`New in ${title}`} hitSlop={6}>

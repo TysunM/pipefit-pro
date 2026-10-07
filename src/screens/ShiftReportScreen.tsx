@@ -52,7 +52,7 @@ import {
   weldTotal,
 } from '../state/shiftLog';
 import { hasWork, logFacts, plainReport, plainSummary, reportText, shiftFacts } from '../calc/shiftReport';
-import { dayKey } from '../calc/days';
+import { workDay } from '../calc/days';
 import { PolishMiss, askShiftPolish, checkPolish, polishMissWords } from '../ai/shiftPolish';
 import { API_BASE } from '../ai/apiBase';
 import { shareSheet } from '../print/share';
@@ -120,7 +120,7 @@ export function ShiftReportScreen({ navigation }: Props) {
   // for one job, so "All jobs" means the active job here.
   const job = useJobFilter(log.reports);
   const project = job.filter.kind === 'one' ? job.filter.id : job.active;
-  const [day, setDay] = useState(() => dayKey(Date.now()));
+  const [day, setDay] = useState(() => workDay(Date.now(), settings.shift));
   const saved = reportFor(log, day, project);
   const report: ShiftReport = saved ?? newReport(day, project, Date.now());
 
@@ -136,8 +136,8 @@ export function ShiftReportScreen({ navigation }: Props) {
   useEffect(() => navigation.setOptions({ title: project ? `Shift report · ${project}` : 'Shift report' }), [navigation, project]);
 
   const facts = useMemo(
-    () => shiftFacts(report, logFacts({ tests: tests.tests, joints: register.joints, heats: heats.heats, readings: levels.readings, sketches: sketches.sketches }, day, project)),
-    [report, tests.tests, register.joints, heats.heats, levels.readings, sketches.sketches, day, project],
+    () => shiftFacts(report, logFacts({ tests: tests.tests, joints: register.joints, heats: heats.heats, readings: levels.readings, sketches: sketches.sketches }, day, project, settings.shift), settings.shift),
+    [report, tests.tests, register.joints, heats.heats, levels.readings, sketches.sketches, day, project, settings.shift],
   );
   const summary = plainSummary(facts);
   const jobSpools = useMemo(() => shelf.spools.filter((s) => sameProject(s.project, project)).map((s) => s.name), [shelf.spools, project]);
@@ -224,7 +224,7 @@ export function ShiftReportScreen({ navigation }: Props) {
       <View style={{ paddingTop: t.space.md }}>
         <JobChips f={job} />
       </View>
-      <DayStepper day={day} onChange={setDay} />
+      <DayStepper day={day} onChange={setDay} today={workDay(Date.now(), settings.shift)} />
 
       <SectionHeader title="Already logged" meta={hasWork(facts) ? undefined : 'NOTHING YET'} />
       <View style={{ paddingHorizontal: t.layout.screenPadding, marginBottom: t.space.md }}>
