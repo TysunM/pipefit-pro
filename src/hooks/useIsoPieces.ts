@@ -36,7 +36,7 @@ export function useIsoPieces(sketch: SavedSketch | undefined) {
       reading.pieces.map((p) => {
         const d = dims[p.key];
         const fig = d ? dimText(d) : '?';
-        return { key: p.key, a: toScreen(p.from, 'SW', ISO_GRID), b: toScreen(p.to, 'SW', ISO_GRID), text: numbered ? `${p.n}: ${fig}` : fig, missing: !d };
+        return { key: p.key, a: toScreen(p.from, 'SW', ISO_GRID), b: toScreen(p.to, 'SW', ISO_GRID), from: p.from, to: p.to, text: numbered ? `${p.n}: ${fig}` : fig, missing: !d };
       }),
     [reading, dims, dimText],
   );

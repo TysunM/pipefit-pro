@@ -20,6 +20,7 @@ import { AccentButton, ControlRow, GhostButton } from '../components/Buttons';
 import { Banner } from '../components/FormFields';
 import { Chip, JobChips, useJobFilter } from '../components/JobChips';
 import { WelderSheet } from '../components/WelderSheet';
+import { weldInk } from '../components/weldInk';
 import { Theme, useTheme } from '../theme/ThemeProvider';
 import { useSettings } from '../state/settings';
 import { useWelds, useWelders } from '../state/welds';
@@ -269,7 +270,7 @@ function WeldsPage({ t, welds, today, onOpen, onAdd, onPrint, note }: { t: Theme
   const todays = welds.filter((w) => w.day === today);
   const byLine = new Map<string, Weld[]>();
   for (const w of [...shown].sort((a, b) => a.number.localeCompare(b.number, undefined, { numeric: true }))) byLine.set(w.line, [...(byLine.get(w.line) ?? []), w]);
-  const ink = (w: Weld) => ({ accepted: t.colors.success, repair: t.colors.danger, picked: t.colors.data, welded: t.colors.textMuted })[weldState(w)];
+  const ink = (w: Weld) => weldInk(t.colors, weldState(w));
 
   return (
     <>
@@ -277,7 +278,7 @@ function WeldsPage({ t, welds, today, onOpen, onAdd, onPrint, note }: { t: Theme
         {`Today ${todays.length} weld${todays.length === 1 ? '' : 's'} · ${fig(diameterInches(todays))} dia-in`}
       </Text>
       <Text style={[t.type.caption, { color: t.colors.textMuted, paddingHorizontal: t.layout.screenPadding, paddingBottom: t.space.md }]}>
-        {`All told ${welds.length} · ${fig(diameterInches(welds))} dia-in`}
+        {`All told ${welds.filter((w) => w.day).length} welded${welds.some((w) => !w.day) ? ` of ${welds.length}` : ''} · ${fig(diameterInches(welds))} dia-in`}
       </Text>
       <ControlRow>
         <AccentButton label="Log a weld" icon="add" style={{ flex: 1 }} onPress={onAdd} />
@@ -294,7 +295,7 @@ function WeldsPage({ t, welds, today, onOpen, onAdd, onPrint, note }: { t: Theme
       ) : null}
       {[...byLine.entries()].map(([l, ws]) => (
         <View key={l || '-'}>
-          <SectionHeader title={l || 'No line'} meta={`${ws.length} · ${fig(diameterInches(ws))} dia-in`} />
+          <SectionHeader title={l || 'No line'} meta={`${ws.filter((w) => w.day).length} of ${ws.length} welded · ${fig(diameterInches(ws))} dia-in`} />
           {ws.map((w) => (
             <Pressable
               key={w.id}
@@ -319,7 +320,7 @@ function WeldsPage({ t, welds, today, onOpen, onAdd, onPrint, note }: { t: Theme
                 <Text style={[t.type.body, { color: t.colors.text }]} numberOfLines={1}>
                   {[w.nps ? sizeLabel(w.nps) : '', w.type, w.process, w.welders.join('/') || 'no stamp'].filter(Boolean).join(' · ')}
                 </Text>
-                <Text style={[t.type.caption, { color: t.colors.textFaint }]} numberOfLines={1}>{`${usDate(w.day)}${w.pct ? ` · ${w.pct}% ${w.method}` : ' · visual'}`}</Text>
+                <Text style={[t.type.caption, { color: t.colors.textFaint }]} numberOfLines={1}>{`${w.day ? usDate(w.day) : 'Not welded yet'}${w.pct ? ` · ${w.pct}% ${w.method}` : ' · visual'}${w.mapAt ? ' · on the map' : ''}`}</Text>
               </View>
               <Text style={[t.type.captionStrong, { color: ink(w) }]}>{STATE_LABEL[weldState(w)]}</Text>
             </Pressable>

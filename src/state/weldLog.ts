@@ -43,6 +43,8 @@ export const JOINT_TYPES: readonly { id: JointType; label: string }[] = [
   { id: 'BR', label: 'Branch' },
 ];
 
+export type MapPoint = [number, number, number];
+
 export type NdeMethod = 'RT' | 'UT' | 'MT' | 'PT' | 'VT';
 export const NDE_METHODS: readonly NdeMethod[] = ['RT', 'UT', 'MT', 'PT', 'VT'];
 
@@ -78,6 +80,13 @@ export type Weld = {
   number: string;
   /** The iso it is drawn on, by sketch id; '' for none. */
   sketchId: string;
+  /**
+   * Where it sits on that iso, as a point in the sketch's world (dot counts,
+   * fractions allowed): a point stays put when the pipe round it is redrawn
+   * or split at a tee, where a piece of pipe would not. Null when not placed.
+   */
+  mapAt: MapPoint | null;
+  /** The day it was welded; '' for a weld planned on the map and not yet made. */
   day: string;
   /** Nominal size, inches; null when not given. */
   nps: number | null;
@@ -141,7 +150,9 @@ export function validWeld(v: unknown): Weld | null {
   const number = text(v.number, 20);
   if (!number) return null;
   if (!isNum(v.createdAt) || v.createdAt <= 0) return null;
-  const when = day(v.day, dayKey(v.createdAt));
+  // A weld planned on the map has no day yet; anything else unreadable is the day it was logged.
+  const when = v.day === '' ? '' : day(v.day, dayKey(v.createdAt));
+  const at = Array.isArray(v.mapAt) && v.mapAt.length === 3 && v.mapAt.every((n) => isNum(n) && Math.abs(n) < 1e5) ? (v.mapAt.map((n) => Math.round(n * 1000) / 1000) as MapPoint) : null;
   const list = (x: unknown, f: (s: string) => string, max: number) =>
     Array.isArray(x) ? [...new Set(x.map((s) => f(text(s, 30))).filter(Boolean))].slice(0, max) : [];
   return {
@@ -150,6 +161,7 @@ export function validWeld(v: unknown): Weld | null {
     line: text(v.line),
     number,
     sketchId: text(v.sketchId, 80),
+    mapAt: at,
     day: when,
     nps: isNum(v.nps) && v.nps > 0 && v.nps <= 120 ? v.nps : null,
     type: oneOf(v.type, ['BW', 'SW', 'FW', 'BR'] as const, 'BW'),
@@ -159,7 +171,7 @@ export function validWeld(v: unknown): Weld | null {
     heats: list(v.heats, normaliseHeat, 6),
     pct: isNum(v.pct) && NDE_PERCENTS.includes(v.pct) ? v.pct : 5,
     method: oneOf(v.method, NDE_METHODS, 'RT'),
-    exams: (Array.isArray(v.exams) ? v.exams : []).map((e) => validExam(e, when)).filter((e): e is Exam => e !== null).slice(0, MAX_EXAMS),
+    exams: (Array.isArray(v.exams) ? v.exams : []).map((e) => validExam(e, when || dayKey(v.createdAt as number))).filter((e): e is Exam => e !== null).slice(0, MAX_EXAMS),
     repairs: isNum(v.repairs) && v.repairs >= 0 ? Math.min(9, Math.floor(v.repairs)) : 0,
     note: text(v.note, 200),
     createdAt: v.createdAt,
@@ -219,7 +231,7 @@ export const serialiseWelders = (r: WelderRoster): string => JSON.stringify({ v:
 
 // ------------------------------------------------------------ welds
 
-export type NewWeld = Omit<Weld, 'id' | 'exams' | 'repairs' | 'createdAt' | 'updatedAt'>;
+export type NewWeld = Omit<Weld, 'id' | 'exams' | 'repairs' | 'createdAt' | 'updatedAt' | 'mapAt'> & { mapAt?: MapPoint | null };
 
 /** The weld already logged on that job and line under that number, if any. */
 export const findWeld = (l: WeldLog, project: string, line: string, number: string): Weld | undefined =>
@@ -279,17 +291,18 @@ export function logRepair(l: WeldLog, id: string, now: number): WeldLog {
 /** The weld as it is called: 14, or 14R1 after its first repair. */
 export const weldName = (w: Pick<Weld, 'number' | 'repairs'>): string => (w.repairs ? `${w.number}R${w.repairs}` : w.number);
 
-export type WeldState = 'welded' | 'picked' | 'accepted' | 'repair';
+export type WeldState = 'planned' | 'welded' | 'picked' | 'accepted' | 'repair';
 
 /** Where a weld stands, from its examinations. */
 export function weldState(w: Weld): WeldState {
+  if (!w.day) return 'planned';
   const last = w.exams[w.exams.length - 1];
   if (!last) return 'welded';
   if (last.result === 'pending') return 'picked';
   return last.result === 'accept' ? 'accepted' : 'repair';
 }
 
-export const STATE_LABEL: Record<WeldState, string> = { welded: 'Welded', picked: 'Picked for NDE', accepted: 'Accepted', repair: 'Repair' };
+export const STATE_LABEL: Record<WeldState, string> = { planned: 'Planned', welded: 'Welded', picked: 'Picked for NDE', accepted: 'Accepted', repair: 'Repair' };
 
 /** The next weld number on a line: one past the highest plain number there. */
 export function nextNumber(l: WeldLog, project: string, line: string): string {
@@ -311,7 +324,23 @@ export function linesOf(welds: readonly Weld[]): string[] {
 }
 
 /** Diameter-inches: the size of each weld added up, the count a foreman's production is measured in. */
-export const diameterInches = (welds: readonly Weld[]): number => welds.reduce((s, w) => s + (w.nps ?? 0), 0);
+export const diameterInches = (welds: readonly Weld[]): number => welds.reduce((s, w) => s + (w.day ? (w.nps ?? 0) : 0), 0);
+
+/** Made, as against planned on the map. */
+export const welded = (w: Pick<Weld, 'day'>): boolean => w.day !== '';
+
+/** A planned weld made: the day, and the stamps of who made it. */
+export function markWelded(l: WeldLog, id: string, on: string, stamps: readonly string[], now: number): WeldLog {
+  return edit(l, id, (w) => ({ ...w, day: on, welders: stamps.length ? [...new Set(stamps.map((s) => s.toUpperCase()))].slice(0, 6) : w.welders }), now);
+}
+
+/** Put on an iso at a point, or taken off the map with null. */
+export function placeWeld(l: WeldLog, id: string, sketchId: string, at: MapPoint | null, now: number): WeldLog {
+  return edit(l, id, (w) => ({ ...w, sketchId: at ? sketchId : w.sketchId, mapAt: at ? (at.map((n) => Math.round(n * 1000) / 1000) as MapPoint) : null }), now);
+}
+
+/** The welds drawn on one iso. */
+export const weldsOn = (welds: readonly Weld[], sketchId: string): Weld[] => welds.filter((w) => w.sketchId === sketchId && w.mapAt !== null);
 
 // ------------------------------------------------------------ welders
 
@@ -402,7 +431,7 @@ export type WelderStats = { welds: number; butt: number; examined: number; rejec
  */
 export function welderStats(stamp: string, welds: readonly Weld[]): WelderStats {
   const key = stampKey(stamp);
-  const mine = welds.filter((w) => w.welders.some((s) => stampKey(s) === key));
+  const mine = welds.filter((w) => welded(w) && w.welders.some((s) => stampKey(s) === key));
   const examined = mine.filter((w) => w.exams.some((e) => e.result !== 'pending' && e.reason !== 'repair'));
   const rejects = examined.filter((w) => w.exams.some((e) => e.result === 'reject' && e.reason !== 'repair')).length;
   return {

@@ -15,8 +15,9 @@ import { SectionHeader } from '../components/SectionHeader';
 import { ChipRow } from '../components/ChipRow';
 import { AccentButton, ControlRow, GhostButton } from '../components/Buttons';
 import { DimensionInput, FieldRow } from '../components/DimensionInput';
-import { DayStepper, NoteField } from '../components/FormFields';
+import { CheckRow, DayStepper, NoteField } from '../components/FormFields';
 import { Chip } from '../components/JobChips';
+import { weldInk } from '../components/weldInk';
 import { useTheme } from '../theme/ThemeProvider';
 import { useSettings } from '../state/settings';
 import { useWelds, useWelders } from '../state/welds';
@@ -39,7 +40,9 @@ import {
   getWeld,
   linesOf,
   logRepair,
+  markWelded,
   nextNumber,
+  placeWeld,
   pickWeld,
   putWeld,
   removeExam,
@@ -73,7 +76,9 @@ export function WeldScreen({ navigation, route }: Props) {
   const [line, setLine] = useState(existing?.line ?? route.params?.line ?? last?.line ?? '');
   const [number, setNumber] = useState(existing?.number ?? nextNumber(log, project, route.params?.line ?? last?.line ?? ''));
   const [numberTouched, setNumberTouched] = useState(!!existing);
-  const [day, setDay] = useState(existing?.day ?? dayKey(Date.now()));
+  const [day, setDay] = useState(existing?.day || dayKey(Date.now()));
+  // Planned on the map and not made yet: no day, and nothing to sample.
+  const [planned, setPlanned] = useState(existing ? !existing.day : false);
   const [nps, setNps] = useState<number | null>(existing ? existing.nps : (last?.nps ?? settings.defaultNps));
   const [type, setType] = useState<JointType>(existing?.type ?? 'BW');
   const [process, setProcess] = useState<Process>(existing?.process ?? last?.process ?? 'GTAW');
@@ -103,7 +108,7 @@ export function WeldScreen({ navigation, route }: Props) {
   const jobIsos = sketches.sketches.filter((s) => sameProject(s.project, project));
   const lines = linesOf(jobWelds).slice(0, 8);
 
-  const form = { project, line: line.trim(), number: number.trim(), sketchId, day, nps, type, process, wps: wps.trim(), welders, heats: heatList, pct, method, note: note.trim() };
+  const form = { project, line: line.trim(), number: number.trim(), sketchId, day: planned ? '' : day, nps, type, process, wps: wps.trim(), welders, heats: heatList, pct, method, note: note.trim() };
 
   const save = () => {
     const now = Date.now();
@@ -137,7 +142,7 @@ export function WeldScreen({ navigation, route }: Props) {
   return (
     <Screen>
       {existing ? (
-        <Text style={[t.type.bodyStrong, { color: { accepted: t.colors.success, repair: t.colors.danger, picked: t.colors.data, welded: t.colors.textMuted }[weldState(existing)], paddingHorizontal: t.layout.screenPadding, paddingTop: t.space.md }]}>
+        <Text style={[t.type.bodyStrong, { color: weldInk(t.colors, weldState(existing)), paddingHorizontal: t.layout.screenPadding, paddingTop: t.space.md }]}>
           {`${STATE_LABEL[weldState(existing)]}${existing.repairs ? ` · repaired ${existing.repairs}×` : ''}`}
         </Text>
       ) : null}
@@ -165,7 +170,8 @@ export function WeldScreen({ navigation, route }: Props) {
           ))}
         </View>
       ) : null}
-      <DayStepper day={day} onChange={setDay} />
+      <CheckRow on={planned} text="Not welded yet" sub="Planned on the weld map. Ticked off with the day and the stamps when it is made." onPress={() => setPlanned((p) => !p)} />
+      {planned ? null : <DayStepper day={day} onChange={setDay} />}
 
       <ChipRow label="Size" options={SIZES.map((n) => ({ value: n, label: sizeLabel(n) }))} selected={nps} onSelect={setNps} />
       <ChipRow label="Joint" options={JOINT_TYPES.map((j) => ({ value: j.id, label: j.label }))} selected={type} onSelect={setType} />
@@ -211,6 +217,42 @@ export function WeldScreen({ navigation, route }: Props) {
       ) : null}
       <NoteField label="Note" value={note} onChangeText={setNote} placeholder="Purged, preheat, anything for QC" max={200} />
 
+      {existing && sketchId ? (
+        <View style={{ paddingBottom: t.space.md }}>
+          <ControlRow>
+            <GhostButton
+              label={existing.mapAt && existing.sketchId === sketchId ? 'Move on the iso' : 'Place on the iso'}
+              icon="locate-outline"
+              style={{ flex: 1 }}
+              onPress={() => navigation.navigate('IsoDraw', { id: sketchId, place: existing.id })}
+            />
+            {existing.mapAt ? <GhostButton label="Show" icon="eye-outline" onPress={() => navigation.navigate('IsoDraw', { id: existing.sketchId })} /> : null}
+          </ControlRow>
+          {existing.mapAt ? (
+            <ControlRow>
+              <GhostButton label="Take it off the map" icon="close-circle-outline" style={{ flex: 1 }} onPress={() => apply((l) => placeWeld(l, existing.id, existing.sketchId, null, Date.now()))} />
+            </ControlRow>
+          ) : null}
+        </View>
+      ) : null}
+      {existing && !existing.day ? (
+        <ControlRow>
+          <AccentButton
+            label={welders.length ? `Welded today by ${welders.join(' / ')}` : 'Welded today: pick the stamps first'}
+            icon="flame-outline"
+            style={{ flex: 1 }}
+            onPress={() => {
+              if (!welders.length) return setSaid({ text: 'Tap the stamps of who welded it first.', bad: true });
+              const today = dayKey(Date.now());
+              apply((l) => markWelded(l, existing.id, today, welders, Date.now()));
+              setPlanned(false);
+              setDay(today);
+              void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
+              setSaid({ text: `Weld ${weldName(existing)} welded today.`, bad: false });
+            }}
+          />
+        </ControlRow>
+      ) : null}
       {said ? <Text style={[t.type.captionStrong, { color: said.bad ? t.colors.danger : t.colors.success, paddingHorizontal: t.layout.screenPadding, paddingBottom: t.space.sm }]}>{said.text}</Text> : null}
       <ControlRow>
         <AccentButton label={existing ? 'Save' : `Log weld ${number || ''}`.trim()} icon="checkmark" style={{ flex: 1 }} onPress={save} />

@@ -11,10 +11,15 @@ import { IsoCanvas, SketchMode } from '../components/sketch/IsoCanvas';
 import { FlipLabel, PaperKey } from '../components/sketch/PageControls';
 import { Theme, useTheme } from '../theme/ThemeProvider';
 import { useSketches } from '../state/sketches';
-import { Corner, Flip, ISO_GRID, L3, NO_FLIP, Pt, Viewport, contained, fitViewport, holding, tenth, toPage, turnDegrees, turnOver } from '../calc/iso';
+import { Corner, Flip, ISO_GRID, L3, NO_FLIP, Pt, Viewport, contained, fitViewport, holding, tenth, toPage, toScreen, turnDegrees, turnOver } from '../calc/iso';
 import { MAX_NOTE, Stroke, getSketch, sketchBounds, sketchToSvg, withDim, withFlip, withStrokes } from '../state/sketchStore';
 import { DimAsk, DimSheet } from '../components/sketch/DimSheet';
 import { useIsoPieces } from '../hooks/useIsoPieces';
+import { weldInk } from '../components/weldInk';
+import { useWelds } from '../state/welds';
+import { useSettings } from '../state/settings';
+import { sameProject } from '../state/project';
+import { MapPoint, addWeld, getWeld, nextNumber, placeWeld, weldName, weldState, weldsOn } from '../state/weldLog';
 import { esc } from '../print/spoolSvg';
 import { shareSheet } from '../print/share';
 
@@ -25,14 +30,16 @@ const HINT: Record<SketchMode, string> = {
   pen: 'Draw freehand: a tie-in box, a valve, a cloud round a problem.',
   note: 'Tap where a word or a measurement goes. Tap a word to change it.',
   dim: 'Tap a piece of pipe for its centre to centre. Every piece is numbered as it goes on the cut list.',
+  weld: 'Tap a pipe where a weld goes and it takes the next number on the line. Tap a weld to fill it in.',
   move: 'Drag to move the page. Two fingers move, zoom and turn it from any tool; N, E, S and W on the paper turn with it.',
 };
 
-const TOOLS: { value: SketchMode; label: string; icon: 'analytics-outline' | 'create-outline' | 'text-outline' | 'resize-outline' | 'hand-left-outline' }[] = [
+const TOOLS: { value: SketchMode; label: string; icon: 'analytics-outline' | 'create-outline' | 'text-outline' | 'resize-outline' | 'flame-outline' | 'hand-left-outline' }[] = [
   { value: 'run', label: 'Run', icon: 'analytics-outline' },
   { value: 'pen', label: 'Pen', icon: 'create-outline' },
   { value: 'note', label: 'Note', icon: 'text-outline' },
   { value: 'dim', label: 'Dim', icon: 'resize-outline' },
+  { value: 'weld', label: 'Weld', icon: 'flame-outline' },
   { value: 'move', label: 'Move', icon: 'hand-left-outline' },
 ];
 
@@ -60,7 +67,9 @@ export function IsoDrawScreen({ navigation, route }: Props) {
   const { book, hydrated, apply } = useSketches();
   const sketch = getSketch(book, id);
 
-  const [mode, setMode] = useState<SketchMode>('run');
+  // Sent here to put one weld on the map: the Weld tool is up and the next tap places it.
+  const placing = route.params.place;
+  const [mode, setMode] = useState<SketchMode>(placing ? 'weld' : 'run');
   const corner = CORNER;
   const [size, setSize] = useState({ w: 0, h: 0 });
   const [viewport, setViewport] = useState<Viewport>({ scale: 1, tx: 0, ty: 0 });
@@ -69,6 +78,34 @@ export function IsoDrawScreen({ navigation, route }: Props) {
   const [word, setWord] = useState<string | null>(null);
   const [ask, setAsk] = useState<DimAsk | null>(null);
   const iso = useIsoPieces(sketch);
+  const { settings } = useSettings();
+  const { log: weldLog, apply: applyWelds } = useWelds();
+  const onIso = weldsOn(weldLog.welds, id);
+  const marks = onIso.map((w) => ({ id: w.id, at: toScreen(w.mapAt!, CORNER, ISO_GRID), text: weldName(w), ink: weldInk(t.colors, weldState(w)) }));
+  const moving = placing ? getWeld(weldLog, placing) : undefined;
+
+  /** A weld dropped on the pipe: the next number on this iso's line, planned until it is made. */
+  const placeAt = (at: MapPoint) => {
+    const now = Date.now();
+    if (moving) {
+      applyWelds((l) => placeWeld(l, moving.id, id, at, now));
+      navigation.goBack();
+      return;
+    }
+    if (!sketch) return;
+    const project = sketch.project || settings.projectId;
+    const line = onIso[0]?.line ?? weldLog.welds.find((w) => w.sketchId === id)?.line ?? sketch.name.trim().slice(0, 60);
+    const last = weldLog.welds.find((w) => sameProject(w.project, project));
+    const number = nextNumber(weldLog, project, line);
+    const out = addWeld(
+      weldLog,
+      { project, line, number, sketchId: id, mapAt: at, day: '', nps: last?.nps ?? settings.defaultNps, type: 'BW', process: last?.process ?? 'GTAW', wps: last?.wps ?? '', welders: [], heats: [], pct: last?.pct ?? 5, method: last?.method ?? 'RT', note: '' },
+      now,
+    );
+    if (!out.ok) return setWord(out.why);
+    applyWelds(() => out.log);
+    setWord(`Weld ${number} on ${line || 'the map'}. Tap it to fill it in.`);
+  };
   // Full screen: the paper takes the whole phone. The header, the hints and
   // the buttons under the paper go; the tools and undo sit on the paper.
   const [full, setFull] = useState(false);
@@ -142,6 +179,9 @@ export function IsoDrawScreen({ navigation, route }: Props) {
   // what was shown stays the middle.
   const lastSize = useRef({ w: 0, h: 0 });
   const onPaper = (w: number, h: number) => {
+    // Covered by another screen, the paper can be measured at nothing; that is not a new size,
+    // and taking it as one throws the drawing off the screen when it comes back.
+    if (!w || !h) return;
     const old = lastSize.current;
     if (old.w && old.h && (old.w !== w || old.h !== h)) {
       setViewport((v) => ({ ...v, tx: v.tx + (w - old.w) / 2, ty: v.ty + (h - old.h) / 2 }));
@@ -192,7 +232,7 @@ export function IsoDrawScreen({ navigation, route }: Props) {
 
   const share = async () => {
     if (!sketch) return;
-    const html = `<!doctype html><html><head><meta charset="utf-8"><title>${esc(sketch.name)}</title><style>body{margin:0;padding:12px;font-family:Helvetica,Arial,sans-serif}h1{font-size:16px;margin:0 0 8px}svg{max-width:100%;height:auto}</style></head><body><h1>${esc(sketch.name)}${sketch.place ? ' · ' + esc(sketch.place) : ''}</h1>${sketchToSvg(sketch, ISO_GRID, corner, flip, iso.labels(false).filter((l) => !l.missing))}</body></html>`;
+    const html = `<!doctype html><html><head><meta charset="utf-8"><title>${esc(sketch.name)}</title><style>body{margin:0;padding:12px;font-family:Helvetica,Arial,sans-serif}h1{font-size:16px;margin:0 0 8px}svg{max-width:100%;height:auto}</style></head><body><h1>${esc(sketch.name)}${sketch.place ? ' · ' + esc(sketch.place) : ''}</h1>${sketchToSvg(sketch, ISO_GRID, corner, flip, iso.labels(false).filter((l) => !l.missing), marks)}</body></html>`;
     const r = await shareSheet(html, sketch.name);
     if (!r.ok) setWord(r.why);
   };
@@ -216,7 +256,7 @@ export function IsoDrawScreen({ navigation, route }: Props) {
         <View style={{ paddingTop: t.space.md }}>
           <Segmented options={TOOLS.map(({ value, label }) => ({ value, label }))} selected={mode} onSelect={setMode} />
           <Text style={[t.type.caption, { color: word ? t.colors.warnText : t.colors.textMuted, paddingHorizontal: t.layout.screenPadding, marginTop: -t.space.sm, marginBottom: t.space.md }]} numberOfLines={2}>
-            {word ?? HINT[mode]}
+            {word ?? (moving ? `Tap the pipe where weld ${weldName(moving)} goes.` : HINT[mode])}
           </Text>
         </View>
       )}
@@ -261,6 +301,9 @@ export function IsoDrawScreen({ navigation, route }: Props) {
                 onStroke={(s) => edit((prev) => [...prev, s])}
                 onNote={(at, anchor, index) => setNote({ at, anchor, index })}
                 pieces={iso.labels(mode === 'dim')}
+                welds={marks}
+                onWeld={(wid) => navigation.navigate('Weld', { id: wid })}
+                onPlace={placeAt}
                 onPiece={(key) => {
                   const p = iso.reading.pieces.find((x) => x.key === key);
                   if (p) setAsk({ key, n: p.n, current: iso.dims[key] });
