@@ -8,6 +8,7 @@ import Svg, { Circle, Defs, Line, RadialGradient, Stop } from 'react-native-svg'
 import * as Haptics from 'expo-haptics';
 import { RootStackParamList } from '../navigation/types';
 import { Screen } from '../components/Screen';
+import { Coach } from '../components/Coach';
 import { Segmented } from '../components/Segmented';
 import { StopSlider } from '../components/StopSlider';
 import { FlangeIcon } from '../components/FlangeIcon';
@@ -391,6 +392,8 @@ function Bolting({
   return (
     <Screen>
       <View onLayout={(e) => setWidth(e.nativeEvent.layout.width)} />
+
+      <Coach screen="FlangeBoltUp" done={[!isScratch(joint) && joint.tag.trim() !== '', Boolean(flange), joint.torque !== null, progress.done > 0 || done, done, Boolean(joint.witnessedBy.trim()) && Boolean(joint.wrench)]} />
 
       <JointBar
         t={t}

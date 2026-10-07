@@ -21,6 +21,7 @@ const DEFAULTS: Settings = {
   gloveMode: false,
   voice: true,
   shift: 'days',
+  coach: 'on',
   look: LOOK,
 };
 

@@ -86,7 +86,7 @@ export function ProjectCard({ onEdit }: { onEdit: () => void }) {
           {({ pressed }) => (
             <Plate tone="copper" sunk={pressed} radius={t.radius.sm} style={{ paddingHorizontal: 12, height: 44, justifyContent: 'center' }}>
               <Text style={[t.type.labelSmall, { color: t.colors.onCopper, fontFamily: t.font.sans, fontSize: 13, letterSpacing: 0.6 }]}>
-                Edit specs
+                Pipe & material
               </Text>
             </Plate>
           )}

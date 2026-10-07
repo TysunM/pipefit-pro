@@ -22,6 +22,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { MAX_POLISH_BODY, POLISH_SCHEMA, POLISH_SYSTEM, cleanPolishBody, polishMessage, readPolish } from '../src/ai/shiftPolish';
 import { MAX_VOICE_BODY, VOICE_SCHEMA, VOICE_SYSTEM, cleanVoiceBody, readVoice, voiceMessage } from '../src/ai/voice';
 import { MAX_IMAGE_B64, MAX_SHEET_BODY, SHEET_SCHEMA, SHEET_SYSTEM, bareBase64, cleanSheetBody, readSheet, sheetPrompt } from '../src/ai/fittingSheet';
+import { MAX_ORIENTATION_BODY, ORIENTATION_SCHEMA, ORIENTATION_SYSTEM, cleanOrientationBody, orientationMessage, readCourse } from '../src/ai/orientation';
 
 /**
  * How long Claude gets. A summary usually comes back in seconds; this is for
@@ -34,6 +35,9 @@ const VOICE_MS = 15_000;
 
 /** How long a sheet read gets: a page of small print is read carefully, inside the app's 75 seconds. */
 const SHEET_MS = 60_000;
+
+/** How long a course gets: a few pages read and written in another language, inside the app's 75 seconds. */
+const COURSE_MS = 65_000;
 
 export type Reply = { status: number; body: unknown };
 
@@ -175,6 +179,51 @@ export async function fittingSheet(raw: string, apiKey: string, model: string, f
     }
     const sheet = readSheet(out, body.family);
     return sheet ? { status: 200, body: { sheet } } : { status: 502, body: { error: 'bad_answer' } };
+  } catch (e) {
+    if (e instanceof Anthropic.APIConnectionError) return { status: 504, body: { error: 'upstream_unreachable' } };
+    if (e instanceof Anthropic.APIError) return { status: 502, body: { error: 'upstream', status: e.status ?? null } };
+    return { status: 502, body: { error: 'upstream' } };
+  }
+}
+
+/**
+ * A site orientation module turned into a course: sections to be read aloud
+ * and questions on them, in English or Spanish. The route takes a title, the
+ * rules and a language; the question is fixed here and the answer is held to
+ * the schema, then read again before it goes.
+ */
+export async function orientationCourse(raw: string, apiKey: string, model: string, fetchImpl: typeof fetch): Promise<Reply> {
+  if (raw.length > MAX_ORIENTATION_BODY) return { status: 413, body: { error: 'too_large' } };
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return { status: 400, body: { error: 'bad_json' } };
+  }
+  const body = cleanOrientationBody(parsed);
+  if (!body) return { status: 400, body: { error: 'no_text' } };
+
+  const client = new Anthropic({ apiKey, fetch: fetchImpl, maxRetries: 1, timeout: COURSE_MS });
+  try {
+    const msg = await client.beta.messages.create({
+      model,
+      max_tokens: 12000,
+      betas: ['server-side-fallback-2026-07-01'],
+      fallbacks: 'default',
+      // Rules a man's safety rides on, and a translation: worth some care.
+      output_config: { effort: 'medium', format: { type: 'json_schema', schema: ORIENTATION_SCHEMA } },
+      system: ORIENTATION_SYSTEM,
+      messages: [{ role: 'user', content: orientationMessage(body) }],
+    });
+    if (msg.stop_reason === 'refusal') return { status: 502, body: { error: 'declined' } };
+    let out: unknown;
+    try {
+      out = JSON.parse(msg.content.map((b) => (b.type === 'text' ? b.text : '')).join(''));
+    } catch {
+      return { status: 502, body: { error: 'bad_answer' } };
+    }
+    const course = readCourse(out);
+    return course ? { status: 200, body: { course } } : { status: 502, body: { error: 'bad_answer' } };
   } catch (e) {
     if (e instanceof Anthropic.APIConnectionError) return { status: 504, body: { error: 'upstream_unreachable' } };
     if (e instanceof Anthropic.APIError) return { status: 502, body: { error: 'upstream', status: e.status ?? null } };

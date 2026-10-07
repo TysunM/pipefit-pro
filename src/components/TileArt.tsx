@@ -231,6 +231,18 @@ const art: Record<string, (k: Ink) => React.ReactNode> = {
   ),
 
   // A bend with its radius struck from the centre.
+  // A hard hat over a page of rules: what is learned before the gate.
+  Orientation: (k) => (
+    <G>
+      <Rect x={18} y={30} width={52} height={28} rx={2.5} fill="none" stroke={k.line} strokeWidth={2} />
+      {[38, 45, 52].map((y) => (
+        <Line key={y} x1={24} y1={y} x2={48} y2={y} stroke={k.guide} strokeWidth={1.3} />
+      ))}
+      <Path d="M30 24 a14 11 0 0 1 28 0 l3 0 l0 3 l-34 0 l0 -3 z" fill="none" stroke={k.accent} strokeWidth={2.2} strokeLinejoin="round" />
+      <Path d="M56.5 47 l2.5 2.5 l5 -5.5" fill="none" stroke={k.accent} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+    </G>
+  ),
+
   // A record with a signature on it and a seal beside: somebody signed for it.
   Passport: (k) => (
     <G>

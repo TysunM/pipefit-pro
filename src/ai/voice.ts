@@ -40,6 +40,7 @@ export const VOICE_ROUTES = [
   'Projects',
   'Tools',
   'Logs',
+  'Edu',
   'Calculator',
   'Level',
   'Measure',
@@ -63,6 +64,7 @@ export const VOICE_ROUTES = [
   'WeldLog',
   'Calibration',
   'Passport',
+  'Orientation',
 ] as const;
 export type VoiceRoute = (typeof VOICE_ROUTES)[number];
 
@@ -73,7 +75,8 @@ const ROUTE_WORDS: Record<VoiceRoute, string> = {
   Backup: 'backup and restore: everything on the phone to one file, and back',
   Projects: 'the Projects tab: every job\'s saved work, the turnover package PDF, and clearing a job off the phone',
   Tools: 'the Tools tab: iso sketch, 3D spool, bolt-up, level, measure, and every bend and offset',
-  Logs: 'the Logs tab: weld log, pressure tests, joint log, heat book, shift report, calibration, skills passport, handbook',
+  Logs: 'the Logs tab: weld log, pressure tests, joint log, heat book, shift report, calibration, handbook',
+  Edu: 'the Edu tab: site orientation and the skills passport',
   Calculator: 'trade calculator: feet, inches and fractions',
   Level: 'digital level: lay the phone on a pipe to read slope and fall',
   Measure: 'AR tracing with the camera, and a Bluetooth laser meter',
@@ -96,6 +99,7 @@ const ROUTE_WORDS: Record<VoiceRoute, string> = {
   CutList: 'cut list: cuts added from Cut Length, grouped by pipe, ticked off at the saw',
   Calibration: 'calibration register: test gauges, torque wrenches and other instruments with their calibration due dates and certificates',
   Passport: "skills passport: what this hand can do, proved by the records on the phone and signed off by a foreman, with a PDF to carry between jobs",
+  Orientation: 'site orientation: the modules a new hire takes before the gate, built-in general practice and the company\'s own rules, read or spoken in English or Spanish, with a check at the end',
   WeldLog: 'weld log: every weld with its welders, heats and NDE results, the random and tracer x-rays owed, and each welder\'s continuity',
 };
 

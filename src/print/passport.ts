@@ -61,6 +61,10 @@ export function passportHtml(i: { holder: string; standings: readonly SkillStand
     ? `<section class="tbl"><h2>Sign-offs</h2><table><thead><tr><th>Skill</th><th>Signed by</th><th>Role</th><th>Date</th><th>Job</th><th>Signature</th><th>Record code</th><th>Note</th></tr></thead><tbody>${signRows}</tbody></table>` +
       '<p class="note">A record code is worked from the sign-off as it is held on the phone. The same sign-off opened on the phone shows the same code.</p></section>'
     : '';
+  const orient = i.standings.find((s) => s.skill.id === 'orientation');
+  const orientTable = orient?.evidence.length
+    ? table({ title: 'Site orientation passed', head: ['Module', 'Date', 'Job'], rows: orient.evidence.map((e) => [e.what, when(e.at), e.project || '—']) })
+    : '';
   return (
     '<!doctype html><html><head><meta charset="utf-8">' +
     `<title>${esc(`Skills passport — ${name}`)}</title>` +
@@ -69,7 +73,7 @@ export function passportHtml(i: { holder: string; standings: readonly SkillStand
     `<header><div class="titles"><div><h1>${esc(`Skills passport — ${name}`)}</h1>` +
     `<p class="where">${esc(`${signed} of ${i.standings.length} skills signed off · ${attestations.length} sign-offs`)}</p></div>` +
     `<div class="when">${esc(usDate(i.today))}</div></div></header>` +
-    `<main>${parts.join('')}${signTable}</main>` +
+    `<main>${parts.join('')}${orientTable}${signTable}</main>` +
     '<footer>Made by PipeFit Pro from the records and sign-offs on the holder\'s phone. Records are the work saved in the app; a sign-off is the signed word of the person named. Module titles follow the NCCER Pipefitting curriculum; numbering varies by edition.</footer>' +
     '</body></html>'
   );

@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigation } from '@react-navigation/native';
 import { Pressable, Text, View } from 'react-native';
 import { Screen } from '../components/Screen';
+import { Coach } from '../components/Coach';
 import { HintRow } from '../components/HintRow';
 import { SectionHeader } from '../components/SectionHeader';
 import { DimensionInput, FieldRow } from '../components/DimensionInput';
@@ -149,6 +150,7 @@ export function CutLengthScreen() {
 
   return (
     <Screen>
+      <Coach screen="CutLength" done={[c2c.trim() !== '', !pristine && result.valid, !pristine && result.valid, added !== null]} />
       <HintRow text="Turn a centre-to-centre dimension into a pipe cut. Pick how it is joined and what is on each end; the takeouts come straight out of the handbook tables." />
       <SectionHeader title="Dimensions" meta="Centre-to-centre" />
 

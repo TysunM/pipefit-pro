@@ -91,7 +91,7 @@ The job chips pick what the page shows: the active job, another job, All jobs, o
 
 ## The skills passport
 
-**Logs → Skills passport.** What you can do, proved two ways, and yours to carry from job to job.
+**Edu → Skills passport.** What you can do, proved two ways, and yours to carry from job to job.
 
 - **Records.** The work saved on this phone counts toward the skill it shows: every joint bolted up to pattern, every hydro held and signed, every iso drawn, every cut listed, every heat entered. Nothing is typed twice; the passport reads the records.
 - **Sign-offs.** Tap a skill, put in the name of whoever watched it done, their role, a note if you like, and hand them the phone to sign. A skill with a sign-off stands as **Signed off**, whatever the count.
@@ -100,6 +100,23 @@ The job chips pick what the page shows: the active job, another job, All jobs, o
 - **Share passport PDF** prints the lot: every skill's standing and record counts, and every sign-off with its signature and a **record code**. The code is worked from the sign-off as it is held on the phone, so a printed page can be checked against the phone it came from. It is a checksum, not a seal.
 - Put your name in **Settings** first: it heads every page and goes into every record code.
 - The passport is kept through **Clear for a new start** and goes into every backup.
+
+## Coaching on real work
+
+The first bolt-ups, pressure tests and cut lengths come with a card at the top of the screen: the steps in order, the next one lit, and the reason under each, the way a journeyman would say it. Nothing is a lesson apart from the work.
+
+- It fades on its own: once the skills passport shows the skill as **Practised** (enough records) or a foreman signs it off, the card is gone.
+- **Hide** takes it off that one screen. **Settings → In the field → Coaching** turns it off for a hand who already knows.
+
+## Site orientation
+
+**Edu → Orientation.** The course a new hire takes before the gate, on the phone, in English or Spanish. It is plug and play for any company.
+
+- **Nine modules are built in** and work with no signal: your first day on site, PPE, working at height, lockout/tagout and stored energy, hot work and fire, confined spaces and excavations, chemicals and the SDS, hands, tools, lifting and rigging, and heat, cold, weather and fatigue. They say general practice as OSHA and the trade hold it. **Your site's rules come first**, and the first module says so. Tap the eye to drop a module your site does not need.
+- **The company's own rules go beside them.** **Add the company's rules**: a title, then paste or type the text, or **Read a page with the camera** to lift it off the printed sheet (the reading is done on the phone). One module is one subject. Claude builds the course and the questions from exactly those words, adding nothing and dropping nothing, and keeps it on the phone, so it is built once per module per language.
+- **Share pack** makes a file of the company's modules. On a new hire's phone: **Settings → Back up and restore → Restore from a backup file**. Nothing else on their phone is touched.
+- **Taking a module:** read each section or tap the speaker to hear it; **Español** builds the Spanish course the first time (needs signal once); then **Take the check**. **80% passes.** A fail shows what was missed, with the rule, and can be taken again at once.
+- **A pass goes into the skills passport** as a record under Site orientation and prints on the passport PDF with its date and job. If a module's rules are changed, it has to be passed again.
 
 ## Back up the phone
 

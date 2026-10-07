@@ -81,6 +81,11 @@ export type Settings = {
    * and the shift report both follow it. See calc/days.ts workDay.
    */
   shift: Shift;
+  /**
+   * Coaching cards on the first bolt-ups, pressure tests and cut lengths,
+   * fading as the skills passport fills. Off for a crew that already knows.
+   */
+  coach: 'on' | 'off';
   /** Which look these were written under — see readSettings. */
   look: number;
 };
@@ -107,6 +112,7 @@ export const DEFAULT_SETTINGS: Settings = {
   gloveMode: false,
   voice: true,
   shift: 'days',
+  coach: 'on',
   look: LOOK,
 };
 

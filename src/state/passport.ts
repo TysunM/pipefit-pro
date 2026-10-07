@@ -27,6 +27,7 @@ import type { Heat } from '../calc/heat';
 import type { Instrument } from './calibration';
 import type { ShiftReport } from './shiftLog';
 import type { FittingEntry } from './fittingLibrary';
+import { passed, type Completion } from './orientation';
 import { isSigned } from './pressureLog';
 import { cleanSig, hasSig } from '../calc/signature';
 import { cleanProject } from './project';
@@ -83,7 +84,7 @@ export type Skill = {
 };
 
 export const SKILLS: readonly Skill[] = [
-  { id: 'orientation', area: 'site', title: 'Site orientation', nccer: 'Orientation to the Trade', level: 1, needs: 0, what: 'Signed off after the site orientation.' },
+  { id: 'orientation', area: 'site', title: 'Site orientation', nccer: 'Orientation to the Trade', level: 1, needs: 1, what: 'Orientation modules passed on the phone, 80% or better.' },
   { id: 'handtools', area: 'site', title: 'Hand and power tools', nccer: 'Pipefitting Hand Tools; Pipefitting Power Tools', level: 1, needs: 0, what: 'Signed off by whoever watched the tools used right.' },
   { id: 'oxyfuel', area: 'site', title: 'Oxyfuel cutting', nccer: 'Oxyfuel Cutting', level: 1, needs: 0, what: 'Signed off at the torch.' },
   { id: 'rigging', area: 'site', title: 'Rigging and signalling', nccer: 'Rigging Equipment; Rigging Practices', level: 3, needs: 0, what: 'Signed off on a lift.' },
@@ -123,6 +124,7 @@ export type Records = {
   instruments?: readonly Instrument[];
   reports?: readonly ShiftReport[];
   fittings?: readonly FittingEntry[];
+  orientations?: readonly Completion[];
 };
 
 const utc = (d: string) => {
@@ -149,6 +151,7 @@ export function evidence(r: Records): Evidence[] {
   for (const t of r.tests ?? []) if (t.result !== 'open' && isSigned(t.people.tester)) put('hydro', t.updatedAt, `${t.pkg || 'test'} ${t.result === 'pass' ? 'passed' : 'failed'}, ${t.testPsi ?? '—'} psi`, t.project);
   for (const h of r.heats ?? []) put('heats', h.createdAt, `${h.heat}${h.material ? ` ${h.material}` : ''}`);
   for (const i of r.instruments ?? []) for (const c of i.history) put('calibration', utc(c.on), `${i.tag}${c.cert ? ` cert ${c.cert}` : ''}`);
+  for (const c of r.orientations ?? []) if (passed(c)) put('orientation', c.at, `${c.title}, ${c.score} of ${c.of}${c.lang === 'es' ? ', en español' : ''}`, c.project);
   for (const s of r.reports ?? []) if (s.text.trim() || s.welds.length || s.spools.length) put('shift', s.updatedAt, `${s.day}${s.project ? ` ${s.project}` : ''}`, s.project);
   return out.sort((a, b) => b.at - a.at);
 }

@@ -4,7 +4,7 @@
 // phone so the next starts clean: the bolt-ups, isos, spools, level readings,
 // pressure tests, cut list, welds and shift reports. What is kept is what
 // every job uses — the heat book, the welder roster, the calibration register,
-// the fitting library, the skills passport and the settings — and the unnamed
+// the fitting library, the skills passport, the orientation and the settings — and the unnamed
 // bolt-up slot.
 //
 // Pure: the screen gathers what is shown under the job and asks for a backup
