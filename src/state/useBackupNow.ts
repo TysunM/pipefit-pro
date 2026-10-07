@@ -15,6 +15,7 @@ import { usePressureTests } from './pressureTests';
 import { useShifts } from './shifts';
 import { useFittings } from './fittings';
 import { useCuts } from './cuts';
+import { useWelds, useWelders } from './welds';
 import { backupFileName, backupSummary, makeBackup } from './backup';
 import { shareBackup, type FileOutcome } from './backupFile';
 import { useLastBackup } from './lastBackup';
@@ -33,6 +34,8 @@ export function useBackupNow() {
   const shifts = useShifts();
   const fittings = useFittings();
   const cuts = useCuts();
+  const welds = useWelds();
+  const welders = useWelders();
   const last = useLastBackup();
   const [busy, setBusy] = useState(false);
 
@@ -46,6 +49,8 @@ export function useBackupNow() {
     'pipefit.shifts.v1': { value: shifts.log, apply: shifts.apply as any },
     'pipefit.fittings.v1': { value: fittings.library, apply: fittings.apply as any },
     'pipefit.cuts.v1': { value: cuts.log, apply: cuts.apply as any },
+    'pipefit.welds.v1': { value: welds.log, apply: welds.apply as any },
+    'pipefit.welders.v1': { value: welders.roster, apply: welders.apply as any },
   };
   const values = Object.fromEntries(Object.entries(stores).map(([k, s]) => [k, s.value]));
   const summary = backupSummary(values);

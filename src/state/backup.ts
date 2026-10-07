@@ -27,6 +27,7 @@ import { emptyRegister, parseRegister, serialiseRegister } from './register';
 import { emptyShifts, parseShifts, serialiseShifts } from './shiftLog';
 import { emptyBook as emptySketches, parseBook as parseSketches, serialiseBook as serialiseSketches } from './sketchStore';
 import { emptyShelf, parseShelf, serialiseShelf } from './spoolStore';
+import { emptyWelders, emptyWelds, numberKey, parseWelders, parseWelds, serialiseWelders, serialiseWelds, stampKey } from './weldLog';
 
 export const BACKUP_VERSION = 1;
 export const BACKUP_APP = 'PipeFit Pro';
@@ -59,6 +60,9 @@ export const STORES: readonly Spec[] = [
   { key: 'pipefit.shifts.v1', label: 'shift reports', field: 'reports', idOf: (x) => `${x.day}|${projectKey(String(x.project ?? ''))}`, empty: emptyShifts, parse: parseShifts, serialise: serialiseShifts },
   { key: 'pipefit.fittings.v1', label: 'fitting takeouts', field: 'entries', idOf: (x) => x.key, empty: emptyLibrary, parse: parseLibrary, serialise: serialiseLibrary },
   { key: 'pipefit.cuts.v1', label: 'cuts', field: 'cuts', idOf: (x) => x.id, empty: emptyCuts, parse: parseCuts, serialise: serialiseCuts },
+  // One weld per number on a line on a job, whichever phone logged it.
+  { key: 'pipefit.welds.v1', label: 'welds', field: 'welds', idOf: (x) => `${projectKey(String(x.project ?? ''))}|${String(x.line ?? '').toUpperCase()}|${numberKey(String(x.number ?? ''))}`, empty: emptyWelds, parse: parseWelds, serialise: serialiseWelds },
+  { key: 'pipefit.welders.v1', label: 'welders', field: 'welders', idOf: (x) => stampKey(String(x.stamp ?? '')), empty: emptyWelders, parse: parseWelders, serialise: serialiseWelders },
 ];
 
 export const specOf = (key: string): Spec | undefined => STORES.find((s) => s.key === key);

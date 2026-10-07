@@ -11,6 +11,7 @@ import { SketchesProvider } from "./src/state/sketches";
 import { LevelsProvider } from "./src/state/levels";
 import { PressureTestsProvider } from "./src/state/pressureTests";
 import { HoldAlertsProvider } from "./src/state/holdAlerts";
+import { WeldsProvider } from "./src/state/welds";
 import { ShiftsProvider } from "./src/state/shifts";
 import { LaserProvider } from "./src/state/laser";
 import { FittingsProvider } from "./src/state/fittings";
@@ -72,6 +73,7 @@ export default function App() {
               <SketchesProvider>
                 <LevelsProvider>
                   <PressureTestsProvider>
+                    <WeldsProvider>
                     <HoldAlertsProvider>
                     <ShiftsProvider>
                       <FittingsProvider>
@@ -91,6 +93,7 @@ export default function App() {
                       </FittingsProvider>
                     </ShiftsProvider>
                   </HoldAlertsProvider>
+                    </WeldsProvider>
                   </PressureTestsProvider>
                 </LevelsProvider>
               </SketchesProvider>

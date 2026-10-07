@@ -61,11 +61,11 @@ export function holdAlerts(tests: readonly PressureTest[], now: number): HoldAle
 }
 
 /** Which of the phone's alarms to take down and which to set, so it holds exactly `want`. */
-export function alarmChanges(want: readonly HoldAlert[], set: readonly string[]): { cancel: string[]; add: HoldAlert[] } {
+export function alarmChanges<A extends { key: string }>(want: readonly A[], set: readonly string[], prefixes: readonly string[] = [HOLD_ALERT_PREFIX]): { cancel: string[]; add: A[] } {
   const wanted = new Set(want.map((a) => a.key));
   const have = new Set(set);
   return {
-    cancel: set.filter((k) => k.startsWith(HOLD_ALERT_PREFIX) && !wanted.has(k)),
+    cancel: set.filter((k) => prefixes.some((p) => k.startsWith(p)) && !wanted.has(k)),
     add: want.filter((a) => !have.has(a.key)),
   };
 }
