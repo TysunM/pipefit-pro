@@ -59,6 +59,10 @@ import {
   recentNames,
 } from '../state/register';
 import { PERSON_MAX } from '../state/readSettings';
+import { useInstruments } from '../state/instruments';
+import { Instrument, findInstrument, goodOn, tagKey, usable } from '../state/calibration';
+import { Chip } from '../components/JobChips';
+import { dayKey } from '../calc/days';
 import { useVoice } from '../voice/VoiceProvider';
 import { useSpokenFigures } from '../voice/figures';
 import { FaceLayout, boltCentre, fittedFace, flangeFace } from '../components/flange/face';
@@ -169,6 +173,7 @@ function Bolting({
   apply: (f: (r: Register) => Register) => void;
   navigation: Props['navigation'];
 }) {
+  const { register: instruments } = useInstruments();
   const t = useTheme();
   const { settings } = useSettings();
 
@@ -442,6 +447,7 @@ function Bolting({
           t={t}
           joint={joint}
           suggest={(role) => recentNames(register, role, 4)}
+          wrenches={instruments.instruments}
           onChange={(patch) => write({ ...joint, ...patch, updatedAt: Date.now() })}
         />
       )}
@@ -1109,12 +1115,15 @@ function SignOff({
   t,
   joint,
   suggest,
+  wrenches,
   onChange,
 }: {
   t: Theme;
   joint: Joint;
   suggest: (role: 'boltedBy' | 'witnessedBy') => string[];
-  onChange: (patch: Partial<Pick<Joint, 'boltedBy' | 'witnessedBy'>>) => void;
+  /** The calibration register, for the wrench. */
+  wrenches: readonly Instrument[];
+  onChange: (patch: Partial<Pick<Joint, 'boltedBy' | 'witnessedBy' | 'wrench'>>) => void;
 }) {
   const done = isDone(joint);
   const row = (role: 'boltedBy' | 'witnessedBy', label: string, placeholder: string) => {
@@ -1168,6 +1177,27 @@ function SignOff({
       <View style={{ paddingHorizontal: t.layout.screenPadding, marginBottom: t.space.lg, gap: t.space.lg }}>
         {row('boltedBy', 'Bolted by', 'Name and badge #')}
         {row('witnessedBy', 'Witnessed by', 'QC inspector or foreman')}
+        {(() => {
+          // The wrench, from the calibration register, judged on the day it was pulled up.
+          const on = dayKey(joint.completedAt ?? Date.now());
+          const good = usable(wrenches, 'torque', on);
+          const mine = joint.wrench ? findInstrument({ instruments: [...wrenches], foreign: false, dropped: 0 }, joint.wrench) : undefined;
+          const verdict = mine ? goodOn(mine, on) : null;
+          if (!good.length && !joint.wrench) return null;
+          return (
+            <View style={{ gap: t.space.sm }}>
+              <Text style={[t.type.labelSmall, { color: t.colors.textMuted }]}>Torque wrench</Text>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space.sm }}>
+                {good.map((w) => (
+                  <Chip key={w.id} label={`${w.tag}${w.max ? ` · ${w.max} ft-lb` : ''}`} on={tagKey(w.tag) === tagKey(joint.wrench)} onPress={() => onChange({ wrench: tagKey(w.tag) === tagKey(joint.wrench) ? '' : w.tag })} />
+                ))}
+                {joint.wrench && !good.some((w) => tagKey(w.tag) === tagKey(joint.wrench)) ? <Chip label={joint.wrench} on onPress={() => onChange({ wrench: '' })} /> : null}
+              </View>
+              {verdict && !verdict.ok ? <Text style={[t.type.caption, { color: t.colors.danger }]}>{`Calibration register: ${verdict.why}.`}</Text> : null}
+              {joint.wrench && !mine ? <Text style={[t.type.caption, { color: t.colors.warnText }]}>{`${joint.wrench} is not on the calibration register.`}</Text> : null}
+            </View>
+          );
+        })()}
         <Text style={[t.type.caption, { color: done && missing.length ? t.colors.warnText : t.colors.textMuted }]}>
           {done && missing.length
             ? `Finished, but ${missing.join(' and ')} ${missing.length > 1 ? 'are' : 'is'} not recorded. The turnover package lists it as open until it is.`

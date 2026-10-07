@@ -18,6 +18,8 @@ import { AppState, Linking, Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import { usePressureTests } from './pressureTests';
 import { useWelds, useWelders } from './welds';
+import { useInstruments } from './instruments';
+import { CALIBRATION_ALERT_PREFIX, calibrationAlerts } from '../calc/calibrationAlerts';
 import { HOLD_ALERT_PREFIX, alarmChanges, alarmTest, holdAlerts } from '../calc/holdAlerts';
 import { CONTINUITY_ALERT_PREFIX, continuityAlerts } from '../calc/continuityAlerts';
 import { dayKey } from '../calc/days';
@@ -62,6 +64,7 @@ export function HoldAlertsProvider({ children }: { children: React.ReactNode }) 
   const { log, hydrated } = usePressureTests();
   const { log: weldLog, hydrated: weldsIn } = useWelds();
   const { roster, hydrated: rosterIn } = useWelders();
+  const { register: instruments, hydrated: instrumentsIn } = useInstruments();
   const [status, setStatus] = useState<AlertStatus>(NATIVE ? 'ask' : 'none');
   const asked = useRef(false);
 
@@ -89,7 +92,7 @@ export function HoldAlertsProvider({ children }: { children: React.ReactNode }) 
   const running = useRef(false);
   const again = useRef(false);
   useEffect(() => {
-    if (!NATIVE || !hydrated || !weldsIn || !rosterIn) return;
+    if (!NATIVE || !hydrated || !weldsIn || !rosterIn || !instrumentsIn) return;
     const sync = async () => {
       if (running.current) {
         again.current = true;
@@ -102,14 +105,15 @@ export function HoldAlertsProvider({ children }: { children: React.ReactNode }) 
           const now = Date.now();
           const holds = holdAlerts(log.tests, now).map((a) => ({ key: a.key, at: a.at, title: a.title, body: a.body, data: { testId: a.testId, kind: a.kind } }));
           const conts = continuityAlerts(roster.welders, weldLog.welds, dayKey(now), now).map((a) => ({ ...a, data: { screen: 'welders' } }));
-          const want = [...holds, ...conts];
+          const cals = calibrationAlerts(instruments.instruments, now).map((a) => ({ ...a, data: { screen: 'calibration' } }));
+          const want = [...holds, ...conts, ...cals];
           // The first hold that needs an alarm is the moment to ask, not before.
           if (want.length && status === 'ask' && !asked.current) {
             asked.current = true;
             await allow();
           }
           const set = (await Notifications.getAllScheduledNotificationsAsync()).map((n) => n.identifier);
-          const { cancel, add } = alarmChanges(want, set, [HOLD_ALERT_PREFIX, CONTINUITY_ALERT_PREFIX]);
+          const { cancel, add } = alarmChanges(want, set, [HOLD_ALERT_PREFIX, CONTINUITY_ALERT_PREFIX, CALIBRATION_ALERT_PREFIX]);
           for (const k of cancel) await Notifications.cancelScheduledNotificationAsync(k);
           if (add.length) await makeChannel();
           for (const a of add) {
@@ -127,7 +131,7 @@ export function HoldAlertsProvider({ children }: { children: React.ReactNode }) 
       }
     };
     void sync();
-  }, [log.tests, hydrated, weldLog.welds, weldsIn, roster.welders, rosterIn, status, allow]);
+  }, [log.tests, hydrated, weldLog.welds, weldsIn, roster.welders, rosterIn, instruments.instruments, instrumentsIn, status, allow]);
 
   return (
     <HoldAlertsContext.Provider value={{ status, allow }}>
@@ -146,11 +150,13 @@ function AlarmTaps() {
     if (!last) return;
     const req = last.notification.request;
     if (opened.current === req.identifier) return;
-    if (req.identifier.startsWith(CONTINUITY_ALERT_PREFIX)) {
+    if (req.identifier.startsWith(CONTINUITY_ALERT_PREFIX) || req.identifier.startsWith(CALIBRATION_ALERT_PREFIX)) {
+      const toRoster = req.identifier.startsWith(CONTINUITY_ALERT_PREFIX);
       const go = () => {
         if (!nav.isReady()) return false;
         opened.current = req.identifier;
-        nav.navigate('WeldLog', { tab: 'welders' });
+        if (toRoster) nav.navigate('WeldLog', { tab: 'welders' });
+        else nav.navigate('Calibration');
         return true;
       };
       if (go()) return;

@@ -19,7 +19,8 @@ import { hasPhrase, lengthAt, numberAt, tokens } from './words';
 import { readSpecs, type SpecCommand } from './specs';
 import { Figure, FigureRoute, FigureSpec, Figures, TOOL_FIGURES, figureNames, isFigureRoute, plausible, primaryFigure } from './toolFigures';
 
-export type OpenRoute = ToolRoute | 'Home' | 'Settings' | 'Backup';
+/** Somewhere a voice can open: a tool, or one of the tabs along the bottom, Settings or Backup. */
+export type OpenRoute = ToolRoute | 'Home' | 'Settings' | 'Backup' | 'Projects' | 'Tools' | 'Logs';
 
 export type VoiceCommand =
   /** Open a screen; for a tool that takes figures, with what was said for them. */
@@ -39,7 +40,10 @@ export type VoiceCommand =
  * "rolling offset" is never the simple one.
  */
 export const TOOL_WORDS: Record<OpenRoute, readonly string[]> = {
-  Home: ['home', 'home screen', 'main menu', 'start screen'],
+  Home: ['home', 'home screen', 'main menu', 'start screen', 'home tab'],
+  Projects: ['projects', 'project', 'projects tab', 'my projects', 'jobs', 'turnover', 'turnover package'],
+  Tools: ['tools', 'tools tab', 'tool tab', 'all tools', 'tool box', 'toolbox'],
+  Logs: ['logs', 'logs tab', 'log tab', 'log book', 'records', 'the books'],
   Settings: ['settings', 'setting', 'preferences'],
   Backup: ['backup', 'back up', 'backups', 'restore', 'back up my phone', 'back up the phone'],
   Calculator: ['calculator', 'calc', 'trade calculator', 'fraction calculator'],
@@ -60,6 +64,7 @@ export const TOOL_WORDS: Record<OpenRoute, readonly string[]> = {
   SaddleBend: ['saddle bend', 'saddle', 'saddles'],
   MiterBend: ['miter bend', 'miter', 'mitre', 'segmented elbow', 'lobster back'],
   HandBender: ['pipe bend', 'bend', 'bender', 'hand bender', 'setback'],
+  Calibration: ['calibration', 'calibration register', 'cal register', 'calibrations', 'torque wrenches', 'test gauges', 'gauge register', 'instruments'],
   WeldLog: ['weld log', 'welds', 'weld map', 'welders', 'welder log', 'nde', 'x ray', 'x-ray', 'radiography', 'rt log', 'continuity'],
   CutList: ['cut list', 'cut sheet', 'saw list', 'cutting list', 'cuts list'],
   FittingLibrary: ['fitting library', 'fittings library', 'takeout library', 'saved takeouts', 'fitting takeouts', 'library'],

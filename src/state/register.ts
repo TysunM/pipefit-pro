@@ -110,6 +110,8 @@ export type Joint = {
    */
   boltedBy: string;
   witnessedBy: string;
+  /** The torque wrench it was pulled up with, by its tag in the calibration register; '' when not recorded. */
+  wrench: string;
 };
 
 export type Register = {
@@ -284,6 +286,8 @@ export function validJoint(v: unknown): Joint | null {
     // Stores written before these existed have none: nobody recorded.
     boltedBy: cleanPerson(v.boltedBy),
     witnessedBy: cleanPerson(v.witnessedBy),
+    // Stores written before the calibration register have none: not recorded.
+    wrench: typeof v.wrench === 'string' ? v.wrench.trim().toUpperCase().slice(0, 30) : '',
   };
 }
 
@@ -411,6 +415,7 @@ export function newJoint(id: string, spec: JointSpec, now: number): Joint {
     project: cleanProject(spec.project),
     boltedBy: cleanPerson(spec.boltedBy),
     witnessedBy: '',
+    wrench: '',
   };
 }
 

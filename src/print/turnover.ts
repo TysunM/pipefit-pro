@@ -29,6 +29,7 @@ import { CSS, SheetTable, table } from './sheet';
 import type { Weld, Welder } from '../state/weldLog';
 import { weldName } from '../state/weldLog';
 import { weldOpenItems, weldTables } from './weldLog';
+import { type Instrument, findInstrument, goodOn } from '../state/calibration';
 import { dayKey } from '../calc/days';
 import { toScreen } from '../calc/iso';
 import { esc } from './spoolSvg';
@@ -51,6 +52,8 @@ export type TurnoverInput = {
   /** The job's welds, and the roster their stamps are read against. */
   welds?: readonly Weld[];
   welders?: readonly Welder[];
+  /** The calibration register: each joint's wrench is judged against it on the day it was finished. */
+  instruments?: readonly Instrument[];
 };
 
 export type OpenItem = { what: string; needs: string };
@@ -90,7 +93,7 @@ const retestOf = (t: PressureTest, all: readonly PressureTest[]) => all.find((x)
  * order it gets chased — tests not passed, work not finished, then checks not
  * done, then records nobody signed, then paper not in hand.
  */
-export function openItems(joints: readonly Joint[], book: readonly Heat[], tests: readonly PressureTest[] = [], welds: readonly Weld[] = []): OpenItem[] {
+export function openItems(joints: readonly Joint[], book: readonly Heat[], tests: readonly PressureTest[] = [], welds: readonly Weld[] = [], instruments: readonly Instrument[] = []): OpenItem[] {
   const out: OpenItem[] = [];
   for (const t of tests) {
     if (t.result === 'fail' && !retestOf(t, tests)) out.push({ what: testName(t), needs: 'Pressure test failed; no retest recorded' });
@@ -109,6 +112,14 @@ export function openItems(joints: readonly Joint[], book: readonly Heat[], tests
     if (missing.length) out.push({ what: name(j), needs: `Sign-off: ${missing.join(' and ')} not recorded` });
   }
   for (const j of joints) if (!j.heats.length) out.push({ what: name(j), needs: 'No heat number recorded' });
+  // A wrench out of calibration on the day voids the torque on the record.
+  for (const j of joints) {
+    if (!isDone(j) || !j.wrench) continue;
+    const w = findInstrument({ instruments: [...instruments], foreign: false, dropped: 0 }, j.wrench);
+    if (!w) continue;
+    const good = goodOn(w, dayKey(j.completedAt!));
+    if (!good.ok) out.push({ what: name(j), needs: `Torque wrench: ${good.why}` });
+  }
   for (const u of heatsUsed(joints, book)) {
     if (!u.heat) out.push({ what: `Heat ${u.number}`, needs: `Not in the heat book; no cert on file (${u.joints.join(', ')})` });
     else if (!u.heat.certified) out.push({ what: `Heat ${u.number}`, needs: `MTR not in hand${u.heat.mtr ? ` (filed as ${u.heat.mtr})` : ''} (${u.joints.join(', ')})` });
@@ -140,7 +151,7 @@ export function turnoverTotals(i: TurnoverInput): { label: string; value: string
     { label: 'Re-checked', value: `${settled} / ${done}` },
     { label: 'Heats proved', value: `${trace.proved.length} / ${i.joints.length}` },
     ...(i.welds?.length ? [{ label: 'Welds', value: String(i.welds.length) }] : []),
-    { label: 'Open items', value: String(openItems(i.joints, i.heats, i.tests, i.welds).length) },
+    { label: 'Open items', value: String(openItems(i.joints, i.heats, i.tests, i.welds, i.instruments).length) },
   ];
 }
 
@@ -151,7 +162,7 @@ function status(j: Joint): string {
 
 export function turnoverHtml(i: TurnoverInput): string {
   const job = i.job || 'All jobs';
-  const open = openItems(i.joints, i.heats, i.tests, i.welds);
+  const open = openItems(i.joints, i.heats, i.tests, i.welds, i.instruments);
   const used = heatsUsed(i.joints, i.heats);
   const isos = i.sketches.filter((s) => s.strokes.length > 0);
   const tables: SheetTable[] = [];
@@ -186,12 +197,13 @@ export function turnoverHtml(i: TurnoverInput): string {
   if (i.joints.length)
     tables.push({
       title: 'Flange bolt-up record',
-      head: ['Joint', 'Flange', 'Final torque', 'Status', 'Finished', 'Bolted by', 'Witnessed by', 'Heats'],
+      head: ['Joint', 'Flange', 'Final torque', 'Wrench', 'Status', 'Finished', 'Bolted by', 'Witnessed by', 'Heats'],
       right: [2],
       rows: i.joints.map((j) => [
         name(j),
         jointFlange(j),
         j.torque === null ? '—' : `${j.torque} ft-lb`,
+        j.wrench || '—',
         status(j),
         j.completedAt === null ? '—' : day(j.completedAt),
         j.boltedBy.trim() || '—',

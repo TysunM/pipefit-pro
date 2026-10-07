@@ -37,6 +37,9 @@ export const VOICE_ROUTES = [
   'Home',
   'Settings',
   'Backup',
+  'Projects',
+  'Tools',
+  'Logs',
   'Calculator',
   'Level',
   'Measure',
@@ -58,6 +61,7 @@ export const VOICE_ROUTES = [
   'FittingLibrary',
   'CutList',
   'WeldLog',
+  'Calibration',
 ] as const;
 export type VoiceRoute = (typeof VOICE_ROUTES)[number];
 
@@ -66,6 +70,9 @@ const ROUTE_WORDS: Record<VoiceRoute, string> = {
   Home: 'the home screen',
   Settings: 'settings: units, fractions, theme, the job number, the fitter name',
   Backup: 'backup and restore: everything on the phone to one file, and back',
+  Projects: 'the Projects tab: every job\'s saved work, the turnover package PDF, and clearing a job off the phone',
+  Tools: 'the Tools tab: iso sketch, 3D spool, bolt-up, level, measure, and every bend and offset',
+  Logs: 'the Logs tab: weld log, pressure tests, joint log, heat book, shift report, calibration, handbook',
   Calculator: 'trade calculator: feet, inches and fractions',
   Level: 'digital level: lay the phone on a pipe to read slope and fall',
   Measure: 'AR tracing with the camera, and a Bluetooth laser meter',
@@ -86,6 +93,7 @@ const ROUTE_WORDS: Record<VoiceRoute, string> = {
   IsoSketch: 'iso sketch: isometric drawing paper',
   FittingLibrary: "fitting library: the fitter's saved socket and no-hub takeouts, by line",
   CutList: 'cut list: cuts added from Cut Length, grouped by pipe, ticked off at the saw',
+  Calibration: 'calibration register: test gauges, torque wrenches and other instruments with their calibration due dates and certificates',
   WeldLog: 'weld log: every weld with its welders, heats and NDE results, the random and tracer x-rays owed, and each welder\'s continuity',
 };
 

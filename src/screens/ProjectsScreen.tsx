@@ -16,6 +16,7 @@ import { useSpools } from '../state/spools';
 import { useLevels } from '../state/levels';
 import { claimUntagged, sameProject, untagged } from '../state/project';
 import { useWelds, useWelders } from '../state/welds';
+import { useInstruments } from '../state/instruments';
 import { JobChips, useJobFilter } from '../components/JobChips';
 import { isDone, isScratch, isSettled, jointFlange, jointProgress, listed, sinceLabel, sortJoints } from '../state/register';
 import { sortSketches } from '../state/sketchStore';
@@ -29,6 +30,11 @@ import { sortTests } from '../state/pressureLog';
 import { day, openItems, turnoverHtml } from '../print/turnover';
 import { shareSheet } from '../print/share';
 import { useCuts } from '../state/cuts';
+import { useShifts } from '../state/shifts';
+import { useBackupNow } from '../state/useBackupNow';
+import { clearCounts, countsText, without } from '../state/clearJob';
+import { useNow } from '../components/FormFields';
+import { clockLabel } from '../calc/days';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Projects'>;
 
@@ -59,6 +65,11 @@ export function ProjectsScreen({ navigation }: Props) {
   const { log: cutLog, hydrated: cIn, apply: applyCuts } = useCuts();
   const { log: weldLog, apply: applyWelds } = useWelds();
   const { roster } = useWelders();
+  const { register: instruments } = useInstruments();
+  const { log: shiftLog, apply: applyShifts } = useShifts();
+  const backup = useBackupNow();
+  // The date at the top, kept running: the page is left open on a job all day.
+  const clock = useNow(true, 30_000);
   const go = (route: ToolRoute) => navigation.navigate(route as never);
 
   const everything = [...listed(register), ...book.sketches, ...shelf.spools, ...log.readings, ...testLog.tests, ...cutLog.cuts, ...weldLog.welds];
@@ -81,7 +92,7 @@ export function ProjectsScreen({ navigation }: Props) {
   const byName = (a: string, b: string) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
   const tpJoints = [...joints].sort((a, b) => byName(a.tag, b.tag));
   const tpWelds = mine(weldLog.welds);
-  const tpOpen = openItems(tpJoints, heatBook.heats, tests, tpWelds).length;
+  const tpOpen = openItems(tpJoints, heatBook.heats, tests, tpWelds, instruments.instruments).length;
   const tpEmpty = !joints.length && !sketches.length && !spools.length && !readings.length && !tests.length && !tpWelds.length;
   const [tpBusy, setTpBusy] = useState(false);
   const [tpNote, setTpNote] = useState<string | null>(null);
@@ -102,11 +113,54 @@ export function ProjectsScreen({ navigation }: Props) {
         grid: ISO_GRID,
         welds: tpWelds,
         welders: roster.welders,
+        instruments: instruments.instruments,
       }),
       `Turnover package ${f.label || 'all jobs'}`
     );
     setTpBusy(false);
     if (!out.ok) setTpNote(out.why);
+  };
+
+  // Clearing the job shown off the phone, a backup first unless it is turned down twice.
+  const [clearStep, setClearStep] = useState<'idle' | 'ask' | 'sure'>('idle');
+  const [clearNote, setClearNote] = useState<string | null>(null);
+  const doomed = {
+    joints: mine(listed(register)),
+    sketches: mine(book.sketches),
+    spools: mine(shelf.spools),
+    readings: mine(log.readings),
+    tests: mine(testLog.tests),
+    cuts: mine(cutLog.cuts),
+    welds: mine(weldLog.welds),
+    shifts: mine(shiftLog.reports),
+  };
+  const doomedCounts = clearCounts([
+    { label: 'pressure tests', items: doomed.tests },
+    { label: 'welds', items: doomed.welds },
+    { label: 'joints', items: doomed.joints },
+    { label: 'isos', items: doomed.sketches },
+    { label: 'spools', items: doomed.spools },
+    { label: 'level readings', items: doomed.readings },
+    { label: 'cuts', items: doomed.cuts },
+    { label: 'shift reports', items: doomed.shifts },
+  ]);
+  const clearNow = () => {
+    applyJoints((r) => ({ ...r, joints: without(r.joints, doomed.joints) }));
+    applySketches((b) => ({ ...b, sketches: without(b.sketches, doomed.sketches) }));
+    applySpools((sh) => ({ ...sh, spools: without(sh.spools, doomed.spools) }));
+    applyLevels((l) => ({ ...l, readings: without(l.readings, doomed.readings) }));
+    applyTests((l) => ({ ...l, tests: without(l.tests, doomed.tests) }));
+    applyCuts((l) => ({ ...l, cuts: without(l.cuts, doomed.cuts) }));
+    applyWelds((l) => ({ ...l, welds: without(l.welds, doomed.welds) }));
+    applyShifts((l) => ({ ...l, reports: without(l.reports, doomed.shifts) }));
+    setClearNote(`Cleared ${countsText(doomedCounts)} from ${f.label || 'every job'}.`);
+    setClearStep('idle');
+  };
+  const backUpThenClear = async () => {
+    setClearNote(null);
+    const out = await backup.backUp();
+    if (!out.ok) return setClearNote(`Nothing cleared: the backup did not go. ${out.why}`);
+    clearNow();
   };
 
   const claim = () => {
@@ -176,6 +230,12 @@ export function ProjectsScreen({ navigation }: Props) {
   return (
     <View style={{ flex: 1, backgroundColor: t.colors.bg }}>
       <Screen tabbed>
+        <View style={{ paddingHorizontal: t.layout.screenPadding, paddingTop: t.space.md }} accessibilityRole="header">
+          <Text style={[t.type.sectionTitle, { color: t.colors.text }]}>
+            {new Date(clock).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
+          </Text>
+          <Text style={[t.type.caption, { color: t.colors.textMuted }]}>{clockLabel(clock)}</Text>
+        </View>
         <HintRow
           text={
             active
@@ -290,6 +350,33 @@ export function ProjectsScreen({ navigation }: Props) {
             onNew={() => go('Level')}
             more={{ label: 'All readings', onPress: () => go('Level') }}
           />
+
+          <Plate radius={t.radius.xl} style={{ padding: 14, gap: 10, borderColor: clearStep === 'idle' ? undefined : t.colors.danger }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+              <Ionicons name="refresh-circle-outline" size={30} color={t.colors.textMuted} />
+              <View style={{ flex: 1 }}>
+                <Text style={[t.type.tileTitle, { color: t.colors.text }]}>Clear for a new start</Text>
+                <Text style={[t.type.caption, { color: t.colors.textMuted }]}>
+                  {doomedCounts.length ? `${f.label || 'All jobs'}: ${countsText(doomedCounts)}` : `Nothing saved under ${f.label || 'any job'}.`}
+                </Text>
+              </View>
+            </View>
+            {clearStep === 'idle' ? (
+              doomedCounts.length ? <SmallButton label={`Clear ${f.label || 'all jobs'}`} onPress={() => setClearStep('ask')} /> : null
+            ) : (
+              <>
+                <Text style={[t.type.caption, { color: t.colors.text }]}>
+                  {`Takes ${countsText(doomedCounts)} off this phone.${tpOpen ? ` ${tpOpen} open ${tpOpen === 1 ? 'item goes' : 'items go'} with them.` : ''} Kept: the heat book, welder roster, calibration register, fitting library and settings. A backup file first means any of it can be read back in.`}
+                </Text>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                  <SmallButton label={backup.busy ? 'Backing up…' : 'Back up, then clear'} onPress={() => void backUpThenClear()} strong />
+                  <SmallButton label={clearStep === 'sure' ? 'Tap again: clear with no backup' : 'Clear with no backup'} onPress={() => (clearStep === 'sure' ? clearNow() : setClearStep('sure'))} />
+                  <SmallButton label="Keep it all" onPress={() => setClearStep('idle')} />
+                </View>
+              </>
+            )}
+            {clearNote ? <Text style={[t.type.caption, { color: clearNote.startsWith('Nothing') ? t.colors.danger : t.colors.success }]}>{clearNote}</Text> : null}
+          </Plate>
         </View>
       </Screen>
       <TabBar active="projects" />
