@@ -34,7 +34,9 @@ import { useShifts } from '../state/shifts';
 import { useBackupNow } from '../state/useBackupNow';
 import { clearCounts, countsText, without } from '../state/clearJob';
 import { useNow } from '../components/FormFields';
-import { clockLabel } from '../calc/days';
+import { clockLabel, dayKey } from '../calc/days';
+import { workedOn } from '../state/today';
+import { Segmented } from '../components/Segmented';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Projects'>;
 
@@ -78,6 +80,9 @@ export function ProjectsScreen({ navigation }: Props) {
   const loose = untagged(everything);
   const [claiming, setClaiming] = useState(false);
 
+  // Today, or everything: what the cards show. The turnover package and clearing always take the whole job.
+  const [view, setView] = useState<'today' | 'all'>('today');
+  const today = dayKey(clock);
   const joints = sortJoints(mine(listed(register)));
   const sketches = sortSketches(mine(book.sketches));
   const spools = sortSpools(mine(shelf.spools));
@@ -175,7 +180,37 @@ export function ProjectsScreen({ navigation }: Props) {
     setClaiming(false);
   };
 
-  const jointRows: Row[] = joints.slice(0, SHOWN).map((j) => ({
+  const shown = {
+    joints: view === 'all' ? joints : workedOn(joints, today, (j) => [j.updatedAt, j.completedAt]),
+    sketches: view === 'all' ? sketches : workedOn(sketches, today, (s) => [s.updatedAt]),
+    spools: view === 'all' ? spools : workedOn(spools, today, (s) => [s.updatedAt]),
+    readings: view === 'all' ? readings : workedOn(readings, today, (r) => [r.createdAt]),
+  };
+  const todays = {
+    tests: workedOn(tests, today, (x) => [x.updatedAt, x.day]),
+    welds: workedOn(mine(weldLog.welds), today, (w) => [w.updatedAt, w.day]),
+    joints: workedOn(joints, today, (j) => [j.updatedAt, j.completedAt]),
+    sketches: workedOn(sketches, today, (s) => [s.updatedAt]),
+    spools: workedOn(spools, today, (s) => [s.updatedAt]),
+    readings: workedOn(readings, today, (r) => [r.createdAt]),
+    cuts: workedOn(mine(cutLog.cuts), today, (c) => [c.createdAt]),
+    shifts: workedOn(mine(shiftLog.reports), today, (r) => [r.day]),
+  };
+  const todayCounts = clearCounts([
+    { label: 'pressure tests', items: todays.tests },
+    { label: 'welds', items: todays.welds },
+    { label: 'joints', items: todays.joints },
+    { label: 'isos', items: todays.sketches },
+    { label: 'spools', items: todays.spools },
+    { label: 'level readings', items: todays.readings },
+    { label: 'cuts', items: todays.cuts },
+    { label: 'shift reports', items: todays.shifts },
+  ]);
+  const todayTotal = todayCounts.reduce((n, k) => n + k.count, 0);
+  const earlier = Math.max(0, doomedCounts.reduce((n, k) => n + k.count, 0) - todayTotal);
+  const onToday = view === 'today';
+  const nothingToday = (what: string, before: number) => `Nothing ${what} today.${before ? ` ${before} earlier under Everything.` : ''}`;
+  const jointRows: Row[] = shown.joints.slice(0, SHOWN).map((j) => ({
     key: j.id,
     title: j.tag || 'Untitled joint',
     sub: `${jointFlange(j)}\n${jointProgress(j)}`,
@@ -185,7 +220,7 @@ export function ProjectsScreen({ navigation }: Props) {
     onPress: () => navigation.navigate('FlangeBoltUp', { jointId: j.id }),
   }));
 
-  const sketchRows: Row[] = sketches.slice(0, SHOWN).map((s) => ({
+  const sketchRows: Row[] = shown.sketches.slice(0, SHOWN).map((s) => ({
     key: s.id,
     title: s.name,
     sub: s.place || `${s.strokes.length} ${s.strokes.length === 1 ? 'line' : 'lines'}`,
@@ -194,7 +229,7 @@ export function ProjectsScreen({ navigation }: Props) {
     onPress: () => navigation.navigate('IsoDraw', { id: s.id }),
   }));
 
-  const spoolRows: Row[] = spools.slice(0, SHOWN).map((s) => ({
+  const spoolRows: Row[] = shown.spools.slice(0, SHOWN).map((s) => ({
     key: s.id,
     title: s.name,
     sub: `${findSize(s.nps).label} SCH ${s.schedule} · ${s.legs.length} legs${s.place ? ` · ${s.place}` : ''}`,
@@ -204,8 +239,8 @@ export function ProjectsScreen({ navigation }: Props) {
   }));
 
   // Newest first on the card; the list itself reads in the order added.
-  const cutsHere = mine(cutLog.cuts);
-  const cutsToGo = cutsHere.filter((c) => !c.done).length;
+  const cutsHere = view === 'all' ? mine(cutLog.cuts) : todays.cuts;
+  const cutsToGo = mine(cutLog.cuts).filter((c) => !c.done).length;
   const cutRows: Row[] = [...cutsHere].reverse().slice(0, SHOWN).map((c) => ({
     key: c.id,
     title: `Mark ${c.mark} · ${c.pipe}`,
@@ -215,7 +250,7 @@ export function ProjectsScreen({ navigation }: Props) {
     onPress: () => go('CutList'),
   }));
 
-  const levelRows: Row[] = readings.slice(0, SHOWN).map((r) => {
+  const levelRows: Row[] = shown.readings.slice(0, SHOWN).map((r) => {
     const f = inchesPerFoot(r.slope);
     return {
       key: r.id,
@@ -244,6 +279,21 @@ export function ProjectsScreen({ navigation }: Props) {
           }
         />
         <JobChips f={f} />
+        <View style={{ paddingTop: t.space.md }}>
+          <Segmented
+            options={[
+              { value: 'today', label: 'Today' },
+              { value: 'all', label: 'Everything' },
+            ]}
+            selected={view}
+            onSelect={setView}
+          />
+          <Text style={[t.type.caption, { color: t.colors.textMuted, paddingHorizontal: t.layout.screenPadding, marginTop: -t.space.sm }]}>
+            {onToday
+              ? `${todayTotal ? `Today on ${f.label || 'all jobs'}: ${countsText(todayCounts)}.` : 'Nothing saved today yet.'}${earlier ? ` ${earlier} earlier ${earlier === 1 ? 'record' : 'records'} kept under Everything.` : ''}`
+              : `Everything on ${f.label || 'all jobs'}${doomedCounts.length ? `: ${countsText(doomedCounts)}` : ': nothing saved yet'}.`}
+          </Text>
+        </View>
 
         {active && loose > 0 && filter.kind === 'one' && sameProject(filter.id, active) ? (
           <View style={{ paddingHorizontal: t.layout.screenPadding, paddingTop: t.space.md }}>
@@ -308,27 +358,30 @@ export function ProjectsScreen({ navigation }: Props) {
           <Card
             art="FlangeBoltUp"
             title="Flange bolt-ups"
-            count={jIn ? joints.length : null}
+            count={jIn ? shown.joints.length : null}
             rows={jointRows}
-            empty="No joints logged yet. Name a bolt-up to keep it here."
+            empty={onToday ? nothingToday('bolted', joints.length) : 'No joints logged yet. Name a bolt-up to keep it here.'}
+            today={onToday}
             onNew={() => go('FlangeBoltUp')}
             more={{ label: 'Joint log', onPress: () => go('Joints') }}
           />
           <Card
             art="IsoSketch"
             title="Iso drawings"
-            count={kIn ? sketches.length : null}
+            count={kIn ? shown.sketches.length : null}
             rows={sketchRows}
-            empty="No isos yet. Start one on iso paper."
+            empty={onToday ? nothingToday('drawn', sketches.length) : 'No isos yet. Start one on iso paper.'}
+            today={onToday}
             onNew={() => go('IsoSketch')}
             more={{ label: 'Sketch book', onPress: () => go('IsoSketch') }}
           />
           <Card
             art="SpoolBuilder"
             title="3D spools"
-            count={sIn ? spools.length : null}
+            count={sIn ? shown.spools.length : null}
             rows={spoolRows}
-            empty="No spools saved yet. Build one and save it by its mark."
+            empty={onToday ? nothingToday('built', spools.length) : 'No spools saved yet. Build one and save it by its mark.'}
+            today={onToday}
             onNew={() => go('SpoolBuilder')}
             more={{ label: 'Order sheet', onPress: () => go('OrderSheet') }}
           />
@@ -337,16 +390,18 @@ export function ProjectsScreen({ navigation }: Props) {
             title="Cut list"
             count={cIn ? cutsHere.length : null}
             rows={cutRows}
-            empty="No cuts listed yet. Work one in Cut Length and add it to the list."
+            empty={onToday ? nothingToday('listed to cut', mine(cutLog.cuts).length) : 'No cuts listed yet. Work one in Cut Length and add it to the list.'}
+            today={onToday}
             onNew={() => go('CutLength')}
             more={{ label: cutsToGo ? `Cut list · ${cutsToGo} to cut` : 'Cut list', onPress: () => go('CutList') }}
           />
           <Card
             art="Level"
             title="Level readings"
-            count={lIn ? readings.length : null}
+            count={lIn ? shown.readings.length : null}
             rows={levelRows}
-            empty="No readings saved yet. Lay the phone on a pipe and save it by tag."
+            empty={onToday ? nothingToday('read', readings.length) : 'No readings saved yet. Lay the phone on a pipe and save it by tag.'}
+            today={onToday}
             onNew={() => go('Level')}
             more={{ label: 'All readings', onPress: () => go('Level') }}
           />
@@ -366,7 +421,7 @@ export function ProjectsScreen({ navigation }: Props) {
             ) : (
               <>
                 <Text style={[t.type.caption, { color: t.colors.text }]}>
-                  {`Takes ${countsText(doomedCounts)} off this phone.${tpOpen ? ` ${tpOpen} open ${tpOpen === 1 ? 'item goes' : 'items go'} with them.` : ''} Kept: the heat book, welder roster, calibration register, fitting library and settings. A backup file first means any of it can be read back in.`}
+                  {`Takes ${countsText(doomedCounts)} off this phone, every day's, not only today's.${tpOpen ? ` ${tpOpen} open ${tpOpen === 1 ? 'item goes' : 'items go'} with them.` : ''} Kept: the heat book, welder roster, calibration register, fitting library and settings. A backup file first means any of it can be read back in.`}
                 </Text>
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
                   <SmallButton label={backup.busy ? 'Backing up…' : 'Back up, then clear'} onPress={() => void backUpThenClear()} strong />
@@ -392,6 +447,7 @@ function Card({
   empty,
   onNew,
   more,
+  today,
 }: {
   art: ToolRoute;
   title: string;
@@ -400,6 +456,8 @@ function Card({
   empty: string;
   onNew: () => void;
   more: { label: string; onPress: () => void };
+  /** Counted as today's work rather than all saved. */
+  today?: boolean;
 }) {
   const t = useTheme();
   const c = t.colors;
@@ -425,7 +483,7 @@ function Card({
             {title}
           </Text>
           <Text style={[t.type.caption, { color: c.textMuted, marginTop: 2 }]}>
-            {count === null ? ' ' : count === 0 ? 'Nothing saved' : `${count} saved`}
+            {count === null ? ' ' : count === 0 ? (today ? 'Nothing today' : 'Nothing saved') : `${count} ${today ? 'today' : 'saved'}`}
           </Text>
         </View>
         <Pressable onPress={onNew} accessibilityRole="button" accessibilityLabel={`New in ${title}`} hitSlop={6}>
