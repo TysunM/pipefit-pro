@@ -35,6 +35,7 @@ import { FittingLibraryScreen } from '../screens/FittingLibraryScreen';
 import { CutListScreen } from '../screens/CutListScreen';
 import { WeldLogScreen } from '../screens/WeldLogScreen';
 import { WeldScreen } from '../screens/WeldScreen';
+import { CalibrationScreen } from '../screens/CalibrationScreen';
 import { BackupScreen } from '../screens/BackupScreen';
 import { MeasureScreen } from '../screens/MeasureScreen';
 import { SpoolBuilderScreen } from '../screens/SpoolBuilderScreen';
@@ -128,6 +129,7 @@ export function RootNavigator() {
         <Stack.Screen name="CutList" component={CutListScreen} options={{ title: 'Cut list' }} />
         <Stack.Screen name="WeldLog" component={WeldLogScreen} options={{ title: 'Weld log' }} />
         <Stack.Screen name="Weld" component={WeldScreen} options={{ title: 'Weld' }} />
+        <Stack.Screen name="Calibration" component={CalibrationScreen} options={{ title: 'Calibration' }} />
         <Stack.Screen name="Backup" component={BackupScreen} options={{ title: 'Backup' }} />
         <Stack.Screen name="Calculator" component={CalculatorScreen} options={{ title: 'Calculator' }} />
         <Stack.Screen name="Level" component={LevelScreen} options={{ title: 'Level' }} />

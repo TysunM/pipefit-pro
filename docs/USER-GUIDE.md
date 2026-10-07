@@ -1311,6 +1311,22 @@ ASME IX QW-322: a welder's qualification on a process **lapses after six months 
 - **Stamps typed two ways.** "W-12" and "W12" are the same welder here, but keep the roster tidy so the PDF reads right.
 - **A weld deleted is gone from the sampling.** Delete only a weld logged by mistake.
 
+## Calibration register
+
+**Every gauge, wrench and instrument a record is read off, and when each one is due.** Logs tab → **Calibration**, or say "calibration".
+
+- **Add an instrument:** what it is (pressure gauge, torque wrench, relief valve, chart recorder, thermometer, meter, other), tag or serial as stamped on it, full scale, make and model, and how often it is calibrated. Gauges default to 6 months, the rest to 12. Enter the last calibration (the day, certificate number, lab) and it is due that many months on.
+- **The list runs worst first:** Overdue, Never calibrated, Due soon (inside 30 days), In calibration, Out of service. A red banner says how many are overdue.
+- **Tap one** to record a new calibration (the old one goes into its history), change its details, tag it **Out of service**, or remove it.
+- **The phone alerts** 30 days before a due date and on the day, at 7 am, with the app closed. Tap the alert to open the register. Alarms need the 1.3.0 APK.
+- **Print / PDF:** the register as an auditor reads it, with anything overdue or never calibrated at the top.
+
+### Where it is used
+- **Pressure tests:** under the test gauges, **From the calibration register** offers every gauge and chart recorder good on the day of the test. One tap puts it on the record with its range and the due date of the certificate in force that day. A gauge typed by hand that the register knows is out of calibration or out of service on the test day is said so in red. Relief valves are offered the same way, with their set pressure.
+- **Flange bolt-ups:** the Sign-off panel has **Torque wrench**, with the wrenches good on the day. The wrench is printed in the turnover package's bolt-up record. A joint pulled up with a wrench out of calibration that day is an open item.
+
+Each record is judged by the certificate in force **on the day it was made**, not today. A gauge that has since run out does not void last month's test, and one calibrated since does not save it.
+
 ## Shift report
 
 The day, written up once at the end of it: Logs → **Shift report**.

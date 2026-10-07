@@ -64,6 +64,9 @@ import { CODE_HOLD_MIN, checkTest, codeRule, holdState, prelimPsi, problems, rel
 import { clockLabel, stopwatch } from '../calc/days';
 import { holdAlerts } from '../calc/holdAlerts';
 import { useHoldAlerts } from '../state/holdAlerts';
+import { useInstruments } from '../state/instruments';
+import { Instrument, findInstrument, goodOn, tagKey, usable } from '../state/calibration';
+import { Chip } from '../components/JobChips';
 import { ISO_GRID } from '../calc/iso';
 import { shareSheet } from '../print/share';
 import { testRecordHtml } from '../print/testRecord';
@@ -78,6 +81,7 @@ export function PressureTestScreen({ route, navigation }: Props) {
   const t = useTheme();
   const { log, apply } = usePressureTests();
   const { book } = useSketches();
+  const { register: instruments } = useInstruments();
   const test = getTest(log, route.params.testId);
   const now = useNow(test ? holding(test) : false);
   const [signing, setSigning] = useState<Role | null>(null);
@@ -392,8 +396,33 @@ export function PressureTestScreen({ route, navigation }: Props) {
               <GhostButton label="Remove" icon="trash-outline" onPress={() => change((x) => ({ ...x, gauges: x.gauges.filter((_, k) => k !== i) }))} />
             </View>
           </FieldRow>
+          {(() => {
+            // The register's word on this gauge, on the day of the test.
+            const r = findInstrument(instruments, g.id);
+            if (!r) return null;
+            const good = goodOn(r, test.day);
+            return good.ok ? null : <Text style={[t.type.caption, { color: t.colors.danger, paddingHorizontal: t.layout.screenPadding, marginTop: -t.space.sm, marginBottom: t.space.md }]}>{`Calibration register: ${good.why}.`}</Text>;
+          })()}
         </View>
       ))}
+      {(() => {
+        const fresh = [...usable(instruments.instruments, 'gauge', test.day), ...usable(instruments.instruments, 'recorder', test.day)].filter((r) => !test.gauges.some((g) => tagKey(g.id) === tagKey(r.tag)));
+        if (!fresh.length || test.gauges.length >= MAX_GAUGES) return null;
+        const add = (r: Instrument) => {
+          const due = r.history.find((c) => c.on <= test.day)?.due ?? '';
+          change((x) => ({ ...x, gauges: [...x.gauges, { id: r.tag, range: r.max, calDue: due }].slice(0, MAX_GAUGES) }));
+        };
+        return (
+          <View style={{ paddingHorizontal: t.layout.screenPadding, paddingBottom: t.space.md, gap: t.space.sm }}>
+            <Text style={[t.type.label, { color: t.colors.textMuted }]}>From the calibration register</Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space.sm }}>
+              {fresh.slice(0, 8).map((r) => (
+                <Chip key={r.id} label={`${r.tag}${r.max ? ` · ${r.max}` : ''}`} on={false} icon="add" onPress={() => add(r)} />
+              ))}
+            </View>
+          </View>
+        );
+      })()}
       {test.gauges.length < MAX_GAUGES ? (
         <ControlRow>
           <GhostButton
@@ -407,6 +436,17 @@ export function PressureTestScreen({ route, navigation }: Props) {
       ) : null}
 
       <SectionHeader title="Relief valve" />
+      {(() => {
+        const valves = usable(instruments.instruments, 'relief', test.day).filter((r) => tagKey(r.tag) !== tagKey(test.reliefTag));
+        if (!valves.length) return null;
+        return (
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space.sm, paddingHorizontal: t.layout.screenPadding, paddingBottom: t.space.md }}>
+            {valves.slice(0, 6).map((r) => (
+              <Chip key={r.id} label={`${r.tag}${r.max ? ` · set ${r.max}` : ''}`} on={false} icon="add" onPress={() => edit({ reliefTag: r.tag, ...(r.max ? { reliefPsi: r.max } : {}) })} />
+            ))}
+          </View>
+        );
+      })()}
       <FieldRow>
         <DimensionInput label="Tag" value={test.reliefTag} onChangeText={(v) => edit({ reliefTag: v.slice(0, NAME_MAX) })} placeholder="PSV-3" keyboardType="default" autoCapitalize="characters" />
         <NumField label="Set at" suffix="psi" value={test.reliefPsi} onChange={(v) => edit({ reliefPsi: v })} readout={top !== null ? `B31.3: ${top} psi at most` : undefined} />
