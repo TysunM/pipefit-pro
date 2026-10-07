@@ -66,6 +66,7 @@ export const TOOL_WORDS: Record<OpenRoute, readonly string[]> = {
   HandBender: ['pipe bend', 'bend', 'bender', 'hand bender', 'setback'],
   Calibration: ['calibration', 'calibration register', 'cal register', 'calibrations', 'torque wrenches', 'test gauges', 'gauge register', 'instruments'],
   Passport: ['passport', 'skills passport', 'skill passport', 'my skills', 'skills', 'competencies', 'sign off', 'sign offs', 'training record', 'my record'],
+  Orientation: ['orientation', 'site orientation', 'training', 'site rules', 'safety training', 'induction', 'onboarding', 'new hire training', 'orientation course'],
   WeldLog: ['weld log', 'welds', 'weld map', 'welders', 'welder log', 'nde', 'x ray', 'x-ray', 'radiography', 'rt log', 'continuity'],
   CutList: ['cut list', 'cut sheet', 'saw list', 'cutting list', 'cuts list'],
   FittingLibrary: ['fitting library', 'fittings library', 'takeout library', 'saved takeouts', 'fitting takeouts', 'library'],

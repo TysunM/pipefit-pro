@@ -41,6 +41,10 @@ export type RootStackParamList = {
   Calibration: undefined;
   /** The skills passport: what this hand can do, proved by the records and signed off. */
   Passport: undefined;
+  /** Site orientation: the modules a new hire takes, built-in and the company's own. */
+  Orientation: undefined;
+  /** One module, taken: read or heard, then the check. */
+  OrientationCourse: { id: string; lang?: 'en' | 'es' };
   /** Saved socket and no-hub takeouts; a line to open on, or the job's. */
   /** `read`: open the sheet reader at once, listening for “take it”; a time, so asking twice opens it twice. */
   FittingLibrary: { line?: string; read?: number } | undefined;

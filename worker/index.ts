@@ -16,9 +16,10 @@
 import { HEAT_FILL_PATH, MAX_TEXT, heatRequest } from '../src/ai/heatFill';
 import { HANDBOOK_PICK_PATH, MAX_QUERY, cleanQuery, handbookRequest, readHandbookAnswer } from '../src/ai/handbookPick';
 import { SHIFT_POLISH_PATH } from '../src/ai/shiftPolish';
-import { MODEL_ID, fittingSheet, shiftPolish, voiceCommand, type Reply } from './claude';
+import { MODEL_ID, fittingSheet, orientationCourse, shiftPolish, voiceCommand, type Reply } from './claude';
 import { VOICE_PATH } from '../src/ai/voice';
 import { FITTING_SHEET_PATH, MAX_SHEET_BODY } from '../src/ai/fittingSheet';
+import { MAX_ORIENTATION_BODY, ORIENTATION_PATH } from '../src/ai/orientation';
 
 export interface Env {
   /** Set with `npx wrangler secret put TYPESAFE_API_KEY`. Never in the repo. */
@@ -74,6 +75,8 @@ const CLAUDE: Record<string, { run: ClaudeRoute; maxBody: number }> = {
   [VOICE_PATH]: { run: voiceCommand, maxBody: Infinity },
   // A photograph: refused on its stated length before a byte of it is read.
   [FITTING_SHEET_PATH]: { run: fittingSheet, maxBody: MAX_SHEET_BODY },
+  // A module of rules, refused on its stated length before a byte is read.
+  [ORIENTATION_PATH]: { run: orientationCourse, maxBody: MAX_ORIENTATION_BODY },
 };
 
 const CORS = {

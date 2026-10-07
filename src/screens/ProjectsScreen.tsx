@@ -427,7 +427,7 @@ export function ProjectsScreen({ navigation }: Props) {
             ) : (
               <>
                 <Text style={[t.type.caption, { color: t.colors.text }]}>
-                  {`Takes ${countsText(doomedCounts)} off this phone, every day's, not only ${todayWord === 'today' ? "today's" : "this shift's"}.${tpOpen ? ` ${tpOpen} open ${tpOpen === 1 ? 'item goes' : 'items go'} with them.` : ''} Kept: the heat book, welder roster, calibration register, fitting library, skills passport and settings. A backup file first means any of it can be read back in.`}
+                  {`Takes ${countsText(doomedCounts)} off this phone, every day's, not only ${todayWord === 'today' ? "today's" : "this shift's"}.${tpOpen ? ` ${tpOpen} open ${tpOpen === 1 ? 'item goes' : 'items go'} with them.` : ''} Kept: the heat book, welder roster, calibration register, fitting library, skills passport, orientation and settings. A backup file first means any of it can be read back in.`}
                 </Text>
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
                   <SmallButton label={backup.busy ? 'Backing up…' : 'Back up, then clear'} onPress={() => void backUpThenClear()} strong />

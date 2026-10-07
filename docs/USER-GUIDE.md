@@ -101,6 +101,16 @@ The job chips pick what the page shows: the active job, another job, All jobs, o
 - Put your name in **Settings** first: it heads every page and goes into every record code.
 - The passport is kept through **Clear for a new start** and goes into every backup.
 
+## Site orientation
+
+**Logs → Orientation.** The course a new hire takes before the gate, on the phone, in English or Spanish. It is plug and play for any company.
+
+- **Nine modules are built in** and work with no signal: your first day on site, PPE, working at height, lockout/tagout and stored energy, hot work and fire, confined spaces and excavations, chemicals and the SDS, hands, tools, lifting and rigging, and heat, cold, weather and fatigue. They say general practice as OSHA and the trade hold it. **Your site's rules come first**, and the first module says so. Tap the eye to drop a module your site does not need.
+- **The company's own rules go beside them.** **Add the company's rules**: a title, then paste or type the text, or **Read a page with the camera** to lift it off the printed sheet (the reading is done on the phone). One module is one subject. Claude builds the course and the questions from exactly those words, adding nothing and dropping nothing, and keeps it on the phone, so it is built once per module per language.
+- **Share pack** makes a file of the company's modules. On a new hire's phone: **Settings → Back up and restore → Restore from a backup file**. Nothing else on their phone is touched.
+- **Taking a module:** read each section or tap the speaker to hear it; **Español** builds the Spanish course the first time (needs signal once); then **Take the check**. **80% passes.** A fail shows what was missed, with the rule, and can be taken again at once.
+- **A pass goes into the skills passport** as a record under Site orientation and prints on the passport PDF with its date and job. If a module's rules are changed, it has to be passed again.
+
 ## Back up the phone
 
 Everything you save lives on this phone only: pressure tests and signatures, the joint log, heat book, spools, isos, level readings, shift reports, fitting takeouts and the cut list. **Back it up weekly.**
