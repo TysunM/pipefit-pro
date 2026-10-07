@@ -83,11 +83,14 @@ jobs:
     if: needs.token.outputs.ok == 'true'
     name: ${{ (inputs.what || 'update') == 'apk' && 'Build an APK' || 'Push an update' }}
     runs-on: ubuntu-latest
-    # A merge has no inputs: it is an update to the preview channel, the one
-    # the installed APK listens on.
+    # A merge has no inputs: it is an update, and it goes to both channels an
+    # installed APK can be on, preview (build:apk) and production
+    # (build:release), so whichever one the phone carries takes it. A run by
+    # hand names its profile and goes to that one alone.
     env:
       WHAT: ${{ inputs.what || 'update' }}
       PROFILE: ${{ inputs.profile || 'preview' }}
+      BRANCHES: ${{ inputs.profile || 'preview production' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -129,7 +132,10 @@ jobs:
         if: env.WHAT == 'update'
         env:
           MESSAGE: ${{ github.sha }}
-        run: eas update --branch "$PROFILE" --message "$MESSAGE" --non-interactive
+        run: |
+          for b in $BRANCHES; do
+            eas update --branch "$b" --message "$MESSAGE" --non-interactive
+          done
 
       # --no-wait returns as soon as the build is queued. Waiting would hold an
       # Actions runner for the length of an Android build, and the queue page
@@ -158,7 +164,7 @@ jobs:
               echo
               echo "An APK is only needed when the runtime version above differs from the one your installed app was built with. Otherwise an update is enough, and is instant."
             else
-              echo "The update is live. Reopen the app twice to take it."
+              echo "The update is live on: $BRANCHES. Reopen the app twice to take it, or Settings, Updates, Check for updates."
               echo
               echo "It reaches only phones whose installed APK carries the runtime version above. If yours does not, build an APK instead."
             fi

@@ -190,7 +190,7 @@ npm run runtime-version
 npm run push
 ```
 
-`push` publishes to the **preview** branch, which is the channel the
+A merge into main publishes to **both** branches, preview and production, so whichever APK is installed takes it. By hand, `push` publishes to the **preview** branch, which is the channel the
 `build:apk` profile is on. `push:release` publishes to **production**, for
 builds cut with `build:release`. Both use `--auto`, so the update is labelled
 with the current git branch and commit message — commit before you push and the
