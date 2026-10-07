@@ -18,6 +18,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { RootStackParamList } from '../navigation/types';
 import { Screen } from '../components/Screen';
+import { Coach } from '../components/Coach';
 import { SectionHeader } from '../components/SectionHeader';
 import { AccentButton, ControlRow, GhostButton } from '../components/Buttons';
 import { DimensionInput, FieldRow } from '../components/DimensionInput';
@@ -236,6 +237,8 @@ export function PressureTestScreen({ route, navigation }: Props) {
           )}
         </Plate>
       </View>
+
+      <Coach screen="PressureTest" done={[test.testPsi !== null, test.gauges.length > 0, Boolean(test.reliefTag) || test.reliefPsi !== null, test.hold.startAt !== null, hs.phase !== 'ready' && hs.met === true, test.result !== 'open' && isSigned(test.people.tester)]} />
 
       {note ? (
         <View style={{ paddingTop: t.space.md }}>

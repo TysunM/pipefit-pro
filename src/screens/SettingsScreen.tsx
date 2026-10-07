@@ -128,6 +128,19 @@ export function SettingsScreen() {
         calendar day they happened.
       </Text>
       <ChipRow
+        label="Coaching"
+        options={[
+          { value: 'on', label: 'On' },
+          { value: 'off', label: 'Off' },
+        ]}
+        selected={settings.coach}
+        onSelect={(v) => update({ coach: v as 'on' | 'off' })}
+      />
+      <Text style={[t.type.caption, { color: t.colors.textMuted, paddingHorizontal: t.layout.screenPadding, marginTop: -t.space.sm, marginBottom: t.space.lg }]}>
+        A card on the first bolt-ups, pressure tests and cut lengths: the steps in order, the next one lit, the reason under each. It fades on its
+        own once the skills passport shows the work is routine or a foreman signs it off. Off for a hand who already knows.
+      </Text>
+      <ChipRow
         label="Voice"
         options={[
           { value: 'on', label: 'Mic button' },

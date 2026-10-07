@@ -101,6 +101,13 @@ The job chips pick what the page shows: the active job, another job, All jobs, o
 - Put your name in **Settings** first: it heads every page and goes into every record code.
 - The passport is kept through **Clear for a new start** and goes into every backup.
 
+## Coaching on real work
+
+The first bolt-ups, pressure tests and cut lengths come with a card at the top of the screen: the steps in order, the next one lit, and the reason under each, the way a journeyman would say it. Nothing is a lesson apart from the work.
+
+- It fades on its own: once the skills passport shows the skill as **Practised** (enough records) or a foreman signs it off, the card is gone.
+- **Hide** takes it off that one screen. **Settings → In the field → Coaching** turns it off for a hand who already knows.
+
 ## Site orientation
 
 **Edu → Orientation.** The course a new hire takes before the gate, on the phone, in English or Spanish. It is plug and play for any company.
