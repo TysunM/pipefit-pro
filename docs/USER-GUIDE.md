@@ -77,6 +77,8 @@ Today's date and the time run across the top, so the page left open on a job all
 
 The job chips pick what the page shows: the active job, another job, All jobs, or No project. Each card lists the newest work under it. **Share turnover PDF** makes the package for what is shown.
 
+**Today** and **Everything** sit under the job chips. The page opens on **Today**: each card lists only what was saved, changed or finished today, and the line above the cards counts it. Nothing is deleted. Earlier work is kept, and **Everything** shows it all. At midnight the page rolls over to the new day by itself. The turnover PDF and **Clear for a new start** always take the whole job, every day's work, whichever view is on.
+
 **Clear for a new start** is at the bottom. It takes everything shown under the chosen job off the phone: pressure tests, welds, joints, isos, spools, level readings, cuts and shift reports. With **All jobs** chosen, that is every job.
 - **Back up, then clear** makes the backup file first and clears only once it has gone. Use this one.
 - **Clear with no backup** needs a second tap, and nothing it takes can be got back.
