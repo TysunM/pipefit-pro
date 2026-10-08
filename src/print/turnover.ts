@@ -18,7 +18,7 @@ import { HEAT_FORMS, normaliseHeat, traceability } from '../calc/heat';
 import { findSize } from '../calc/pipe';
 import type { Reading } from '../state/levelLog';
 import type { Joint } from '../state/register';
-import { isDone, isSettled, jointFlange, jointProgress, lastCheck } from '../state/register';
+import { isDone, isSettled, jointFlange, jointMethod, jointProgress, lastCheck } from '../state/register';
 import type { SavedSketch } from '../state/sketchStore';
 import { sketchToSvg } from '../state/sketchStore';
 import type { SavedSpool } from '../state/spoolStore';
@@ -104,7 +104,7 @@ export function openItems(joints: readonly Joint[], book: readonly Heat[], tests
   for (const j of joints)
     if (isDone(j) && !isSettled(j)) {
       const last = lastCheck(j);
-      out.push({ what: name(j), needs: last?.moved ? 'Bolts took up on the last re-check; check again' : 'Re-check at temperature not recorded' });
+      out.push({ what: name(j), needs: last?.moved ? 'Bolts took up on the last re-check; check again' : 'Retightening round not recorded' });
     }
   for (const j of joints) {
     if (!isDone(j)) continue;
@@ -197,11 +197,12 @@ export function turnoverHtml(i: TurnoverInput): string {
   if (i.joints.length)
     tables.push({
       title: 'Flange bolt-up record',
-      head: ['Joint', 'Flange', 'Final torque', 'Wrench', 'Status', 'Finished', 'Bolted by', 'Witnessed by', 'Heats'],
-      right: [2],
+      head: ['Joint', 'Flange', 'Method', 'Final torque', 'Wrench', 'Status', 'Finished', 'Bolted by', 'Witnessed by', 'Heats'],
+      right: [3],
       rows: i.joints.map((j) => [
         name(j),
         jointFlange(j),
+        jointMethod(j),
         j.torque === null ? '—' : `${j.torque} ft-lb`,
         j.wrench || '—',
         status(j),
@@ -210,7 +211,7 @@ export function turnoverHtml(i: TurnoverInput): string {
         j.witnessedBy.trim() || '—',
         j.heats.length ? j.heats.join(', ') : '—',
       ]),
-      note: 'Four passes in the cross pattern: 30%, 60% and 100% of final torque, then a check pass round the circle at 100%.',
+      note: 'Bolted to ASME PCC-1 by the method named: snug, rounds at 20–30%, 50–70% and 100% of final torque (or the staged, multi-tool or tensioning passes of the alternative patterns), then check rounds round the flange at 100% until no nut turned.',
     });
 
   const checks = i.joints.flatMap((j) => j.checks.map((c) => ({ j, c })));

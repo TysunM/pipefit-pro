@@ -978,32 +978,48 @@ A flange joint is a spring. Pull one bolt down hard and the flange tips towards 
 Two rules fix it, and this module is nothing more than those two rules made hard to get wrong:
 
 - **Cross the flange.** Every bolt is followed by the one **straight across** from it, so the two sides come down together and the flange stays parallel.
-- **Do it in passes.** Snug the whole joint at about a third, go round again at about two thirds, then again at full. Tightening any bolt relaxes its neighbours, so the first trip round is always uneven no matter how careful you are.
+- **Do it in rounds.** Snug the whole joint, then 20–30%, then 50–70%, then 100%. Tightening any bolt relaxes its neighbours, so the first trip round is always uneven no matter how careful you are.
 
-Then one more that gets skipped more than any other step in pipefitting:
+Then the two that get skipped more than any other step in pipefitting:
 
-- **The last pass goes round, not across, at full torque.** Its job is to pick up the relaxation the three cross passes left behind. This is the *rotational* pass in ASME PCC-1, and it is the difference between a joint that holds and a joint that needs re-torquing next week.
+- **The check rounds go round, not across, at 100%, until no nut turns.** Their job is to pick up the relaxation the cross rounds left behind. One pass is rarely enough; the screen asks after each one.
+- **The retightening round after a four-hour dwell.** The gasket keeps relaxing after the wrench is off. ASME PCC-1 asks for a round at 100% after at least four hours, before the test or start-up.
 
-### The four passes
+### The rounds, as ASME PCC-1 sets them out
 
-| Pass | Torque | Order | What it is doing |
+| Round | Load | Order | What it is doing |
 |---|---|---|---|
-| 1 | ~30% | Across | Snugging the joint up square before anything is pulled down hard |
-| 2 | ~60% | Across | The gasket is seating, so bolts done early have gone slack |
-| 3 | 100% | Across | Full torque, still crossing |
-| 4 | 100% | **Round** | The check. Picks up what the cross passes left |
+| Snug | Hand-tight, then 10–20 ft-lb, never over 20% | Round | Nuts on one side, stud ends marked, gap checked with feelers |
+| 1 | 20–30% (set 30%) | Across | Seating the joint square. Gap check after |
+| 2 | 50–70% (set 60%) | Across | The gasket is seating, so bolts done early have gone slack. Gap check after |
+| 3 | 100% | Across | Full load, still crossing. Gap check after |
+| Check | 100% | **Round** | Repeated until no nut turns. The screen asks after each one |
+| Retighten | 100% | Round | After a dwell of at least four hours; recorded under **Retighten** |
 
-Four passes over every bolt. On an 8 bolt flange that is 32 taps; on a 16 bolt flange, 64.
+That is the **Legacy** method. The screen also offers the faster patterns PCC-1 Appendix F accepts, and tensioning:
+
+| Method | When | What changes |
+|---|---|---|
+| **Modified** | 12 bolts and up | First four bolts to 20–30%, next four to 50–70%, every bolt after that straight to 100%, all in cross order; then a round at 100% |
+| **Quadrant** | 16 bolts and up | Four starters 90° apart, then the next loose bolt in each quadrant in turn; load steps up every four bolts |
+| **Circular** | Kammprofile or grooved metal gaskets only | Four bolts 90° apart at 20–30%, then straight round at 100% |
+| **2 tools / 4 tools** | Hydraulic wrenches on one pump | Pairs 180° apart or quads 90° apart worked as one bolt through the same rounds |
+| **Tension 100 / 50 / 25%** | Hydraulic tensioners | Every stud at once; odds at pressure A then evens at B; or four groups A to D. Then a check pass |
+
+The class never sets the torque. It sets the stud count and size; the stud size, the material, the lubricant and the gasket set the torque, and that figure comes from the job's bolting spec.
 
 ### Step by step
 
-1. Tap **Flange bolt-up**. It opens on the size the app is set to.
-2. Set **CLASS** (125 or 250 lb) and **SIZE**. The bolt count follows the size — you do not set it.
-3. If the flange is not in the cast iron tables (a raised-face steel flange, say), set **BOLTS** directly. The sequence only needs the count.
-4. Optional: put the **final torque from the job's bolting spec** in the torque field. The header then shows the figure for each pass instead of the percentage.
-5. The header says which bolt is next. Find it on the face — it has a dark ring around it — and tighten it.
-6. **Tap that bolt.** It changes colour and the header moves to the next one.
-7. Work round until the header reads **Joint complete**.
+1. Tap **Flange bolt-up**. It opens on the size the app is set to, Class 150.
+2. Set **CLASS** (150 to 2500 steel, or 125 and 250 cast iron) and **SIZE**. The stud count and size follow from ASME B16.5 — you do not set them.
+3. If the flange is in no table, set **BOLTS** directly. The sequence only needs the count.
+4. Set the **GASKET**. It decides which methods are allowed and goes on the record.
+5. Pick the **METHOD**. Legacy unless the job says otherwise. A method cannot be changed once a bolt is logged; Start over first.
+6. Put the **final torque from the job's bolting spec** in the torque field. The header then shows the figure for each step. On a steel flange the screen also shows the PCC-1 Appendix K reference for that stud at 50 ksi, to check the spec against.
+7. **All snugged** closes the snug round. Then the header says which bolt is next; find it on the face — it has a dark ring around it — and tighten it.
+8. **Tap that bolt.** It changes colour and the header moves to the next one. Under two or four tools the whole group lights up, and any bolt of it marks the group.
+9. After each cross round the screen asks for a **gap check**: feelers round the flange, bring the low side up, then **Gap checked, carry on**.
+10. After the check round it asks **did any nut turn?** A nut that turned means another round. None turning reads **Joint complete**, and the four-hour dwell starts.
 
 ### What happens if you tap the wrong bolt
 
@@ -1096,7 +1112,7 @@ So above about 40 bolts the face **grows and scrolls sideways** instead of the b
 
 ### What it is for
 
-A flange bolt-up is four passes over every bolt. On a real job you get called away in the middle of one — the crane needs a hand, the welder wants the fit checked, your phone goes in your pocket and stays there.
+A flange bolt-up is five rounds or more over every bolt. On a real job you get called away in the middle of one — the crane needs a hand, the welder wants the fit checked, your phone goes in your pocket and stays there.
 
 Come back and you have two bad options: start the joint again, or guess which bolts you had already pulled down. **Guessing is how a bolt gets taken to full torque twice while its neighbour never gets touched at all** — which is exactly the uneven joint the passes exist to prevent.
 
@@ -1129,13 +1145,13 @@ north rack, behind the pump
 Worked 20 min ago
 ```
 
-The four bars are the four passes, filled as far as the joint has got, in the **same colours the flange face uses** — yellow, orange, blue, green. One glance tells you how far round it is without opening it.
+The bars are the rounds of the method, filled as far as the joint has got, in the **same colours the flange face uses** — grey for the snug, yellow, orange, blue, green. One glance tells you how far round it is without opening it.
 
 ### How the list is ordered
 
 - **Working now** — the unnamed joint, if there is anything in it.
 - **Part done** — live joints, most recently worked at the top. This is where you look when you come back from break.
-- **Finished** — all four passes recorded, most recently finished first.
+- **Finished** — every round recorded and no nut turning on the last check, most recently finished first.
 
 Delete asks first, in the row. On a joint that is only part done it says so before it goes.
 
@@ -1149,7 +1165,7 @@ Setting the **BOLTS** count by hand unsets the size, because a hand-set count be
 
 Two things it refuses on purpose, because both come down to the same rule — **the app would rather lose a joint than show you a wrong one.**
 
-**A stored joint that does not add up is not loaded.** Every saved bolt-up is checked against itself on the way in: in any state the app can actually reach, every bolt sits at either the current pass or one above it, and the number of bolts one above is exactly how far through the pass you are. If a stored joint fails that, it is dropped and the register says how many went. A half-repaired bolt-up state looks exactly like a real one on screen, and would put you on the wrong bolt.
+**A stored joint that does not add up is not loaded.** Every saved bolt-up is checked against itself on the way in: the colour of every bolt is worked out again from the method, the round and the step, and a stored joint whose colours disagree with its place is dropped, and the register says how many went. A half-repaired bolt-up state looks exactly like a real one on screen, and would put you on the wrong bolt. Joints saved by an earlier version, with four fixed passes, load as the Legacy method at the same place.
 
 **A list written by a newer version of the app is left alone.** If the register was last written by a newer build — the web app and the APK do get out of step — nothing is saved at all, and the screen says so. The alternative is the older build quietly overwriting joints the newer one is holding. If you would rather start clean, **Start new** on that notice does it, and says what it costs.
 
@@ -1162,7 +1178,7 @@ Two things it refuses on purpose, because both come down to the same rule — **
 
 ---
 
-## Re-torque log
+## Retightening log
 
 **A joint that was right cold can be slack hot. This records what you find when you go back.**
 
@@ -1191,14 +1207,14 @@ So the app asks that question with **two buttons and no default answer**. A pres
 
 ### Step by step
 
-1. Finish the bolt-up. The **Re-torque** section appears under the controls — only on a joint that has been finished once, because there is nothing to re-check otherwise.
-2. Once the line has been up to temperature and back, go round the flange **at full torque, in order**.
-3. Tap **Record a check**.
+1. Finish the bolt-up. The **Retighten** section appears under the controls — only on a joint that has been finished once, because there is nothing to retighten otherwise. Its heading says when the four-hour dwell is up.
+2. After the dwell, and again once the line has been up to temperature and back, go round the flange **at 100%, in order**.
+3. Tap **Record a retightening round**.
 4. Answer **Bolts moved** or **All tight**.
 5. Optionally add the torque you used and a note — "after 8 hr at temp", "two bolts took a quarter turn".
 6. **Save.**
 
-The heading above the log then reads one of three things: *Not checked since it came up to temperature*, *Still taking up*, or *Nothing moved last time*.
+The heading above the log then reads one of four things: *Retighten after* a time, *Retightening round due*, *Still taking up*, or *Nothing moved last time*.
 
 ### The register sorts itself by what is left to do
 
@@ -1211,7 +1227,7 @@ The heading above the log then reads one of three things: *Not checked since it 
 
 **Needs a re-check is the list to work from** after a startup. Finished is not the same as closed out, and the register stopped treating it that way.
 
-**Clear closed out** only ever removes the settled ones. A joint still waiting on a re-check is not finished with, whatever its four passes say.
+**Clear closed out** only ever removes the settled ones. A joint still waiting on a retightening round is not finished with, whatever its rounds say.
 
 ### What the app will not do
 
@@ -1223,7 +1239,7 @@ The heading above the log then reads one of three things: *Not checked since it 
 
 ### Where people go wrong
 
-- **Treating the fourth pass as the end.** It closes the *cold* bolt-up. On hot service the joint has not finished moving yet.
+- **Treating the check round as the end.** It closes the *cold* bolt-up. The gasket keeps relaxing for hours, and on hot service the joint has not finished moving until it has been to temperature.
 - **Logging the date and not the finding.** "Checked 14 Sep" tells the next person nothing. "Checked 14 Sep, two bolts took a quarter turn" tells them to come back.
 - **Closing a joint out on one check where bolts moved.** That check said the opposite — it is still going. The app will keep it under **Needs a re-check** for exactly that reason.
 - **Expecting it to sync.** It does not. The log lives on that phone, like the rest of the register.

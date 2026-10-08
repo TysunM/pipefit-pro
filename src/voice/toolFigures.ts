@@ -18,6 +18,8 @@ export type FigureSpec = {
   min?: number;
   max?: number;
   step?: number;
+  /** The only values the field takes, where it is a list and not a range (flange classes). */
+  values?: readonly number[];
 };
 
 export const TOOL_FIGURES = {
@@ -26,7 +28,7 @@ export const TOOL_FIGURES = {
   FlangeBoltUp: {
     bolts: { label: 'Bolts', kind: 'count', words: ['bolts', 'bolt', 'holes', 'hole', 'studs', 'stud', 'bolt holes'], min: 4, max: 68, step: 4 },
     size: { label: 'Size', kind: 'length', words: ['inch', 'inches', 'size', 'nps', 'pipe size'], max: 60 },
-    cls: { label: 'Class', kind: 'count', words: ['class', 'pound', 'lb', 'lbs'], min: 125, max: 250, step: 125 },
+    cls: { label: 'Class', kind: 'count', words: ['class', 'pound', 'lb', 'lbs'], min: 125, max: 2500, values: [125, 150, 250, 300, 600, 900, 1500, 2500] },
   },
   SimpleOffset: {
     offset: { label: 'Offset', kind: 'length', words: ['offset', 'set', 'rise', 'drop', 'jog'] },
@@ -91,8 +93,9 @@ export function figureNames(route: FigureRoute): { key: string; words: string[] 
 export const primaryFigure = (route: FigureRoute): string => Object.keys(TOOL_FIGURES[route])[0]!;
 
 /** Whether a value is one a field of that kind can hold. */
-export function plausible(spec: Pick<FigureSpec, 'kind' | 'min' | 'max' | 'step'>, f: Figure): boolean {
+export function plausible(spec: Pick<FigureSpec, 'kind' | 'min' | 'max' | 'step' | 'values'>, f: Figure): boolean {
   if (!Number.isFinite(f.n) || f.n <= 0) return false;
+  if (spec.values && !spec.values.includes(f.n)) return false;
   if (spec.min !== undefined && f.n < spec.min) return false;
   if (spec.max !== undefined && f.n > spec.max) return false;
   if (spec.step !== undefined && Math.abs(f.n / spec.step - Math.round(f.n / spec.step)) > 1e-9) return false;

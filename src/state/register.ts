@@ -15,9 +15,29 @@
 // without a device.
 
 import { CastIronFlangeClass, boltUp } from '../calc/boltUp';
+import { SteelClass, isSteelClass, steelFlange, studLabel } from '../calc/steelFlange';
 import { cleanProject } from './project';
 import { cleanPerson } from './readSettings';
-import { BoltUpState, PASSES, boltUpProgress, currentPass, isFinished, startBoltUp } from '../calc/boltUpSequence';
+import {
+  BoltUpState,
+  Gasket,
+  MethodId,
+  boltUpProgress,
+  currentRound,
+  isAsked,
+  isFinished,
+  isMethodId,
+  levelsAt,
+  method,
+  methodBar,
+  plan,
+  startBoltUp,
+  withMethod as stateWithMethod,
+} from '../calc/boltUpSequence';
+
+/** Every class a joint can be: the cast iron pair from B16.1 and the steel run from B16.5. */
+export type JointClass = CastIronFlangeClass | SteelClass;
+export const isCastIron = (cls: JointClass): cls is CastIronFlangeClass => cls === '125' || cls === '250';
 
 /** The unnamed joint the flange screen uses until it is given a tag. */
 export const SCRATCH_ID = 'scratch';
@@ -29,7 +49,7 @@ export const SCRATCH_ID = 'scratch';
  * side by side, and one of them being a version behind must not wipe the other's
  * joints.
  */
-export const REGISTER_VERSION = 2;
+export const REGISTER_VERSION = 3;
 
 /**
  * Enough joints for any job, and small enough that the whole register stays a
@@ -72,10 +92,12 @@ export type Joint = {
   /** What the fitter calls it — line number, spool mark, "pump suction". */
   tag: string;
   note: string;
-  cls: CastIronFlangeClass;
+  cls: JointClass;
   /** The table size, or null when the bolt count was set by hand. */
   nps: number | null;
   bolts: number;
+  /** What is between the flanges. Decides which methods are offered, and goes on the record. */
+  gasket: Gasket;
   /** Final torque from the job's bolting spec, or null when none was given. */
   torque: number | null;
   state: BoltUpState;
@@ -155,49 +177,84 @@ const isRec = (v: unknown): v is Record<string, unknown> =>
 /**
  * A bolt-up state, checked against itself rather than merely type-checked.
  *
- * The strong check is the last one. In any state the machine can actually
- * reach, every bolt sits at either `pass` or `pass + 1`, and the number of
- * bolts at `pass + 1` is exactly `step` — because a pass advances only when the
- * last bolt on it is worked, which resets step to zero and levels the array. A
- * store that has been corrupted, hand-edited, or written by a different
- * version will fail that, and failing it is the point: a level array that
- * disagrees with the step would put the screen on the wrong bolt, which is
- * worse than losing the joint.
+ * The strong check is the last one. The levels are a pure function of the
+ * position in the plan, so a stored level array either equals what the
+ * position says or the store has been corrupted, hand-edited, or written by a
+ * different version — and failing it is the point: a level array that
+ * disagrees with the position would put the screen on the wrong bolt, which
+ * is worse than losing the joint.
+ *
+ * A state written by version 2 (four fixed passes, no method) is read as the
+ * Legacy method at the same place: pass p, step s is round p + 1, step s,
+ * with the snug round taken as done.
  */
 export function validState(v: unknown, bolts: number): BoltUpState | null {
   if (!isRec(v)) return null;
   if (!isInt(bolts) || bolts < 1) return null;
   if (v.bolts !== bolts) return null;
-
-  const { pass, step, level, lastWrong, wrongCount } = v;
-  if (!isInt(pass) || pass < 0 || pass > PASSES.length) return null;
-  if (!isInt(step) || step < 0 || step >= bolts) return null;
+  const { lastWrong, wrongCount } = v;
   if (!isInt(wrongCount) || wrongCount < 0) return null;
   if (lastWrong !== null && (!isInt(lastWrong) || lastWrong < 1 || lastWrong > bolts)) return null;
 
-  if (!Array.isArray(level) || level.length !== bolts) return null;
-  if (!level.every((l) => isInt(l) && l >= 0 && l <= PASSES.length)) return null;
-
-  const finished = pass === PASSES.length;
-  if (finished && step !== 0) return null;
-  if (finished) {
-    if (!level.every((l) => l === PASSES.length)) return null;
-  } else {
-    if (!level.every((l) => l === pass || l === pass + 1)) return null;
-    if (level.filter((l) => l === pass + 1).length !== step) return null;
+  // Version 2: { pass, step, level } with no method.
+  if (v.method === undefined && isInt(v.pass)) {
+    const { pass, step } = v;
+    if (pass < 0 || pass > 4 || !isInt(step) || step < 0 || step >= bolts) return null;
+    const rounds = plan('legacy', bolts, 0);
+    const finished = pass === 4;
+    const round = finished ? rounds.length : pass + 1;
+    return {
+      bolts,
+      method: 'legacy',
+      round,
+      step: finished ? 0 : step,
+      extraChecks: 0,
+      gapPending: false,
+      level: levelsAt('legacy', bolts, 0, round, finished ? 0 : step),
+      lastWrong: lastWrong as number | null,
+      wrongCount,
+    };
   }
+
+  const { method: id, round, step, extraChecks, gapPending, level } = v;
+  if (!isMethodId(id)) return null;
+  if (!isInt(extraChecks) || extraChecks < 0 || extraChecks > 50) return null;
+  const rounds = plan(id, bolts, extraChecks);
+  if (!isInt(round) || round < 0 || round > rounds.length) return null;
+  if (!isInt(step) || step < 0) return null;
+  if (typeof gapPending !== 'boolean') return null;
+  const finished = round === rounds.length;
+  if (finished) {
+    if (step !== 0 || gapPending) return null;
+  } else {
+    const r = rounds[round]!;
+    // A step equal to the count is a closed check round waiting for its answer.
+    if (step > r.steps.length || (step === r.steps.length && r.kind !== 'check')) return null;
+    // A pending gap check belongs at the start of a round that follows one wanting it.
+    if (gapPending && (step !== 0 || round === 0 || !rounds[round - 1]!.gapCheck)) return null;
+  }
+  // An added check round exists only because the one before it was answered "moved".
+  if (extraChecks > 0 && round < rounds.length - extraChecks) return null;
+
+  const want = levelsAt(id, bolts, extraChecks, round, step);
+  if (!Array.isArray(level) || level.length !== bolts) return null;
+  if (!level.every((l, i) => l === want[i])) return null;
 
   return {
     bolts,
-    pass,
+    method: id,
+    round,
     step,
-    level: level.slice() as number[],
+    extraChecks,
+    gapPending,
+    level: want,
     lastWrong: lastWrong as number | null,
     wrongCount,
   };
 }
 
-const CLASSES: CastIronFlangeClass[] = ['125', '250'];
+const CLASSES: JointClass[] = ['125', '250', '150', '300', '600', '900', '1500', '2500'];
+const GASKET_IDS: Gasket[] = ['unknown', 'soft', 'spiral', 'hard', 'rtj'];
 
 /** One re-torque check, or null if it does not hold up. */
 export function validCheck(v: unknown): ReCheck | null {
@@ -217,7 +274,7 @@ export function validJoint(v: unknown): Joint | null {
 
   if (!isStr(id) || id === '') return null;
   if (!isStr(tag) || !isStr(note)) return null;
-  if (!isStr(cls) || !CLASSES.includes(cls as CastIronFlangeClass)) return null;
+  if (!isStr(cls) || !CLASSES.includes(cls as JointClass)) return null;
   if (nps !== null && (typeof nps !== 'number' || !Number.isFinite(nps) || nps <= 0)) return null;
   if (!isInt(bolts) || bolts < 1) return null;
   if (torque !== null && (typeof torque !== 'number' || !Number.isFinite(torque) || torque <= 0)) return null;
@@ -271,9 +328,11 @@ export function validJoint(v: unknown): Joint | null {
     id,
     tag,
     note,
-    cls: cls as CastIronFlangeClass,
+    cls: cls as JointClass,
     nps: nps as number | null,
     bolts,
+    // Stores written before the gasket was recorded have none: not set.
+    gasket: GASKET_IDS.includes(v.gasket as Gasket) ? (v.gasket as Gasket) : 'unknown',
     torque: torque as number | null,
     state,
     createdAt,
@@ -389,12 +448,14 @@ export function removeJoint(r: Register, id: string): Register {
 export type JointSpec = {
   tag?: string;
   note?: string;
-  cls: CastIronFlangeClass;
+  cls: JointClass;
   nps: number | null;
   bolts: number;
   torque?: number | null;
   project?: string;
   boltedBy?: string;
+  method?: MethodId;
+  gasket?: Gasket;
 };
 
 export function newJoint(id: string, spec: JointSpec, now: number): Joint {
@@ -405,8 +466,9 @@ export function newJoint(id: string, spec: JointSpec, now: number): Joint {
     cls: spec.cls,
     nps: spec.nps,
     bolts: spec.bolts,
+    gasket: spec.gasket ?? 'unknown',
     torque: spec.torque ?? null,
-    state: startBoltUp(spec.bolts),
+    state: startBoltUp(spec.bolts, spec.method ?? 'legacy'),
     createdAt: now,
     updatedAt: now,
     completedAt: null,
@@ -445,17 +507,43 @@ export function withState(joint: Joint, state: BoltUpState, now: number): Joint 
  */
 export function withFlange(joint: Joint, spec: JointSpec, now: number): Joint {
   const sameFlange = joint.bolts === spec.bolts && joint.cls === spec.cls && joint.nps === spec.nps;
+  // The method carries over when the new flange allows it; otherwise the standard one.
+  const id = methodBar(joint.state.method, spec.bolts, joint.gasket) === null ? joint.state.method : 'legacy';
   return {
     ...joint,
     cls: spec.cls,
     nps: spec.nps,
     bolts: spec.bolts,
     torque: spec.torque === undefined ? joint.torque : spec.torque,
-    state: sameFlange ? joint.state : startBoltUp(spec.bolts),
+    state: sameFlange ? joint.state : startBoltUp(spec.bolts, id),
     updatedAt: now,
     completedAt: sameFlange ? joint.completedAt : null,
     checks: sameFlange ? joint.checks : [],
   };
+}
+
+/**
+ * Bolt the joint by another method. The bolt-up starts again, because the
+ * rounds are different; the same method is a no-op.
+ */
+export function withMethod(joint: Joint, id: MethodId, now: number): Joint {
+  if (id === joint.state.method) return joint;
+  return { ...joint, state: stateWithMethod(joint.state, id), updatedAt: now, completedAt: null, checks: [] };
+}
+
+/** Record what is between the flanges. */
+export const withGasket = (joint: Joint, gasket: Gasket, now: number): Joint => (gasket === joint.gasket ? joint : { ...joint, gasket, updatedAt: now });
+
+/** The dwell PCC-1 asks for before the retightening round. */
+export const RETIGHTEN_DWELL_MS = 4 * 60 * 60 * 1000;
+
+/**
+ * When the retightening round falls due: four hours after the joint closed,
+ * for a finished joint that has not been retightened yet. Null otherwise.
+ */
+export function retightenDue(j: Joint): number | null {
+  if (j.completedAt === null || j.checks.length) return null;
+  return j.completedAt + RETIGHTEN_DWELL_MS;
 }
 
 /**
@@ -515,22 +603,34 @@ export function sinceLabel(then: number, now: number): string {
   return w === 1 ? 'a week ago' : `${w} weeks ago`;
 }
 
-/** The flange in a line: size, class and bolt count. */
+/** The flange in a line: size, class, bolt count and stud size where the table knows it. */
 export function jointFlange(j: Joint): string {
-  const f = j.nps === null ? undefined : boltUp(j.nps, j.cls);
-  return f ? `${f.label} · class ${j.cls} · ${j.bolts} bolts` : `${j.bolts} bolts`;
+  if (j.nps !== null && isCastIron(j.cls)) {
+    const f = boltUp(j.nps, j.cls);
+    if (f) return `${f.label} · class ${j.cls} cast iron · ${j.bolts} bolts`;
+  }
+  if (j.nps !== null && isSteelClass(j.cls)) {
+    const f = steelFlange(j.nps, j.cls);
+    if (f) return `${f.label} · class ${j.cls} · ${f.bolts} × ${studLabel(f.stud)} studs`;
+  }
+  return `${j.bolts} bolts · class ${j.cls}`;
 }
+
+/** The method the joint is bolted by, as it reads on a record. */
+export const jointMethod = (j: Joint): string => method(j.state.method).name;
 
 /** How far the bolt-up has got, in the words a foreman would use. */
 export function jointProgress(j: Joint): string {
   if (isFinished(j.state)) {
     const last = lastCheck(j);
-    if (!last) return 'All four passes · not re-checked';
-    return last.moved ? 'Re-checked · bolts took up' : 'Re-checked · all tight';
+    if (!last) return 'Bolted up · not retightened';
+    return last.moved ? 'Retightened · bolts took up' : 'Retightened · all tight';
   }
-  const pass = currentPass(j.state);
+  const round = currentRound(j.state);
   if (boltUpProgress(j.state).done === 0) return 'Not started';
-  return `${pass?.label ?? ''} · bolt ${j.state.step + 1} of ${j.bolts}`;
+  if (isAsked(j.state)) return `${round?.label ?? ''} · did any nut turn?`;
+  if (j.state.gapPending) return `${round?.label ?? ''} · gap check`;
+  return `${round?.label ?? ''} · step ${j.state.step + 1} of ${round?.steps.length ?? 0}`;
 }
 
 /**

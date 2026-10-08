@@ -18,28 +18,45 @@ import { AccentButton, ControlRow, GhostButton } from '../components/Buttons';
 import { HintRow } from '../components/HintRow';
 import { Divider } from '../components/Divider';
 import { useTheme, Theme } from '../theme/ThemeProvider';
-import { CastIronFlangeClass, boltHoleAngles, boltUp, boltUpSizes } from '../calc/boltUp';
+import { boltHoleAngles, boltUp, boltUpSizes } from '../calc/boltUp';
+import { isSteelClass, referenceTorque, steelFlange, steelSizes, studLabel, threadsPerInch } from '../calc/steelFlange';
 import {
   BoltUpState,
-  PASSES,
+  GASKETS,
+  Gasket,
+  METHODS,
+  MethodId,
+  ROUND_LOADS,
+  Round,
+  answerMoved,
   boltLevel,
   boltUpProgress,
-  currentPass,
-  expectedBolt,
+  confirmGap,
+  currentRound,
+  currentStep,
+  expectedBolts,
+  isAsked,
   isFinished,
-  passOrder,
-  passTorque,
+  loadTorque,
+  loadWords,
+  method,
+  methodBar,
+  methodsFor,
+  nextStep,
+  planOf,
   resetBoltUp,
-  startBoltUp,
+  stepWords,
   tapBolt,
   undoBolt,
 } from '../calc/boltUpSequence';
 import { formatInches } from '../calc/ftin';
+import { ChipRow } from '../components/ChipRow';
 import { useSettings } from '../state/settings';
 import { cleanProject } from '../state/project';
 import { useJoints } from '../state/joints';
 import {
   Joint,
+  JointClass,
   JointSpec,
   ReCheck,
   Register,
@@ -47,6 +64,7 @@ import {
   addCheck,
   freshId,
   getJoint,
+  isCastIron,
   isDone,
   isScratch,
   isSettled,
@@ -54,8 +72,11 @@ import {
   newJoint,
   putJoint,
   removeCheck,
+  retightenDue,
   sinceLabel,
   withFlange,
+  withGasket,
+  withMethod,
   withState,
   recentNames,
 } from '../state/register';
@@ -81,22 +102,23 @@ const FULL_PITCH = 40;
 type BoltSkin = { fill: string; border: string; text: string; width: number };
 
 /**
- * Untouched, then one step per pass: snug, two thirds, full, checked.
+ * Untouched, then one step per load: snugged, 20-30%, 50-70%, full, checked.
  *
  * These are flat, saturated colours rather than the soft tints the rest of the
  * app uses, and they are not taken from the theme. The reason is legibility at
  * a distance: a fitter glancing at the face has to tell a bolt at a third from
  * a bolt at two thirds across the width of a phone, in daylight, and the
- * theme's tinted backgrounds sit within a few points of each other. Four
- * distinct hues, one per pass, is the only arrangement that survives that.
+ * theme's tinted backgrounds sit within a few points of each other. Five
+ * distinct hues, one per load, is the only arrangement that survives that.
  *
- * Numerals are dark on the two light fills and white on the two dark ones, so
- * every bolt number clears 4.5:1 against what it sits on.
+ * Numerals are dark on the light fills and white on the dark ones, so every
+ * bolt number clears 4.5:1 against what it sits on.
  */
 const BOLT_RAMP: readonly BoltSkin[] = [
-  { fill: '#FACC15', border: '#CA9A04', text: '#1C1917', width: 2 }, // 30%, snug
-  { fill: '#F97316', border: '#C2540A', text: '#1C1917', width: 2 }, // 60%
-  { fill: '#2563EB', border: '#1D4FD8', text: '#FFFFFF', width: 2 }, // full torque
+  { fill: '#CBD5E1', border: '#94A3B8', text: '#1C1917', width: 2 }, // snugged
+  { fill: '#FACC15', border: '#CA9A04', text: '#1C1917', width: 2 }, // 20-30%
+  { fill: '#F97316', border: '#C2540A', text: '#1C1917', width: 2 }, // 50-70%
+  { fill: '#2563EB', border: '#1D4FD8', text: '#FFFFFF', width: 2 }, // full load
   { fill: '#15803D', border: '#106431', text: '#FFFFFF', width: 2 }, // checked
 ];
 
@@ -111,7 +133,39 @@ function boltSkin(t: Theme, level: number): BoltSkin {
   );
 }
 
-const LEVEL_LABELS = ['Not started', 'Snug, 30%', 'Two thirds, 60%', 'Full torque', 'Checked'];
+const LEVEL_LABELS = ['Not started', 'Snugged', '20–30%', '50–70%', 'Full load', 'Checked'];
+
+/** Every class a joint can be, as the chips offer them. */
+const CLASS_OPTIONS: { value: JointClass; label: string }[] = [
+  { value: '150', label: '150' },
+  { value: '300', label: '300' },
+  { value: '600', label: '600' },
+  { value: '900', label: '900' },
+  { value: '1500', label: '1500' },
+  { value: '2500', label: '2500' },
+  { value: '125', label: '125 cast iron' },
+  { value: '250', label: '250 cast iron' },
+];
+const CLASS_IDS = CLASS_OPTIONS.map((c) => c.value);
+
+type FlangeRow = { nps: number; label: string; bolts: number };
+
+/** The flange of a size in a class, from whichever table holds that class. */
+function flangeFor(nps: number, cls: JointClass): FlangeRow | undefined {
+  if (isCastIron(cls)) {
+    const f = boltUp(nps, cls);
+    return f ? { nps: f.nps, label: f.label, bolts: f.bolts } : undefined;
+  }
+  const f = steelFlange(nps, cls);
+  return f ? { nps: f.nps, label: f.label, bolts: f.bolts } : undefined;
+}
+
+const sizesOf = (cls: JointClass): FlangeRow[] => (isCastIron(cls) ? boltUpSizes(cls) : steelSizes(cls)).map((n) => flangeFor(n, cls)!).filter(Boolean);
+
+const orderWords = (o: Round['order']): string => (o === 'across' ? 'across' : o === 'round' ? 'round' : o === 'quadrant' ? 'by quadrant' : 'together');
+
+/** A round's load the way the list shows it. */
+const roundLoad = (r: Round): string => (r.kind === 'staged' ? (r.load === 1 ? '20–30% → 50–70% → 100%' : '20–30%') : loadWords(r.load));
 
 /**
  * Resolves which joint the screen is working before anything is drawn.
@@ -137,13 +191,13 @@ export function FlangeBoltUpScreen({ route, navigation }: Props) {
   // immediately replaced by whatever was on disk.
   useEffect(() => {
     if (!hydrated || joint) return;
-    const opening = boltUp(settings.defaultNps, '125') ?? boltUp(6, '125');
+    const opening = flangeFor(settings.defaultNps, '150') ?? flangeFor(6, '150');
     apply((r) =>
       getJoint(r, jointId)
         ? r
         : putJoint(
             r,
-            newJoint(jointId, { cls: '125', nps: opening?.nps ?? 6, bolts: opening?.bolts ?? 8 }, Date.now()),
+            newJoint(jointId, { cls: '150', nps: opening?.nps ?? 6, bolts: opening?.bolts ?? 8 }, Date.now()),
           ),
     );
   }, [hydrated, joint, jointId, settings.defaultNps, apply]);
@@ -178,7 +232,7 @@ function Bolting({
   const t = useTheme();
   const { settings } = useSettings();
 
-  const { cls, nps, bolts, state } = joint;
+  const { cls, nps, bolts, state, gasket } = joint;
   const [torque, setTorque] = useState(joint.torque === null ? '' : String(joint.torque));
   const [width, setWidth] = useState(FACE_MAX);
   const [showDone, setShowDone] = useState(false);
@@ -186,8 +240,10 @@ function Bolting({
   const [naming, setNaming] = useState(false);
   const [checking, setChecking] = useState(false);
 
-  const flange = useMemo(() => boltUp(nps ?? NaN, cls), [nps, cls]);
-  const sizes = useMemo(() => boltUpSizes(cls), [cls]);
+  const castIron = useMemo(() => (nps !== null && isCastIron(cls) ? boltUp(nps, cls) : undefined), [nps, cls]);
+  const steel = useMemo(() => (nps !== null && isSteelClass(cls) ? steelFlange(nps, cls) : undefined), [nps, cls]);
+  const flange: FlangeRow | undefined = castIron ?? steel;
+  const sizes = useMemo(() => sizesOf(cls), [cls]);
 
   const write = useCallback(
     (next: Joint) => apply((r) => putJoint(r, next)),
@@ -202,14 +258,24 @@ function Bolting({
     [joint, write],
   );
 
-  const expected = expectedBolt(state);
-  const pass = currentPass(state);
+  const rounds = planOf(state);
+  const round = currentRound(state);
+  const step = currentStep(state);
+  const expected = expectedBolts(state);
+  const first = expected[0] ?? 0;
+  const asked = isAsked(state);
+  const gap = state.gapPending;
   const done = isFinished(state);
   const progress = boltUpProgress(state);
-  const order = useMemo(() => (done ? [] : passOrder(bolts, state.pass)), [bolts, state.pass, done]);
+  const after = nextStep(state)?.bolts[0];
+  const locked = progress.done > 0 && !done;
 
   const finalTorque = Number(torque);
-  const target = pass ? passTorque(finalTorque, state.pass) : NaN;
+  const target = step ? loadTorque(finalTorque, step.load) : NaN;
+
+  const methods = useMemo(() => methodsFor(bolts, gasket), [bolts, gasket]);
+  const barred = useMemo(() => METHODS.filter((m) => methodBar(m.id, bolts, gasket) !== null), [bolts, gasket]);
+  const chosen = method(state.method);
 
   // The wrong-bolt flash. It is pinned to the bolt the sequence wanted, not the
   // one that was hit, because pointing at the mistake does not tell anyone what
@@ -227,47 +293,53 @@ function Bolting({
     ]).start();
   }, [wrongCount, flash]);
 
-  // A bolt count set by hand belongs to no table size, so nps goes null and
-  // the picture falls back to generic proportions rather than a wrong flange.
-  const setBolts = (n: number) => {
-    setFlange({ cls, nps: null, bolts: n });
-    setShowDone(false);
-  };
-
-  const pickSize = (size: number) => {
-    const f = boltUp(size, cls);
-    if (!f) return;
-    setFlange({ cls, nps: f.nps, bolts: f.bolts });
-    setShowDone(false);
-  };
-
-  // Spoken: "flange bolt-up, 12 bolt", or "6 inch, class 125" for the
-  // handbook's flange. A new flange starts the bolt-up over, so once a bolt
-  // is logged a spoken one is refused rather than wiping the record.
-  useSpokenFigures('FlangeBoltUp', (f) => {
-    const c: CastIronFlangeClass = f.cls ? (f.cls.n === 250 ? '250' : '125') : cls;
-    let spec: JointSpec | null = null;
-    if (f.size) {
-      const t = boltUp(f.size.n, c);
-      if (!t) return `No ${f.size.n} inch flange in the class ${c} table. Sizes run ${boltUp(boltUpSizes(c)[0] ?? 1, c)?.label ?? ''} to ${boltUp(boltUpSizes(c).at(-1) ?? 1, c)?.label ?? ''}.`;
-      spec = { cls: c, nps: t.nps, bolts: t.bolts };
-    } else if (f.bolts) spec = { cls: c, nps: null, bolts: f.bolts.n };
-    else if (f.cls) {
-      const t = boltUp(nps ?? NaN, c) ?? boltUp(boltUpSizes(c)[0] ?? 1, c);
-      if (t) spec = { cls: c, nps: t.nps, bolts: t.bolts };
-    }
-    if (!spec || (spec.bolts === bolts && spec.nps === nps && spec.cls === cls)) return;
-    if (progress.done > 0 && !done) return `Bolt-up in progress, ${progress.done} logged. Tap Start over first, then say the flange.`;
+  const changeFlange = (spec: JointSpec) => {
     setFlange(spec);
     setShowDone(false);
-  });
+  };
 
-  const pickClass = (c: CastIronFlangeClass) => {
-    const f = boltUp(nps ?? NaN, c) ?? boltUp(boltUpSizes(c)[0] ?? 1, c);
-    if (!f) return;
-    setFlange({ cls: c, nps: f.nps, bolts: f.bolts });
+  // A bolt count set by hand belongs to no table size, so nps goes null and
+  // the picture falls back to generic proportions rather than a wrong flange.
+  const setBolts = (n: number) => changeFlange({ cls, nps: null, bolts: n });
+
+  const pickSize = (size: number) => {
+    const f = flangeFor(size, cls);
+    if (f) changeFlange({ cls, nps: f.nps, bolts: f.bolts });
+  };
+
+  const pickClass = (c: JointClass) => {
+    const f = flangeFor(nps ?? NaN, c) ?? sizesOf(c).find((row) => row.bolts >= 8) ?? sizesOf(c)[0];
+    if (f) changeFlange({ cls: c, nps: f.nps, bolts: f.bolts });
+  };
+
+  const pickMethod = (id: MethodId) => {
+    if (locked || id === state.method) return;
+    write(withMethod(joint, id, Date.now()));
     setShowDone(false);
   };
+
+  const pickGasket = (g: Gasket) => write(withGasket(joint, g, Date.now()));
+
+  // Spoken: "flange bolt-up, 12 bolt", or "6 inch, class 300" for the table's
+  // flange. A new flange starts the bolt-up over, so once a bolt is logged a
+  // spoken one is refused rather than wiping the record.
+  useSpokenFigures('FlangeBoltUp', (f) => {
+    const c = f.cls ? (String(f.cls.n) as JointClass) : cls;
+    if (f.cls && !CLASS_IDS.includes(c)) return `No class ${f.cls.n} table. Classes run 150 to 2500, and 125 or 250 cast iron.`;
+    let spec: JointSpec | null = null;
+    if (f.size) {
+      const row = flangeFor(f.size.n, c);
+      if (!row) return `No ${f.size.n} inch flange in the class ${c} table. Sizes run ${sizesOf(c)[0]?.label ?? ''} to ${sizesOf(c).at(-1)?.label ?? ''}.`;
+      spec = { cls: c, nps: row.nps, bolts: row.bolts };
+    } else if (f.bolts) spec = { cls: c, nps: null, bolts: f.bolts.n };
+    else if (f.cls) {
+      const row = flangeFor(nps ?? NaN, c) ?? sizesOf(c)[0];
+      if (row) spec = { cls: c, nps: row.nps, bolts: row.bolts };
+    }
+    if (!spec || (spec.bolts === bolts && spec.nps === nps && spec.cls === cls)) return;
+    if (locked) return `Bolt-up in progress, ${progress.done} logged. Tap Start over first, then say the flange.`;
+    changeFlange(spec);
+  });
 
   const commitTorque = (text: string) => {
     setTorque(text);
@@ -303,7 +375,7 @@ function Bolting({
       // somebody says otherwise on the record.
       boltedBy: joint.boltedBy.trim() ? joint.boltedBy : settings.fitterName.trim(),
     };
-    const cleared = newJoint(SCRATCH_ID, { cls, nps, bolts }, now);
+    const cleared = newJoint(SCRATCH_ID, { cls, nps, bolts, method: state.method, gasket }, now);
     apply((r) => putJoint(putJoint(r, moved), cleared));
     navigation.setParams({ jointId: id });
   };
@@ -313,24 +385,42 @@ function Bolting({
     setState(r.state);
     if (r.ok) {
       Haptics.impactAsync(
-        r.finished ? Haptics.ImpactFeedbackStyle.Heavy : Haptics.ImpactFeedbackStyle.Light,
+        r.asked || r.gapCheck ? Haptics.ImpactFeedbackStyle.Heavy : Haptics.ImpactFeedbackStyle.Light,
       ).catch(() => {});
-      if (r.finished) setShowDone(true);
     } else {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
     }
   };
 
-  // Hands-free: "done" is the button, "undo" is Undo, "repeat" says the bolt
+  // The answer to a check round: a nut that turned means another round; none
+  // turning closes the joint.
+  const answer = (moved: boolean) => {
+    const next = answerMoved(state, moved);
+    setState(next);
+    if (!moved) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => {});
+      setShowDone(true);
+    }
+  };
+
+  const gapDone = () => setState(confirmGap(state));
+
+  // Hands-free: "done" is the button, "undo" is Undo, "repeat" says the step
   // again. Each answer is what the phone says back, worked out from the state
   // the command leaves, so it never lags a render behind.
   const voice = useVoice();
   const spoken = (s: BoltUpState): string => {
-    if (isFinished(s)) return 'That was the last bolt. Joint complete.';
-    const p = currentPass(s);
-    const tq = passTorque(finalTorque, s.pass);
-    const bolt = `Bolt ${expectedBolt(s)}.${Number.isFinite(tq) ? ` ${Math.round(tq)} foot pounds.` : ''}`;
-    return s.step === 0 && p ? `Pass ${p.number}, ${Math.round(p.target * 100)} percent. ${bolt}` : bolt;
+    if (isFinished(s)) return 'That was the last round. Joint complete.';
+    if (isAsked(s)) return 'Check round done. Did any nut turn? Answer on the screen.';
+    if (s.gapPending) return 'Gap check. Feelers round the flange, bring the low side up, then say done.';
+    const r = currentRound(s);
+    const st = currentStep(s);
+    if (!r || !st) return 'Nothing to do.';
+    if (r.kind === 'snug') return 'Snug every bolt by hand, nuts marked, ten to twenty foot pounds, then say done.';
+    const tq = loadTorque(finalTorque, st.load);
+    const load = st.pressure ? `Pressure ${st.pressure}.` : Number.isFinite(tq) ? `${Math.round(tq)} foot pounds.` : `${Math.round(st.load * 100)} percent.`;
+    const intro = s.step === 0 ? `${r.label}, ${Math.round(st.load * 100)} percent. ` : '';
+    return `${intro}${stepWords(st, s.bolts)}. ${load}`;
   };
   useEffect(() => {
     voice.useBolts((act) => {
@@ -342,8 +432,14 @@ function Bolting({
         return `Back. ${spoken(back)}`;
       }
       if (done) return 'The joint is complete.';
-      const r = tapBolt(state, expected);
-      onBolt(expected);
+      if (isAsked(state)) return spoken(state);
+      if (state.gapPending) {
+        const cleared = confirmGap(state);
+        setState(cleared);
+        return spoken(cleared);
+      }
+      const r = tapBolt(state, first);
+      onBolt(first);
       return spoken(r.state);
     });
   });
@@ -361,33 +457,45 @@ function Bolting({
   // rim at the ratio the table gives, so a 2" joint reads narrow and a 24" one
   // reads wide. A flange with too many bolts to draw at a fingertip's pitch is
   // drawn fitted on the page, whole and small, and full screen at full size.
-  const bcFrac = flange ? flange.boltCircle / flange.flangeOd : 0.85;
+  const bcFrac = castIron ? castIron.boltCircle / castIron.flangeOd : 0.85;
   const avail = Math.max(FACE_MIN, Math.min(width - t.layout.screenPadding * 2, FACE_MAX));
   const crowded = flangeFace(bolts, avail, bcFrac).scrolls;
   const L = fittedFace(bolts, avail, bcFrac);
   const angles = useMemo(() => boltHoleAngles(bolts), [bolts]);
-  const after = order[order.indexOf(expected) + 1];
 
   const face = (layout: FaceLayout) => (
     <BoltFace
       t={t}
       L={layout}
-      flange={flange}
+      flange={castIron}
       angles={angles}
       state={state}
-      expected={done ? undefined : expected}
+      expected={done ? [] : expected}
       after={done ? undefined : after}
       flash={flash}
       onBolt={onBolt}
     />
   );
-  const logButton = done ? null : (
-    <AccentButton label={`Bolt ${expected} torqued`} icon="checkmark-outline" onPress={() => onBolt(expected)} />
-  );
+  const logButton = done ? null : asked ? (
+    <View style={{ gap: t.space.md }}>
+      <AccentButton label="No nut turned: joint done" icon="checkmark-done-outline" onPress={() => answer(false)} />
+      <GhostButton label="A nut turned: go round again" icon="refresh-outline" onPress={() => answer(true)} />
+    </View>
+  ) : gap ? (
+    <AccentButton label="Gap checked, carry on" icon="resize-outline" onPress={gapDone} />
+  ) : round?.kind === 'snug' ? (
+    <AccentButton label="All snugged" icon="checkmark-outline" onPress={() => onBolt(first)} />
+  ) : step ? (
+    <AccentButton label={`${stepWords(step, bolts)} ${step.pressure ? 'tensioned' : 'torqued'}`} icon="checkmark-outline" onPress={() => onBolt(first)} />
+  ) : null;
   const undo = () => {
     setState(undoBolt(state));
     setShowDone(false);
   };
+
+  const reference = steel && Number.isFinite(referenceTorque(steel.stud, 50_000, 0.16))
+    ? `For a ${studLabel(steel.stud)} B7 stud at 50 ksi, the PCC-1 Appendix K figure is ${Math.round(referenceTorque(steel.stud, 50_000, 0.16))} ft-lb with moly anti-seize (K 0.16) or ${Math.round(referenceTorque(steel.stud, 50_000, 0.20))} ft-lb with machine oil (K 0.20). A reference to check the spec against, not the spec.`
+    : '';
 
   return (
     <Screen>
@@ -402,14 +510,7 @@ function Bolting({
         onRegister={() => navigation.navigate('Joints')}
       />
 
-      <PassBanner
-        t={t}
-        state={state}
-        expected={expected}
-        target={target}
-        progress={progress}
-        order={order}
-      />
+      <PassBanner t={t} state={state} target={target} progress={progress} />
 
       <View style={{ alignItems: 'center', paddingBottom: t.space.lg }}>{face(L)}</View>
 
@@ -466,46 +567,44 @@ function Bolting({
 
       <Divider />
 
-      <HintRow text="A flange is never pulled down round the circle. Every bolt is followed by the one straight across it, in three passes, then checked round at full torque. The screen will only take the bolt the sequence is asking for — tap anything else and it points you back." />
+      <HintRow text="Snug first, then the rounds the method lists, a gap check after each, then round the flange at 100% until no nut turns. That is ASME PCC-1. The screen only takes the bolt the sequence is asking for — tap anything else and it points you back." />
 
       <SectionHeader title="The joint" meta={flange ? `${flange.label} · class ${cls}` : `${bolts} bolts`} />
 
-      <Segmented
-        label="Class"
-        options={[
-          { value: '125' as CastIronFlangeClass, label: '125 lb' },
-          { value: '250' as CastIronFlangeClass, label: '250 lb' },
-        ]}
-        selected={cls}
-        onSelect={pickClass}
-      />
+      <ChipRow label="Class" options={CLASS_OPTIONS} selected={cls} onSelect={pickClass} />
 
-      <SizeRow
-        t={t}
-        sizes={sizes.map((s) => ({ nps: s, label: boltUp(s, cls)?.label ?? `${s}"`, bolts: boltUp(s, cls)?.bolts ?? 4 }))}
-        selected={flange ? nps : null}
-        onSelect={pickSize}
-      />
+      <SizeRow t={t} sizes={sizes} selected={flange ? nps : null} onSelect={pickSize} />
 
       <StopSlider label="Bolts" stops={COUNTS} selected={bolts} onSelect={setBolts} />
 
-      {flange ? (
-        <View style={{ paddingHorizontal: t.layout.screenPadding, marginBottom: t.space.lg }}>
-          <Text style={[t.type.caption, { color: t.colors.textMuted }]}>
-            {`${flange.bolts} × ${formatInches(flange.boltDiameter)} bolts, ${formatInches(
-              flange.boltLength,
-            )} long, on a ${formatInches(flange.boltCircle)} bolt circle. Ring gasket ${formatInches(
-              flange.gasketId,
-            )} × ${formatInches(flange.gasketOd)}.`}
+      <View style={{ paddingHorizontal: t.layout.screenPadding, marginBottom: t.space.lg }}>
+        <Text style={[t.type.caption, { color: t.colors.textMuted }]}>
+          {castIron
+            ? `${castIron.bolts} × ${formatInches(castIron.boltDiameter)} bolts, ${formatInches(castIron.boltLength)} long, on a ${formatInches(castIron.boltCircle)} bolt circle. Ring gasket ${formatInches(castIron.gasketId)} × ${formatInches(castIron.gasketOd)}. Cast iron is flat-faced and brittle: a full-face gasket and the lower torque its spec gives.`
+            : steel
+              ? `${steel.bolts} × ${studLabel(steel.stud)} studs, ${threadsPerInch(steel.stud)} threads per inch, ASME B16.5 class ${cls}. Bolt circle and gasket from the job's drawing. The class sets the studs; the studs, the material, the lubricant and the gasket set the torque.`
+              : `${bolts} bolts, set by hand. The sequence works off the count alone, so this covers a flange that is not in the tables.`}
+        </Text>
+      </View>
+
+      <ChipRow label="Gasket" options={GASKETS.map((g) => ({ value: g.id, label: g.label }))} selected={gasket} onSelect={pickGasket} />
+      <View style={{ paddingHorizontal: t.layout.screenPadding, marginBottom: t.space.lg }}>
+        <Text style={[t.type.caption, { color: t.colors.textMuted }]}>{GASKETS.find((g) => g.id === gasket)?.words}</Text>
+      </View>
+
+      <Divider />
+      <SectionHeader title="Method" meta="ASME PCC-1" />
+      <ChipRow label="Method" options={methods.map((m) => ({ value: m.id, label: m.short }))} selected={state.method} onSelect={pickMethod} />
+      <View style={{ paddingHorizontal: t.layout.screenPadding, marginBottom: t.space.lg, gap: t.space.sm }}>
+        <Text style={[t.type.body, { color: t.colors.text }]}>{`${chosen.name}. ${chosen.what}`}</Text>
+        <Text style={[t.type.caption, { color: t.colors.textMuted }]}>{chosen.from}.</Text>
+        {locked ? <Text style={[t.type.caption, { color: t.colors.warnText }]}>Bolt-up in progress. Start over to change the method.</Text> : null}
+        {barred.length ? (
+          <Text style={[t.type.caption, { color: t.colors.textFaint }]}>
+            {barred.map((m) => `${m.short}: ${methodBar(m.id, bolts, gasket)}`).join(' ')}
           </Text>
-        </View>
-      ) : (
-        <View style={{ paddingHorizontal: t.layout.screenPadding, marginBottom: t.space.lg }}>
-          <Text style={[t.type.caption, { color: t.colors.textMuted }]}>
-            {`${bolts} bolts, set by hand. The sequence works off the count alone, so this covers a flange that is not in the cast iron tables.`}
-          </Text>
-        </View>
-      )}
+        ) : null}
+      </View>
 
       <Divider />
       <SectionHeader title="Torque" meta="from the job's bolting spec" />
@@ -522,20 +621,21 @@ function Bolting({
           />
         </Well>
         <Text style={[t.type.caption, { color: t.colors.textMuted, marginTop: t.space.md }]}>
-          The app splits the figure into passes. It does not supply it: final torque depends on the gasket, the stud
-          material and whether the threads are lubricated, and a guessed figure either crushes the gasket or leaves the
-          joint loose.
+          The app splits the figure into rounds. It does not supply it: final torque depends on the stud size and
+          material, the lubricant and the gasket, and a guessed figure either crushes the gasket or leaves the joint
+          loose.
         </Text>
+        {reference ? <Text style={[t.type.caption, { color: t.colors.textMuted, marginTop: t.space.sm }]}>{reference}</Text> : null}
       </View>
 
       <Divider />
-      <SectionHeader title="The passes" />
-      {PASSES.map((p, i) => {
-        const active = !done && i === state.pass;
-        const finished = done || i < state.pass;
+      <SectionHeader title="The rounds" meta={chosen.short} />
+      {rounds.map((r, i) => {
+        const active = !done && i === state.round;
+        const finished = done || i < state.round;
         return (
           <View
-            key={p.number}
+            key={`${r.label}-${i}`}
             style={{
               marginHorizontal: t.layout.screenPadding,
               marginBottom: t.space.md,
@@ -552,11 +652,11 @@ function Bolting({
                 size={16}
                 color={finished ? t.colors.success : active ? t.colors.accent : t.colors.textFaint}
               />
-              <Text style={[t.type.labelSmall, { color: t.colors.textMuted }]}>
-                {`${p.label} · ${Math.round(p.target * 100)}% · ${p.order === 'cross' ? 'across' : 'round'}`}
+              <Text style={[t.type.labelSmall, { color: t.colors.textMuted, flex: 1 }]} numberOfLines={2}>
+                {`${r.label} · ${roundLoad(r)} · ${orderWords(r.order)}${r.gapCheck ? ' · gap check after' : ''}`}
               </Text>
             </View>
-            <Text style={[t.type.body, { color: t.colors.text, marginTop: t.space.sm }]}>{p.note}</Text>
+            <Text style={[t.type.body, { color: t.colors.text, marginTop: t.space.sm }]}>{r.note}</Text>
           </View>
         );
       })}
@@ -590,15 +690,13 @@ function Bolting({
         onClose={() => setFull(false)}
         L={flangeFace(bolts, Math.max(FACE_MIN, width), bcFrac, FULL_PITCH)}
         fitTo={(size) => fittedFace(bolts, size, bcFrac)}
-        at={done ? null : angles[expected - 1] ?? null}
-        banner={
-          <PassBanner t={t} state={state} expected={expected} target={target} progress={progress} order={order} />
-        }
+        at={done || !first ? null : angles[first - 1] ?? null}
+        banner={<PassBanner t={t} state={state} target={target} progress={progress} />}
         face={face}
         logButton={logButton}
         onUndo={undo}
       />
-      <DoneSheet t={t} visible={showDone} bolts={bolts} onClose={() => setShowDone(false)} />
+      <DoneSheet t={t} visible={showDone} bolts={bolts} rounds={rounds.length} methodName={chosen.name} onClose={() => setShowDone(false)} />
       <NameSheet
         t={t}
         visible={naming}
@@ -644,7 +742,7 @@ function BoltFace({
   flange: ReturnType<typeof boltUp>;
   angles: number[];
   state: BoltUpState;
-  expected: number | undefined;
+  expected: readonly number[];
   after: number | undefined;
   flash: Animated.Value;
   onBolt: (bolt: number) => void;
@@ -658,7 +756,7 @@ function BoltFace({
     const deg = bolt === undefined ? undefined : angles[bolt - 1];
     return deg === undefined ? null : boltCentre(L, deg);
   };
-  const at = centre(expected);
+  const at = centre(expected[0]);
   const to = centre(after);
 
   return (
@@ -713,7 +811,7 @@ function BoltFace({
             slop={L.slop}
             x={x}
             y={y}
-            next={bolt === expected}
+            next={expected.includes(bolt)}
             flash={flash}
             onPress={() => onBolt(bolt)}
           />
@@ -818,36 +916,62 @@ function FullFace({
 function PassBanner({
   t,
   state,
-  expected,
   target,
   progress,
-  order,
 }: {
   t: Theme;
   state: BoltUpState;
-  expected: number;
   target: number;
   progress: { done: number; total: number };
-  order: number[];
 }) {
-  const pass = currentPass(state);
+  const rounds = planOf(state);
+  const round = currentRound(state);
+  const step = currentStep(state);
   const done = isFinished(state);
+  const asked = isAsked(state);
+  const gap = state.gapPending;
   const wrong = state.lastWrong;
+  const next = nextStep(state);
+  const expected = expectedBolts(state);
+
+  const headline = done
+    ? 'Joint complete'
+    : asked
+      ? 'Did any nut turn?'
+      : gap
+        ? 'Gap check'
+        : round?.kind === 'snug'
+          ? 'Snug every bolt'
+          : step
+            ? stepWords(step, state.bolts)
+            : '';
+  const line = done
+    ? `${rounds.length} rounds recorded`
+    : `${round?.label ?? ''} ${round && round.kind !== 'snug' ? `of ${rounds.length}` : ''} · ${step ? loadWords(step.load) : round ? roundLoad(round) : ''} · ${round ? orderWords(round.order) : ''}`;
+  const detail = done
+    ? null
+    : asked
+      ? 'Go round once more if it did. If nothing moved, the joint is done and the four-hour dwell starts.'
+      : gap
+        ? 'Feelers round the flange. Bring the low side up before the next round.'
+        : round?.kind === 'snug'
+          ? 'Hand-tight, nuts on one side, ends marked, then 10 to 20 ft-lb.'
+          : step?.pressure
+            ? `Pressure ${step.pressure} from the tensioner table · step ${state.step + 1} of ${round?.steps.length ?? 0}`
+            : Number.isFinite(target)
+              ? `${Math.round(target)} ft-lb · step ${state.step + 1} of ${round?.steps.length ?? 0}`
+              : `step ${state.step + 1} of ${round?.steps.length ?? 0}`;
 
   return (
     <View style={{ backgroundColor: t.colors.bgSubtle, paddingHorizontal: t.layout.screenPadding, paddingVertical: t.space.lg }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.sm }}>
         <Ionicons
-          name={done ? 'checkmark-done-outline' : 'git-compare-outline'}
+          name={done ? 'checkmark-done-outline' : asked ? 'help-circle-outline' : gap ? 'resize-outline' : 'git-compare-outline'}
           size={18}
           color={done ? t.colors.success : t.colors.textMuted}
         />
-        <Text style={[t.type.label, { color: done ? t.colors.success : t.colors.textMuted }]}>
-          {done
-            ? 'All four passes recorded'
-            : `Pass ${pass?.number} of ${PASSES.length} · ${Math.round((pass?.target ?? 0) * 100)}% · ${
-                pass?.order === 'cross' ? 'across' : 'round'
-              }`}
+        <Text style={[t.type.label, { color: done ? t.colors.success : t.colors.textMuted, flex: 1 }]} numberOfLines={1}>
+          {line}
         </Text>
         <Text style={[t.type.labelSmall, { color: t.colors.textFaint, marginLeft: 'auto' }]}>
           {`${progress.done}/${progress.total}`}
@@ -860,28 +984,26 @@ function PassBanner({
         adjustsFontSizeToFit
         minimumFontScale={0.6}
       >
-        {done ? 'Joint complete' : `Bolt ${expected}`}
+        {headline}
       </Text>
 
-      {!done ? (
+      {detail ? (
         <Text style={[t.type.bodyStrong, { color: t.colors.data, marginTop: t.space.xs }]} numberOfLines={2}>
-          {Number.isFinite(target)
-            ? `${Math.round(target)} ft-lb · ${state.step + 1} of ${state.bolts} on this pass`
-            : `${state.step + 1} of ${state.bolts} on this pass`}
+          {detail}
         </Text>
       ) : null}
 
-      {!done && order.length ? (
+      {!done && next && expected.length ? (
         <Text style={[t.type.caption, { color: t.colors.textMuted, marginTop: t.space.sm }]} numberOfLines={1}>
-          {`Then ${order.slice(state.step + 1, state.step + 5).join(' → ') || 'the next pass'}`}
+          {`Then ${stepWords(next, state.bolts).toLowerCase()}`}
         </Text>
       ) : null}
 
-      {!done && wrong !== null ? (
+      {!done && wrong !== null && expected.length ? (
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.sm, marginTop: t.space.md }}>
           <Ionicons name="alert-circle" size={16} color={t.colors.danger} />
           <Text style={[t.type.captionStrong, { color: t.colors.danger, flex: 1 }]}>
-            {`Bolt ${wrong} is out of sequence. Bolt ${expected} is next.`}
+            {`Bolt ${wrong} is out of sequence. ${stepWords({ bolts: expected, load: 1 }, state.bolts)} ${expected.length > 1 ? 'are' : 'is'} next.`}
           </Text>
         </View>
       ) : null}
@@ -1025,7 +1147,7 @@ function BoltMarker({
   );
 }
 
-function DoneSheet({ t, visible, bolts, onClose }: { t: Theme; visible: boolean; bolts: number; onClose: () => void }) {
+function DoneSheet({ t, visible, bolts, rounds, methodName, onClose }: { t: Theme; visible: boolean; bolts: number; rounds: number; methodName: string; onClose: () => void }) {
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <Pressable style={{ flex: 1, backgroundColor: t.colors.overlay, justifyContent: 'center' }} onPress={onClose}>
@@ -1044,11 +1166,11 @@ function DoneSheet({ t, visible, bolts, onClose }: { t: Theme; visible: boolean;
             Joint complete
           </Text>
           <Text style={[t.type.body, { color: t.colors.textMuted, textAlign: 'center' }]}>
-            {`Three cross passes and the check round, on all ${bolts} bolts, in order.`}
+            {`${rounds} rounds on all ${bolts} bolts, in order, by the ${methodName}. No nut turned on the last check round.`}
           </Text>
           <Text style={[t.type.caption, { color: t.colors.textMuted, textAlign: 'center' }]}>
-            The app recorded the sequence. It did not measure torque, and it cannot see the gasket. Check the joint again
-            once the line has been up to temperature.
+            The app recorded the sequence. It did not measure torque, and it cannot see the gasket. Retighten after a dwell
+            of at least four hours and record it below, and again once the line has been up to temperature.
           </Text>
           <GhostButton label="Close" onPress={onClose} style={{ alignSelf: 'stretch', marginTop: t.space.sm }} />
         </View>
@@ -1327,19 +1449,24 @@ function ReTorque({
 }) {
   const last = lastCheck(joint);
   const settled = isSettled(joint);
-  const tone = settled ? t.colors.success : last ? t.colors.accent : t.colors.textMuted;
+  const due = retightenDue(joint);
+  const now = Date.now();
+  const waiting = due !== null && now < due;
+  const tone = settled ? t.colors.success : last ? t.colors.accent : waiting ? t.colors.textMuted : t.colors.warnText;
   const heading = settled
     ? 'Nothing moved last time'
     : last
       ? 'Still taking up'
-      : 'Not checked since it came up to temperature';
+      : waiting
+        ? `Retighten after ${new Date(due).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}`
+        : 'Retightening round due';
 
   return (
     <>
       <Divider />
       <SectionHeader
-        title="Re-torque"
-        meta={joint.checks.length ? `${joint.checks.length} check${joint.checks.length === 1 ? '' : 's'}` : undefined}
+        title="Retighten"
+        meta={joint.checks.length ? `${joint.checks.length} round${joint.checks.length === 1 ? '' : 's'}` : 'PCC-1 dwell, 4 h'}
       />
 
       <View style={{ paddingHorizontal: t.layout.screenPadding, marginBottom: t.space.lg }}>
@@ -1353,10 +1480,10 @@ function ReTorque({
         </View>
         <Text style={[t.type.caption, { color: t.colors.textMuted }]}>
           {settled
-            ? 'A check that finds every bolt tight is the one that closes a joint out. Check it again if the line cycles hard.'
+            ? 'A round that finds every bolt tight is the one that closes a joint out. Go round again if the line cycles hard.'
             : last
-              ? 'Bolts took up on the last check, so the joint is still relaxing. Go back to it after another cycle.'
-              : 'Hot service relaxes a joint that was right when it was cold. Once the line has been up to temperature and back, go round it again and record what you find.'}
+              ? 'Bolts took up on the last round, so the joint is still relaxing. Go back to it after another cycle.'
+              : 'PCC-1 asks for a dwell of at least four hours, then a round at 100% straight round the flange, before the test or start-up. Soft gaskets relax most. Then again once the line has been up to temperature, to the owner\'s procedure.'}
         </Text>
       </View>
 
@@ -1368,7 +1495,7 @@ function ReTorque({
         ))}
 
       <ControlRow>
-        <AccentButton label="Record a check" icon="create-outline" style={{ flex: 1 }} onPress={onRecord} />
+        <AccentButton label="Record a retightening round" icon="create-outline" style={{ flex: 1 }} onPress={onRecord} />
       </ControlRow>
     </>
   );
@@ -1523,10 +1650,10 @@ function CheckSheet({
           }}
         >
           <Text style={[t.type.sectionTitle, { color: t.colors.text }]}>
-            Re-torque check
+            Retightening round
           </Text>
           <Text style={[t.type.caption, { color: t.colors.textMuted }]}>
-            Go round the flange at full torque. Did any bolt take up?
+            Straight round the flange at 100%, in order. Did any nut take up?
           </Text>
 
           <View style={{ flexDirection: 'row', gap: t.space.md, marginTop: t.space.xs }}>
@@ -1540,7 +1667,7 @@ function CheckSheet({
             keyboardType="decimal-pad"
             placeholder={joint.torque ? `Torque used \u2014 spec is ${Math.round(joint.torque)}` : 'Torque used, ft-lb'}
             placeholderTextColor={t.colors.textFaint}
-            accessibilityLabel="Re-torque check torque"
+            accessibilityLabel="Retightening round torque"
             style={field}
           />
           <TextInput
@@ -1548,7 +1675,7 @@ function CheckSheet({
             onChangeText={setNote}
             placeholder="What you found, if it is worth keeping"
             placeholderTextColor={t.colors.textFaint}
-            accessibilityLabel="Re-torque check note"
+            accessibilityLabel="Retightening round note"
             style={field}
           />
 
