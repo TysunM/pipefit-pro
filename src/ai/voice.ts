@@ -353,9 +353,9 @@ export function voiceMissWords(m: VoiceMiss): string {
     case 'not_set':
       return 'Claude is not set up on the server yet. Tool names still work.';
     case 'key_refused':
-      return 'The server key for Claude was refused. Tool names still work.';
+      return 'The server key for Claude was refused. Test Claude in Settings shows why. Tool names still work.';
     case 'bad_model':
-      return 'The Claude model name on the server is wrong. Tool names still work.';
+      return 'The Claude model on the server would not take this. Test Claude in Settings shows why. Tool names still work.';
     case 'declined':
       return 'Claude would not answer that one.';
     case 'down':

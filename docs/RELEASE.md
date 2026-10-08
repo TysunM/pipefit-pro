@@ -466,8 +466,8 @@ still works; the two features simply say the server is not set up.
 | Name | Kind | For |
 |---|---|---|
 | `TYPESAFE_API_KEY` | Secret | Jev: smart fill on a heat scan, and the handbook search |
-| `ANTHROPIC_API_KEY` | Secret | Claude: the shift report summary, and spoken commands |
-| `CLAUDE_MODEL` | Variable (plain text) | Which Claude model writes it. Changing it needs no build and no deploy. |
+| `ANTHROPIC_API_KEY` | Secret | Claude: the shift report summary, spoken commands, fitting sheets and orientation courses |
+| `CLAUDE_MODEL` | Variable (plain text) | Which Claude model does it: a current model id such as `claude-opus-5-5`. Changing it needs no build and no deploy. |
 
 `wrangler.jsonc` sets `keep_vars: true`, so a deploy keeps the plain
 variables set in the dashboard. Without it every push would deploy the Worker
@@ -480,6 +480,14 @@ pick **Secret**. On the Anthropic console set a monthly spend limit on the
 key: each endpoint takes one fixed kind of question (one shift's facts, or
 one spoken command of at most 400 characters) and nothing else, but a limit
 costs nothing.
+
+**Checking it from the phone:** Settings → Smart help → **Test Claude** asks
+the Worker to ask Claude one word, in the same shape every route uses. A yes
+names the model that answered and the time it took. A no says what is wrong
+in Anthropic's own words — a model name it does not have, a model that cannot
+take the request, a refused key, an account out of credit — so the fix is read
+off the screen, not guessed at. Every route also says, when it fails, to go
+and press it.
 
 Spoken commands send the whole handbook (about 15,000 tokens) as a cached
 system prompt. The first command in five minutes writes the cache; the rest

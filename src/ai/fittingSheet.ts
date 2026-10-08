@@ -316,9 +316,9 @@ export function sheetMissWords(m: SheetMiss): string {
     case 'not_set':
       return `Claude is not switched on: the server needs the ANTHROPIC_API_KEY secret and the CLAUDE_MODEL variable. ${then}`;
     case 'key_refused':
-      return `Anthropic turned the key down: check the ANTHROPIC_API_KEY secret, and that the account has credit. ${then}`;
+      return `Anthropic turned the key down. Settings → Smart help → Test Claude shows why. ${then}`;
     case 'bad_model':
-      return `Anthropic would not run this on the model in the CLAUDE_MODEL variable. ${then}`;
+      return `The model in CLAUDE_MODEL would not take this. Settings → Smart help → Test Claude shows what Anthropic said. ${then}`;
     case 'declined':
       return `Claude declined to read that picture. ${then}`;
     case 'too_big':

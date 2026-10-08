@@ -20,6 +20,8 @@ import { fromInches } from '../calc/units';
 import { PERSON_MAX, PROJECT_ID_MAX } from '../state/readSettings';
 import { useNavigation } from '@react-navigation/native';
 import { backupAge, useLastBackup } from '../state/lastBackup';
+import { API_BASE } from '../ai/apiBase';
+import { askClaudeCheck } from '../ai/claudeCheck';
 
 export function SettingsScreen() {
   const t = useTheme();
@@ -31,6 +33,19 @@ export function SettingsScreen() {
   const backup = backupAge(lastBackup.at, Date.now());
   const [otaNote, setOtaNote] = React.useState<string | null>(null);
   const [sheetOpen, setSheetOpen] = React.useState(false);
+  const [check, setCheck] = React.useState<{ at: 'idle' } | { at: 'busy' } | { at: 'done'; ok: boolean; text: string }>({ at: 'idle' });
+  // One word to Claude through the Worker, in the shape every route uses. What
+  // comes back is shown as it is, so a wrong model name reads as one.
+  const testClaude = async () => {
+    if (check.at === 'busy') return;
+    setCheck({ at: 'busy' });
+    const r = await askClaudeCheck(API_BASE);
+    setCheck(
+      r.ok
+        ? { at: 'done', ok: true, text: `Claude answered in ${(r.ms / 1000).toFixed(1)} s on ${r.model || 'the model set'}${r.asked && r.asked !== r.model ? ` (asked for ${r.asked})` : ''}.` }
+        : { at: 'done', ok: false, text: r.why },
+    );
+  };
   const [gapText, setGapText] = React.useState(String(fromInches(settings.defaultGap, settings.unitSystem)));
   const [stockText, setStockText] = React.useState(String(fromInches(settings.stockLength, settings.unitSystem)));
   const [kerfText, setKerfText] = React.useState(String(fromInches(settings.cutAllowance, settings.unitSystem)));
@@ -83,7 +98,7 @@ export function SettingsScreen() {
         />
       </FieldRow>
 
-      <SectionHeader title="Smart help" meta="TypeSafe Jev" />
+      <SectionHeader title="Smart help" meta="TypeSafe Jev · Claude" />
       <ChipRow
         label="Jev"
         options={[
@@ -98,6 +113,21 @@ export function SettingsScreen() {
         form, size and schedule; and what you type in the handbook search, so it can find the table that answers it. Nothing is
         entered until you add the heat. Off, or with no signal, both stay on this phone and work as before.
       </Text>
+      <Text style={[t.type.caption, { color: t.colors.textMuted, paddingHorizontal: t.layout.screenPadding, marginTop: -t.space.sm, marginBottom: t.space.md }]}>
+        Claude, on the same server, writes the shift summary, places spoken commands, reads fitting sheets and builds
+        orientation courses. Test Claude asks it one word and shows what came back, in Anthropic's own words when it is a no.
+      </Text>
+      <ControlRow>
+        <GhostButton label={check.at === 'busy' ? 'Asking Claude…' : 'Test Claude'} icon="pulse-outline" onPress={testClaude} style={{ flex: 1 }} />
+      </ControlRow>
+      {check.at === 'done' ? (
+        <Text
+          accessibilityRole="text"
+          style={[t.type.caption, { color: check.ok ? t.colors.success : t.colors.danger, paddingHorizontal: t.layout.screenPadding, marginTop: -t.space.sm, marginBottom: t.space.lg }]}
+        >
+          {check.text}
+        </Text>
+      ) : null}
 
       <SectionHeader title="In the field" meta="Gloves · noise" />
       <ChipRow

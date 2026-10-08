@@ -84,9 +84,9 @@ export function courseMissWords(m: CourseMiss): string {
     case 'not_set':
       return 'Claude is not switched on: the server needs the ANTHROPIC_API_KEY secret and the CLAUDE_MODEL variable. The rules can still be read as written.';
     case 'key_refused':
-      return 'Anthropic turned the key down: check the ANTHROPIC_API_KEY secret, and that the account has credit.';
+      return 'Anthropic turned the key down. Settings → Smart help → Test Claude shows why. The rules can still be read as written.';
     case 'bad_model':
-      return 'Anthropic would not run this on the model in the CLAUDE_MODEL variable. Check the name.';
+      return 'The model in CLAUDE_MODEL would not take this. Settings → Smart help → Test Claude shows what Anthropic said. The rules can still be read as written.';
     case 'declined':
       return 'Claude declined to write this course. The rules can still be read as written.';
     case 'down':
