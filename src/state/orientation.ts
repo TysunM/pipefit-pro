@@ -26,6 +26,8 @@ export const MAX_COURSES = 200;
 /** Longest a module's text may be: a few pages of rules. Claude reads it all. */
 export const TEXT_MAX = 12_000;
 export const TITLE_MAX = 60;
+/** Questions a company may write for one of its own modules. */
+export const MAX_QUESTIONS = 12;
 /** The pass mark, as a fraction of the questions. */
 export const PASS_MARK = 0.8;
 
@@ -48,6 +50,14 @@ export type Module = {
   required: boolean;
   createdAt: number;
   updatedAt: number;
+  /** The language the rules are written in. A Spanish module is read aloud in Spanish and counts as a Spanish pass. */
+  lang: Lang;
+  /**
+   * The company's own check, written by the company. With three or more, the
+   * check is these questions whether or not Claude wrote a course; with
+   * fewer and no course, a read-through is the pass.
+   */
+  questions: Question[];
 };
 
 /** A course built from a module's text, in one language, kept against that text. */
@@ -65,6 +75,8 @@ export type Completion = {
   project: string;
   /** The text the course was built from, so a changed rule shows as not yet passed. */
   textKey: string;
+  /** A read-through signed off, on a module with no check: one of one. */
+  acknowledged?: boolean;
 };
 
 export type ModuleStore = { modules: Module[]; off: string[]; foreign: boolean; dropped: number };
@@ -134,7 +146,18 @@ export function validModule(v: unknown): Module | null {
   const title = line(v.title, TITLE_MAX);
   const text = cleanText(v.text);
   if (!title || !text || !isNum(v.createdAt) || v.createdAt <= 0) return null;
-  return { id: v.id, title, text, required: v.required !== false, createdAt: v.createdAt, updatedAt: isNum(v.updatedAt) ? v.updatedAt : v.createdAt };
+  // Stores written before these existed have neither: English, no questions.
+  const questions = (Array.isArray(v.questions) ? v.questions : []).map(validQuestion).filter((x): x is Question => x !== null).slice(0, MAX_QUESTIONS);
+  return {
+    id: v.id,
+    title,
+    text,
+    required: v.required !== false,
+    createdAt: v.createdAt,
+    updatedAt: isNum(v.updatedAt) ? v.updatedAt : v.createdAt,
+    lang: isLang(v.lang) ? v.lang : 'en',
+    questions,
+  };
 }
 
 export function validBuilt(v: unknown): BuiltCourse | null {
@@ -150,7 +173,8 @@ export function validCompletion(v: unknown): Completion | null {
   if (!isNum(v.score) || !isNum(v.of) || v.of < 1 || v.score < 0 || v.score > v.of || !isNum(v.at) || v.at <= 0) return null;
   const key = line(v.textKey, 8);
   if (!/^[0-9a-f]{8}$/.test(key)) return null;
-  return { id: v.id, moduleId: v.moduleId, title: line(v.title, TITLE_MAX) || v.moduleId, lang: v.lang, score: Math.floor(v.score), of: Math.floor(v.of), at: v.at, project: cleanProject(v.project), textKey: key };
+  const out: Completion = { id: v.id, moduleId: v.moduleId, title: line(v.title, TITLE_MAX) || v.moduleId, lang: v.lang, score: Math.floor(v.score), of: Math.floor(v.of), at: v.at, project: cleanProject(v.project), textKey: key };
+  return v.acknowledged === true ? { ...out, acknowledged: true } : out;
 }
 
 function parseStore<T, S>(raw: string | null | undefined, field: string, empty: () => S, valid: (v: unknown) => T | null, idOf: (x: T) => string, max: number, extra?: (p: Record<string, unknown>, s: S) => void): S {
@@ -195,14 +219,28 @@ export const parseCompletions = (raw: string | null | undefined): CompletionStor
 
 // ------------------------------------------------------------ changes
 
-export function putModule(s: ModuleStore, m: { id?: string; title: string; text: string; required?: boolean }, now: number): { store: ModuleStore; ok: true; id: string } | { store: ModuleStore; ok: false; why: string } {
+export function putModule(
+  s: ModuleStore,
+  m: { id?: string; title: string; text: string; required?: boolean; lang?: Lang; questions?: readonly Question[] },
+  now: number,
+): { store: ModuleStore; ok: true; id: string } | { store: ModuleStore; ok: false; why: string } {
   const had = m.id ? s.modules.find((x) => x.id === m.id) : undefined;
   if (!had && s.modules.length >= MAX_MODULES) return { store: s, ok: false, why: 'No room for another module.' };
   if (!line(m.title, TITLE_MAX)) return { store: s, ok: false, why: 'Give the module a title.' };
   if (!cleanText(m.text)) return { store: s, ok: false, why: 'Put the rules in: paste them, type them, or read them off a page.' };
+  if ((m.questions ?? []).length > MAX_QUESTIONS) return { store: s, ok: false, why: `Twelve questions at most.` };
   let id = had?.id ?? `om${now.toString(36)}`;
   for (let n = 2; !had && s.modules.some((x) => x.id === id); n++) id = `om${now.toString(36)}-${n}`;
-  const next = validModule({ ...had, ...m, id, required: m.required ?? had?.required ?? true, createdAt: had?.createdAt ?? now, updatedAt: now });
+  const next = validModule({
+    ...had,
+    ...m,
+    id,
+    required: m.required ?? had?.required ?? true,
+    lang: m.lang ?? had?.lang ?? 'en',
+    questions: m.questions ?? had?.questions ?? [],
+    createdAt: had?.createdAt ?? now,
+    updatedAt: now,
+  });
   if (!next) return { store: s, ok: false, why: 'That module does not read.' };
   return { store: { ...s, modules: had ? s.modules.map((x) => (x.id === had.id ? next : x)) : [...s.modules, next] }, ok: true, id };
 }
@@ -225,6 +263,67 @@ export function record(s: CompletionStore, c: Omit<Completion, 'id'>): Completio
   for (let n = 2; s.completions.some((x) => x.id === id); n++) id = `oc${c.at.toString(36)}-${n}`;
   return { ...s, completions: [{ ...c, id }, ...s.completions].sort((a, b) => b.at - a.at).slice(0, MAX_COMPLETIONS) };
 }
+
+// ------------------------------------------------------------ a course with no Claude
+
+/** The first words of a sentence, as a heading. */
+function headingOf(sentence: string): string {
+  const bare = sentence.replace(/[.!?:;,]+$/, '').trim();
+  if (bare.length <= 60) return bare;
+  const words = bare.split(' ');
+  let out = '';
+  for (const w of words) {
+    if ((out + ' ' + w).trim().length > 56) break;
+    out = (out + ' ' + w).trim();
+  }
+  return `${out || bare.slice(0, 56)}…`;
+}
+
+const sentencesOf = (para: string): string[] => (para.match(/[^.!?]+[.!?]+["')\]]*|[^.!?]+$/g) ?? [para]).map((x) => x.trim()).filter(Boolean);
+
+/**
+ * The rules as written, cut into sections a hand can read or hear: one per
+ * paragraph, headed by its first words, or by the short line above it when
+ * the company wrote one. A long text is folded into twelve.
+ */
+export function sectionsFromText(text: string): Section[] {
+  const isHeading = (l: string) => l.length <= 60 && !/[.!?]/.test(l);
+  const out: Section[] = [];
+  let pending: string | null = null;
+  for (const block of cleanText(text).split(/\n{2,}/)) {
+    // A short line with no sentence in it, on its own or above its paragraph, is a heading.
+    const lines = block.split('\n').map((l) => l.trim()).filter(Boolean);
+    if (!lines.length) continue;
+    if (lines.length === 1 && isHeading(lines[0]!)) {
+      pending = lines[0]!;
+      continue;
+    }
+    const own = lines.length > 1 && isHeading(lines[0]!) ? lines.shift()! : null;
+    const para = lines.join(' ');
+    const sentences = sentencesOf(para);
+    const heading = own ?? pending ?? headingOf(sentences[0] ?? para);
+    pending = null;
+    out.push({ heading: heading.slice(0, 80), points: sentences.slice(0, 8).map((x) => x.slice(0, 300)) });
+  }
+  if (pending && !out.length) out.push({ heading: pending.slice(0, 80), points: [pending] });
+  if (out.length <= 12) return out;
+  // Fold into twelve runs, as even as they go, keeping the heading of the first of each run.
+  const folded: Section[] = [];
+  for (let k = 0; k < 12; k++) {
+    const run = out.slice(Math.floor((k * out.length) / 12), Math.floor(((k + 1) * out.length) / 12));
+    if (run.length) folded.push({ heading: run[0]!.heading, points: run.flatMap((x) => x.points).slice(0, 8) });
+  }
+  return folded;
+}
+
+/** The rules as sections, to read through when no check exists. */
+export const readingCourse = (m: Module): { title: string; sections: Section[] } => ({ title: m.title, sections: sectionsFromText(m.text) });
+
+/** The company's own course: the rules in sections and the company's questions. Three questions or it is a read-through. */
+export const manualCourse = (m: Module): Course | null => validCourse({ title: m.title, sections: sectionsFromText(m.text), questions: m.questions });
+
+/** A course with the company's questions in place of the written ones, when the company wrote enough. */
+export const withOwnQuestions = (course: Course, m: Module): Course => (m.questions.length >= 3 ? { ...course, questions: m.questions } : course);
 
 // ------------------------------------------------------------ the check
 
@@ -274,7 +373,7 @@ export function orientationPack(s: ModuleStore, now: Date): string {
 // ------------------------------------------------------------ what ships in the app
 
 const at = Date.UTC(2026, 0, 1);
-const builtin = (id: string, title: string, text: string): Module => ({ id: `b:${id}`, title, text: cleanText(text), required: true, createdAt: at, updatedAt: at });
+const builtin = (id: string, title: string, text: string): Module => ({ id: `b:${id}`, title, text: cleanText(text), required: true, createdAt: at, updatedAt: at, lang: 'en', questions: [] });
 
 /**
  * General industrial practice, in the plain words a hand needs on day one.

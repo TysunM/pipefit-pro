@@ -4,10 +4,11 @@
 // Claude would make of them: sections to read or hear, and the check. Written
 // here so the orientation works on a phone with no signal, on day one, with
 // nothing set up. Each follows its module's text in state/orientation.ts
-// word for word in what it holds; the Spanish versions are built by Claude
-// from the same text and kept on the phone once built.
+// word for word in what it holds; the Spanish versions are in
+// orientationCoursesEs.ts, written once, point for point.
 
-import type { Course } from './orientation';
+import type { Course, Lang } from './orientation';
+import { BUILTIN_COURSES_ES } from './orientationCoursesEs';
 
 const q = (qq: string, choices: string[], answer: number, why: string) => ({ q: qq, choices, answer, why });
 const s = (heading: string, ...points: string[]) => ({ heading, points });
@@ -166,3 +167,6 @@ export const BUILTIN_COURSES: Readonly<Record<string, Course>> = {
     ],
   },
 };
+
+/** The built-in course for a module in a language, or undefined for a company module. */
+export const builtinCourse = (moduleId: string, lang: Lang): Course | undefined => (lang === 'es' ? BUILTIN_COURSES_ES : BUILTIN_COURSES)[moduleId];

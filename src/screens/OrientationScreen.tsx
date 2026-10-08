@@ -6,7 +6,7 @@
 // shared to every other phone as a file. The reasoning is in
 // state/orientation.ts.
 import React, { useState } from 'react';
-import { Modal, Pressable, ScrollView, Text, View } from 'react-native';
+import { Modal, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
@@ -20,7 +20,7 @@ import { Chip } from '../components/JobChips';
 import { PageScanSheet } from '../components/PageScanSheet';
 import { useTheme } from '../theme/ThemeProvider';
 import { useOrientationDone, useOrientationModules } from '../state/orientations';
-import { LANGS, Lang, Module, ModuleView, TEXT_MAX, deleteModule, modulesOf, orientationPack, orientationSummary, putModule, setOff } from '../state/orientation';
+import { LANGS, Lang, MAX_QUESTIONS, Module, ModuleView, Question, TEXT_MAX, deleteModule, modulesOf, orientationPack, orientationSummary, putModule, setOff, validQuestion } from '../state/orientation';
 import { backupFileName } from '../state/backup';
 import { shareBackup } from '../state/backupFile';
 import { dayKey, usDate } from '../calc/days';
@@ -66,7 +66,11 @@ export function OrientationScreen({ navigation }: Props) {
       <View style={{ flex: 1 }}>
         <Text style={[t.type.bodyStrong, { color: t.colors.text }]}>{r.module.title}</Text>
         <Text style={[t.type.caption, { color: t.colors.textMuted }]} numberOfLines={1}>
-          {r.pass ? `Passed ${r.pass.score} of ${r.pass.of}, ${usDate(dayKey(r.pass.at))}${r.pass.lang === 'es' ? ', en español' : ''}` : r.off ? 'Not required here' : r.module.required ? 'Not yet' : 'Optional'}
+          {r.pass
+            ? `${r.pass.acknowledged ? 'Read and signed off' : `Passed ${r.pass.score} of ${r.pass.of}`}, ${usDate(dayKey(r.pass.at))}${r.pass.lang === 'es' ? ', en español' : ''}`
+            : r.off
+              ? 'Not required here'
+              : `${r.module.required ? 'Not yet' : 'Optional'}${!r.builtin ? ` · ${r.module.questions.length >= 3 ? `${r.module.questions.length} questions` : 'read-through'}${r.module.lang === 'es' ? ' · español' : ''}` : ''}`}
         </Text>
       </View>
       {r.builtin ? (
@@ -86,7 +90,7 @@ export function OrientationScreen({ navigation }: Props) {
     <Screen>
       {store.foreign ? <Banner tone="danger" icon="alert-circle" text="This phone's orientation was written by a newer version of the app, so nothing is being saved. Update the app, or start over and lose the company's modules." action="Start new" onAction={takeOver} /> : null}
       {saveError ? <Banner tone="danger" icon="cloud-offline-outline" text="The last change could not be saved to this phone." /> : null}
-      <HintRow text="The course a new hire takes before the gate, in the language they think in. Nine modules of general practice are built in; the company's own rules go beside them and come first." />
+      <HintRow text="The course a new hire takes before the gate, in the language they think in. Nine modules of general practice are built in, in English and Spanish, with no signal and no server; the company's own rules go beside them and come first." />
       <Text style={[t.type.bodyStrong, { color: t.colors.text, paddingHorizontal: t.layout.screenPadding }]}>{orientationSummary(rows)}</Text>
       <View style={{ flexDirection: 'row', gap: t.space.sm, paddingHorizontal: t.layout.screenPadding, paddingVertical: t.space.md }}>
         {LANGS.map((l) => (
@@ -114,7 +118,7 @@ export function OrientationScreen({ navigation }: Props) {
         ))}
       </View>
       <Text style={[t.type.caption, { color: t.colors.textFaint, paddingHorizontal: t.layout.screenPadding, paddingTop: t.space.lg }]}>
-        A pass is 80% or better, and goes into the skills passport. A module whose rules change is taken again. Tap the eye to drop a built-in module this site does not need.
+        A pass is 80% or better, and goes into the skills passport. A company module is taught from its rules as written, with the questions the company writes; with none, a read-through signed off is the pass. A module whose rules change is taken again. Tap the eye to drop a built-in module this site does not need.
       </Text>
 
       <ModuleSheet module={open} store={store} onClose={() => setOpen(null)} apply={apply} />
@@ -129,6 +133,9 @@ function ModuleSheet({ module, store, onClose, apply }: { module: Module | 'new'
   const [title, setTitle] = useState('');
   const [text, setText] = useState('');
   const [required, setRequired] = useState(true);
+  const [lang, setLang] = useState<Lang>('en');
+  const [questions, setQuestions] = useState<Question[]>([]);
+  const [editing, setEditing] = useState<number | 'new' | null>(null);
   const [why, setWhy] = useState<string | null>(null);
   const [scanning, setScanning] = useState(false);
   const [armed, setArmed] = useState(false);
@@ -139,13 +146,16 @@ function ModuleSheet({ module, store, onClose, apply }: { module: Module | 'new'
     setTitle(had?.title ?? '');
     setText(had?.text ?? '');
     setRequired(had?.required ?? true);
+    setLang(had?.lang ?? 'en');
+    setQuestions(had?.questions ?? []);
+    setEditing(null);
     setWhy(null);
     setArmed(false);
   }
   if (key === null && formFor !== null) setFormFor(null);
 
   const save = () => {
-    const out = putModule(store, { id: had?.id, title, text, required }, Date.now());
+    const out = putModule(store, { id: had?.id, title, text, required, lang, questions }, Date.now());
     if (!out.ok) return setWhy(out.why);
     apply(() => out.store);
     onClose();
@@ -158,7 +168,7 @@ function ModuleSheet({ module, store, onClose, apply }: { module: Module | 'new'
           <ScrollView contentContainerStyle={{ paddingVertical: t.space.xl, gap: t.space.sm }} keyboardShouldPersistTaps="handled">
             <Text style={[t.type.sectionTitle, { color: t.colors.text, paddingHorizontal: t.space.xl }]}>{had ? had.title : "The company's rules"}</Text>
             <Text style={[t.type.caption, { color: t.colors.textMuted, paddingHorizontal: t.space.xl }]}>
-              One module is one subject: the site rules, the PPE policy, the permit system. Paste the text, type it, or read it off the printed page. Claude builds the course and the questions from exactly these words.
+              One module is one subject: the site rules, the PPE policy, the permit system. Paste the text, type it, or read it off the printed page. It is taught from exactly these words, with the questions you write below; where the server has a Claude key, Claude writes the course and a Spanish one too.
             </Text>
             <FieldRow>
               <DimensionInput label="Title" value={title} onChangeText={setTitle} placeholder="Site rules" keyboardType="default" autoCapitalize="sentences" />
@@ -168,6 +178,27 @@ function ModuleSheet({ module, store, onClose, apply }: { module: Module | 'new'
               <GhostButton label="Read a page with the camera" icon="camera-outline" onPress={() => setScanning(true)} />
             </View>
             <CheckRow on={required} text="Required" sub="Every new hire takes it. Off: offered, not counted." onPress={() => setRequired((r) => !r)} />
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.sm, paddingHorizontal: t.layout.screenPadding, paddingVertical: t.space.sm }}>
+              <Text style={[t.type.label, { color: t.colors.textMuted, width: 90 }]}>Written in</Text>
+              {LANGS.map((l) => (
+                <Chip key={l.id} label={l.label} on={lang === l.id} onPress={() => setLang(l.id)} />
+              ))}
+            </View>
+            <SectionHeader title="The check" meta={questions.length ? `${questions.length} of ${MAX_QUESTIONS}` : 'none yet'} />
+            <Text style={[t.type.caption, { color: t.colors.textMuted, paddingHorizontal: t.layout.screenPadding }]}>
+              Three or more and they are the check, 80% to pass. Fewer, and a read-through signed off is the pass until Claude writes questions.
+            </Text>
+            {questions.map((qu, i) => (
+              <Pressable key={i} onPress={() => setEditing(i)} accessibilityRole="button" accessibilityLabel={`Edit question ${i + 1}`} style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.md, paddingHorizontal: t.layout.screenPadding, paddingVertical: t.space.sm }}>
+                <Text style={[t.type.body, { color: t.colors.text, flex: 1 }]} numberOfLines={2}>{`${i + 1}. ${qu.q}`}</Text>
+                <Ionicons name="create-outline" size={18} color={t.colors.textFaint} />
+              </Pressable>
+            ))}
+            {questions.length < MAX_QUESTIONS ? (
+              <View style={{ paddingHorizontal: t.layout.screenPadding, paddingTop: t.space.sm }}>
+                <GhostButton label="Add a question" icon="add" onPress={() => setEditing('new')} />
+              </View>
+            ) : null}
             {why ? <Text style={[t.type.caption, { color: t.colors.danger, paddingHorizontal: t.layout.screenPadding }]}>{why}</Text> : null}
             <View style={{ gap: t.space.md, paddingHorizontal: t.layout.screenPadding, paddingTop: t.space.md }}>
               <AccentButton label={had ? 'Save changes' : 'Add the module'} icon="save-outline" onPress={save} />
@@ -191,6 +222,109 @@ function ModuleSheet({ module, store, onClose, apply }: { module: Module | 'new'
         </Pressable>
       </Pressable>
       <PageScanSheet visible={scanning} onClose={() => setScanning(false)} onText={(page) => setText((v) => `${v.trim()}${v.trim() ? '\n\n' : ''}${page}`.slice(0, TEXT_MAX))} />
+      <QuestionSheet
+        which={editing}
+        question={editing === null || editing === 'new' ? null : questions[editing] ?? null}
+        onClose={() => setEditing(null)}
+        onSave={(qu) => {
+          setQuestions((qs) => (editing === 'new' || editing === null ? [...qs, qu] : qs.map((x, i) => (i === editing ? qu : x))));
+          setEditing(null);
+        }}
+        onRemove={() => {
+          setQuestions((qs) => (typeof editing === 'number' ? qs.filter((_, i) => i !== editing) : qs));
+          setEditing(null);
+        }}
+      />
+    </Modal>
+  );
+}
+
+const LETTERS = ['A', 'B', 'C', 'D'];
+
+/** One question of the company's check: the question, four choices, which is right, and why. */
+function QuestionSheet({ which, question, onClose, onSave, onRemove }: { which: number | 'new' | null; question: Question | null; onClose: () => void; onSave: (q: Question) => void; onRemove: () => void }) {
+  const t = useTheme();
+  const [q, setQ] = useState('');
+  const [choices, setChoices] = useState(['', '', '', '']);
+  const [answer, setAnswer] = useState<number | null>(null);
+  const [why, setWhy] = useState('');
+  const [bad, setBad] = useState<string | null>(null);
+  const [formFor, setFormFor] = useState<string | null>(null);
+  const key = which === null ? null : String(which);
+  if (key !== null && formFor !== key) {
+    setFormFor(key);
+    setQ(question?.q ?? '');
+    setChoices([0, 1, 2, 3].map((i) => question?.choices[i] ?? ''));
+    setAnswer(question ? question.answer : null);
+    setWhy(question?.why ?? '');
+    setBad(null);
+  }
+  if (key === null && formFor !== null) setFormFor(null);
+
+  const field = {
+    minHeight: t.layout.fieldHeight,
+    borderRadius: t.radius.md,
+    borderWidth: 1,
+    borderColor: t.colors.border,
+    backgroundColor: t.colors.bgRaised,
+    color: t.colors.text,
+    paddingHorizontal: t.space.lg,
+    paddingVertical: t.space.sm,
+    fontFamily: t.font.sansMedium,
+    fontSize: 16,
+    ...t.weight('600'),
+  };
+
+  const save = () => {
+    const filled = choices.map((c) => c.trim()).filter(Boolean);
+    if (filled.length < 2) return setBad('Give at least two choices.');
+    if (answer === null || !choices[answer]?.trim()) return setBad('Mark which choice is right.');
+    // The right answer keeps its place once the blank choices are dropped.
+    const kept = choices.map((c, i) => ({ c: c.trim(), i })).filter((x) => x.c);
+    const ok = validQuestion({ q, choices: kept.map((x) => x.c), answer: kept.findIndex((x) => x.i === answer), why });
+    if (!ok) return setBad('Write the question.');
+    onSave(ok);
+  };
+
+  return (
+    <Modal visible={which !== null} transparent animationType="fade" onRequestClose={onClose}>
+      <Pressable style={{ flex: 1, backgroundColor: t.colors.overlay, justifyContent: 'center' }} onPress={onClose}>
+        <Pressable onPress={(e) => e.stopPropagation()} style={{ margin: t.space.lg, maxHeight: '92%', borderRadius: t.radius.xl, backgroundColor: t.colors.bg }}>
+          <ScrollView contentContainerStyle={{ padding: t.space.xl, gap: t.space.md }} keyboardShouldPersistTaps="handled">
+            <Text style={[t.type.sectionTitle, { color: t.colors.text }]}>{question ? 'This question' : 'A question'}</Text>
+            <Text style={[t.type.caption, { color: t.colors.textMuted }]}>Ask what the rules say. The wrong choices are what a new hire might believe. Tap the letter of the right one.</Text>
+            <TextInput value={q} onChangeText={setQ} placeholder="The question" placeholderTextColor={t.colors.textFaint} accessibilityLabel="Question" multiline style={field} />
+            {choices.map((c, i) => (
+              <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.sm }}>
+                <Pressable
+                  onPress={() => setAnswer(i)}
+                  accessibilityRole="radio"
+                  accessibilityState={{ checked: answer === i }}
+                  accessibilityLabel={`Choice ${LETTERS[i]} is right`}
+                  style={{ width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: answer === i ? t.colors.success : t.colors.border, backgroundColor: answer === i ? t.colors.success : 'transparent' }}
+                >
+                  <Text style={[t.type.button, { color: answer === i ? '#FFFFFF' : t.colors.textMuted }]}>{LETTERS[i]}</Text>
+                </Pressable>
+                <TextInput
+                  value={c}
+                  onChangeText={(v) => setChoices((cs) => cs.map((x, k) => (k === i ? v : x)))}
+                  placeholder={i < 2 ? `Choice ${LETTERS[i]}` : `Choice ${LETTERS[i]}, optional`}
+                  placeholderTextColor={t.colors.textFaint}
+                  accessibilityLabel={`Choice ${LETTERS[i]}`}
+                  style={[field, { flex: 1 }]}
+                />
+              </View>
+            ))}
+            <TextInput value={why} onChangeText={setWhy} placeholder="Why, in one sentence (shown after a wrong answer)" placeholderTextColor={t.colors.textFaint} accessibilityLabel="Why" multiline style={field} />
+            {bad ? <Text style={[t.type.caption, { color: t.colors.danger }]}>{bad}</Text> : null}
+            <AccentButton label={question ? 'Save the question' : 'Add the question'} icon="checkmark" onPress={save} />
+            <View style={{ flexDirection: 'row', gap: t.space.md }}>
+              {question ? <GhostButton label="Remove" icon="trash-outline" style={{ flex: 1 }} onPress={onRemove} /> : null}
+              <GhostButton label="Cancel" style={{ flex: 1 }} onPress={onClose} />
+            </View>
+          </ScrollView>
+        </Pressable>
+      </Pressable>
     </Modal>
   );
 }
