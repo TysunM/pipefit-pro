@@ -30,6 +30,7 @@ import type { ShiftFacts } from '../calc/shiftReport';
 import { FOUND_MAX, mustMention } from '../calc/shiftReport';
 import type { ShiftNotes } from '../state/shiftLog';
 import { NOTE_KEYS, TEXT_MAX } from '../state/shiftLog';
+import { CREDIT_WORDS, outOfCredit } from './claudeCheck';
 
 /** The Worker route the app calls. */
 export const SHIFT_POLISH_PATH = '/api/shift-polish';
@@ -264,7 +265,7 @@ export function checkPolish(b: PolishBody, p: Polish): PolishCheck {
 // --------------------------------------------------------- asking from the app
 
 /** Why there is no polished version: each has a different fix, so the screen says which. */
-export type PolishMiss = 'not_set' | 'key_refused' | 'bad_model' | 'declined' | 'down' | 'offline';
+export type PolishMiss = 'not_set' | 'key_refused' | 'no_credit' | 'bad_model' | 'declined' | 'down' | 'offline';
 
 export function polishMissWords(m: PolishMiss): string {
   const then = 'The plain report is still here, and right.';
@@ -273,6 +274,8 @@ export function polishMissWords(m: PolishMiss): string {
       return `Claude is not switched on: the server needs the ANTHROPIC_API_KEY secret and the CLAUDE_MODEL variable. ${then}`;
     case 'key_refused':
       return `Anthropic turned the key down. Settings → Smart help → Test Claude shows why. ${then}`;
+    case 'no_credit':
+      return `${CREDIT_WORDS} ${then}`;
     case 'bad_model':
       return `The model in CLAUDE_MODEL would not take this. Settings → Smart help → Test Claude shows what Anthropic said. ${then}`;
     case 'declined':
@@ -289,6 +292,7 @@ export function polishMissOf(body: unknown): PolishMiss {
   const e = isRec(body) ? body : {};
   if (e.error === 'not_configured') return 'not_set';
   if (e.error === 'upstream' && (e.status === 401 || e.status === 403)) return 'key_refused';
+  if (outOfCredit(e)) return 'no_credit';
   // The request is fixed and tested, so a 400 or a 404 is the model it was sent to.
   if (e.error === 'upstream' && (e.status === 400 || e.status === 404)) return 'bad_model';
   if (e.error === 'declined') return 'declined';

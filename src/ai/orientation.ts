@@ -15,6 +15,7 @@
 // No React Native, no SDK.
 
 import { Course, Lang, TEXT_MAX, TITLE_MAX, validCourse } from '../state/orientation';
+import { CREDIT_WORDS, outOfCredit } from './claudeCheck';
 
 export const ORIENTATION_PATH = '/api/orientation';
 /** The text at its cap, the title, and room for JSON. */
@@ -77,7 +78,7 @@ export function orientationMessage(b: OrientationBody): string {
 /** The answer, read again: a course or nothing. */
 export const readCourse = (v: unknown): Course | null => validCourse(v);
 
-export type CourseMiss = 'not_set' | 'key_refused' | 'bad_model' | 'declined' | 'down' | 'offline';
+export type CourseMiss = 'not_set' | 'key_refused' | 'no_credit' | 'bad_model' | 'declined' | 'down' | 'offline';
 
 export function courseMissWords(m: CourseMiss): string {
   switch (m) {
@@ -85,6 +86,8 @@ export function courseMissWords(m: CourseMiss): string {
       return 'Claude is not switched on: the server needs the ANTHROPIC_API_KEY secret and the CLAUDE_MODEL variable. The rules can still be read as written.';
     case 'key_refused':
       return 'Anthropic turned the key down. Settings → Smart help → Test Claude shows why. The rules can still be read as written.';
+    case 'no_credit':
+      return `${CREDIT_WORDS} The rules can still be read as written.`;
     case 'bad_model':
       return 'The model in CLAUDE_MODEL would not take this. Settings → Smart help → Test Claude shows what Anthropic said. The rules can still be read as written.';
     case 'declined':
@@ -100,6 +103,7 @@ export function courseMissOf(body: unknown): CourseMiss {
   const e = isRec(body) ? body : {};
   if (e.error === 'not_configured') return 'not_set';
   if (e.error === 'upstream' && (e.status === 401 || e.status === 403)) return 'key_refused';
+  if (outOfCredit(e)) return 'no_credit';
   if (e.error === 'upstream' && (e.status === 400 || e.status === 404)) return 'bad_model';
   if (e.error === 'declined') return 'declined';
   return 'down';

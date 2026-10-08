@@ -153,6 +153,8 @@ describe('asking from the app', () => {
     await expect(ask(async () => Promise.reject(new TypeError('Network request failed')))).resolves.toBe('offline');
     await expect(ask(reply(503, { error: 'not_configured' }))).resolves.toBe('not_set');
     await expect(ask(reply(502, { error: 'upstream', status: 401 }))).resolves.toBe('key_refused');
+    await expect(ask(reply(502, { error: 'upstream', status: 400, detail: 'invalid_request_error: Your credit balance is too low to access the Anthropic API.' }))).resolves.toBe('no_credit');
+    expect(polishMissWords('no_credit')).toMatch(/out of credit/);
     await expect(ask(reply(502, { error: 'declined' }))).resolves.toBe('declined');
     await expect(ask(reply(500, { error: 'boom' }))).resolves.toBe('down');
     await expect(ask(reply(200, { polish: { summary: 1 } }))).resolves.toBe('down');

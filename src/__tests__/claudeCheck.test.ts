@@ -1,4 +1,4 @@
-import { askClaudeCheck, checkWords, detailOf, readCheck } from '../ai/claudeCheck';
+import { askClaudeCheck, checkWords, detailOf, outOfCredit, readCheck } from '../ai/claudeCheck';
 
 const reply = (status: number, body: unknown) =>
   (async () => new Response(typeof body === 'string' ? body : JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } })) as unknown as typeof fetch;
@@ -18,6 +18,12 @@ describe('the words', () => {
     expect(cap).toMatch(/would not take the request/);
     expect(cap).toContain('max_tokens: 8000 > 4096');
     expect(checkWords(502, { error: 'upstream', status: 401 })).toMatch(/turned the key down/);
+    // No credit comes back as a 400 too; only Anthropic's words tell it from a bad request.
+    const broke = { error: 'upstream', status: 400, detail: 'invalid_request_error: Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.' };
+    expect(outOfCredit(broke)).toBe(true);
+    expect(outOfCredit({ error: 'upstream', status: 400, detail: 'invalid_request_error: max_tokens: 8000 > 4096' })).toBe(false);
+    expect(checkWords(502, broke)).toMatch(/^The Anthropic account behind the key is out of credit/);
+    expect(checkWords(502, broke)).not.toMatch(/CLAUDE_MODEL/);
     expect(checkWords(502, { error: 'upstream', status: 429 })).toMatch(/rate-limiting|out of credit/);
     expect(checkWords(502, { error: 'upstream', status: 529, detail: 'overloaded_error: Overloaded' })).toMatch(/error \(529\).*Overloaded/);
     expect(checkWords(504, { error: 'upstream_unreachable' })).toMatch(/could not reach Anthropic/);
