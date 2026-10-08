@@ -21,6 +21,7 @@ import { NOTE_KEYS, WELD_SIZES, type ShiftNotes } from '../state/shiftLog';
 import { HAZARDS } from '../state/pretask';
 import { MATERIALS, type MaterialId } from '../calc/materials';
 import { FIGURE_ROUTES, TOOL_FIGURES, isFigureRoute, plausible, type FigureSpec, type Figures } from '../voice/toolFigures';
+import { outOfCredit } from './claudeCheck';
 
 /** Every figure name any tool takes. */
 const FIGURE_NAMES = [...new Set(FIGURE_ROUTES.flatMap((r) => Object.keys(TOOL_FIGURES[r])))];
@@ -334,12 +335,13 @@ export function readVoice(v: unknown): VoiceAnswer | null {
   }
 }
 
-export type VoiceMiss = 'not_set' | 'key_refused' | 'bad_model' | 'declined' | 'down' | 'offline';
+export type VoiceMiss = 'not_set' | 'key_refused' | 'no_credit' | 'bad_model' | 'declined' | 'down' | 'offline';
 
 export function voiceMissOf(body: unknown): VoiceMiss {
   const e = isRec(body) ? body : {};
   if (e.error === 'not_configured') return 'not_set';
   if (e.error === 'upstream' && (e.status === 401 || e.status === 403)) return 'key_refused';
+  if (outOfCredit(e)) return 'no_credit';
   if (e.error === 'upstream' && (e.status === 400 || e.status === 404)) return 'bad_model';
   if (e.error === 'declined') return 'declined';
   return 'down';
@@ -354,6 +356,8 @@ export function voiceMissWords(m: VoiceMiss): string {
       return 'Claude is not set up on the server yet. Tool names still work.';
     case 'key_refused':
       return 'The server key for Claude was refused. Test Claude in Settings shows why. Tool names still work.';
+    case 'no_credit':
+      return 'The Anthropic account behind the server key is out of credit. Tool names still work.';
     case 'bad_model':
       return 'The Claude model on the server would not take this. Test Claude in Settings shows why. Tool names still work.';
     case 'declined':

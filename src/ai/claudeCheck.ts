@@ -36,6 +36,16 @@ export const DETAIL_MAX = 240;
 /** What Anthropic said when it said no, if the Worker passed it on. */
 export const detailOf = (body: unknown): string => (isRec(body) && typeof body.detail === 'string' ? body.detail.slice(0, DETAIL_MAX) : '');
 
+/**
+ * An account with no credit is told so in a 400, the same status as a bad
+ * request, and only the words tell them apart. Anthropic's are "Your credit
+ * balance is too low to access the Anthropic API."
+ */
+export const outOfCredit = (body: unknown): boolean => isRec(body) && body.error === 'upstream' && /credit balance/i.test(detailOf(body));
+
+/** Where credit is added. Every miss that is about money says it the same way. */
+export const CREDIT_WORDS = 'The Anthropic account behind the key is out of credit. Add credit under Plans & Billing on the Anthropic console.';
+
 export type ClaudeCheck =
   /** Which model answered, and which was asked for: the same unless Anthropic fell back. */
   | { ok: true; model: string; asked: string; ms: number }
@@ -50,10 +60,11 @@ export function checkWords(status: number, body: unknown): string {
     const missing = Array.isArray(e.missing) ? e.missing.filter((m): m is string => typeof m === 'string') : [];
     return `Not set up on the server: ${missing.length ? missing.join(' and ') : 'the key and the model'} ${missing.length === 1 ? 'is' : 'are'} missing. Set ${missing.length === 1 ? 'it' : 'them'} under the Worker's Settings → Variables and Secrets.`;
   }
-  if (e.error === 'upstream' && (e.status === 401 || e.status === 403)) return `Anthropic turned the key down. Check the ANTHROPIC_API_KEY secret, and that the account has credit.${said}`;
+  if (outOfCredit(e)) return `${CREDIT_WORDS}${said}`;
+  if (e.error === 'upstream' && (e.status === 401 || e.status === 403)) return `Anthropic turned the key down. Check the ANTHROPIC_API_KEY secret.${said}`;
   if (e.error === 'upstream' && e.status === 404) return `Anthropic has no model by the name in CLAUDE_MODEL. Set it to a current model id.${said}`;
   if (e.error === 'upstream' && e.status === 400) return `The model in CLAUDE_MODEL would not take the request. Set CLAUDE_MODEL to a current model.${said}`;
-  if (e.error === 'upstream' && e.status === 429) return `Anthropic is rate-limiting the key, or the account is out of credit.${said}`;
+  if (e.error === 'upstream' && e.status === 429) return `Anthropic is rate-limiting the key.${said}`;
   if (e.error === 'upstream') return `Anthropic answered with an error${typeof e.status === 'number' ? ` (${e.status})` : ''}.${said}`;
   if (e.error === 'upstream_unreachable') return 'The server could not reach Anthropic. Try again in a minute.';
   if (e.error === 'declined') return 'Claude declined to answer. Try again.';

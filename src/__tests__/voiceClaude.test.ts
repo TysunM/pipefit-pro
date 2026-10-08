@@ -176,6 +176,7 @@ describe('the app asking', () => {
     });
     expect(await askVoice('', { said: 'x', screen: '' }, { fetchImpl: reply(503, { error: 'not_configured' }) })).toBe('not_set');
     expect(await askVoice('', { said: 'x', screen: '' }, { fetchImpl: reply(502, { error: 'upstream', status: 404 }) })).toBe('bad_model');
+    expect(await askVoice('', { said: 'x', screen: '' }, { fetchImpl: reply(502, { error: 'upstream', status: 400, detail: 'invalid_request_error: Your credit balance is too low to access the Anthropic API.' }) })).toBe('no_credit');
     const offline = (async () => {
       throw new Error('no network');
     }) as unknown as typeof fetch;

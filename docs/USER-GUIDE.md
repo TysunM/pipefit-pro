@@ -127,7 +127,8 @@ The first bolt-ups, pressure tests and cut lengths come with a card at the top o
 - **The company's own rules go beside them.** **Add the company's rules**: a title, then paste or type the text, or **Read a page with the camera** to lift it off the printed sheet (the reading is done on the phone). One module is one subject. Claude builds the course and the questions from exactly those words, adding nothing and dropping nothing, and keeps it on the phone, so it is built once per module per language.
 - **Share pack** makes a file of the company's modules. On a new hire's phone: **Settings → Back up and restore → Restore from a backup file**. Nothing else on their phone is touched.
 - **Taking a module:** read each section or tap the speaker to hear it; **Español** builds the Spanish course the first time (needs signal once); then **Take the check**. **80% passes.** A fail shows what was missed, with the rule, and can be taken again at once.
-- **"Settings → Smart help → Test Claude shows why":** the Spanish course is written by Claude on the server, and the server said no. Press Test Claude: it shows the reason in Anthropic's words (usually the `CLAUDE_MODEL` variable naming a model that is gone or cannot take the request). The English course and the rules as written never need it.
+- **"Settings → Smart help → Test Claude shows why":** the Spanish course is written by Claude on the server, and the server said no. Press Test Claude: it shows the reason in Anthropic's words. The usual ones are an Anthropic account with no credit, and the `CLAUDE_MODEL` variable naming a model that is gone. The English course and the rules as written never need it.
+- **"The Anthropic account behind the key is out of credit":** the company's Anthropic account needs credit (Plans & Billing on the Anthropic console). Until then every module still reads as written, the nine built-in modules keep their English courses and checks, and nothing else in the app is affected.
 - **A pass goes into the skills passport** as a record under Site orientation and prints on the passport PDF with its date and job. If a module's rules are changed, it has to be passed again.
 
 ## Back up the phone
@@ -1491,7 +1492,7 @@ Anything else it hears is shown and ignored, so a conversation nearby does not l
 - **No mic button:** it is off under Settings → In the field → Voice, or the phone has no speech recogniser (install or update the Google app).
 - **"The microphone is off for PipeFit":** phone Settings → Apps → PipeFit Pro → Permissions → Microphone → Allow.
 - **"Claude is not set up on the server":** the Worker needs `ANTHROPIC_API_KEY` and `CLAUDE_MODEL` (see RELEASE.md). Tool names still work.
-- **"Test Claude in Settings shows why":** Settings → Smart help → **Test Claude** asks Claude one word and shows what came back, in Anthropic's words when it is a no. A wrong or retired model name in `CLAUDE_MODEL` is the usual cause.
+- **"Test Claude in Settings shows why":** Settings → Smart help → **Test Claude** asks Claude one word and shows what came back, in Anthropic's words when it is a no. An Anthropic account with no credit, or a retired model name in `CLAUDE_MODEL`, are the usual causes.
 - **Misheard tools:** say the name on the tile ("flange bolt-up", "pressure tests"). Every tile name is taught to the recogniser.
 
 ---

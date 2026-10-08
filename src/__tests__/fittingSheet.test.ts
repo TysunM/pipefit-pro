@@ -3,6 +3,7 @@ import {
   MAX_IMAGE_B64,
   SHEET_SYSTEM,
   askFittingSheet,
+  sheetMissWords,
   bestPictureSize,
   canSave,
   cleanSheetBody,
@@ -229,5 +230,14 @@ describe('the sheet route', () => {
     const refused = ((url: string | URL | Request, init?: RequestInit) =>
       handle(new Request(`https://pipefit.test${String(url)}`, init), ENV, api(401, { type: 'error', error: { type: 'authentication_error', message: 'x' } }))) as unknown as typeof fetch;
     expect(await askFittingSheet('', JPEG, 'socket', { fetchImpl: refused })).toBe('key_refused');
+    // No credit is a 400 from Anthropic; the Worker passes its words on and the app reads them.
+    const broke = ((url: string | URL | Request, init?: RequestInit) =>
+      handle(
+        new Request(`https://pipefit.test${String(url)}`, init),
+        ENV,
+        api(400, { type: 'error', error: { type: 'invalid_request_error', message: 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.' } }),
+      )) as unknown as typeof fetch;
+    expect(await askFittingSheet('', JPEG, 'socket', { fetchImpl: broke })).toBe('no_credit');
+    expect(sheetMissWords('no_credit')).toMatch(/out of credit/);
   });
 });

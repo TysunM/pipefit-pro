@@ -26,7 +26,7 @@ import {
   type Course,
 } from '../state/orientation';
 import { BUILTIN_COURSES } from '../state/orientationCourses';
-import { ORIENTATION_PATH, cleanOrientationBody, orientationMessage, readCourse } from '../ai/orientation';
+import { ORIENTATION_PATH, cleanOrientationBody, courseMissOf, courseMissWords, orientationMessage, readCourse } from '../ai/orientation';
 import { handle } from '../../worker/index';
 import { readBackup, restorePlan, STORES } from '../state/backup';
 import { evidence, standings } from '../state/passport';
@@ -201,5 +201,17 @@ describe('the Claude route', () => {
 describe('text', () => {
   test('tidied: Windows line ends, runs of blank lines and trailing space go; paragraphs stay', () => {
     expect(cleanText('A  b \r\n\r\n\r\n\r\nC\t d \n')).toBe('A b\n\nC d');
+  });
+});
+
+describe('why there is no course', () => {
+  test('no credit is told apart from a bad model, though both are a 400', () => {
+    const credit = { error: 'upstream', status: 400, detail: 'invalid_request_error: Your credit balance is too low to access the Anthropic API.' };
+    expect(courseMissOf(credit)).toBe('no_credit');
+    expect(courseMissWords('no_credit')).toMatch(/out of credit/);
+    expect(courseMissWords('no_credit')).not.toMatch(/CLAUDE_MODEL/);
+    expect(courseMissOf({ error: 'upstream', status: 400, detail: 'invalid_request_error: max_tokens: 8000 > 4096' })).toBe('bad_model');
+    expect(courseMissOf({ error: 'upstream', status: 404 })).toBe('bad_model');
+    expect(courseMissOf({ error: 'not_configured' })).toBe('not_set');
   });
 });

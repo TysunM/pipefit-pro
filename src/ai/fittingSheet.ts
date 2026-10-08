@@ -22,6 +22,7 @@
 import { LIBRARY_FITTINGS } from '../calc/takeoffCatalog';
 import type { FittingLibrary } from '../state/fittingLibrary';
 import { lookup } from '../state/fittingLibrary';
+import { CREDIT_WORDS, outOfCredit } from './claudeCheck';
 
 export const FITTING_SHEET_PATH = '/api/fitting-sheet';
 
@@ -308,7 +309,7 @@ export function bestPictureSize(sizes: readonly string[]): string | undefined {
 }
 
 
-export type SheetMiss = 'not_set' | 'key_refused' | 'bad_model' | 'declined' | 'too_big' | 'not_image' | 'down' | 'offline';
+export type SheetMiss = 'not_set' | 'key_refused' | 'no_credit' | 'bad_model' | 'declined' | 'too_big' | 'not_image' | 'down' | 'offline';
 
 export function sheetMissWords(m: SheetMiss): string {
   const then = 'Type the takeout in instead — it works the same.';
@@ -317,6 +318,8 @@ export function sheetMissWords(m: SheetMiss): string {
       return `Claude is not switched on: the server needs the ANTHROPIC_API_KEY secret and the CLAUDE_MODEL variable. ${then}`;
     case 'key_refused':
       return `Anthropic turned the key down. Settings → Smart help → Test Claude shows why. ${then}`;
+    case 'no_credit':
+      return `${CREDIT_WORDS} ${then}`;
     case 'bad_model':
       return `The model in CLAUDE_MODEL would not take this. Settings → Smart help → Test Claude shows what Anthropic said. ${then}`;
     case 'declined':
@@ -338,6 +341,7 @@ export function sheetMissOf(status: number, body: unknown): SheetMiss {
   if (e.error === 'not_image') return 'not_image';
   if (e.error === 'not_configured') return 'not_set';
   if (e.error === 'upstream' && (e.status === 401 || e.status === 403)) return 'key_refused';
+  if (outOfCredit(e)) return 'no_credit';
   if (e.error === 'upstream' && e.status === 404) return 'bad_model';
   if (e.error === 'declined') return 'declined';
   return 'down';
