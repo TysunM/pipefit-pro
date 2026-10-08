@@ -41,7 +41,8 @@ export type ToolRoute =
   | 'WeldLog'
   | 'Calibration'
   | 'Passport'
-  | 'Orientation';
+  | 'Orientation'
+  | 'PreTask';
 
 // Every tool route is a real route. If one is renamed this stops compiling.
 const _routesExist: readonly (keyof RootStackParamList)[] = [] as readonly ToolRoute[];
@@ -68,6 +69,7 @@ export const TOOLS: Tool[] = [
   { route: 'Calibration', title: 'Calibration', subtitle: 'Gauges and wrenches, and when due', icon: 'build-outline' },
   { route: 'Passport', title: 'Skills passport', subtitle: 'What you can do, proved and signed', icon: 'ribbon-outline' },
   { route: 'Orientation', title: 'Orientation', subtitle: 'Site rules, taught and checked', icon: 'school-outline' },
+  { route: 'PreTask', title: 'Pre-task plan', subtitle: 'JSA, toolbox talk and sign-in', icon: 'clipboard-outline' },
   { route: 'Heats', title: 'Heat book', subtitle: 'MTR traceability by heat #', icon: 'shield-checkmark-outline' },
   { route: 'PressureTests', title: 'Pressure tests', subtitle: 'Hydro and pneumatic test records', icon: 'speedometer-outline' },
   { route: 'ShiftReport', title: 'Shift report', subtitle: 'The day, written up for the foreman', icon: 'newspaper-outline' },
@@ -113,9 +115,9 @@ export const GROUPS: Group[] = [
   {
     id: 'logs',
     title: 'Logs',
-    subtitle: 'The books the job keeps: every weld and its NDE, every test, every joint bolted up, the heats in them, the shift report, the handbook and your fitting takeouts.',
+    subtitle: 'The books the job keeps: every weld and its NDE, every test, every joint bolted up, the heats in them, the shift report, the morning pre-task plan, the handbook and your fitting takeouts.',
     sections: [
-      { title: 'Records', size: 'big', tools: pick(['WeldLog', 'PressureTests', 'Joints', 'Heats', 'ShiftReport', 'Calibration']) },
+      { title: 'Records', size: 'big', tools: pick(['PreTask', 'WeldLog', 'PressureTests', 'Joints', 'Heats', 'ShiftReport', 'Calibration']) },
       { title: 'Look-up', size: 'wide', tools: pick(['Reference', 'FittingLibrary']) },
     ],
   },

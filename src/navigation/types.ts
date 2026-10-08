@@ -43,6 +43,8 @@ export type RootStackParamList = {
   Passport: undefined;
   /** Site orientation: the modules a new hire takes, built-in and the company's own. */
   Orientation: undefined;
+  /** The morning pre-task plan: JSA, toolbox talk and crew sign-in, one per job per day. */
+  PreTask: undefined;
   /** One module, taken: read or heard, then the check. */
   OrientationCourse: { id: string; lang?: 'en' | 'es' };
   /** Saved socket and no-hub takeouts; a line to open on, or the job's. */

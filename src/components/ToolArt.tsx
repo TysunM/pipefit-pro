@@ -228,6 +228,21 @@ const art: Partial<Record<ToolRoute, (k: Ink) => React.ReactNode>> = {
     </G>
   ),
 
+  // The morning clipboard: the hazard triangle at the top, the crew signed under it.
+  PreTask: (k) => (
+    <G fill="none" strokeLinecap="round" strokeLinejoin="round">
+      <Rect x={20} y={8} width={40} height={52} rx={3} stroke={k.line} strokeWidth={2.4} />
+      <Rect x={32} y={4} width={16} height={8} rx={2} fill={k.plate} stroke={k.line} strokeWidth={2} />
+      <Path d="M40 18 L48 32 H32 Z" stroke={k.accent} strokeWidth={2.2} />
+      <Line x1={40} y1={23} x2={40} y2={27} stroke={k.accent} strokeWidth={2} />
+      <Circle cx={40} cy={29.8} r={0.9} fill={k.accent} />
+      <Line x1={26} y1={39} x2={54} y2={39} stroke={k.soft} strokeWidth={1.6} />
+      <Line x1={26} y1={45} x2={48} y2={45} stroke={k.soft} strokeWidth={1.6} />
+      <Path d="M26 54 C 29 49, 32 57, 35 52 S 40 50, 44 54" stroke={k.line} strokeWidth={1.8} />
+      <Path d="M48 53 l2.5 2.5 L55 50" stroke={k.accent} strokeWidth={2.2} />
+    </G>
+  ),
+
   // A pipe with a weld at the joint, and the arc still going.
   WeldLog: (k) => (
     <G fill="none" strokeLinecap="round" strokeLinejoin="round">

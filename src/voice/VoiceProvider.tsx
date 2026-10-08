@@ -21,8 +21,9 @@ import { tool } from '../navigation/groups';
 import { usePressureTests } from '../state/pressureTests';
 import { useSettings } from '../state/settings';
 import { useShifts } from '../state/shifts';
+import { usePreTasks } from '../state/pretasks';
 import { testName } from '../state/pressureLog';
-import { applyShift, applyTest } from './apply';
+import { applyPretask, applyShift, applyTest } from './apply';
 import { VoiceCommand, localIntent } from './intent';
 import { canListen, heardWords, listenOn, listenOnce, stopListening } from './listen';
 import { publishFigures } from './figures';
@@ -99,6 +100,7 @@ const titleOf = (route: string): string => tool(route)?.title ?? route;
 export function VoiceProvider({ children }: { children: React.ReactNode }) {
   const { settings, update } = useSettings();
   const shifts = useShifts();
+  const plans = usePreTasks();
   const tests = usePressureTests();
   const [sheet, setSheet] = useState<VoiceSheet | null>(null);
   const [handsFree, setHandsFreeState] = useState(false);
@@ -108,8 +110,8 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
   const listening = useRef(false);
   const freeOn = useRef(false);
   // The stores move on; the command runs against what they hold when it lands.
-  const latest = useRef({ shifts, tests, project: settings.projectId, settings, update });
-  latest.current = { shifts, tests, project: settings.projectId, settings, update };
+  const latest = useRef({ shifts, plans, tests, project: settings.projectId, settings, update });
+  latest.current = { shifts, plans, tests, project: settings.projectId, settings, update };
 
   const enabled = settings.voice && canListen();
 
@@ -204,6 +206,19 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
               setSheet({ phase: 'done', heard, reply: 'Taken back off the shift report.', tone: 'warn' });
             },
             open: { label: 'Report', go: () => nav.isReady() && nav.navigate('ShiftReport') },
+          });
+        }
+        case 'pretask': {
+          const store = latest.current.plans;
+          const before = store.log;
+          const out = applyPretask(before, a, project, now, latest.current.settings.shift);
+          store.apply(() => out.log);
+          return finish(heard, a.say, {
+            undo: () => {
+              store.apply(() => before);
+              setSheet({ phase: 'done', heard, reply: 'Taken back off the pre-task plan.', tone: 'warn' });
+            },
+            open: { label: 'Plan', go: () => nav.isReady() && nav.navigate('PreTask') },
           });
         }
         case 'test': {

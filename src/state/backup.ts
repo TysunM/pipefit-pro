@@ -29,6 +29,7 @@ import { emptyBook as emptySketches, parseBook as parseSketches, serialiseBook a
 import { emptyShelf, parseShelf, serialiseShelf } from './spoolStore';
 import { emptyInstruments, parseInstruments, serialiseInstruments, tagKey } from './calibration';
 import { emptyPassport, parsePassport, serialisePassport } from './passport';
+import { emptyPlans, parsePlans, serialisePlans } from './pretask';
 import { emptyCompletions, emptyCourses, emptyModules, parseCompletions, parseCourses, parseModules, serialiseCompletions, serialiseCourses, serialiseModules } from './orientation';
 import { emptyWelders, emptyWelds, numberKey, parseWelders, parseWelds, serialiseWelders, serialiseWelds, stampKey } from './weldLog';
 
@@ -70,6 +71,8 @@ export const STORES: readonly Spec[] = [
   { key: 'pipefit.passport.v1', label: 'sign-offs', field: 'attestations', idOf: (x) => x.id, empty: emptyPassport, parse: parsePassport, serialise: serialisePassport },
   { key: 'pipefit.orientation.v1', label: 'orientation modules', field: 'modules', idOf: (x) => x.id, empty: emptyModules, parse: parseModules, serialise: serialiseModules },
   { key: 'pipefit.orientation.courses.v1', label: 'orientation courses', field: 'courses', idOf: (x) => x.id, empty: emptyCourses, parse: parseCourses, serialise: serialiseCourses },
+  // One plan per job per day, like the shift reports.
+  { key: 'pipefit.pretask.v1', label: 'pre-task plans', field: 'plans', idOf: (x) => `${x.day}|${projectKey(String(x.project ?? ''))}`, empty: emptyPlans, parse: parsePlans, serialise: serialisePlans },
   { key: 'pipefit.orientation.done.v1', label: 'orientation passes', field: 'completions', idOf: (x) => x.id, empty: emptyCompletions, parse: parseCompletions, serialise: serialiseCompletions },
 ];
 

@@ -40,6 +40,7 @@ import { BackupScreen } from '../screens/BackupScreen';
 import { PassportScreen } from '../screens/PassportScreen';
 import { OrientationScreen } from '../screens/OrientationScreen';
 import { OrientationCourseScreen } from '../screens/OrientationCourseScreen';
+import { PreTaskScreen } from '../screens/PreTaskScreen';
 import { MeasureScreen } from '../screens/MeasureScreen';
 import { SpoolBuilderScreen } from '../screens/SpoolBuilderScreen';
 import { OrderSheetScreen } from '../screens/OrderSheetScreen';
@@ -137,6 +138,7 @@ export function RootNavigator() {
         <Stack.Screen name="Passport" component={PassportScreen} options={{ title: 'Skills passport' }} />
         <Stack.Screen name="Orientation" component={OrientationScreen} options={{ title: 'Orientation' }} />
         <Stack.Screen name="OrientationCourse" component={OrientationCourseScreen} options={{ title: 'Orientation' }} />
+        <Stack.Screen name="PreTask" component={PreTaskScreen} options={{ title: 'Pre-task plan' }} />
         <Stack.Screen name="Calculator" component={CalculatorScreen} options={{ title: 'Calculator' }} />
         <Stack.Screen name="Level" component={LevelScreen} options={{ title: 'Level' }} />
         <Stack.Screen name="Measure" component={MeasureScreen} options={{ title: 'Measure' }} />

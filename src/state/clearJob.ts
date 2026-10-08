@@ -2,7 +2,7 @@
 // ----------------------------
 // At the end of a job, or of a day, the work saved under it comes off the
 // phone so the next starts clean: the bolt-ups, isos, spools, level readings,
-// pressure tests, cut list, welds and shift reports. What is kept is what
+// pressure tests, cut list, welds, shift reports and pre-task plans. What is kept is what
 // every job uses — the heat book, the welder roster, the calibration register,
 // the fitting library, the skills passport, the orientation and the settings — and the unnamed
 // bolt-up slot.

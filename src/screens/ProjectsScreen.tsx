@@ -31,6 +31,7 @@ import { day, openItems, turnoverHtml } from '../print/turnover';
 import { shareSheet } from '../print/share';
 import { useCuts } from '../state/cuts';
 import { useShifts } from '../state/shifts';
+import { usePreTasks } from '../state/pretasks';
 import { useBackupNow } from '../state/useBackupNow';
 import { clearCounts, countsText, without } from '../state/clearJob';
 import { useNow } from '../components/FormFields';
@@ -70,6 +71,7 @@ export function ProjectsScreen({ navigation }: Props) {
   const { roster } = useWelders();
   const { register: instruments } = useInstruments();
   const { log: shiftLog, apply: applyShifts } = useShifts();
+  const { log: planLog, apply: applyPlans } = usePreTasks();
   const backup = useBackupNow();
   // The date at the top, kept running: the page is left open on a job all day.
   const clock = useNow(true, 30_000);
@@ -144,6 +146,7 @@ export function ProjectsScreen({ navigation }: Props) {
     cuts: mine(cutLog.cuts),
     welds: mine(weldLog.welds),
     shifts: mine(shiftLog.reports),
+    plans: mine(planLog.plans),
   };
   const doomedCounts = clearCounts([
     { label: 'pressure tests', items: doomed.tests },
@@ -154,6 +157,7 @@ export function ProjectsScreen({ navigation }: Props) {
     { label: 'level readings', items: doomed.readings },
     { label: 'cuts', items: doomed.cuts },
     { label: 'shift reports', items: doomed.shifts },
+    { label: 'pre-task plans', items: doomed.plans },
   ]);
   const clearNow = () => {
     applyJoints((r) => ({ ...r, joints: without(r.joints, doomed.joints) }));
@@ -164,6 +168,7 @@ export function ProjectsScreen({ navigation }: Props) {
     applyCuts((l) => ({ ...l, cuts: without(l.cuts, doomed.cuts) }));
     applyWelds((l) => ({ ...l, welds: without(l.welds, doomed.welds) }));
     applyShifts((l) => ({ ...l, reports: without(l.reports, doomed.shifts) }));
+    applyPlans((l) => ({ ...l, plans: without(l.plans, doomed.plans) }));
     setClearNote(`Cleared ${countsText(doomedCounts)} from ${f.label || 'every job'}.`);
     setClearStep('idle');
   };
@@ -201,6 +206,7 @@ export function ProjectsScreen({ navigation }: Props) {
     readings: worked(readings, (r) => [r.createdAt]),
     cuts: worked(mine(cutLog.cuts), (c) => [c.createdAt]),
     shifts: worked(mine(shiftLog.reports), (r) => [r.day]),
+    plans: worked(mine(planLog.plans), (p) => [p.day]),
   };
   const todayCounts = clearCounts([
     { label: 'pressure tests', items: todays.tests },
@@ -211,6 +217,7 @@ export function ProjectsScreen({ navigation }: Props) {
     { label: 'level readings', items: todays.readings },
     { label: 'cuts', items: todays.cuts },
     { label: 'shift reports', items: todays.shifts },
+    { label: 'pre-task plans', items: todays.plans },
   ]);
   const todayTotal = todayCounts.reduce((n, k) => n + k.count, 0);
   const earlier = Math.max(0, doomedCounts.reduce((n, k) => n + k.count, 0) - todayTotal);
