@@ -1,4 +1,6 @@
 import { handle } from '../../worker/index';
+import { OUTPUT_CAP } from '../../worker/claude';
+import { CHECK_MESSAGE, CHECK_SYSTEM, DETAIL_MAX } from '../ai/claudeCheck';
 import { POLISH_SYSTEM, cleanPolishBody, polishMessage, type Polish } from '../ai/shiftPolish';
 import { logFacts, shiftFacts } from '../calc/shiftReport';
 import { newReport } from '../state/shiftLog';
@@ -95,8 +97,18 @@ describe('the Claude route', () => {
       return [res.status, await res.json()];
     };
     expect(await ask(200, message({ stop_reason: 'refusal', content: [] }))).toEqual([502, { error: 'declined' }]);
-    expect(await ask(401, { type: 'error', error: { type: 'authentication_error', message: 'invalid x-api-key' } })).toEqual([502, { error: 'upstream', status: 401 }]);
-    expect(await ask(404, { type: 'error', error: { type: 'not_found_error', message: 'model' } })).toEqual([502, { error: 'upstream', status: 404 }]);
+    // What Anthropic said rides along, in its words, so the phone can show it.
+    expect(await ask(401, { type: 'error', error: { type: 'authentication_error', message: 'invalid x-api-key' } })).toEqual([
+      502,
+      { error: 'upstream', status: 401, detail: 'authentication_error: invalid x-api-key' },
+    ]);
+    expect(await ask(404, { type: 'error', error: { type: 'not_found_error', message: 'model: claude-x' } })).toEqual([
+      502,
+      { error: 'upstream', status: 404, detail: 'not_found_error: model: claude-x' },
+    ]);
+    const long = await ask(400, { type: 'error', error: { type: 'invalid_request_error', message: 'max_tokens: '.padEnd(600, 'x') } });
+    expect(long[1].detail).toHaveLength(DETAIL_MAX);
+    expect(JSON.stringify(long[1])).not.toContain('sk-test-secret');
     expect(await ask(200, message({ content: [{ type: 'text', text: 'Here is your summary!' }] }))).toEqual([502, { error: 'bad_answer' }]);
     expect(await ask(200, message({ content: [{ type: 'text', text: '{"summary":"x"}' }] }))).toEqual([502, { error: 'bad_answer' }]);
   });
@@ -108,4 +120,52 @@ describe('the Claude route', () => {
     const res = await handle(post({ facts, notes: NOTES }), ENV, off);
     expect([res.status, await res.json()]).toEqual([504, { error: 'upstream_unreachable' }]);
   }, 15_000);
+
+  test('every route asks for the same room to write in, inside every current model\'s window', async () => {
+    const seen: Seen[] = [];
+    await handle(post({ facts, notes: NOTES }), ENV, api(200, message(), seen));
+    expect(seen[0]!.body.max_tokens).toBe(OUTPUT_CAP);
+    expect(OUTPUT_CAP).toBeLessThanOrEqual(8192);
+  });
 });
+
+describe('the check', () => {
+  const ok = (over: Record<string, unknown> = {}) => message({ content: [{ type: 'text', text: '{"ok":true}' }], ...over });
+  const check = (body: unknown = {}) => post(body, '/api/claude-check');
+
+  test('asks one word in the shape the routes use, and says which model answered', async () => {
+    const seen: Seen[] = [];
+    const res = await handle(check(), ENV, api(200, ok({ model: 'test-model-fallback' }), seen));
+    expect([res.status, await res.json()]).toEqual([200, { ok: true, model: 'test-model-fallback', asked: 'test-model' }]);
+    expect(seen).toHaveLength(1);
+    expect(seen[0]!.headers.get('anthropic-beta')).toContain('server-side-fallback-2026-07-01');
+    expect(seen[0]!.body).toMatchObject({
+      model: 'test-model',
+      max_tokens: OUTPUT_CAP,
+      fallbacks: 'default',
+      output_config: { effort: 'low', format: { type: 'json_schema' } },
+      system: CHECK_SYSTEM,
+      messages: [{ role: 'user', content: CHECK_MESSAGE }],
+    });
+  });
+
+  test('ignores what it is sent, and refuses a body too big to be nothing', async () => {
+    const seen: Seen[] = [];
+    expect((await handle(check({ model: 'evil', prompt: 'x' }), ENV, api(200, ok(), seen))).status).toBe(200);
+    expect(seen[0]!.body.model).toBe('test-model');
+    const big = new Request('https://pipefit.test/api/claude-check', { method: 'POST', headers: { 'content-length': '4096' }, body: '{}' });
+    expect((await handle(big, ENV, api(200, ok(), seen))).status).toBe(413);
+    expect(seen).toHaveLength(1);
+  });
+
+  test('says what is not set up, and what Anthropic said, and nothing about the key', async () => {
+    expect(await (await handle(check(), {}, api(200, ok()))).json()).toEqual({ error: 'not_configured', missing: ['ANTHROPIC_API_KEY', 'CLAUDE_MODEL'] });
+    const res = await handle(check(), ENV, api(404, { type: 'error', error: { type: 'not_found_error', message: 'model: test-model' } }));
+    const text = await res.text();
+    expect([res.status, JSON.parse(text)]).toEqual([502, { error: 'upstream', status: 404, detail: 'not_found_error: model: test-model' }]);
+    expect(text).not.toContain('sk-test-secret');
+    expect(await (await handle(check(), ENV, api(200, ok({ content: [{ type: 'text', text: '{"ok":false}' }] })))).json()).toEqual({ error: 'bad_answer' });
+    expect(await (await handle(check(), ENV, api(200, ok({ stop_reason: 'refusal', content: [] })))).json()).toEqual({ error: 'declined' });
+  });
+});
+

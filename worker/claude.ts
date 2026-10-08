@@ -23,6 +23,7 @@ import { MAX_POLISH_BODY, POLISH_SCHEMA, POLISH_SYSTEM, cleanPolishBody, polishM
 import { MAX_VOICE_BODY, VOICE_SCHEMA, VOICE_SYSTEM, cleanVoiceBody, readVoice, voiceMessage } from '../src/ai/voice';
 import { MAX_IMAGE_B64, MAX_SHEET_BODY, SHEET_SCHEMA, SHEET_SYSTEM, bareBase64, cleanSheetBody, readSheet, sheetPrompt } from '../src/ai/fittingSheet';
 import { MAX_ORIENTATION_BODY, ORIENTATION_SCHEMA, ORIENTATION_SYSTEM, cleanOrientationBody, orientationMessage, readCourse } from '../src/ai/orientation';
+import { CHECK_MESSAGE, CHECK_SCHEMA, CHECK_SYSTEM, DETAIL_MAX, readCheck } from '../src/ai/claudeCheck';
 
 /**
  * How long Claude gets. A summary usually comes back in seconds; this is for
@@ -44,6 +45,35 @@ export type Reply = { status: number; body: unknown };
 /** What a model id looks like. Anything else in the variable is a typo, and is said to be one. */
 export const MODEL_ID = /^[a-z0-9][a-z0-9.-]{2,80}$/i;
 
+/**
+ * The most any route lets Claude write. A course or a summary is a fraction
+ * of it, and it is inside the output window of every current model, so a
+ * route is never refused for asking for more room than the model has.
+ */
+export const OUTPUT_CAP = 8000;
+
+/**
+ * What Anthropic said when it said no: the error's kind and its message, in
+ * its words, cut to a line. Nothing of ours is in it — not the key, not the
+ * request — and the app shows it as it is, so a wrong model name reads as a
+ * wrong model name on the phone.
+ */
+export function detailOf(e: InstanceType<typeof Anthropic.APIError>): string {
+  // The SDK keeps the whole reply body: { type: 'error', error: { type, message } }.
+  const body = e.error as { error?: { message?: unknown } } | undefined;
+  const said = body?.error?.message;
+  const msg = typeof said === 'string' && said ? said : e.message;
+  return `${e.type ? `${e.type}: ` : ''}${msg}`.replace(/\s+/g, ' ').trim().slice(0, DETAIL_MAX);
+}
+
+/** Why a call to Claude came back empty: not reached, or reached and refused, with what it said. */
+export function failed(e: unknown): Reply {
+  // A timeout is a connection error to the SDK: either way Claude was not reached.
+  if (e instanceof Anthropic.APIConnectionError) return { status: 504, body: { error: 'upstream_unreachable' } };
+  if (e instanceof Anthropic.APIError) return { status: 502, body: { error: 'upstream', status: e.status ?? null, detail: detailOf(e) } };
+  return { status: 502, body: { error: 'upstream' } };
+}
+
 export async function shiftPolish(raw: string, apiKey: string, model: string, fetchImpl: typeof fetch): Promise<Reply> {
   if (raw.length > MAX_POLISH_BODY) return { status: 413, body: { error: 'too_large' } };
   let parsed: unknown;
@@ -61,7 +91,7 @@ export async function shiftPolish(raw: string, apiKey: string, model: string, fe
   try {
     const msg = await client.beta.messages.create({
       model,
-      max_tokens: 16000,
+      max_tokens: OUTPUT_CAP,
       // A request a safety classifier declines is run again on the model
       // Anthropic picks for that kind of decline, inside the same call.
       betas: ['server-side-fallback-2026-07-01'],
@@ -81,10 +111,7 @@ export async function shiftPolish(raw: string, apiKey: string, model: string, fe
     const polish = readPolish(out);
     return polish ? { status: 200, body: { polish } } : { status: 502, body: { error: 'bad_answer' } };
   } catch (e) {
-    // A timeout is a connection error to the SDK: either way Claude was not reached.
-    if (e instanceof Anthropic.APIConnectionError) return { status: 504, body: { error: 'upstream_unreachable' } };
-    if (e instanceof Anthropic.APIError) return { status: 502, body: { error: 'upstream', status: e.status ?? null } };
-    return { status: 502, body: { error: 'upstream' } };
+    return failed(e);
   }
 }
 
@@ -126,9 +153,7 @@ export async function voiceCommand(raw: string, apiKey: string, model: string, f
     const answer = readVoice(out);
     return answer ? { status: 200, body: { answer } } : { status: 502, body: { error: 'bad_answer' } };
   } catch (e) {
-    if (e instanceof Anthropic.APIConnectionError) return { status: 504, body: { error: 'upstream_unreachable' } };
-    if (e instanceof Anthropic.APIError) return { status: 502, body: { error: 'upstream', status: e.status ?? null } };
-    return { status: 502, body: { error: 'upstream' } };
+    return failed(e);
   }
 }
 
@@ -154,7 +179,7 @@ export async function fittingSheet(raw: string, apiKey: string, model: string, f
   try {
     const msg = await client.beta.messages.create({
       model,
-      max_tokens: 8000,
+      max_tokens: OUTPUT_CAP,
       betas: ['server-side-fallback-2026-07-01'],
       fallbacks: 'default',
       // Small print photographed at an angle: worth reading with care.
@@ -180,9 +205,7 @@ export async function fittingSheet(raw: string, apiKey: string, model: string, f
     const sheet = readSheet(out, body.family);
     return sheet ? { status: 200, body: { sheet } } : { status: 502, body: { error: 'bad_answer' } };
   } catch (e) {
-    if (e instanceof Anthropic.APIConnectionError) return { status: 504, body: { error: 'upstream_unreachable' } };
-    if (e instanceof Anthropic.APIError) return { status: 502, body: { error: 'upstream', status: e.status ?? null } };
-    return { status: 502, body: { error: 'upstream' } };
+    return failed(e);
   }
 }
 
@@ -207,7 +230,7 @@ export async function orientationCourse(raw: string, apiKey: string, model: stri
   try {
     const msg = await client.beta.messages.create({
       model,
-      max_tokens: 12000,
+      max_tokens: OUTPUT_CAP,
       betas: ['server-side-fallback-2026-07-01'],
       fallbacks: 'default',
       // Rules a man's safety rides on, and a translation: worth some care.
@@ -225,8 +248,40 @@ export async function orientationCourse(raw: string, apiKey: string, model: stri
     const course = readCourse(out);
     return course ? { status: 200, body: { course } } : { status: 502, body: { error: 'bad_answer' } };
   } catch (e) {
-    if (e instanceof Anthropic.APIConnectionError) return { status: 504, body: { error: 'upstream_unreachable' } };
-    if (e instanceof Anthropic.APIError) return { status: 502, body: { error: 'upstream', status: e.status ?? null } };
-    return { status: 502, body: { error: 'upstream' } };
+    return failed(e);
+  }
+}
+
+/** How long the check waits: one word asked, one line back, inside the app's thirty seconds. */
+const CHECK_MS = 25_000;
+
+/**
+ * The smallest question there is, asked in the shape every route uses: the
+ * same betas, the same structured output, the same output cap. If this comes
+ * back, the routes will. If not, the reply carries what Anthropic said, so
+ * Settings can show it. The body is ignored: there is nothing to ask for.
+ */
+export async function claudeCheck(_raw: string, apiKey: string, model: string, fetchImpl: typeof fetch): Promise<Reply> {
+  const client = new Anthropic({ apiKey, fetch: fetchImpl, maxRetries: 0, timeout: CHECK_MS });
+  try {
+    const msg = await client.beta.messages.create({
+      model,
+      max_tokens: OUTPUT_CAP,
+      betas: ['server-side-fallback-2026-07-01'],
+      fallbacks: 'default',
+      output_config: { effort: 'low', format: { type: 'json_schema', schema: CHECK_SCHEMA } },
+      system: CHECK_SYSTEM,
+      messages: [{ role: 'user', content: CHECK_MESSAGE }],
+    });
+    if (msg.stop_reason === 'refusal') return { status: 502, body: { error: 'declined' } };
+    let out: unknown;
+    try {
+      out = JSON.parse(msg.content.map((b) => (b.type === 'text' ? b.text : '')).join(''));
+    } catch {
+      return { status: 502, body: { error: 'bad_answer' } };
+    }
+    return readCheck(out) ? { status: 200, body: { ok: true, model: msg.model, asked: model } } : { status: 502, body: { error: 'bad_answer' } };
+  } catch (e) {
+    return failed(e);
   }
 }
