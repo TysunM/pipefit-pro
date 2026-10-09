@@ -36,7 +36,7 @@ import {
   withHeat,
   withoutHeat,
 } from '../state/register';
-import { PASSES, expectedBolt, isFinished, startBoltUp, tapBolt } from '../calc/boltUpSequence';
+import { answerMoved, confirmGap, expectedBolt, isAsked, isFinished, levelsAt, plan, startBoltUp, tapBolt } from '../calc/boltUpSequence';
 import { BOLT_UP_125, BOLT_UP_250 } from '../calc/boltUp';
 
 const REAL_COUNTS = Array.from(new Set([...BOLT_UP_125, ...BOLT_UP_250].map((b) => b.bolts))).sort(
@@ -47,16 +47,19 @@ const T0 = 1_700_000_000_000;
 
 const spec = (bolts: number) => ({ cls: '125' as const, nps: null, bolts });
 
-/** Every state a joint passes through on the way to finished. */
+/** Every state a joint passes through on the way to finished: taps, gap checks and the answer to the check round. */
 function walk(bolts: number): ReturnType<typeof startBoltUp>[] {
   const out = [startBoltUp(bolts)];
   let s = out[0]!;
   while (!isFinished(s)) {
-    s = tapBolt(s, expectedBolt(s)).state;
+    s = isAsked(s) ? answerMoved(s, false) : s.gapPending ? confirmGap(s) : tapBolt(s, expectedBolt(s)).state;
     out.push(s);
   }
   return out;
 }
+
+/** The number of taps, gap checks and answers a legacy joint of this size takes. */
+const stepsOf = (bolts: number) => plan('legacy', bolts).reduce((n, r) => n + r.steps.length, 0) + 3 + 1;
 
 describe('a state survives being written down and read back', () => {
   it('round-trips every state of a whole joint, for every real bolt count', () => {
@@ -84,7 +87,8 @@ describe('a state survives being written down and read back', () => {
 
   it('keeps a wrong-tap flag, because it is what the screen points at', () => {
     const j = newJoint('j1', spec(8), T0);
-    const wrong = withState(j, tapBolt(j.state, 5).state, T0 + 1);
+    const snugged = tapBolt(j.state, 1).state;
+    const wrong = withState(j, tapBolt(snugged, 5).state, T0 + 1);
     const back = parseRegister(serialiseRegister({ ...emptyRegister(), joints: [wrong] }));
     expect(back.joints[0]!.state.lastWrong).toBe(5);
     expect(back.joints[0]!.state.wrongCount).toBe(1);
@@ -103,33 +107,51 @@ describe('a store that does not hold up is dropped, never repaired', () => {
     joints: [{ ...newJoint('j1', spec(bolts), T0), state }],
   });
 
-  it('refuses a level array that disagrees with the step', () => {
-    // Three bolts coloured in, but the step says one. Loading this would put
-    // the screen on the wrong bolt, which is worse than losing the joint.
-    const bad = { bolts: 8, pass: 0, step: 1, level: [1, 1, 1, 0, 0, 0, 0, 0], lastWrong: null, wrongCount: 0 };
+  it('refuses a level array that disagrees with the position', () => {
+    // Three bolts coloured in, but the position says one. Loading this would
+    // put the screen on the wrong bolt, which is worse than losing the joint.
+    const good = tapBolt(tapBolt(startBoltUp(8), 1).state, 1).state;
+    const bad = { ...good, level: [1, 1, 1, 0, 0, 0, 0, 0] };
     expect(validState(bad, 8)).toBeNull();
     expect(parseRegister(JSON.stringify(holding(bad)))).toEqual({ joints: [], foreign: false, dropped: 1 });
   });
 
-  it('refuses a bolt that has run ahead of the pass', () => {
-    const bad = { bolts: 8, pass: 0, step: 1, level: [3, 0, 0, 0, 0, 0, 0, 0], lastWrong: null, wrongCount: 0 };
-    expect(validState(bad, 8)).toBeNull();
+  it('refuses a bolt that has run ahead of the round', () => {
+    const good = tapBolt(tapBolt(startBoltUp(8), 1).state, 1).state;
+    expect(validState({ ...good, level: [3, 1, 1, 1, 1, 1, 1, 1] }, 8)).toBeNull();
   });
 
   it('refuses a level array of the wrong length', () => {
-    const bad = { bolts: 8, pass: 0, step: 0, level: [0, 0, 0, 0], lastWrong: null, wrongCount: 0 };
-    expect(validState(bad, 8)).toBeNull();
+    expect(validState({ ...startBoltUp(8), level: [0, 0, 0, 0] }, 8)).toBeNull();
   });
 
-  it('refuses a finished state with a bolt still short', () => {
-    const bad = { bolts: 4, pass: 4, step: 0, level: [4, 4, 4, 3], lastWrong: null, wrongCount: 0 };
-    expect(validState(bad, 4)).toBeNull();
+  it('refuses a position past the plan, a step past the round, and a method it does not know', () => {
+    const s = startBoltUp(4);
+    expect(validState({ ...s, round: 99 }, 4)).toBeNull();
+    expect(validState({ ...s, round: -1 }, 4)).toBeNull();
+    expect(validState({ ...s, round: 1, step: 5 }, 4)).toBeNull();
+    expect(validState({ ...s, method: 'star' }, 4)).toBeNull();
+    expect(validState({ ...s, extraChecks: -1 }, 4)).toBeNull();
+    // A closed round waiting for its answer is only a check round.
+    expect(validState({ ...s, round: 1, step: 4, level: levelsAt('legacy', 4, 0, 1, 4) }, 4)).toBeNull();
+    // A pending gap check belongs at the start of the round after a cross round.
+    expect(validState({ ...s, gapPending: true }, 4)).toBeNull();
   });
 
-  it('refuses a step at or past the bolt count, and a pass past the last one', () => {
-    expect(validState({ bolts: 4, pass: 0, step: 4, level: [1, 1, 1, 1], lastWrong: null, wrongCount: 0 }, 4)).toBeNull();
+  it('reads a version 2 state as the Legacy method at the same place', () => {
+    // Pass 1 (50-70%), three bolts in, as version 2 wrote it.
+    const old = { bolts: 8, pass: 1, step: 3, level: [2, 1, 2, 1, 2, 1, 1, 1], lastWrong: null, wrongCount: 2 };
+    const s = validState(old, 8)!;
+    expect(s).not.toBeNull();
+    expect(s.method).toBe('legacy');
+    expect(s.round).toBe(2);
+    expect(s.step).toBe(3);
+    expect(s.wrongCount).toBe(2);
+    expect(s.level).toEqual(levelsAt('legacy', 8, 0, 2, 3));
+    // Finished under version 2 is finished now.
+    const done = validState({ bolts: 4, pass: 4, step: 0, level: [4, 4, 4, 4], lastWrong: null, wrongCount: 0 }, 4)!;
+    expect(isFinished(done)).toBe(true);
     expect(validState({ bolts: 4, pass: 5, step: 0, level: [4, 4, 4, 4], lastWrong: null, wrongCount: 0 }, 4)).toBeNull();
-    expect(validState({ bolts: 4, pass: -1, step: 0, level: [0, 0, 0, 0], lastWrong: null, wrongCount: 0 }, 4)).toBeNull();
   });
 
   it('refuses a state whose bolt count is not the joint’s', () => {
@@ -163,7 +185,8 @@ describe('a store that does not hold up is dropped, never repaired', () => {
     const ok = newJoint('j1', { cls: '125', nps: 6, bolts: 8 }, T0);
     expect(validJoint(ok)).toEqual(ok);
     expect(validJoint({ ...ok, id: '' })).toBeNull();
-    expect(validJoint({ ...ok, cls: '300' })).toBeNull();
+    expect(validJoint({ ...ok, cls: '400' })).toBeNull();
+    expect(validJoint({ ...ok, cls: '300' })).not.toBeNull();
     expect(validJoint({ ...ok, nps: 0 })).toBeNull();
     expect(validJoint({ ...ok, nps: 'six' })).toBeNull();
     expect(validJoint({ ...ok, bolts: 2.5 })).toBeNull();
@@ -239,7 +262,7 @@ describe('working a joint keeps the record honest', () => {
       expect(isDone(j)).toBe(isFinished(state));
       expect(validJoint(j)).not.toBeNull();
     }
-    expect(j.completedAt).toBe(T0 + 16);
+    expect(j.completedAt).toBe(T0 + stepsOf(4));
   });
 
   it('keeps the first finish time when a finished joint is written again', () => {
@@ -406,13 +429,14 @@ describe('every state a joint can reach is a state that loads', () => {
       let r = putJoint(emptyRegister(), j);
       let n = 0;
       while (!isFinished(j.state)) {
-        j = withState(j, tapBolt(j.state, expectedBolt(j.state)).state, T0 + ++n);
+        const s = j.state;
+        j = withState(j, isAsked(s) ? answerMoved(s, false) : s.gapPending ? confirmGap(s) : tapBolt(s, expectedBolt(s)).state, T0 + ++n);
         r = putJoint(r, j);
         const back = parseRegister(serialiseRegister(r));
         expect(back.dropped).toBe(0);
         expect(getJoint(back, 'j1')).toEqual(j);
       }
-      expect(n).toBe(bolts * PASSES.length);
+      expect(n).toBe(stepsOf(bolts));
     }
   });
 });
@@ -491,9 +515,28 @@ describe('a version 1 store still loads', () => {
     expect(r.joints[0]!.checks).toEqual([]);
   });
 
-  it('writes version 2 from then on', () => {
-    expect(REGISTER_VERSION).toBe(2);
-    expect(JSON.parse(serialiseRegister(emptyRegister())).v).toBe(2);
+  it('writes version 3 from then on', () => {
+    expect(REGISTER_VERSION).toBe(3);
+    expect(JSON.parse(serialiseRegister(emptyRegister())).v).toBe(3);
+  });
+
+  it('reads a version 2 joint, four passes and no method, as a Legacy joint at the same place', () => {
+    const v2 = {
+      v: 2,
+      joints: [
+        {
+          ...newJoint('old3', { cls: '125', nps: 6, bolts: 8, tag: 'OLD-3' }, T0),
+          state: { bolts: 8, pass: 2, step: 0, level: [2, 2, 2, 2, 2, 2, 2, 2], lastWrong: null, wrongCount: 0 },
+        },
+      ],
+    };
+    const r = parseRegister(JSON.stringify(v2));
+    expect(r.dropped).toBe(0);
+    const j = r.joints[0]!;
+    expect(j.state.method).toBe('legacy');
+    expect(j.state.round).toBe(3);
+    expect(j.gasket).toBe('unknown');
+    expect(isDone(j)).toBe(false);
   });
 });
 

@@ -9,7 +9,7 @@ import { SectionHeader } from '../components/SectionHeader';
 import { AccentButton, ControlRow, GhostButton } from '../components/Buttons';
 import { HintRow } from '../components/HintRow';
 import { Theme, useTheme } from '../theme/ThemeProvider';
-import { PASSES, boltUpProgress, isFinished } from '../calc/boltUpSequence';
+import { boltUpProgress, isFinished, planOf } from '../calc/boltUpSequence';
 import {
   Joint,
   SCRATCH_ID,
@@ -37,20 +37,23 @@ import { JobChips, useJobFilter } from '../components/JobChips';
 type Props = NativeStackScreenProps<RootStackParamList, 'Joints'>;
 
 /** The same ramp the flange face uses, so a row reads like the joint does. */
-const PASS_FILL = ['#FACC15', '#F97316', '#2563EB', '#15803D'];
+const ROUND_FILL: Record<string, string> = { snug: '#A8A29E', round: '#F97316', staged: '#F97316', full: '#2563EB', check: '#15803D' };
 
-/** Four pips, one per pass, filled as far as the joint has got. */
+/** One pip per round of the method, filled as far as the joint has got. */
 function PassPips({ t, joint }: { t: Theme; joint: Joint }) {
-  const full = joint.state.pass;
-  const part = isFinished(joint.state) ? 0 : joint.state.step / Math.max(1, joint.bolts);
+  const rounds = planOf(joint.state);
+  const full = joint.state.round;
+  const now = rounds[full];
+  const part = isFinished(joint.state) || !now ? 0 : joint.state.step / Math.max(1, now.steps.length);
   return (
     <View style={{ flexDirection: 'row', gap: 3 }}>
-      {PASSES.map((p, i) => {
+      {rounds.map((r, i) => {
         const filled = i < full;
         const share = i === full ? part : filled ? 1 : 0;
+        const fill = r.kind === 'round' && r.load < 0.4 ? '#FACC15' : r.kind === 'round' && r.load >= 0.9 ? '#2563EB' : ROUND_FILL[r.kind] ?? '#2563EB';
         return (
           <View
-            key={p.number}
+            key={`${r.label}-${i}`}
             style={{
               width: 22,
               height: 6,
@@ -61,7 +64,7 @@ function PassPips({ t, joint }: { t: Theme; joint: Joint }) {
               borderColor: t.colors.border,
             }}
           >
-            <View style={{ width: `${Math.round(share * 100)}%`, height: '100%', backgroundColor: PASS_FILL[i] }} />
+            <View style={{ width: `${Math.round(share * 100)}%`, height: '100%', backgroundColor: fill }} />
           </View>
         );
       })}

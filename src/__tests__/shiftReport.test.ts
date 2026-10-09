@@ -1,4 +1,4 @@
-import { expectedBolt, tapBolt } from '../calc/boltUpSequence';
+import { answerMoved, confirmGap, expectedBolt, isAsked, tapBolt } from '../calc/boltUpSequence';
 import { newHeat } from '../calc/heat';
 import { hasWork, listed, logFacts, mustMention, plainReport, plainSummary, reportText, shiftFacts, type DayRecords } from '../calc/shiftReport';
 import { endHold, newTest, startHold, type PressureTest } from '../state/pressureLog';
@@ -30,11 +30,15 @@ const MIN = 60_000;
 function joint(tag: string, taps: number, made: number, project = 'BP-1'): Joint {
   let j = newJoint(tag.toLowerCase(), { cls: '125', nps: 6, bolts: 8, torque: 60, project }, made);
   let s = j.state;
-  for (let k = 0; k < taps; k++) s = tapBolt(s, expectedBolt(s)).state;
+  for (let k = 0; k < taps; k++) {
+    if (s.gapPending) s = confirmGap(s);
+    s = tapBolt(s, expectedBolt(s)).state;
+  }
+  if (isAsked(s)) s = answerMoved(s, false);
   j = withState({ ...j, tag, boltedBy: 'J. Smith', witnessedBy: '' }, s, made + 1000);
   return j;
 }
-const FULL = 32;
+const FULL = 33;
 
 const ptest = (pkg: string, over: Partial<PressureTest> = {}): PressureTest => ({ ...newTest('BP-1', at(7)), id: pkg, pkg, testPsi: 225, ...over });
 

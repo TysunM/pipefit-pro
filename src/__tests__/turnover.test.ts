@@ -1,4 +1,4 @@
-import { expectedBolt, tapBolt } from '../calc/boltUpSequence';
+import { answerMoved, confirmGap, expectedBolt, isAsked, tapBolt } from '../calc/boltUpSequence';
 import { newHeat, type Heat } from '../calc/heat';
 import { day, heatsUsed, openItems, turnoverHtml, turnoverTotals, type TurnoverInput } from '../print/turnover';
 import { addCheck, newJoint, withState, type Joint } from '../state/register';
@@ -10,11 +10,15 @@ const T = Date.UTC(2026, 8, 20, 12);
 function joint(tag: string, taps: number, heats: string[] = [], sign: Partial<Pick<Joint, 'boltedBy' | 'witnessedBy'>> = {}): Joint {
   let j = newJoint(tag.toLowerCase(), { cls: '125', nps: 6, bolts: 8, torque: 60, project: 'BP-1' }, T);
   let s = j.state;
-  for (let k = 0; k < taps; k++) s = tapBolt(s, expectedBolt(s)).state;
+  for (let k = 0; k < taps; k++) {
+    if (s.gapPending) s = confirmGap(s);
+    s = tapBolt(s, expectedBolt(s)).state;
+  }
+  if (isAsked(s)) s = answerMoved(s, false);
   j = withState({ ...j, tag, heats, boltedBy: 'J. Smith', witnessedBy: 'R. Lee', ...sign }, s, T + 1000);
   return j;
 }
-const FULL = 32; // four passes of eight
+const FULL = 33; // snug, three rounds of eight, and the check round
 
 const heat = (n: string, over: Partial<Heat> = {}): Heat => ({ ...newHeat(n, T), material: 'A106 Gr B', mill: 'Tenaris', mtr: 'MTR-7', ...over });
 
@@ -44,7 +48,7 @@ describe('the punch list', () => {
     );
     expect(items.map((i) => i.what)).toEqual(['Part', 'Done', 'Bare', 'Bare', 'Heat H2']);
     expect(items[0]?.needs).toContain('Bolt-up not finished');
-    expect(items[1]?.needs).toBe('Re-check at temperature not recorded');
+    expect(items[1]?.needs).toBe('Retightening round not recorded');
     expect(items[3]?.needs).toBe('No heat number recorded');
     expect(items[4]?.needs).toContain('MTR not in hand (filed as MTR-7) (Done)');
   });

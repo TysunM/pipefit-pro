@@ -138,7 +138,10 @@ describe('a tool by name opens on the phone', () => {
   test('a bolt count no flange has goes to Claude, not into the pattern', () => {
     expect(localIntent('flange 10 bolts', null)).toBeNull();
     expect(localIntent('flange 72 bolts', null)).toBeNull();
-    expect(localIntent('flange class 150', null)).toBeNull();
+    expect(localIntent('flange class 450', null)).toBeNull();
+    // Every B16.5 class and both cast iron classes are flanges the bolt-up knows.
+    expect(localIntent('flange class 150', null)).toEqual({ kind: 'open', route: 'FlangeBoltUp', figures: { cls: bare(150) } });
+    expect(localIntent('flange class 2500', null)).toEqual({ kind: 'open', route: 'FlangeBoltUp', figures: { cls: bare(2500) } });
   });
 
   test('on the bolt-up, a count alone changes it, and done is still a bolt', () => {

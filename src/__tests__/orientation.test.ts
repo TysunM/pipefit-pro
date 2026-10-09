@@ -26,6 +26,9 @@ import {
   type Course,
 } from '../state/orientation';
 import { BUILTIN_COURSES } from '../state/orientationCourses';
+import { builtinCourse } from '../state/orientationCourses';
+import { BUILTIN_COURSES_ES } from '../state/orientationCoursesEs';
+import { MAX_QUESTIONS, manualCourse, readingCourse, sectionsFromText, validModule, withOwnQuestions, type Module } from '../state/orientation';
 import { ORIENTATION_PATH, cleanOrientationBody, courseMissOf, courseMissWords, orientationMessage, readCourse } from '../ai/orientation';
 import { handle } from '../../worker/index';
 import { readBackup, restorePlan, STORES } from '../state/backup';
@@ -213,5 +216,97 @@ describe('why there is no course', () => {
     expect(courseMissOf({ error: 'upstream', status: 400, detail: 'invalid_request_error: max_tokens: 8000 > 4096' })).toBe('bad_model');
     expect(courseMissOf({ error: 'upstream', status: 404 })).toBe('bad_model');
     expect(courseMissOf({ error: 'not_configured' })).toBe('not_set');
+  });
+});
+
+describe('the Spanish courses ship in the app', () => {
+  test('every built-in module has a Spanish course that mirrors the English one, question for question', () => {
+    for (const m of BUILTIN) {
+      const en = BUILTIN_COURSES[m.id]!;
+      const es = BUILTIN_COURSES_ES[m.id];
+      expect(es).toBeDefined();
+      expect(validCourse(es)).toEqual(es);
+      expect(es!.sections).toHaveLength(en.sections.length);
+      expect(es!.questions).toHaveLength(en.questions.length);
+      es!.sections.forEach((sec, i) => expect(sec.points).toHaveLength(en.sections[i]!.points.length));
+      es!.questions.forEach((qu, i) => {
+        expect(qu.choices).toHaveLength(4);
+        expect(qu.answer).toBe(en.questions[i]!.answer);
+        expect(qu.why).not.toBe('');
+      });
+      expect(es!.title).not.toBe(en.title);
+      expect(builtinCourse(m.id, 'es')).toBe(es);
+      expect(builtinCourse(m.id, 'en')).toBe(en);
+    }
+    expect(builtinCourse('om1', 'es')).toBeUndefined();
+  });
+});
+
+describe('a course with no Claude', () => {
+  const mod = (text: string, questions: Module['questions'] = []): Module => ({ id: 'om1', title: 'Site rules', text, required: true, createdAt: T, updatedAt: T, lang: 'en', questions });
+
+  test('the rules are cut into sections by paragraph, headed by their first words or the short line above', () => {
+    const text = `Badge in at the gate every time. Know the muster point. Walk upwind in a gas release.
+
+Hot work
+Nothing burns without a permit. The fire watch stays thirty minutes after the last spark.
+
+This paragraph goes on and on about the importance of keeping every single walkway clear at all times of the day and night, which is a heading cut short.`;
+    const secs = sectionsFromText(text);
+    expect(secs).toHaveLength(3);
+    expect(secs[0]).toEqual({ heading: 'Badge in at the gate every time', points: ['Badge in at the gate every time.', 'Know the muster point.', 'Walk upwind in a gas release.'] });
+    expect(secs[1]!.heading).toBe('Hot work');
+    expect(secs[1]!.points).toEqual(['Nothing burns without a permit.', 'The fire watch stays thirty minutes after the last spark.']);
+    expect(secs[2]!.heading.endsWith('…')).toBe(true);
+    expect(secs[2]!.heading.length).toBeLessThanOrEqual(60);
+  });
+
+  test('a long text folds into twelve sections and keeps every sentence it can', () => {
+    const text = Array.from({ length: 30 }, (_, i) => `Rule ${i + 1} is this. It matters.`).join('\n\n');
+    const secs = sectionsFromText(text);
+    expect(secs).toHaveLength(12);
+    expect(secs[0]!.heading).toBe('Rule 1 is this');
+    expect(secs[0]!.points).toContain('Rule 2 is this.');
+    expect(sectionsFromText('')).toEqual([]);
+    expect(sectionsFromText('Heading only')).toEqual([{ heading: 'Heading only', points: ['Heading only'] }]);
+  });
+
+  test('three questions make the check; fewer make a read-through; the company\'s questions win over written ones', () => {
+    const qs = [1, 2, 3].map((i) => ({ q: `Q${i}?`, choices: ['a', 'b'], answer: 1, why: 'because' }));
+    const m = mod('Badge in. Know the muster point.', qs);
+    const course = manualCourse(m)!;
+    expect(course).not.toBeNull();
+    expect(course.title).toBe('Site rules');
+    expect(course.questions).toEqual(qs);
+    expect(course.sections[0]!.points).toEqual(['Badge in.', 'Know the muster point.']);
+    expect(manualCourse(mod('Badge in.', qs.slice(0, 2)))).toBeNull();
+    expect(readingCourse(mod('Badge in.')).sections).toEqual([{ heading: 'Badge in', points: ['Badge in.'] }]);
+    expect(withOwnQuestions(COURSE, m).questions).toEqual(qs);
+    expect(withOwnQuestions(COURSE, mod('x', qs.slice(0, 2)))).toBe(COURSE);
+  });
+
+  test('a module keeps its language and its questions through the store, and refuses more than twelve', () => {
+    const qs = [1, 2, 3].map((i) => ({ q: `Q${i}?`, choices: ['a', 'b', 'c', 'd'], answer: 2, why: 'because' }));
+    const out = putModule(emptyModules(), { title: 'Reglas del sitio', text: 'Fírmese en la puerta.', lang: 'es', questions: qs }, T);
+    expect(out.ok).toBe(true);
+    const back = parseModules(serialiseModules(out.store));
+    expect(back.modules[0]!.lang).toBe('es');
+    expect(back.modules[0]!.questions).toEqual(qs);
+    // Questions that do not read are dropped, not fatal; a store with neither reads as English with none.
+    expect(validModule({ id: 'x', title: 'T', text: 'Rule.', createdAt: T, questions: [{ q: 'Q?', choices: ['only one'], answer: 0, why: '' }, qs[0]] })!.questions).toEqual([qs[0]]);
+    const old = validModule({ id: 'x', title: 'T', text: 'Rule.', createdAt: T })!;
+    expect(old.lang).toBe('en');
+    expect(old.questions).toEqual([]);
+    const many = Array.from({ length: MAX_QUESTIONS + 1 }, () => qs[0]!);
+    expect(putModule(emptyModules(), { title: 'T', text: 'Rule.', questions: many }, T).ok).toBe(false);
+  });
+
+  test('a read-through signed off is a pass of one of one, kept as such', () => {
+    const d = record(emptyCompletions(), { moduleId: 'om1', title: 'Site rules', lang: 'en', score: 1, of: 1, at: T, project: 'BP-1', textKey: 'deadbeef', acknowledged: true });
+    expect(passFor(d, 'om1', 'deadbeef')?.acknowledged).toBe(true);
+    const back = parseCompletions(serialiseCompletions(d));
+    expect(back.completions[0]!.acknowledged).toBe(true);
+    const plain = record(emptyCompletions(), { moduleId: 'om1', title: 'Site rules', lang: 'en', score: 4, of: 5, at: T, project: '', textKey: 'deadbeef' });
+    expect(parseCompletions(serialiseCompletions(plain)).completions[0]).not.toHaveProperty('acknowledged');
   });
 });
