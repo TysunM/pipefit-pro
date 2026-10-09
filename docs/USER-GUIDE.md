@@ -70,6 +70,16 @@ The app agrees with every one of them to **four decimal places**, and a test pro
 | **Stock length** | What comes off the rack, default 20' | The cut list packs onto it. Get it wrong and the stick count is wrong. |
 | **Length readout** | Inches | The calculator stays in inches. Press **FT** when you actually want feet. |
 
+## Make it yours: moving the tabs and tiles
+
+The six tabs along the foot ship as **Home, Calculator, Tools, Projects, Logs, Edu**. Hold any tab until it lifts, carry it along the bar, let go. It stays there on every screen.
+
+The tiles on Home, Tools, Logs and Edu, and the cards down the Projects page, move the same way: hold one until it lifts and buzzes, carry it, let go. A tile moves anywhere in its own section (Layout & fit-up, Bends & offsets, Records…); a card anywhere down the page. Carry one to the top or foot of the screen and the page scrolls with it. A finger that drifts while holding is a scroll, not a hold: hold still.
+
+On Home, **Recently used** stays as you left it until you open a tool, which puts that one first, as it always has. The **Field tools** keep the order you put them in.
+
+**Settings → Layout → Put everything back where it shipped** undoes all of it. The order is kept on the phone, not in the backup file.
+
 ---
 
 ## The Projects tab
@@ -1454,7 +1464,7 @@ The round mic low on the right of every screen. Tap it, say it, and the app does
 | Say | What happens |
 |---|---|
 | "Bolt up", "hydro", "heat book", "shift report" | That tool opens. Works with no signal. |
-| "Home", "projects", "tools", "logs", "calculator" | That tab along the bottom opens. |
+| "Home", "projects", "tools", "logs", "calculator", "edu" | That tab along the bottom opens. |
 | "Rolling offset, rise 12, roll 8 and a half, run 30" | Rolling offset opens with the figures in. "3 foot 6", "12 and 3/8" and "350 millimetres" are understood. |
 | "Simple offset, 14 and a half at 22 and a half degrees" | Any bend or offset tool opens filled in — see the table below. |
 | "Rise 12", "leg b 3 foot 6" (with the tool open) | Fills that field on the screen you are on. |

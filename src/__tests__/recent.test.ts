@@ -1,4 +1,4 @@
-import { EMPTY, KEEP_RECENT, RECENT_VERSION, SHOW_RECENT, parseRecent, pushRecent, shown } from '../state/recent';
+import { EMPTY, KEEP_RECENT, RECENT_VERSION, SHOW_RECENT, parseRecent, pushRecent, reorderRecent, shown } from '../state/recent';
 
 const known = (r: string) =>
   ['Calculator', 'Level', 'SimpleOffset', 'CutLength', 'Heats', 'Joints', 'Reference'].includes(r);
@@ -72,5 +72,23 @@ describe('reading what was stored', () => {
   test('a store longer than the cap is cut to it', () => {
     const many = Array.from({ length: KEEP_RECENT + 6 }, (_, i) => (i % 2 ? 'Level' : 'Heats'));
     expect(parseRecent(store(many), known).routes.length).toBeLessThanOrEqual(KEEP_RECENT);
+  });
+});
+
+describe('rearranging the strip by hand', () => {
+  test('one carried to where another stands', () => {
+    expect(reorderRecent(['a', 'b', 'c', 'd'], 'a', 'c')).toEqual(['b', 'c', 'a', 'd']);
+    expect(reorderRecent(['a', 'b', 'c', 'd'], 'd', 'b')).toEqual(['a', 'd', 'b', 'c']);
+  });
+
+  test('one that is not there, or carried to itself, changes nothing', () => {
+    expect(reorderRecent(['a', 'b'], 'x', 'a')).toEqual(['a', 'b']);
+    expect(reorderRecent(['a', 'b'], 'a', 'x')).toEqual(['a', 'b']);
+    expect(reorderRecent(['a', 'b'], 'a', 'a')).toEqual(['a', 'b']);
+  });
+
+  test('opening a tool still puts it first afterwards', () => {
+    const r = reorderRecent(['a', 'b', 'c'], 'a', 'c');
+    expect(pushRecent(r, 'a')).toEqual(['a', 'b', 'c']);
   });
 });
