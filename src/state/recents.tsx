@@ -1,7 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { RECORDABLE } from '../navigation/groups';
-import { RECENT_VERSION, parseRecent, pushRecent, shown } from './recent';
+import { RECENT_VERSION, parseRecent, pushRecent, reorderRecent, shown } from './recent';
 
 // Holding the last-used strip on the device.
 //
@@ -23,6 +23,8 @@ type Ctx = {
   recent: string[];
   hydrated: boolean;
   remember: (route: string) => void;
+  /** Carry one tile of the strip to where another stands. */
+  reorder: (a: string, b: string) => void;
 };
 
 const RecentsContext = createContext<Ctx | null>(null);
@@ -79,9 +81,18 @@ export function RecentsProvider({ children }: { children: React.ReactNode }) {
     [hydrated, write]
   );
 
+  const reorder = useCallback(
+    (a: string, b: string) => {
+      if (!hydrated) return;
+      const next = reorderRecent(live.current, a, b);
+      if (next.some((r, i) => r !== live.current[i])) write(next);
+    },
+    [hydrated, write]
+  );
+
   const value = useMemo<Ctx>(
-    () => ({ recent: shown(routes), hydrated, remember }),
-    [routes, hydrated, remember]
+    () => ({ recent: shown(routes), hydrated, remember, reorder }),
+    [routes, hydrated, remember, reorder]
   );
 
   return <RecentsContext.Provider value={value}>{children}</RecentsContext.Provider>;

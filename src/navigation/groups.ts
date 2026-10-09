@@ -3,18 +3,23 @@ import type { RootStackParamList } from './types';
 
 // What each tab holds
 // -------------------
-// Six tabs across the foot: Home, Projects, Tools, Logs, the Calculator and Edu.
+// Six tabs across the foot (tabs.ts says which, and in what order): Home, the
+// Calculator, Tools, Projects, Logs and Edu.
 //
 //   Home       the job card and the tools this man used last.
-//   Projects   everything saved: bolt-ups, isos, spools, level readings.
-//   Tools      the instruments he works with, and every bend and offset.
-//   Logs       the books he keeps and looks things up in.
 //   Calculator the trade calculator, straight to the keys.
+//   Tools      the instruments he works with, and every bend and offset.
+//   Projects   everything saved: bolt-ups, isos, spools, level readings.
+//   Logs       the books he keeps and looks things up in.
 //   Edu        what a new hire learns and proves: orientation and the passport.
 //
 // This file is the only place that says which tool sits where. The tab
 // screens, the home screen and groups.test.ts all read it, and the test holds
 // that the tabs and the Projects page together reach every tool exactly once.
+//
+// Where a tool sits within its section is the shipped order only. A man can
+// hold a tile and drag it along its section, and state/layout.ts keeps the
+// order he put them in, by the section's id.
 
 /** A screen a fitter opens to do a job. Not Settings, not a tab, not Home. */
 export type ToolRoute =
@@ -92,7 +97,8 @@ const pick = (routes: ToolRoute[]): Tool[] => routes.map((r) => tool(r) as Tool)
 
 /** How a section draws its tiles: big pictures two to a row, one across the width, or small calc tiles. */
 export type SectionSize = 'big' | 'wide' | 'small';
-export type Section = { title: string; size: SectionSize; tools: Tool[] };
+/** `id` names the section in the saved layout, so it must not change once shipped; the title may. */
+export type Section = { id: string; title: string; size: SectionSize; tools: Tool[] };
 
 export type GroupId = 'tools' | 'logs' | 'edu';
 export type Group = { id: GroupId; title: string; subtitle: string; sections: Section[] };
@@ -104,8 +110,9 @@ export const GROUPS: Group[] = [
     title: 'Tools',
     subtitle: 'The iso paper, the spool, the bolt-up, the level and the measure, then every bend and offset.',
     sections: [
-      { title: 'Layout & fit-up', size: 'big', tools: pick(['IsoSketch', 'SpoolBuilder', 'FlangeBoltUp', 'Level', 'Measure']) },
+      { id: 'fitup', title: 'Layout & fit-up', size: 'big', tools: pick(['IsoSketch', 'SpoolBuilder', 'FlangeBoltUp', 'Level', 'Measure']) },
       {
+        id: 'bends',
         title: 'Bends & offsets',
         size: 'small',
         tools: pick(['SimpleOffset', 'RollingOffset', 'CutLength', 'SaddleBend', 'MiterBend', 'HandBender']),
@@ -117,15 +124,15 @@ export const GROUPS: Group[] = [
     title: 'Logs',
     subtitle: 'The books the job keeps: every weld and its NDE, every test, every joint bolted up, the heats in them, the shift report, the morning pre-task plan, the handbook and your fitting takeouts.',
     sections: [
-      { title: 'Records', size: 'big', tools: pick(['PreTask', 'WeldLog', 'PressureTests', 'Joints', 'Heats', 'ShiftReport', 'Calibration']) },
-      { title: 'Look-up', size: 'wide', tools: pick(['Reference', 'FittingLibrary']) },
+      { id: 'records', title: 'Records', size: 'big', tools: pick(['PreTask', 'WeldLog', 'PressureTests', 'Joints', 'Heats', 'ShiftReport', 'Calibration']) },
+      { id: 'lookup', title: 'Look-up', size: 'wide', tools: pick(['Reference', 'FittingLibrary']) },
     ],
   },
   {
     id: 'edu',
     title: 'Edu',
     subtitle: 'What a new hire learns and proves: the orientation taken before the gate, and the skills passport that carries what you can do from job to job.',
-    sections: [{ title: 'Learn and prove it', size: 'big', tools: pick(['Orientation', 'Passport']) }],
+    sections: [{ id: 'learn', title: 'Learn and prove it', size: 'big', tools: pick(['Orientation', 'Passport']) }],
   },
 ];
 
@@ -138,6 +145,13 @@ export const groupTools = (g: Group): Tool[] => g.sections.flatMap((s) => s.tool
 
 /** Reached from the Projects page, not a tab: the order is worked out of the saved spools. */
 export const PROJECT_TOOLS: Tool[] = pick(['OrderSheet', 'CutList']);
+
+/**
+ * The record cards down the Projects page, in their shipped order: one per
+ * kind of thing saved. Named by the tool that makes the record; the layout
+ * store keeps the order a man drags them into.
+ */
+export const PROJECT_CARDS: readonly ToolRoute[] = ['FlangeBoltUp', 'IsoSketch', 'SpoolBuilder', 'CutList', 'Level'];
 
 /** The one tool that is its own tab. */
 export const TAB_TOOLS: Tool[] = pick(['Calculator']);
