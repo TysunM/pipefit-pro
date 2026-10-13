@@ -5,6 +5,7 @@ import { useTheme } from '../theme/ThemeProvider';
 import type { Tool } from '../navigation/groups';
 import { TileArt, TILE_ART_BOX } from './TileArt';
 import { ToolArt } from './ToolArt';
+import type { Hold } from './Reorder';
 
 // The tiles
 // ---------
@@ -65,17 +66,21 @@ export function ToolTile({
   featured = false,
   badge,
   corner,
+  hold,
 }: {
   tool: Tool;
   onPress: () => void;
   featured?: boolean;
   badge?: React.ReactNode;
   corner?: React.ReactNode;
+  /** Held long enough, the tile lifts to be carried (Reorder.tsx). */
+  hold?: Hold;
 }) {
   const t = useTheme();
   return (
     <Pressable
       onPress={onPress}
+      {...hold}
       accessibilityRole="button"
       accessibilityLabel={`${tool.title}. ${tool.subtitle}`}
       style={{ flex: 1 }}
@@ -108,10 +113,10 @@ export function ToolTile({
 }
 
 /** A tool that wants the whole width: the drawing on the left, the words beside it. */
-export function WideTile({ tool, onPress }: { tool: Tool; onPress: () => void }) {
+export function WideTile({ tool, onPress, hold }: { tool: Tool; onPress: () => void; hold?: Hold }) {
   const t = useTheme();
   return (
-    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={`${tool.title}. ${tool.subtitle}`}>
+    <Pressable onPress={onPress} {...hold} accessibilityRole="button" accessibilityLabel={`${tool.title}. ${tool.subtitle}`}>
       {({ pressed }) => (
         <Surface pressed={pressed} style={{ flexDirection: 'row', alignItems: 'center', padding: 14, gap: 14, minHeight: 104 }}>
           <View>
@@ -133,11 +138,11 @@ export function WideTile({ tool, onPress }: { tool: Tool; onPress: () => void })
 }
 
 /** An everyday calculation: its schematic over its name. */
-export function CalcTile({ tool, onPress }: { tool: Tool; onPress: () => void }) {
+export function CalcTile({ tool, onPress, hold }: { tool: Tool; onPress: () => void; hold?: Hold }) {
   const t = useTheme();
   const artH = 40;
   return (
-    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={`${tool.title}. ${tool.subtitle}`} style={{ flex: 1 }}>
+    <Pressable onPress={onPress} {...hold} accessibilityRole="button" accessibilityLabel={`${tool.title}. ${tool.subtitle}`} style={{ flex: 1 }}>
       {({ pressed }) => (
         <Surface pressed={pressed} style={{ flex: 1, height: 100, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 10, gap: 6 }}>
           <View>
@@ -154,24 +159,6 @@ export function CalcTile({ tool, onPress }: { tool: Tool; onPress: () => void })
         </Surface>
       )}
     </Pressable>
-  );
-}
-
-/** Tiles two to a row, every row's tiles the same height. */
-export function ToolGrid({ children, gap }: { children: React.ReactNode[]; gap?: number }) {
-  const t = useTheme();
-  const g = gap ?? 14;
-  const rows: React.ReactNode[][] = [];
-  for (let i = 0; i < children.length; i += 2) rows.push(children.slice(i, i + 2));
-  return (
-    <View style={{ paddingHorizontal: t.layout.screenPadding, gap: g }}>
-      {rows.map((row, i) => (
-        <View key={i} style={{ flexDirection: 'row', gap: g, alignItems: 'stretch' }}>
-          {row}
-          {row.length === 1 ? <View style={{ flex: 1 }} /> : null}
-        </View>
-      ))}
-    </View>
   );
 }
 

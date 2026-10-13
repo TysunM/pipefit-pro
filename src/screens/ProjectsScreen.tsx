@@ -3,10 +3,13 @@ import { Pressable, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
-import type { ToolRoute } from '../navigation/groups';
+import { PROJECT_CARDS, type ToolRoute } from '../navigation/groups';
 import { Screen } from '../components/Screen';
 import { HintRow } from '../components/HintRow';
 import { TabBar } from '../components/TabBar';
+import { ReorderZone, type Hold } from '../components/Reorder';
+import { PROJECTS_ZONE } from '../state/layout';
+import { useZone } from '../state/layouts';
 import { ToolArt } from '../components/ToolArt';
 import { Plate } from '../components/metal';
 import { useTheme } from '../theme/ThemeProvider';
@@ -46,6 +49,8 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Projects'>;
 const SHOWN = 3;
 
 type Row = { key: string; title: string; sub: string; when: string; job?: string; tint?: string; onPress: () => void };
+
+const self = (r: ToolRoute) => r;
 
 /**
  * Everything saved on the phone, one card per kind: the bolt-ups, the isos,
@@ -223,6 +228,7 @@ export function ProjectsScreen({ navigation }: Props) {
   const earlier = Math.max(0, doomedCounts.reduce((n, k) => n + k.count, 0) - todayTotal);
   const onToday = view === 'today';
   const nothingToday = (what: string, before: number) => `Nothing ${what} ${todayWord}.${before ? ` ${before} earlier under Everything.` : ''}`;
+  const cards = useZone(PROJECTS_ZONE, PROJECT_CARDS, self);
   const jointRows: Row[] = shown.joints.slice(0, SHOWN).map((j) => ({
     key: j.id,
     title: j.tag || 'Untitled joint',
@@ -368,55 +374,82 @@ export function ProjectsScreen({ navigation }: Props) {
             {tpNote ? <Text style={[t.type.caption, { color: t.colors.danger }]}>{tpNote}</Text> : null}
           </Plate>
 
-          <Card
-            art="FlangeBoltUp"
-            title="Flange bolt-ups"
-            count={jIn ? shown.joints.length : null}
-            rows={jointRows}
-            empty={onToday ? nothingToday('bolted', joints.length) : 'No joints logged yet. Name a bolt-up to keep it here.'}
-            today={onToday ? todayWord : undefined}
-            onNew={() => go('FlangeBoltUp')}
-            more={{ label: 'Joint log', onPress: () => go('Joints') }}
-          />
-          <Card
-            art="IsoSketch"
-            title="Iso drawings"
-            count={kIn ? shown.sketches.length : null}
-            rows={sketchRows}
-            empty={onToday ? nothingToday('drawn', sketches.length) : 'No isos yet. Start one on iso paper.'}
-            today={onToday ? todayWord : undefined}
-            onNew={() => go('IsoSketch')}
-            more={{ label: 'Sketch book', onPress: () => go('IsoSketch') }}
-          />
-          <Card
-            art="SpoolBuilder"
-            title="3D spools"
-            count={sIn ? shown.spools.length : null}
-            rows={spoolRows}
-            empty={onToday ? nothingToday('built', spools.length) : 'No spools saved yet. Build one and save it by its mark.'}
-            today={onToday ? todayWord : undefined}
-            onNew={() => go('SpoolBuilder')}
-            more={{ label: 'Order sheet', onPress: () => go('OrderSheet') }}
-          />
-          <Card
-            art="CutList"
-            title="Cut list"
-            count={cIn ? cutsHere.length : null}
-            rows={cutRows}
-            empty={onToday ? nothingToday('listed to cut', mine(cutLog.cuts).length) : 'No cuts listed yet. Work one in Cut Length and add it to the list.'}
-            today={onToday ? todayWord : undefined}
-            onNew={() => go('CutLength')}
-            more={{ label: cutsToGo ? `Cut list · ${cutsToGo} to cut` : 'Cut list', onPress: () => go('CutList') }}
-          />
-          <Card
-            art="Level"
-            title="Level readings"
-            count={lIn ? shown.readings.length : null}
-            rows={levelRows}
-            empty={onToday ? nothingToday('read', readings.length) : 'No readings saved yet. Lay the phone on a pipe and save it by tag.'}
-            today={onToday ? todayWord : undefined}
-            onNew={() => go('Level')}
-            more={{ label: 'All readings', onPress: () => go('Level') }}
+          <ReorderZone
+            items={cards.items}
+            idOf={self}
+            layout="stack"
+            gap={16}
+            onMove={cards.move}
+            render={(art, hold) => {
+              const card = {
+                FlangeBoltUp: (
+                  <Card
+                    art="FlangeBoltUp"
+                    title="Flange bolt-ups"
+                    count={jIn ? shown.joints.length : null}
+                    rows={jointRows}
+                    empty={onToday ? nothingToday('bolted', joints.length) : 'No joints logged yet. Name a bolt-up to keep it here.'}
+                    today={onToday ? todayWord : undefined}
+                    onNew={() => go('FlangeBoltUp')}
+                    more={{ label: 'Joint log', onPress: () => go('Joints') }}
+                    hold={hold}
+                  />
+                ),
+                IsoSketch: (
+                  <Card
+                    art="IsoSketch"
+                    title="Iso drawings"
+                    count={kIn ? shown.sketches.length : null}
+                    rows={sketchRows}
+                    empty={onToday ? nothingToday('drawn', sketches.length) : 'No isos yet. Start one on iso paper.'}
+                    today={onToday ? todayWord : undefined}
+                    onNew={() => go('IsoSketch')}
+                    more={{ label: 'Sketch book', onPress: () => go('IsoSketch') }}
+                    hold={hold}
+                  />
+                ),
+                SpoolBuilder: (
+                  <Card
+                    art="SpoolBuilder"
+                    title="3D spools"
+                    count={sIn ? shown.spools.length : null}
+                    rows={spoolRows}
+                    empty={onToday ? nothingToday('built', spools.length) : 'No spools saved yet. Build one and save it by its mark.'}
+                    today={onToday ? todayWord : undefined}
+                    onNew={() => go('SpoolBuilder')}
+                    more={{ label: 'Order sheet', onPress: () => go('OrderSheet') }}
+                    hold={hold}
+                  />
+                ),
+                CutList: (
+                  <Card
+                    art="CutList"
+                    title="Cut list"
+                    count={cIn ? cutsHere.length : null}
+                    rows={cutRows}
+                    empty={onToday ? nothingToday('listed to cut', mine(cutLog.cuts).length) : 'No cuts listed yet. Work one in Cut Length and add it to the list.'}
+                    today={onToday ? todayWord : undefined}
+                    onNew={() => go('CutLength')}
+                    more={{ label: cutsToGo ? `Cut list · ${cutsToGo} to cut` : 'Cut list', onPress: () => go('CutList') }}
+                    hold={hold}
+                  />
+                ),
+                Level: (
+                  <Card
+                    art="Level"
+                    title="Level readings"
+                    count={lIn ? shown.readings.length : null}
+                    rows={levelRows}
+                    empty={onToday ? nothingToday('read', readings.length) : 'No readings saved yet. Lay the phone on a pipe and save it by tag.'}
+                    today={onToday ? todayWord : undefined}
+                    onNew={() => go('Level')}
+                    more={{ label: 'All readings', onPress: () => go('Level') }}
+                    hold={hold}
+                  />
+                ),
+              } as const;
+              return card[art as keyof typeof card] ?? null;
+            }}
           />
 
           <Plate radius={t.radius.xl} style={{ padding: 14, gap: 10, borderColor: clearStep === 'idle' ? undefined : t.colors.danger }}>
@@ -461,6 +494,7 @@ function Card({
   onNew,
   more,
   today,
+  hold,
 }: {
   art: ToolRoute;
   title: string;
@@ -471,10 +505,13 @@ function Card({
   more: { label: string; onPress: () => void };
   /** Counted as the day's work ("today", "this shift") rather than all saved. */
   today?: string;
+  /** Held long enough, the card lifts to be carried up or down the page (Reorder.tsx). */
+  hold?: Hold;
 }) {
   const t = useTheme();
   const c = t.colors;
   return (
+    <Pressable {...hold} accessibilityLabel={`${title} card`}>
     <Plate radius={t.radius.xl} style={{ overflow: 'hidden' }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14 }}>
         <View
@@ -499,7 +536,7 @@ function Card({
             {count === null ? ' ' : count === 0 ? (today ? `Nothing ${today}` : 'Nothing saved') : `${count} ${today ?? 'saved'}`}
           </Text>
         </View>
-        <Pressable onPress={onNew} accessibilityRole="button" accessibilityLabel={`New in ${title}`} hitSlop={6}>
+        <Pressable onPress={onNew} {...hold} accessibilityRole="button" accessibilityLabel={`New in ${title}`} hitSlop={6}>
           {({ pressed }) => (
             <Plate tone="copper" sunk={pressed} radius={t.radius.sm} style={{ height: 40, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
               <Ionicons name="add" size={18} color={c.onCopper} />
@@ -516,6 +553,7 @@ function Card({
           <Pressable
             key={r.key}
             onPress={r.onPress}
+            {...hold}
             accessibilityRole="button"
             accessibilityLabel={`Open ${r.title}`}
             style={({ pressed }) => ({
@@ -553,6 +591,7 @@ function Card({
 
       <Pressable
         onPress={more.onPress}
+        {...hold}
         accessibilityRole="button"
         accessibilityLabel={more.label}
         style={({ pressed }) => ({
@@ -572,6 +611,7 @@ function Card({
         <Ionicons name="arrow-forward" size={17} color={c.accent} />
       </Pressable>
     </Plate>
+    </Pressable>
   );
 }
 

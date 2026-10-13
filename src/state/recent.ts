@@ -73,3 +73,18 @@ export function pushRecent(routes: readonly string[], route: string): string[] {
 export function shown(routes: readonly string[]): string[] {
   return routes.slice(0, SHOW_RECENT);
 }
+
+/**
+ * `a` carried to where `b` stands. The strip can be rearranged by hand like
+ * every other zone (state/layout.ts); it stays as left until a tool is
+ * opened, which puts that one at the front as it always has.
+ */
+export function reorderRecent(routes: readonly string[], a: string, b: string): string[] {
+  const from = routes.indexOf(a);
+  const to = routes.indexOf(b);
+  if (from < 0 || to < 0 || from === to) return [...routes];
+  const out = [...routes];
+  const [x] = out.splice(from, 1);
+  out.splice(to, 0, x as string);
+  return out;
+}

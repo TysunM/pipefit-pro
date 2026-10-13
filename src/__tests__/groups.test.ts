@@ -79,6 +79,12 @@ describe('the tabs reach every tool, once', () => {
     expect(routes(groupTools(group('edu')!))).toEqual(['Orientation', 'Passport']);
   });
 
+  test('every section has an id of its own, to keep its saved order by', () => {
+    const ids = GROUPS.flatMap((g) => g.sections.map((s) => `${g.id}.${s.id}`));
+    expect(new Set(ids).size).toBe(ids.length);
+    for (const g of GROUPS) for (const s of g.sections) expect(s.id).toMatch(/^[a-z]+$/);
+  });
+
   test('small tiles come in whole rows', () => {
     for (const g of GROUPS) for (const s of g.sections) if (s.size === 'small') expect(s.tools.length % 2).toBe(0);
   });

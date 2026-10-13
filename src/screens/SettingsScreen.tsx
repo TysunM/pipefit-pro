@@ -12,6 +12,7 @@ import { FooterNote } from '../components/Results';
 import { PipeSheet } from '../components/PipeSheet';
 import { useTheme } from '../theme/ThemeProvider';
 import { useSettings } from '../state/settings';
+import { useLayout } from '../state/layouts';
 import { appVersion, buildId, runningBuild, useOtaUpdate, versionRows } from '../state/updates';
 import { useUnits } from '../hooks/useUnits';
 import { findSize } from '../calc/pipe';
@@ -27,6 +28,7 @@ export function SettingsScreen() {
   const t = useTheme();
   const u = useUnits();
   const { settings, update, reset } = useSettings();
+  const layout = useLayout();
   const ota = useOtaUpdate();
   const navigation = useNavigation();
   const lastBackup = useLastBackup();
@@ -211,6 +213,15 @@ export function SettingsScreen() {
         selected={settings.themePreference}
         onSelect={(v) => update({ themePreference: v })}
       />
+
+      <SectionHeader title="Layout" meta={layout.customised ? 'Moved about' : 'As shipped'} />
+      <Text style={[t.type.caption, { color: t.colors.textMuted, paddingHorizontal: t.layout.screenPadding, marginBottom: t.space.md }]}>
+        Hold a tab on the bar, or a tile or card on a page, until it lifts, then carry it where you want it. A tab goes anywhere along the bar; a tile or
+        card anywhere in its own section. The phone keeps the order.
+      </Text>
+      <ControlRow>
+        <GhostButton label="Put everything back where it shipped" icon="grid-outline" onPress={layout.reset} style={{ flex: 1, opacity: layout.customised ? 1 : 0.5 }} />
+      </ControlRow>
 
       <SectionHeader title="Units" />
       <ChipRow
