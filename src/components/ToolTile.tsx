@@ -21,6 +21,14 @@ import type { Hold } from './Reorder';
 //
 // Every drawing on a tile sits inside a View, so it lays out and paints in
 // order with the words under it on every platform.
+//
+// A tile fills the slot it is given (Reorder.tsx) with `grow`, never with
+// `flex: 1`. Both grow; `flex: 1` also sets a zero flex basis, and Yoga, the
+// phone's layout engine, takes that basis as the tile's height wherever the
+// slot sits in a column of known height, so the tile measures as nothing and
+// its contents spill out of the bottom of the screen. The browser measures
+// the contents regardless, which is how it went unseen until a phone showed
+// the tab bar under the navigation buttons.
 
 function Surface({
   children,
@@ -83,10 +91,10 @@ export function ToolTile({
       {...hold}
       accessibilityRole="button"
       accessibilityLabel={`${tool.title}. ${tool.subtitle}`}
-      style={{ flex: 1 }}
+      style={styles.grow}
     >
       {({ pressed }) => (
-        <Surface pressed={pressed} featured={featured} style={{ flex: 1, minHeight: 204, padding: 14, paddingTop: 14 }}>
+        <Surface pressed={pressed} featured={featured} style={[styles.grow, { minHeight: 204, padding: 14, paddingTop: 14 }]}>
           <View style={{ height: 86, alignItems: 'center', justifyContent: 'center' }}>
             <ToolArt route={tool.route} height={78} />
           </View>
@@ -142,9 +150,9 @@ export function CalcTile({ tool, onPress, hold }: { tool: Tool; onPress: () => v
   const t = useTheme();
   const artH = 40;
   return (
-    <Pressable onPress={onPress} {...hold} accessibilityRole="button" accessibilityLabel={`${tool.title}. ${tool.subtitle}`} style={{ flex: 1 }}>
+    <Pressable onPress={onPress} {...hold} accessibilityRole="button" accessibilityLabel={`${tool.title}. ${tool.subtitle}`} style={styles.grow}>
       {({ pressed }) => (
-        <Surface pressed={pressed} style={{ flex: 1, height: 100, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 10, gap: 6 }}>
+        <Surface pressed={pressed} style={[styles.grow, { height: 100, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 10, gap: 6 }]}>
           <View>
             <TileArt route={tool.route} size={artH / TILE_ART_BOX.height} />
           </View>
@@ -244,6 +252,8 @@ export function FeatureArrow() {
 }
 
 const styles = StyleSheet.create({
+  /** Fill the slot, measured by what is in it: see the note at the top. */
+  grow: { flexGrow: 1, flexShrink: 1 },
   dropDark: { shadowColor: '#000000', shadowOpacity: 0.35, shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, elevation: 4 },
   dropLight: { shadowColor: '#2A3A4F', shadowOpacity: 0.12, shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, elevation: 2 },
 });
