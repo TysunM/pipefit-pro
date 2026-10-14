@@ -52,6 +52,8 @@ import {
 import { formatInches } from '../calc/ftin';
 import { ChipRow } from '../components/ChipRow';
 import { useSettings } from '../state/settings';
+import { useBoltingSpecs } from '../state/boltingSpecs';
+import { activeSpec, boltingLine, fromSpec, methodFor, targetTorque, type BoltingSpec } from '../state/boltingSpec';
 import { cleanProject } from '../state/project';
 import { useJoints } from '../state/joints';
 import {
@@ -73,6 +75,7 @@ import {
   putJoint,
   removeCheck,
   retightenDue,
+  RETIGHTEN_DWELL_MS,
   sinceLabel,
   withFlange,
   withGasket,
@@ -183,24 +186,26 @@ export function FlangeBoltUpScreen({ route, navigation }: Props) {
   const t = useTheme();
   const { settings } = useSettings();
   const { register, hydrated, apply } = useJoints();
+  const { book, hydrated: specsIn } = useBoltingSpecs();
+  const spec = activeSpec(book);
 
   const jointId = route.params?.jointId ?? SCRATCH_ID;
   const joint = getJoint(register, jointId);
 
-  // Seeded only once the store has been read, or it would be written and then
-  // immediately replaced by whatever was on disk.
+  // Seeded only once both stores have been read, or it would be written and
+  // then immediately replaced by whatever was on disk, or made without the
+  // company spec it should have taken its figures from.
   useEffect(() => {
-    if (!hydrated || joint) return;
+    if (!hydrated || !specsIn || joint) return;
     const opening = flangeFor(settings.defaultNps, '150') ?? flangeFor(6, '150');
+    const nps = opening?.nps ?? 6;
+    const bolts = opening?.bolts ?? 8;
     apply((r) =>
       getJoint(r, jointId)
         ? r
-        : putJoint(
-            r,
-            newJoint(jointId, { cls: '150', nps: opening?.nps ?? 6, bolts: opening?.bolts ?? 8 }, Date.now()),
-          ),
+        : putJoint(r, newJoint(jointId, { cls: '150', nps, bolts, ...(spec ? fromSpec(spec, '150', nps, bolts) : {}) }, Date.now())),
     );
-  }, [hydrated, joint, jointId, settings.defaultNps, apply]);
+  }, [hydrated, specsIn, joint, jointId, settings.defaultNps, apply, spec]);
 
   if (!joint) {
     return (
@@ -214,7 +219,7 @@ export function FlangeBoltUpScreen({ route, navigation }: Props) {
     );
   }
 
-  return <Bolting key={joint.id} joint={joint} register={register} apply={apply} navigation={navigation} />;
+  return <Bolting key={joint.id} joint={joint} register={register} apply={apply} navigation={navigation} spec={spec} />;
 }
 
 function Bolting({
@@ -222,11 +227,14 @@ function Bolting({
   register,
   apply,
   navigation,
+  spec: company,
 }: {
   joint: Joint;
   register: Register;
   apply: (f: (r: Register) => Register) => void;
   navigation: Props['navigation'];
+  /** The company's bolting spec on this phone, or null when there is none. */
+  spec: BoltingSpec | null;
 }) {
   const { register: instruments } = useInstruments();
   const t = useTheme();
@@ -293,8 +301,11 @@ function Bolting({
     ]).start();
   }, [wrongCount, flash]);
 
+  // With a company spec, a new flange takes the spec's gasket (unless this
+  // joint's is already set), method and torque for its class; without one,
+  // the joint keeps what it had.
   const changeFlange = (spec: JointSpec) => {
-    setFlange(spec);
+    setFlange(company ? { ...spec, ...fromSpec(company, spec.cls, spec.nps, spec.bolts, joint.gasket) } : spec);
     setShowDone(false);
   };
 
@@ -347,6 +358,16 @@ function Bolting({
     const value = text.trim() !== '' && Number.isFinite(n) && n > 0 ? n : null;
     if (value !== joint.torque) write({ ...joint, torque: value, updatedAt: Date.now() });
   };
+  // The figure can change under the field: a new flange takes the spec's
+  // torque for its studs. The field follows, but only when what is typed no
+  // longer reads as the joint's figure, so a figure being typed is not
+  // reformatted mid-keystroke.
+  useEffect(() => {
+    const n = Number(torque);
+    const typed = torque.trim() !== '' && Number.isFinite(n) && n > 0 ? n : null;
+    if (typed !== joint.torque) setTorque(joint.torque === null ? '' : String(joint.torque));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [joint.torque]);
 
   /**
    * Naming the unnamed joint moves the work it holds into a record of its own
@@ -375,7 +396,7 @@ function Bolting({
       // somebody says otherwise on the record.
       boltedBy: joint.boltedBy.trim() ? joint.boltedBy : settings.fitterName.trim(),
     };
-    const cleared = newJoint(SCRATCH_ID, { cls, nps, bolts, method: state.method, gasket }, now);
+    const cleared = newJoint(SCRATCH_ID, { cls, nps, bolts, ...(company ? fromSpec(company, cls, nps, bolts, gasket) : { method: state.method, gasket }) }, now);
     apply((r) => putJoint(putJoint(r, moved), cleared));
     navigation.setParams({ jointId: id });
   };
@@ -493,9 +514,16 @@ function Bolting({
     setShowDone(false);
   };
 
-  const reference = steel && Number.isFinite(referenceTorque(steel.stud, 50_000, 0.16))
-    ? `For a ${studLabel(steel.stud)} B7 stud at 50 ksi, the PCC-1 Appendix K figure is ${Math.round(referenceTorque(steel.stud, 50_000, 0.16))} ft-lb with moly anti-seize (K 0.16) or ${Math.round(referenceTorque(steel.stud, 50_000, 0.20))} ft-lb with machine oil (K 0.20). A reference to check the spec against, not the spec.`
-    : '';
+  const specTorque = company ? targetTorque(company, cls, nps) : null;
+  const specMethod = company ? methodFor(company, cls, bolts, gasket) : null;
+  const reference = joint.bolting
+    ? steel && specTorque !== null
+      ? `${boltingLine(joint.bolting)}. ${studLabel(steel.stud)} studs: ${specTorque} ft-lb by the PCC-1 Appendix K formula on the root area.`
+      : `${boltingLine(joint.bolting)}. ${castIron ? 'Cast iron: the spec gives its own, lower figure.' : 'No stud size to work a torque from: type the figure from the spec.'}`
+    : steel && Number.isFinite(referenceTorque(steel.stud, 50_000, 0.16))
+      ? `For a ${studLabel(steel.stud)} B7 stud at 50 ksi, the PCC-1 Appendix K figure is ${Math.round(referenceTorque(steel.stud, 50_000, 0.16))} ft-lb with moly anti-seize (K 0.16) or ${Math.round(referenceTorque(steel.stud, 50_000, 0.20))} ft-lb with machine oil (K 0.20). A reference to check the spec against, not the spec.`
+      : '';
+  const offSpec = specTorque !== null && joint.torque !== specTorque;
 
   return (
     <Screen>
@@ -558,6 +586,7 @@ function Bolting({
 
       {isDone(joint) ? (
         <ReTorque
+          dwellMs={company ? company.retightenHours * 60 * 60 * 1000 : RETIGHTEN_DWELL_MS}
           t={t}
           joint={joint}
           onRecord={() => setChecking(true)}
@@ -598,6 +627,11 @@ function Bolting({
       <View style={{ paddingHorizontal: t.layout.screenPadding, marginBottom: t.space.lg, gap: t.space.sm }}>
         <Text style={[t.type.body, { color: t.colors.text }]}>{`${chosen.name}. ${chosen.what}`}</Text>
         <Text style={[t.type.caption, { color: t.colors.textMuted }]}>{chosen.from}.</Text>
+        {company && specMethod ? (
+          <Text style={[t.type.caption, { color: specMethod === state.method ? t.colors.textMuted : t.colors.warnText }]}>
+            {specMethod === state.method ? `${company.name}: ${method(specMethod).name} for class ${cls}.` : `${company.name} says ${method(specMethod).name} for class ${cls}; this joint is on the ${chosen.name}.`}
+          </Text>
+        ) : null}
         {locked ? <Text style={[t.type.caption, { color: t.colors.warnText }]}>Bolt-up in progress. Start over to change the method.</Text> : null}
         {barred.length ? (
           <Text style={[t.type.caption, { color: t.colors.textFaint }]}>
@@ -621,11 +655,21 @@ function Bolting({
           />
         </Well>
         <Text style={[t.type.caption, { color: t.colors.textMuted, marginTop: t.space.md }]}>
-          The app splits the figure into rounds. It does not supply it: final torque depends on the stud size and
-          material, the lubricant and the gasket, and a guessed figure either crushes the gasket or leaves the joint
-          loose.
+          {joint.bolting
+            ? 'Worked from the company spec: the stud size, the target stress and the nut factor. The app splits it into rounds. Change it only where the spec says to, and the record keeps the figure used.'
+            : 'The app splits the figure into rounds. It does not supply it: final torque depends on the stud size and material, the lubricant and the gasket, and a guessed figure either crushes the gasket or leaves the joint loose.'}
         </Text>
         {reference ? <Text style={[t.type.caption, { color: t.colors.textMuted, marginTop: t.space.sm }]}>{reference}</Text> : null}
+        {offSpec ? (
+          <View style={{ marginTop: t.space.md }}>
+            <GhostButton label={`Use the spec's figure, ${specTorque} ft-lb`} icon="refresh-outline" onPress={() => commitTorque(String(specTorque))} />
+          </View>
+        ) : null}
+        {!company ? (
+          <View style={{ marginTop: t.space.md }}>
+            <GhostButton label="Set up the company's bolting spec" icon="document-text-outline" onPress={() => navigation.navigate('Settings', { open: 'bolting' })} />
+          </View>
+        ) : null}
       </View>
 
       <Divider />
@@ -1441,7 +1485,10 @@ function ReTorque({
   joint,
   onRecord,
   onRemove,
+  dwellMs,
 }: {
+  /** The dwell before the retightening round: the spec's, or PCC-1's four hours. */
+  dwellMs: number;
   t: Theme;
   joint: Joint;
   onRecord: () => void;
@@ -1449,7 +1496,7 @@ function ReTorque({
 }) {
   const last = lastCheck(joint);
   const settled = isSettled(joint);
-  const due = retightenDue(joint);
+  const due = retightenDue(joint, dwellMs);
   const now = Date.now();
   const waiting = due !== null && now < due;
   const tone = settled ? t.colors.success : last ? t.colors.accent : waiting ? t.colors.textMuted : t.colors.warnText;

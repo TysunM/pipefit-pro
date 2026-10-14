@@ -51,7 +51,8 @@ export type RootStackParamList = {
   /** `read`: open the sheet reader at once, listening for “take it”; a time, so asking twice opens it twice. */
   FittingLibrary: { line?: string; read?: number } | undefined;
   ReferenceTable: { id: string };
-  Settings: undefined;
+  /** `open` lands on a section's sheet: the company bolting spec, from the bolt-up screen. */
+  Settings: { open?: 'bolting' } | undefined;
   /** Everything on the phone to one file, and back. */
   Backup: undefined;
 };

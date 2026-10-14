@@ -27,7 +27,7 @@ export const COACH: Readonly<Record<CoachScreen, CoachPlan>> = {
     steps: [
       { text: 'Name the joint by its tag', why: 'A joint with a tag is a record; the unnamed one is scratch and is not kept.' },
       { text: 'Set the flange: class and size, and the gasket', why: 'The stud count and size come from the class and size, and the gasket decides which methods are allowed.' },
-      { text: 'Set the torque from the job\'s bolting spec', why: 'Torque is by stud size, material, lubricant and gasket, never by class. Guessing it is how gaskets leak or crush.' },
+      { text: 'Check the torque: the company\'s spec fills it in', why: 'Torque is worked from the stud size, the target stress and the nut factor on the spec, never from the class. With no spec on the phone, type the figure from the job\'s spec; guessing it is how gaskets leak or crush.' },
       { text: 'Tap each bolt as the screen asks, snug first', why: 'The cross pattern seats the gasket evenly. Round the circle cocks the flange and it leaks on the far side.' },
       { text: 'Rounds at 20–30%, 50–70% and 100%, a gap check after each, then check rounds until no nut turns', why: 'Bolts relax as the gasket seats. The check rounds catch what the earlier ones let go.' },
       { text: 'Have it witnessed, and pick the wrench', why: 'QC accepts the joint on the witness and the wrench\'s calibration. Without both it is redone.' },
