@@ -1,5 +1,5 @@
 import React, { useCallback } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -61,7 +61,7 @@ export function TabBar({ active }: { active: TabId }) {
         const on = tab.id === active;
         const color = on ? t.colors.text : t.colors.textFaint;
         return (
-          <Pressable onPress={() => go(tab)} {...hold} accessibilityRole="tab" accessibilityState={{ selected: on }} accessibilityLabel={tab.label} style={{ flex: 1 }}>
+          <Pressable onPress={() => go(tab)} {...hold} accessibilityRole="tab" accessibilityState={{ selected: on }} accessibilityLabel={tab.label} style={styles.tab}>
             {({ pressed }) => (
               <View
                 style={{
@@ -92,3 +92,11 @@ export function TabBar({ active }: { active: TabId }) {
     />
   );
 }
+
+const styles = StyleSheet.create({
+  // Grows to fill its slot, never `flex: 1`: a zero flex basis is what Yoga
+  // takes for the tab's height under a fixed-height page, and the bar then
+  // measures as its bottom padding alone and the tabs spill off the screen,
+  // under the phone's own navigation buttons. See the note in ToolTile.tsx.
+  tab: { flexGrow: 1, flexShrink: 1 },
+});
