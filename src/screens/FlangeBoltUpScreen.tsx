@@ -53,6 +53,10 @@ import { formatInches } from '../calc/ftin';
 import { ChipRow } from '../components/ChipRow';
 import { useSettings } from '../state/settings';
 import { useBoltingSpecs } from '../state/boltingSpecs';
+import { SignatureSheet, SignatureView } from '../components/SignatureSheet';
+import { shareSheet } from '../print/share';
+import { jointRecordHtml } from '../print/jointRecord';
+import { day as printDay } from '../print/turnover';
 import { activeSpec, boltingLine, fromSpec, methodFor, targetTorque, type BoltingSpec } from '../state/boltingSpec';
 import { cleanProject } from '../state/project';
 import { useJoints } from '../state/joints';
@@ -76,6 +80,11 @@ import {
   removeCheck,
   retightenDue,
   RETIGHTEN_DWELL_MS,
+  isJointSigned,
+  signJoint,
+  unsignJoint,
+  withPeople,
+  type SignRole,
   sinceLabel,
   withFlange,
   withGasket,
@@ -87,7 +96,7 @@ import { PERSON_MAX } from '../state/readSettings';
 import { useInstruments } from '../state/instruments';
 import { Instrument, findInstrument, goodOn, tagKey, usable } from '../state/calibration';
 import { Chip } from '../components/JobChips';
-import { dayKey } from '../calc/days';
+import { clockLabel, dayKey } from '../calc/days';
 import { useVoice } from '../voice/VoiceProvider';
 import { useSpokenFigures } from '../voice/figures';
 import { FaceLayout, boltCentre, fittedFace, flangeFace } from '../components/flange/face';
@@ -247,6 +256,9 @@ function Bolting({
   const [full, setFull] = useState(false);
   const [naming, setNaming] = useState(false);
   const [checking, setChecking] = useState(false);
+  const [signing, setSigning] = useState<SignRole | null>(null);
+  const [sharing, setSharing] = useState(false);
+  const [recordNote, setRecordNote] = useState<string | null>(null);
 
   const castIron = useMemo(() => (nps !== null && isCastIron(cls) ? boltUp(nps, cls) : undefined), [nps, cls]);
   const steel = useMemo(() => (nps !== null && isSteelClass(cls) ? steelFlange(nps, cls) : undefined), [nps, cls]);
@@ -575,13 +587,52 @@ function Bolting({
       </ControlRow>
 
       {isScratch(joint) ? null : (
-        <SignOff
-          t={t}
-          joint={joint}
-          suggest={(role) => recentNames(register, role, 4)}
-          wrenches={instruments.instruments}
-          onChange={(patch) => write({ ...joint, ...patch, updatedAt: Date.now() })}
-        />
+        <>
+          <SignOff
+            t={t}
+            joint={joint}
+            suggest={(role) => recentNames(register, role, 4)}
+            wrenches={instruments.instruments}
+            onChange={(patch) => write(withPeople(joint, patch, Date.now()))}
+            onSign={(role) => setSigning(role)}
+            onUnsign={(role) => write(unsignJoint(joint, role, Date.now()))}
+          />
+          <SectionHeader title="The record" meta="ASME PCC-1 Appendix R" />
+          <ControlRow>
+            <AccentButton
+              label={sharing ? 'Making the PDF…' : 'Share the joint record'}
+              icon="share-outline"
+              style={{ flex: 1 }}
+              onPress={() => {
+                if (sharing) return;
+                setSharing(true);
+                setRecordNote(null);
+                const on = dayKey(joint.completedAt ?? Date.now());
+                const mine = joint.wrench ? findInstrument(instruments, joint.wrench) : undefined;
+                const wrench = mine ? { tag: mine.tag, name: mine.name, max: mine.max, verdict: goodOn(mine, on) } : null;
+                void shareSheet(jointRecordHtml({ joint, dateLine: `Printed ${printDay(Date.now())}`, wrench, now: Date.now() }), `Joint record ${joint.tag}`).then((out) => {
+                  setSharing(false);
+                  if (!out.ok) setRecordNote(out.why);
+                });
+              }}
+            />
+          </ControlRow>
+          <Text style={[t.type.caption, { color: recordNote ? t.colors.danger : t.colors.textMuted, paddingHorizontal: t.layout.screenPadding, marginBottom: t.space.lg }]}>
+            {recordNote ??
+              'One page per joint: the flange and gasket, the spec it was bolted to, the stud, stress, nut factor and lubricant, the torque and the wrench with its calibration, every round with the bolts in sequence and when it closed, the retightening, and the two signatures.'}
+          </Text>
+          <SignatureSheet
+            visible={signing !== null}
+            title={signing === 'boltedBy' ? 'Assembled by' : 'Witnessed by'}
+            name={signing ? joint[signing] : ''}
+            onCancel={() => setSigning(null)}
+            onDone={(sig) => {
+              const role = signing;
+              setSigning(null);
+              if (role) write(signJoint(joint, role, sig, Date.now()));
+            }}
+          />
+        </>
       )}
 
       {isDone(joint) ? (
@@ -1286,6 +1337,8 @@ function SignOff({
   suggest,
   wrenches,
   onChange,
+  onSign,
+  onUnsign,
 }: {
   t: Theme;
   joint: Joint;
@@ -1293,11 +1346,16 @@ function SignOff({
   /** The calibration register, for the wrench. */
   wrenches: readonly Instrument[];
   onChange: (patch: Partial<Pick<Joint, 'boltedBy' | 'witnessedBy' | 'wrench'>>) => void;
+  /** Open the signature sheet for a role; the name must be typed first. */
+  onSign: (role: SignRole) => void;
+  onUnsign: (role: SignRole) => void;
 }) {
   const done = isDone(joint);
   const row = (role: 'boltedBy' | 'witnessedBy', label: string, placeholder: string) => {
     const value = joint[role];
     const picks = suggest(role).filter((n) => n.toUpperCase() !== value.trim().toUpperCase());
+    const signed = isJointSigned(joint, role);
+    const at = joint.signatures[role].signedAt;
     return (
       <View style={{ gap: t.space.sm }}>
         <Text style={[t.type.labelSmall, { color: t.colors.textMuted }]}>{label}</Text>
@@ -1336,6 +1394,24 @@ function SignOff({
             ))}
           </View>
         ) : null}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.md }}>
+          {signed ? (
+            <>
+              <SignatureView sig={joint.signatures[role].sig} />
+              <Text style={[t.type.caption, { color: t.colors.textMuted, flex: 1 }]}>{at !== null ? `Signed ${clockLabel(at)} ${new Date(at).toLocaleDateString()}` : 'Signed'}</Text>
+              <Pressable onPress={() => onUnsign(role)} hitSlop={10} accessibilityRole="button" accessibilityLabel={`Clear the ${label} signature`}>
+                <Text style={[t.type.labelSmall, { color: t.colors.textMuted }]}>Clear</Text>
+              </Pressable>
+            </>
+          ) : (
+            <GhostButton
+              label={value.trim() ? `Sign as ${value.trim()}` : 'Type the name, then sign'}
+              icon="create-outline"
+              style={{ flex: 1 }}
+              onPress={() => value.trim() && onSign(role)}
+            />
+          )}
+        </View>
       </View>
     );
   };
@@ -1370,7 +1446,7 @@ function SignOff({
         <Text style={[t.type.caption, { color: done && missing.length ? t.colors.warnText : t.colors.textMuted }]}>
           {done && missing.length
             ? `Finished, but ${missing.join(' and ')} ${missing.length > 1 ? 'are' : 'is'} not recorded. The turnover package lists it as open until it is.`
-            : 'Printed in the bolt-up record of the turnover package. Set your own name in Settings and it fills Bolted by on every joint you name.'}
+            : 'On the joint record and the turnover package. Set your own name in Settings and it fills Bolted by on every joint you name; sign once the joint is done.'}
         </Text>
       </View>
     </>

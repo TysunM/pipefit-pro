@@ -35,6 +35,10 @@ import {
   withState,
   withHeat,
   withoutHeat,
+  signJoint,
+  unsignJoint,
+  withPeople,
+  validRoundsAt,
 } from '../state/register';
 import { answerMoved, confirmGap, expectedBolt, isAsked, isFinished, levelsAt, plan, startBoltUp, tapBolt } from '../calc/boltUpSequence';
 import { BOLT_UP_125, BOLT_UP_250 } from '../calc/boltUp';
@@ -857,5 +861,76 @@ describe('who bolted it and who witnessed it', () => {
     expect(recentNames(r, 'boltedBy')).toEqual(['j. smith', 'A. Diaz']);
     expect(recentNames(r, 'witnessedBy')).toEqual(['r. lee']);
     expect(recentNames(r, 'boltedBy', 1)).toEqual(['j. smith']);
+  });
+});
+
+describe('the record on the joint: times and signatures', () => {
+  const SIG = 'AAAAAB AACAAD';
+
+  test('the bolt-up starts when the first bolt is logged, and each round closes with its time', () => {
+    const states = walk(8);
+    let j = newJoint('r', spec(8), T0);
+    expect(j.startedAt).toBeNull();
+    expect(j.roundsAt).toEqual([]);
+    states.slice(1).forEach((s, i) => {
+      j = withState(j, s, T0 + (i + 1) * 1000);
+    });
+    expect(j.startedAt).toBe(T0 + 1000);
+    expect(isFinished(j.state)).toBe(true);
+    expect(j.roundsAt).toHaveLength(plan('legacy', 8, 0).length);
+    for (let i = 1; i < j.roundsAt.length; i += 1) expect(j.roundsAt[i]).toBeGreaterThan(j.roundsAt[i - 1]!);
+    expect(j.completedAt).toBe(j.roundsAt[j.roundsAt.length - 1]);
+  });
+
+  test('an undo back into a round takes its time off; starting over takes them all off', () => {
+    const states = walk(8);
+    let j = newJoint('r', spec(8), T0);
+    states.slice(1, 12).forEach((s, i) => {
+      j = withState(j, s, T0 + (i + 1) * 1000);
+    });
+    const closed = j.roundsAt.length;
+    expect(closed).toBeGreaterThan(0);
+    const back = withState(j, states[8]!, T0 + 99_000);
+    expect(back.roundsAt).toHaveLength(Math.min(closed, states[8]!.round));
+    const over = withState(j, startBoltUp(8), T0 + 100_000);
+    expect(over.roundsAt).toEqual([]);
+    expect(over.startedAt).toBeNull();
+  });
+
+  test('stored times that run backwards or outrun the rounds are cut, and absent ones are none', () => {
+    expect(validRoundsAt([1, 2, 3], 2)).toEqual([1, 2]);
+    expect(validRoundsAt([1, 5, 3, 7], 4)).toEqual([1, 5]);
+    expect(validRoundsAt([1, -1], 4)).toEqual([1]);
+    expect(validRoundsAt(undefined, 4)).toEqual([]);
+    expect(validRoundsAt('x', 4)).toEqual([]);
+  });
+
+  test('a signature needs a name under it, survives the store, and goes when the name changes', () => {
+    let j = newJoint('r', spec(8), T0);
+    expect(signJoint(j, 'boltedBy', SIG, T0).signatures.boltedBy.sig).toBe('');
+    j = withPeople(j, { boltedBy: 'Tysun M', witnessedBy: 'R. Ortiz' }, T0);
+    j = signJoint(j, 'boltedBy', SIG, T0 + 5);
+    expect(j.signatures.boltedBy).toEqual({ sig: SIG, signedAt: T0 + 5 });
+    const back = validJoint(JSON.parse(JSON.stringify(j)));
+    expect(back?.signatures.boltedBy).toEqual({ sig: SIG, signedAt: T0 + 5 });
+    expect(back?.signatures.witnessedBy).toEqual({ sig: '', signedAt: null });
+    expect(withPeople(j, { boltedBy: 'Tysun M' }, T0 + 6).signatures.boltedBy.sig).toBe(SIG);
+    expect(withPeople(j, { boltedBy: 'Someone Else' }, T0 + 6).signatures.boltedBy.sig).toBe('');
+    expect(unsignJoint(j, 'boltedBy', T0 + 7).signatures.boltedBy.sig).toBe('');
+    expect(validJoint({ ...j, signatures: { boltedBy: { sig: 'not a signature!', signedAt: 1 } } })?.signatures.boltedBy.sig).toBe('');
+    expect(validJoint({ ...j, signatures: undefined })?.signatures.witnessedBy.sig).toBe('');
+  });
+
+  test('a store from before the record reads as started when it was made, with no round times', () => {
+    const states = walk(8);
+    const j = withState(newJoint('r', spec(8), T0), states[5]!, T0 + 9);
+    const old = JSON.parse(JSON.stringify(j));
+    delete old.startedAt;
+    delete old.roundsAt;
+    delete old.signatures;
+    const back = validJoint(old);
+    expect(back?.startedAt).toBe(T0);
+    expect(back?.roundsAt).toEqual([]);
+    expect(validJoint({ ...JSON.parse(JSON.stringify(newJoint('u', spec(8), T0))), startedAt: T0 })?.startedAt).toBeNull();
   });
 });

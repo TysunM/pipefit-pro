@@ -18,6 +18,7 @@ import { CastIronFlangeClass, boltUp } from '../calc/boltUp';
 import { SteelClass, isSteelClass, steelFlange, studLabel } from '../calc/steelFlange';
 import { cleanProject } from './project';
 import { cleanPerson } from './readSettings';
+import { cleanSig, hasSig } from '../calc/signature';
 import {
   BoltUpState,
   Gasket,
@@ -106,6 +107,13 @@ export type JointBolting = {
   lubricant: string;
 };
 
+/** A signature on the joint record, drawn on the phone. '' until signed. See calc/signature.ts. */
+export type JointSig = { sig: string; signedAt: number | null };
+export const unsigned = (): JointSig => ({ sig: '', signedAt: null });
+
+/** The two people on an Appendix R record: who assembled the joint, and who witnessed it. */
+export type SignRole = 'boltedBy' | 'witnessedBy';
+
 export type Joint = {
   id: string;
   /** What the fitter calls it — line number, spool mark, "pump suction". */
@@ -124,8 +132,16 @@ export type Joint = {
   state: BoltUpState;
   createdAt: number;
   updatedAt: number;
+  /** When the first bolt was logged, or null until one is. Cleared when the bolt-up starts over. */
+  startedAt: number | null;
   /** When the fourth pass closed, or null while it is still open. */
   completedAt: number | null;
+  /**
+   * When each round closed, in round order: the snug round first, the check
+   * rounds last. As long as the rounds done, so the record can say when each
+   * was finished; an undo back into a round takes its time off again.
+   */
+  roundsAt: number[];
   /**
    * Re-torque checks after the joint came up to temperature, oldest first.
    * Only a finished joint can have any: there is nothing to re-check on a
@@ -155,6 +171,8 @@ export type Joint = {
   witnessedBy: string;
   /** The torque wrench it was pulled up with, by its tag in the calibration register; '' when not recorded. */
   wrench: string;
+  /** The signatures of the two named above, for the joint record. A changed name clears its signature. */
+  signatures: Record<SignRole, JointSig>;
 };
 
 export type Register = {
@@ -277,6 +295,29 @@ export function validState(v: unknown, bolts: number): BoltUpState | null {
 const CLASSES: JointClass[] = ['125', '250', '150', '300', '600', '900', '1500', '2500'];
 const GASKET_IDS: Gasket[] = ['unknown', 'soft', 'spiral', 'hard', 'rtj'];
 
+/** A signature as stored, or an unsigned one where there is none or it does not read. */
+export function validSig(v: unknown): JointSig {
+  if (!isRec(v)) return unsigned();
+  const sig = cleanSig(v.sig);
+  if (!hasSig(sig)) return unsigned();
+  return { sig, signedAt: isInt(v.signedAt) && v.signedAt >= 0 ? v.signedAt : null };
+}
+
+/**
+ * The round close times as stored: non-negative, in order, and never more of
+ * them than rounds closed. Extra ones are cut rather than failing the joint;
+ * a store from before they existed has none, and none is a true statement.
+ */
+export function validRoundsAt(v: unknown, closed: number): number[] {
+  if (!Array.isArray(v)) return [];
+  const out: number[] = [];
+  for (const x of v) {
+    if (!isInt(x) || x < 0 || (out.length && x < out[out.length - 1]!)) break;
+    out.push(x);
+  }
+  return out.slice(0, closed);
+}
+
 /** The copy of the spec on a joint, or null where there is none or it does not hold up. */
 export function validBolting(v: unknown): JointBolting | null {
   if (!isRec(v)) return null;
@@ -319,6 +360,11 @@ export function validJoint(v: unknown): Joint | null {
   // A joint cannot be marked done unless its state says so, or the list would
   // show a finished joint the screen then reopens part-way through.
   if ((completedAt !== null) !== isFinished(state)) return null;
+
+  // Started when anything has been logged; a stored start time before that is
+  // kept, one on an untouched bolt-up is not a start.
+  const worked = boltUpProgress(state).done > 0 || isFinished(state);
+  const startedAt = worked && isInt(v.startedAt) && v.startedAt >= 0 ? v.startedAt : worked ? createdAt : null;
 
   // Version 1 stores have no checks at all, and that is the whole migration:
   // an absent list reads as an empty one. Anything present has to hold up.
@@ -371,7 +417,9 @@ export function validJoint(v: unknown): Joint | null {
     state,
     createdAt,
     updatedAt,
+    startedAt,
     completedAt: completedAt as number | null,
+    roundsAt: validRoundsAt(v.roundsAt, state.round),
     checks,
     heats,
     // Stores written before projects were tagged have none: "no project".
@@ -381,6 +429,8 @@ export function validJoint(v: unknown): Joint | null {
     witnessedBy: cleanPerson(v.witnessedBy),
     // Stores written before the calibration register have none: not recorded.
     wrench: typeof v.wrench === 'string' ? v.wrench.trim().toUpperCase().slice(0, 30) : '',
+    // Stores written before the joint record have none: unsigned.
+    signatures: { boltedBy: validSig(isRec(v.signatures) ? v.signatures.boltedBy : undefined), witnessedBy: validSig(isRec(v.signatures) ? v.signatures.witnessedBy : undefined) },
   };
 }
 
@@ -508,13 +558,16 @@ export function newJoint(id: string, spec: JointSpec, now: number): Joint {
     state: startBoltUp(spec.bolts, spec.method ?? 'legacy'),
     createdAt: now,
     updatedAt: now,
+    startedAt: null,
     completedAt: null,
+    roundsAt: [],
     checks: [],
     heats: [],
     project: cleanProject(spec.project),
     boltedBy: cleanPerson(spec.boltedBy),
     witnessedBy: '',
     wrench: '',
+    signatures: { boltedBy: unsigned(), witnessedBy: unsigned() },
   };
 }
 
@@ -526,11 +579,19 @@ export function newJoint(id: string, spec: JointSpec, now: number): Joint {
  */
 export function withState(joint: Joint, state: BoltUpState, now: number): Joint {
   const finished = isFinished(state);
+  const was = boltUpProgress(joint.state).done;
+  const is = boltUpProgress(state).done;
+  // A round that closed gets the time; one undone back into loses it. The
+  // times are by round index, so an added check round simply closes next.
+  const roundsAt = joint.roundsAt.slice(0, state.round);
+  while (roundsAt.length < state.round) roundsAt.push(now);
   return {
     ...joint,
     state,
     updatedAt: now,
+    startedAt: is === 0 && !finished ? null : (joint.startedAt ?? (was === 0 ? now : joint.createdAt)),
     completedAt: finished ? (joint.completedAt ?? now) : null,
+    roundsAt,
     // Undo past the end reopens the bolt-up, and a re-torque check on a joint
     // that is being worked again is a check of something that no longer
     // exists. Keeping it would be a record of a joint nobody finished.
@@ -562,7 +623,9 @@ export function withFlange(joint: Joint, spec: JointSpec, now: number): Joint {
     bolting: spec.bolting === undefined ? joint.bolting : spec.bolting,
     state: restart ? startBoltUp(spec.bolts, id) : joint.state,
     updatedAt: now,
+    startedAt: restart ? null : joint.startedAt,
     completedAt: restart ? null : joint.completedAt,
+    roundsAt: restart ? [] : joint.roundsAt,
     checks: restart ? [] : joint.checks,
   };
 }
@@ -573,8 +636,34 @@ export function withFlange(joint: Joint, spec: JointSpec, now: number): Joint {
  */
 export function withMethod(joint: Joint, id: MethodId, now: number): Joint {
   if (id === joint.state.method) return joint;
-  return { ...joint, state: stateWithMethod(joint.state, id), updatedAt: now, completedAt: null, checks: [] };
+  return { ...joint, state: stateWithMethod(joint.state, id), updatedAt: now, startedAt: null, completedAt: null, roundsAt: [], checks: [] };
 }
+
+/**
+ * Who bolted it and who witnessed, and the wrench. A changed name is a
+ * different person, whose signature this is not: the old one goes with it.
+ */
+export function withPeople(joint: Joint, patch: Partial<Pick<Joint, SignRole | 'wrench'>>, now: number): Joint {
+  const next = { ...joint, ...patch, updatedAt: now, signatures: { ...joint.signatures } };
+  for (const role of ['boltedBy', 'witnessedBy'] as const) {
+    if (patch[role] !== undefined && patch[role].trim() !== joint[role].trim()) next.signatures[role] = unsigned();
+  }
+  return next;
+}
+
+/** Sign the record in a role; an empty signature, or one with no name to go under it, is refused. */
+export function signJoint(joint: Joint, role: SignRole, sig: string, now: number): Joint {
+  const clean = cleanSig(sig);
+  if (!hasSig(clean) || !joint[role].trim()) return joint;
+  return { ...joint, updatedAt: now, signatures: { ...joint.signatures, [role]: { sig: clean, signedAt: now } } };
+}
+
+export function unsignJoint(joint: Joint, role: SignRole, now: number): Joint {
+  if (!hasSig(joint.signatures[role].sig)) return joint;
+  return { ...joint, updatedAt: now, signatures: { ...joint.signatures, [role]: unsigned() } };
+}
+
+export const isJointSigned = (joint: Joint, role: SignRole): boolean => hasSig(joint.signatures[role].sig);
 
 /** Record what is between the flanges. */
 export const withGasket = (joint: Joint, gasket: Gasket, now: number): Joint => (gasket === joint.gasket ? joint : { ...joint, gasket, updatedAt: now });
