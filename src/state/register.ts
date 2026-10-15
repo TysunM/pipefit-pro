@@ -87,6 +87,25 @@ export type ReCheck = {
   note: string;
 };
 
+/**
+ * The figures a joint was bolted to, copied off the company's bolting spec
+ * when the joint was made (boltingSpec.ts). A copy, not a reference: the
+ * spec can be revised next month, and the record of this joint must still
+ * say what it was pulled up to.
+ */
+export type JointBolting = {
+  /** The spec by name and revision. */
+  spec: string;
+  /** Stud grade as it reads on the record. */
+  stud: string;
+  /** Target bolt stress on the root area, ksi. */
+  stressKsi: number;
+  /** Nut factor K. */
+  nutFactor: number;
+  /** The lubricant on the studs, by name. */
+  lubricant: string;
+};
+
 export type Joint = {
   id: string;
   /** What the fitter calls it — line number, spool mark, "pump suction". */
@@ -100,6 +119,8 @@ export type Joint = {
   gasket: Gasket;
   /** Final torque from the job's bolting spec, or null when none was given. */
   torque: number | null;
+  /** The spec the torque came from, or null when it was typed in or never set. */
+  bolting: JointBolting | null;
   state: BoltUpState;
   createdAt: number;
   updatedAt: number;
@@ -256,6 +277,16 @@ export function validState(v: unknown, bolts: number): BoltUpState | null {
 const CLASSES: JointClass[] = ['125', '250', '150', '300', '600', '900', '1500', '2500'];
 const GASKET_IDS: Gasket[] = ['unknown', 'soft', 'spiral', 'hard', 'rtj'];
 
+/** The copy of the spec on a joint, or null where there is none or it does not hold up. */
+export function validBolting(v: unknown): JointBolting | null {
+  if (!isRec(v)) return null;
+  const { spec, stud, stressKsi, nutFactor, lubricant } = v;
+  if (!isStr(spec) || !isStr(stud) || !isStr(lubricant)) return null;
+  if (typeof stressKsi !== 'number' || !Number.isFinite(stressKsi) || stressKsi <= 0) return null;
+  if (typeof nutFactor !== 'number' || !Number.isFinite(nutFactor) || nutFactor <= 0) return null;
+  return { spec: spec.slice(0, 60), stud: stud.slice(0, 30), stressKsi, nutFactor, lubricant: lubricant.slice(0, 40) };
+}
+
 /** One re-torque check, or null if it does not hold up. */
 export function validCheck(v: unknown): ReCheck | null {
   if (!isRec(v)) return null;
@@ -334,6 +365,9 @@ export function validJoint(v: unknown): Joint | null {
     // Stores written before the gasket was recorded have none: not set.
     gasket: GASKET_IDS.includes(v.gasket as Gasket) ? (v.gasket as Gasket) : 'unknown',
     torque: torque as number | null,
+    // Stores written before the company spec have none; a damaged copy is
+    // dropped rather than the joint, since the torque itself is kept above.
+    bolting: validBolting(v.bolting),
     state,
     createdAt,
     updatedAt,
@@ -456,6 +490,8 @@ export type JointSpec = {
   boltedBy?: string;
   method?: MethodId;
   gasket?: Gasket;
+  /** The company spec's figures, where the joint is bolted to one. */
+  bolting?: JointBolting | null;
 };
 
 export function newJoint(id: string, spec: JointSpec, now: number): Joint {
@@ -468,6 +504,7 @@ export function newJoint(id: string, spec: JointSpec, now: number): Joint {
     bolts: spec.bolts,
     gasket: spec.gasket ?? 'unknown',
     torque: spec.torque ?? null,
+    bolting: spec.bolting ?? null,
     state: startBoltUp(spec.bolts, spec.method ?? 'legacy'),
     createdAt: now,
     updatedAt: now,
@@ -504,21 +541,29 @@ export function withState(joint: Joint, state: BoltUpState, now: number): Joint 
 /**
  * Change the flange a joint is for. The bolt-up starts again, because a level
  * array for sixteen bolts means nothing on a flange with twelve.
+ *
+ * A gasket, method, torque or spec copy given with the flange is what the
+ * company spec says for the new class; left out, the joint keeps its own,
+ * the method carrying over where the new flange allows it.
  */
 export function withFlange(joint: Joint, spec: JointSpec, now: number): Joint {
   const sameFlange = joint.bolts === spec.bolts && joint.cls === spec.cls && joint.nps === spec.nps;
-  // The method carries over when the new flange allows it; otherwise the standard one.
-  const id = methodBar(joint.state.method, spec.bolts, joint.gasket) === null ? joint.state.method : 'legacy';
+  const gasket = spec.gasket ?? joint.gasket;
+  const wanted = spec.method ?? joint.state.method;
+  const id = methodBar(wanted, spec.bolts, gasket) === null ? wanted : 'legacy';
+  const restart = !sameFlange || id !== joint.state.method;
   return {
     ...joint,
     cls: spec.cls,
     nps: spec.nps,
     bolts: spec.bolts,
+    gasket,
     torque: spec.torque === undefined ? joint.torque : spec.torque,
-    state: sameFlange ? joint.state : startBoltUp(spec.bolts, id),
+    bolting: spec.bolting === undefined ? joint.bolting : spec.bolting,
+    state: restart ? startBoltUp(spec.bolts, id) : joint.state,
     updatedAt: now,
-    completedAt: sameFlange ? joint.completedAt : null,
-    checks: sameFlange ? joint.checks : [],
+    completedAt: restart ? null : joint.completedAt,
+    checks: restart ? [] : joint.checks,
   };
 }
 
@@ -538,12 +583,15 @@ export const withGasket = (joint: Joint, gasket: Gasket, now: number): Joint => 
 export const RETIGHTEN_DWELL_MS = 4 * 60 * 60 * 1000;
 
 /**
- * When the retightening round falls due: four hours after the joint closed,
- * for a finished joint that has not been retightened yet. Null otherwise.
+ * When the retightening round falls due: after the dwell (PCC-1's four
+ * hours, or the company spec's) from the joint closing, for a finished joint
+ * that has not been retightened yet. Null otherwise, and null where the spec
+ * asks for no retightening at all.
  */
-export function retightenDue(j: Joint): number | null {
+export function retightenDue(j: Joint, dwellMs: number = RETIGHTEN_DWELL_MS): number | null {
   if (j.completedAt === null || j.checks.length) return null;
-  return j.completedAt + RETIGHTEN_DWELL_MS;
+  if (!(dwellMs > 0)) return null;
+  return j.completedAt + dwellMs;
 }
 
 /**
@@ -618,6 +666,9 @@ export function jointFlange(j: Joint): string {
 
 /** The method the joint is bolted by, as it reads on a record. */
 export const jointMethod = (j: Joint): string => method(j.state.method).name;
+
+/** The spec a joint was bolted to, as it reads on a record: name, stud, stress, K and lubricant. */
+export const jointBolting = (j: Joint): string => (j.bolting ? `${j.bolting.spec} · ${j.bolting.stud} at ${j.bolting.stressKsi} ksi · K ${j.bolting.nutFactor}, ${j.bolting.lubricant}` : '');
 
 /** How far the bolt-up has got, in the words a foreman would use. */
 export function jointProgress(j: Joint): string {

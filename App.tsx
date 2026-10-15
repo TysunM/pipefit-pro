@@ -5,6 +5,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { SettingsProvider } from "./src/state/settings";
 import { UpdatesProvider, useOtaUpdate } from "./src/state/updates";
 import { JointsProvider } from "./src/state/joints";
+import { BoltingSpecsProvider } from "./src/state/boltingSpecs";
 import { HeatsProvider } from "./src/state/heats";
 import { SpoolsProvider } from "./src/state/spools";
 import { SketchesProvider } from "./src/state/sketches";
@@ -74,6 +75,7 @@ export default function App() {
     <SafeAreaProvider>
       <SettingsProvider>
         <JointsProvider>
+        <BoltingSpecsProvider>
           <HeatsProvider>
             <SpoolsProvider>
               <SketchesProvider>
@@ -117,6 +119,7 @@ export default function App() {
               </SketchesProvider>
             </SpoolsProvider>
           </HeatsProvider>
+        </BoltingSpecsProvider>
         </JointsProvider>
       </SettingsProvider>
     </SafeAreaProvider>

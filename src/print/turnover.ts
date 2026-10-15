@@ -18,7 +18,7 @@ import { HEAT_FORMS, normaliseHeat, traceability } from '../calc/heat';
 import { findSize } from '../calc/pipe';
 import type { Reading } from '../state/levelLog';
 import type { Joint } from '../state/register';
-import { isDone, isSettled, jointFlange, jointMethod, jointProgress, lastCheck } from '../state/register';
+import { isDone, isSettled, jointBolting, jointFlange, jointMethod, jointProgress, lastCheck } from '../state/register';
 import type { SavedSketch } from '../state/sketchStore';
 import { sketchToSvg } from '../state/sketchStore';
 import type { SavedSpool } from '../state/spoolStore';
@@ -93,6 +93,25 @@ const retestOf = (t: PressureTest, all: readonly PressureTest[]) => all.find((x)
  * order it gets chased — tests not passed, work not finished, then checks not
  * done, then records nobody signed, then paper not in hand.
  */
+/**
+ * The bolting specs the joints were pulled up to, for the record's note:
+ * each spec with its stud, stress, nut factor and lubricant, and how many
+ * joints were bolted to it; and how many carry no spec at all. Empty when
+ * no joint has one, so a record made before specs reads as it always did.
+ */
+export function boltingNote(joints: readonly Joint[]): string {
+  const by = new Map<string, number>();
+  let none = 0;
+  for (const j of joints) {
+    const line = jointBolting(j);
+    if (!line) none += 1;
+    else by.set(line, (by.get(line) ?? 0) + 1);
+  }
+  if (!by.size) return '';
+  const specs = [...by].map(([line, n]) => `${line} (${n} joint${n === 1 ? '' : 's'})`).join('; ');
+  return ` Bolted to: ${specs}.${none ? ` ${none} joint${none === 1 ? '' : 's'} with no spec recorded.` : ''}`;
+}
+
 export function openItems(joints: readonly Joint[], book: readonly Heat[], tests: readonly PressureTest[] = [], welds: readonly Weld[] = [], instruments: readonly Instrument[] = []): OpenItem[] {
   const out: OpenItem[] = [];
   for (const t of tests) {
@@ -211,7 +230,7 @@ export function turnoverHtml(i: TurnoverInput): string {
         j.witnessedBy.trim() || '—',
         j.heats.length ? j.heats.join(', ') : '—',
       ]),
-      note: 'Bolted to ASME PCC-1 by the method named: snug, rounds at 20–30%, 50–70% and 100% of final torque (or the staged, multi-tool or tensioning passes of the alternative patterns), then check rounds round the flange at 100% until no nut turned.',
+      note: `Bolted to ASME PCC-1 by the method named: snug, rounds at 20–30%, 50–70% and 100% of final torque (or the staged, multi-tool or tensioning passes of the alternative patterns), then check rounds round the flange at 100% until no nut turned.${boltingNote(i.joints)}`,
     });
 
   const checks = i.joints.flatMap((j) => j.checks.map((c) => ({ j, c })));

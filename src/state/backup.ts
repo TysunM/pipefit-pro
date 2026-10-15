@@ -32,6 +32,7 @@ import { emptyPassport, parsePassport, serialisePassport } from './passport';
 import { emptyPlans, parsePlans, serialisePlans } from './pretask';
 import { emptyCompletions, emptyCourses, emptyModules, parseCompletions, parseCourses, parseModules, serialiseCompletions, serialiseCourses, serialiseModules } from './orientation';
 import { emptyWelders, emptyWelds, numberKey, parseWelders, parseWelds, serialiseWelders, serialiseWelds, stampKey } from './weldLog';
+import { emptySpecBook, parseSpecBook, serialiseSpecBook } from './boltingSpec';
 
 export const BACKUP_VERSION = 1;
 export const BACKUP_APP = 'PipeFit Pro';
@@ -74,6 +75,8 @@ export const STORES: readonly Spec[] = [
   // One plan per job per day, like the shift reports.
   { key: 'pipefit.pretask.v1', label: 'pre-task plans', field: 'plans', idOf: (x) => `${x.day}|${projectKey(String(x.project ?? ''))}`, empty: emptyPlans, parse: parsePlans, serialise: serialisePlans },
   { key: 'pipefit.orientation.done.v1', label: 'orientation passes', field: 'completions', idOf: (x) => x.id, empty: emptyCompletions, parse: parseCompletions, serialise: serialiseCompletions },
+  // The company's bolting specs: restored onto a crew phone, the one spec there is becomes the one it bolts to.
+  { key: 'pipefit.boltspecs.v1', label: 'bolting specs', field: 'specs', idOf: (x) => x.id, empty: emptySpecBook, parse: parseSpecBook, serialise: serialiseSpecBook },
 ];
 
 export const specOf = (key: string): Spec | undefined => STORES.find((s) => s.key === key);

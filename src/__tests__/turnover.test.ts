@@ -1,6 +1,6 @@
 import { answerMoved, confirmGap, expectedBolt, isAsked, tapBolt } from '../calc/boltUpSequence';
 import { newHeat, type Heat } from '../calc/heat';
-import { day, heatsUsed, openItems, turnoverHtml, turnoverTotals, type TurnoverInput } from '../print/turnover';
+import { boltingNote, day, heatsUsed, openItems, turnoverHtml, turnoverTotals, type TurnoverInput } from '../print/turnover';
 import { addCheck, newJoint, withState, type Joint } from '../state/register';
 import { newSketch, emptyBook } from '../state/sketchStore';
 
@@ -161,4 +161,16 @@ describe('the page', () => {
 
 test('dates read as a form writes them', () => {
   expect(day(new Date(2026, 8, 7, 9).getTime())).toBe('7 Sep 2026');
+});
+
+describe('the bolting spec on the record', () => {
+  test('each spec the joints were bolted to, with its count, and how many had none', () => {
+    const b = { spec: 'BJ-01 Rev C', stud: 'ASTM A193 B7', stressKsi: 50, nutFactor: 0.16, lubricant: 'Moly paste' };
+    const a = { ...joint('A', FULL, ['H1']), bolting: b };
+    const c = { ...joint('C', FULL, ['H1']), bolting: { ...b, spec: 'BJ-02' } };
+    const none = joint('N', FULL, ['H1']);
+    expect(boltingNote([none])).toBe('');
+    expect(boltingNote([a, a, c, none])).toBe(' Bolted to: BJ-01 Rev C · ASTM A193 B7 at 50 ksi · K 0.16, Moly paste (2 joints); BJ-02 · ASTM A193 B7 at 50 ksi · K 0.16, Moly paste (1 joint). 1 joint with no spec recorded.');
+    expect(turnoverHtml(input({ joints: [a] }))).toContain('Bolted to: BJ-01 Rev C');
+  });
 });

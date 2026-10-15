@@ -1019,6 +1019,25 @@ That is the **Legacy** method. The screen also offers the faster patterns PCC-1 
 
 The class never sets the torque. It sets the stud count and size; the stud size, the material, the lubricant and the gasket set the torque, and that figure comes from the job's bolting spec.
 
+### The company's bolting spec
+
+Enter the job's bolted-joint spec once, and every joint is bolted to it. **Settings → Bolting spec → Set up the bolting spec** (or the button on the bolt-up screen when there is none):
+
+| Field | What it is | Ships as |
+|---|---|---|
+| **Spec** | The document and its revision, as it goes on every record | — |
+| **Stud grade** and **target stress** | What the studs are and the stress on the root area they are pulled to. Chips for B7, B16, L7, B8 Cl.2 and B8M Cl.2 fill the grade; the stress is the spec's figure | ASTM A193 B7 at 50 ksi |
+| **Lubricant** and **nut factor K** | What is on the threads and its tested K. Chips give PCC-1 Appendix J typical values (moly 0.16, nickel or copper 0.18, machine oil 0.20); put the lubricant maker's figure in the box | Moly-based anti-seize, K 0.16 |
+| **Gasket** and **method** | What every joint starts on | Not set, Legacy |
+| **Retighten after** | The dwell before the retightening round, hours; 0 where the spec asks for none | 4 h |
+| **By class** | Any class bolted differently: its own method, gasket or stress (class 900 tensioned on ring joints at 40 ksi, say) | As the spec |
+
+Every new joint then takes the spec's gasket and method for its class and works its own torque by the PCC-1 Appendix K formula, T = K × D × F / 12, with F the load on the root area at the target stress. A 3/4" B7 stud at 50 ksi and K 0.16 comes to 151 ft-lb. The screen shows the spec's line under the torque field, and if the figure is changed by hand it offers the spec's back. A flange the spec's method cannot be used on (too few bolts, the wrong gasket) is bolted by the Legacy pattern and the screen says so.
+
+Each joint keeps a **copy** of the spec's figures on its record, so a spec revised next month does not rewrite what this joint was pulled up to. The turnover PDF lists each spec the joints were bolted to. Cast iron flanges and a bolt count set by hand have no stud size to work from: the spec names the lubricant and stress on the record, and the torque is typed from the spec.
+
+The spec is a record like the joints: a backup from the QC phone carries it to every phone on the crew, and a phone with one spec bolts to it. With more than one, **Settings → Bolting spec** says which.
+
 ### Step by step
 
 1. Tap **Flange bolt-up**. It opens on the size the app is set to, Class 150.
@@ -1026,7 +1045,7 @@ The class never sets the torque. It sets the stud count and size; the stud size,
 3. If the flange is in no table, set **BOLTS** directly. The sequence only needs the count.
 4. Set the **GASKET**. It decides which methods are allowed and goes on the record.
 5. Pick the **METHOD**. Legacy unless the job says otherwise. A method cannot be changed once a bolt is logged; Start over first.
-6. Put the **final torque from the job's bolting spec** in the torque field. The header then shows the figure for each step. On a steel flange the screen also shows the PCC-1 Appendix K reference for that stud at 50 ksi, to check the spec against.
+6. Check the **final torque**. With a company spec on the phone it is already there, worked from the stud, the stress and the K on the spec; without one, type it from the job's bolting spec. The header then shows the figure for each step. On a steel flange with no spec the screen shows the PCC-1 Appendix K reference for that stud at 50 ksi, to check the figure against.
 7. **All snugged** closes the snug round. Then the header says which bolt is next; find it on the face — it has a dark ring around it — and tighten it.
 8. **Tap that bolt.** It changes colour and the header moves to the next one. Under two or four tools the whole group lights up, and any bolt of it marks the group.
 9. After each cross round the screen asks for a **gap check**: feelers round the flange, bring the low side up, then **Gap checked, carry on**.

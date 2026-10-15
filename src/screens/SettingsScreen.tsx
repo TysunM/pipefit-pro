@@ -1,6 +1,6 @@
 import { JOINING_LABEL, MATERIALS, MaterialGroup, calcSchedule, material, resolveSpec, sizeLabel, wallLabel, wallsAt } from '../calc/materials';
 import { wallFor } from '../voice/specs';
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Platform, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Screen } from '../components/Screen';
@@ -13,13 +13,17 @@ import { PipeSheet } from '../components/PipeSheet';
 import { useTheme } from '../theme/ThemeProvider';
 import { useSettings } from '../state/settings';
 import { useLayout } from '../state/layouts';
+import { useBoltingSpecs } from '../state/boltingSpecs';
+import { activeSpec, gasketLabel, methodLabel, newSpec, putSpec, removeSpec, setActive, specId, type BoltingSpec } from '../state/boltingSpec';
+import { BoltingSpecSheet } from '../components/BoltingSpecSheet';
 import { appVersion, buildId, runningBuild, useOtaUpdate, versionRows } from '../state/updates';
 import { useUnits } from '../hooks/useUnits';
 import { findSize } from '../calc/pipe';
 import { FractionDenominator } from '../calc/format';
 import { fromInches } from '../calc/units';
 import { PERSON_MAX, PROJECT_ID_MAX } from '../state/readSettings';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
+import type { RootStackParamList } from '../navigation/types';
 import { backupAge, useLastBackup } from '../state/lastBackup';
 import { API_BASE } from '../ai/apiBase';
 import { askClaudeCheck } from '../ai/claudeCheck';
@@ -29,6 +33,18 @@ export function SettingsScreen() {
   const u = useUnits();
   const { settings, update, reset } = useSettings();
   const layout = useLayout();
+  const route = useRoute<RouteProp<RootStackParamList, 'Settings'>>();
+  const { book, hydrated: specsIn, apply: applySpecs } = useBoltingSpecs();
+  const spec = activeSpec(book);
+  const [editing, setEditing] = useState<BoltingSpec | null>(null);
+  const fresh = () => newSpec('new', Date.now());
+  // Sent here from the bolt-up screen to set the spec up: the sheet opens on arrival.
+  const opened = useRef(false);
+  useEffect(() => {
+    if (opened.current || !specsIn || route.params?.open !== 'bolting') return;
+    opened.current = true;
+    setEditing(spec ?? fresh());
+  }, [specsIn, route.params?.open, spec]);
   const ota = useOtaUpdate();
   const navigation = useNavigation();
   const lastBackup = useLastBackup();
@@ -99,6 +115,35 @@ export function SettingsScreen() {
           autoCapitalize="words"
         />
       </FieldRow>
+
+      <SectionHeader title="Bolting spec" meta={spec ? spec.name : book.specs.length ? 'Pick one' : 'None yet'} />
+      <Text style={[t.type.caption, { color: t.colors.textMuted, paddingHorizontal: t.layout.screenPadding, marginBottom: t.space.md }]}>
+        {spec
+          ? `${spec.stud} at ${spec.stressKsi} ksi · K ${spec.nutFactor}, ${spec.lubricant} · ${gasketLabel(spec.gasket)} · ${methodLabel(spec.method)}${Object.keys(spec.byClass).length ? ` · ${Object.keys(spec.byClass).length} class${Object.keys(spec.byClass).length === 1 ? '' : 'es'} bolted differently` : ''}. Every new joint takes its torque, gasket and method from it and keeps a copy on its record.`
+          : book.specs.length
+            ? 'More than one spec on this phone: say which one the job is bolted to.'
+            : "The job's bolted-joint spec, entered once: stud grade and target stress, lubricant and nut factor, gasket and method, the retightening dwell, and any class bolted differently. Every joint then works its own torque from it and keeps a copy on its record. A backup carries it to the rest of the crew."}
+      </Text>
+      {book.specs.length > 1 ? (
+        <ChipRow label="Using" options={book.specs.map((x) => ({ value: x.id, label: x.name || x.id }))} selected={spec?.id ?? null} onSelect={(id) => applySpecs((b) => setActive(b, id))} />
+      ) : null}
+      <ControlRow>
+        {spec ? <GhostButton label={`Edit ${spec.name}`} icon="create-outline" onPress={() => setEditing(spec)} style={{ flex: 1 }} /> : null}
+        <GhostButton label={spec ? 'New spec' : 'Set up the bolting spec'} icon="add-outline" onPress={() => setEditing(fresh())} style={{ flex: 1 }} />
+      </ControlRow>
+      <BoltingSpecSheet
+        spec={editing}
+        onClose={() => setEditing(null)}
+        onSave={(saved) => {
+          const s = saved.id === 'new' ? { ...saved, id: specId(saved.name, Date.now()), createdAt: Date.now() } : saved;
+          applySpecs((b) => {
+            const next = putSpec(b, s);
+            // The first spec on the phone, or the only one, is the one it bolts to.
+            return next.specs.length === 1 || b.active === null ? setActive(next, s.id) : next;
+          });
+        }}
+        onDelete={(id) => applySpecs((b) => removeSpec(b, id))}
+      />
 
       <SectionHeader title="Smart help" meta="TypeSafe Jev · Claude" />
       <ChipRow
