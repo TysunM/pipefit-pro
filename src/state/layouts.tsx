@@ -19,6 +19,8 @@ type Ctx = {
   move: (zone: string, a: string, b: string) => void;
   /** Everything back where it shipped. */
   reset: () => void;
+  /** Put a layout in place of this phone's: a backup's, read through the layout's own reader. */
+  restore: (layout: Layout) => void;
 };
 
 const LayoutContext = createContext<Ctx | null>(null);
@@ -62,8 +64,9 @@ export function LayoutProvider({ children }: { children: React.ReactNode }) {
   );
 
   const reset = useCallback(() => write(EMPTY_LAYOUT), [write]);
+  const restore = useCallback((next: Layout) => write(parseLayout(serialiseLayout(next))), [write]);
 
-  const value = useMemo<Ctx>(() => ({ layout, hydrated, customised: isCustomised(layout), move, reset }), [layout, hydrated, move, reset]);
+  const value = useMemo<Ctx>(() => ({ layout, hydrated, customised: isCustomised(layout), move, reset, restore }), [layout, hydrated, move, reset, restore]);
   return <LayoutContext.Provider value={value}>{children}</LayoutContext.Provider>;
 }
 

@@ -17,7 +17,12 @@ import { useFittings } from './fittings';
 import { useCuts } from './cuts';
 import { useWelds, useWelders } from './welds';
 import { useInstruments } from './instruments';
-import { backupFileName, backupSummary, makeBackup } from './backup';
+import { usePassport } from './passports';
+import { useOrientationCourses, useOrientationDone, useOrientationModules } from './orientations';
+import { usePreTasks } from './pretasks';
+import { useBoltingSpecs } from './boltingSpecs';
+import { useLayout } from './layouts';
+import { STORES, backupFileName, backupSummary, makeBackup } from './backup';
 import { shareBackup, type FileOutcome } from './backupFile';
 import { useLastBackup } from './lastBackup';
 
@@ -38,6 +43,13 @@ export function useBackupNow() {
   const welds = useWelds();
   const welders = useWelders();
   const instruments = useInstruments();
+  const passport = usePassport();
+  const modules = useOrientationModules();
+  const courses = useOrientationCourses();
+  const done = useOrientationDone();
+  const plans = usePreTasks();
+  const specs = useBoltingSpecs();
+  const layout = useLayout();
   const last = useLastBackup();
   const [busy, setBusy] = useState(false);
 
@@ -54,7 +66,17 @@ export function useBackupNow() {
     'pipefit.welds.v1': { value: welds.log, apply: welds.apply as any },
     'pipefit.welders.v1': { value: welders.roster, apply: welders.apply as any },
     'pipefit.instruments.v1': { value: instruments.register, apply: instruments.apply as any },
+    'pipefit.passport.v1': { value: passport.passport, apply: passport.apply as any },
+    'pipefit.orientation.v1': { value: modules.store, apply: modules.apply as any },
+    'pipefit.orientation.courses.v1': { value: courses.courses, apply: courses.apply as any },
+    'pipefit.pretask.v1': { value: plans.log, apply: plans.apply as any },
+    'pipefit.orientation.done.v1': { value: done.done, apply: done.apply as any },
+    'pipefit.boltspecs.v1': { value: specs.book, apply: specs.apply as any },
   };
+  // Every store the backup knows is here, or the file would carry it empty
+  // and a restore would find nothing to add. Loud in development, so a store
+  // added to backup.ts cannot be forgotten here again.
+  if (__DEV__) for (const s of STORES) if (!(s.key in stores)) console.warn(`useBackupNow: ${s.key} is not backed up`);
   const values = Object.fromEntries(Object.entries(stores).map(([k, s]) => [k, s.value]));
   const summary = backupSummary(values);
   const total = summary.reduce((n, s) => n + s.count, 0);
@@ -62,7 +84,7 @@ export function useBackupNow() {
   const backUp = async (): Promise<FileOutcome> => {
     setBusy(true);
     const now = new Date();
-    const out = await shareBackup(makeBackup(values, settings, now), backupFileName(now, settings.projectId));
+    const out = await shareBackup(makeBackup(values, settings, now, layout.layout), backupFileName(now, settings.projectId));
     setBusy(false);
     if (out.ok) {
       last.mark(now.getTime());

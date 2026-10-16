@@ -33,6 +33,7 @@ import { emptyPlans, parsePlans, serialisePlans } from './pretask';
 import { emptyCompletions, emptyCourses, emptyModules, parseCompletions, parseCourses, parseModules, serialiseCompletions, serialiseCourses, serialiseModules } from './orientation';
 import { emptyWelders, emptyWelds, numberKey, parseWelders, parseWelds, serialiseWelders, serialiseWelds, stampKey } from './weldLog';
 import { emptySpecBook, parseSpecBook, serialiseSpecBook } from './boltingSpec';
+import { parseLayout, serialiseLayout, type Layout } from './layout';
 
 export const BACKUP_VERSION = 1;
 export const BACKUP_APP = 'PipeFit Pro';
@@ -89,13 +90,18 @@ const countOf = (spec: Spec, v: Value): number => (Array.isArray(v[spec.field]) 
 // ------------------------------------------------------------ making one
 
 /**
- * The backup file: every store as it is saved on the phone, and the
- * settings. Readable JSON, so a man can see it is his and not a blob.
+ * The backup file: every store as it is saved on the phone, the settings,
+ * and where the tabs and tiles stand (state/layout.ts), which goes with the
+ * settings because it is the same kind of thing: a choice, not a record.
+ * Readable JSON, so a man can see it is his and not a blob.
  */
-export function makeBackup(values: Readonly<Record<string, Value>>, settings: unknown, now: Date): string {
+export function makeBackup(values: Readonly<Record<string, Value>>, settings: unknown, now: Date, layout: Layout | null = null): string {
   const stores: Record<string, unknown> = {};
   for (const s of STORES) stores[s.key] = JSON.parse(s.serialise(values[s.key] ?? s.empty()));
-  return JSON.stringify({ app: BACKUP_APP, backup: BACKUP_VERSION, made: now.toISOString(), settings, stores }, null, 1);
+  const file: Record<string, unknown> = { app: BACKUP_APP, backup: BACKUP_VERSION, made: now.toISOString(), settings };
+  if (layout) file.layout = JSON.parse(serialiseLayout(layout));
+  file.stores = stores;
+  return JSON.stringify(file, null, 1);
 }
 
 /** What a backup holds, for the line under the button: "12 pressure tests, 40 joints…". */
@@ -120,6 +126,8 @@ export type ReadBackup =
       stores: Record<string, Value>;
       /** The settings as saved, untouched; the screen reads them with the settings' own reader. */
       settings: unknown;
+      /** Where the tabs and tiles stood, read by the layout's own reader; null when the file carries none (made before layouts, or by a phone that never moved one). */
+      layout: Layout | null;
       /** Stores written by a newer app than this one, left out. */
       newer: string[];
     };
@@ -150,7 +158,8 @@ export function readBackup(text: string): ReadBackup {
     if (parsed.foreign) newer.push(s.label);
     else stores[s.key] = parsed;
   }
-  return { ok: true, made: typeof v.made === 'string' ? v.made : '', stores, settings: v.settings ?? null, newer };
+  const layout = v.layout && typeof v.layout === 'object' ? parseLayout(JSON.stringify(v.layout)) : null;
+  return { ok: true, made: typeof v.made === 'string' ? v.made : '', stores, settings: v.settings ?? null, layout, newer };
 }
 
 /**
