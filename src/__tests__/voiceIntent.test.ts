@@ -1,5 +1,5 @@
 import { lengthAt, normalise, numberAt, tokens } from '../voice/words';
-import { LISTEN_FOR, TOOL_WORDS, localIntent, readFigures, spokenValue } from '../voice/intent';
+import { LISTEN_FOR, TOOL_WORDS, bestLocal, lenientIntent, localIntent, readFigures, spokenValue } from '../voice/intent';
 import { TOOLS } from '../navigation/groups';
 
 const num = (s: string) => numberAt(tokens(s), 0)?.value;
@@ -233,5 +233,80 @@ describe('every tab along the bottom opens by voice', () => {
   test('a tool inside a tab still wins over the tab', () => {
     expect(localIntent('weld log', null)).toEqual({ kind: 'open', route: 'WeldLog' });
     expect(localIntent('test log', null)).toEqual({ kind: 'open', route: 'PressureTests' });
+  });
+});
+
+describe('heard the way a fitter hears it', () => {
+  const bare = (n: number) => ({ n, inches: false });
+  const bolts12 = { kind: 'open', route: 'FlangeBoltUp', figures: { bolts: bare(12) } };
+
+  test('"12 volt" on the bolt-up is 12 bolts: there is no volt on a flange', () => {
+    expect(localIntent('flange bolt up, 12 volt', null)).toEqual(bolts12);
+    expect(localIntent('flange bolt up, 12volt', null)).toEqual(bolts12);
+    expect(localIntent('flange 12 volts', null)).toEqual(bolts12);
+    // With no tool known, "bowl" is as near the bill of materials as a bolt; with the bolt-up named, it is a bolt.
+    expect(localIntent('bolt up 12 bowl', null)).toEqual(bolts12);
+  });
+
+  test('a tool name a letter or two off, broken in two, or run together', () => {
+    expect(localIntent('bold cup', null)).toEqual({ kind: 'open', route: 'FlangeBoltUp' });
+    expect(localIntent('hydra', null)).toEqual({ kind: 'open', route: 'PressureTests' });
+    expect(localIntent('bring up the hydra test', null)).toEqual({ kind: 'open', route: 'PressureTests' });
+    expect(localIntent('i so', null)).toEqual({ kind: 'open', route: 'IsoSketch' });
+    expect(localIntent('i so sketch', null)).toEqual({ kind: 'open', route: 'IsoSketch' });
+    expect(localIntent('heat books', null)).toEqual({ kind: 'open', route: 'Heats' });
+    expect(localIntent('weld lock', null)).toEqual({ kind: 'open', route: 'WeldLog' });
+    expect(localIntent('cut lists', null)).toEqual({ kind: 'open', route: 'CutList' });
+    expect(localIntent('open the saddle band', null)).toEqual({ kind: 'open', route: 'SaddleBend' });
+    expect(localIntent('star patern', null)).toEqual({ kind: 'open', route: 'FlangeBoltUp' });
+    expect(localIntent('shift reports', null)).toEqual({ kind: 'open', route: 'ShiftReport' });
+  });
+
+  test('figures said with the wrong mouth', () => {
+    expect(localIntent('rolling offset rice 12 role 8 run 30', null)).toEqual({
+      kind: 'open',
+      route: 'RollingOffset',
+      figures: { rise: bare(12), roll: bare(8), run: bare(30) },
+    });
+    expect(localIntent('rice 12 role 8', 'RollingOffset')).toEqual({ kind: 'open', route: 'RollingOffset', figures: { rise: bare(12), roll: bare(8) } });
+    expect(localIntent('miter 90 degrees 4 segment', null)).toEqual({ kind: 'open', route: 'MiterBend', figures: { angle: bare(90), segments: bare(4) } });
+    expect(spokenValue('tree foot six', 'length')).toEqual({ n: 42, inches: true });
+    expect(spokenValue('twenty too and a half degrees', 'angle')).toEqual({ n: 22.5, inches: false });
+  });
+
+  test('and the pipe spec', () => {
+    expect(localIntent('half inch stainles 40s', null)).toEqual({ kind: 'specs', material: 'ss316l', nps: 0.5, wall: '40S' });
+    expect(localIntent('six inch pbc', null)).toEqual({ kind: 'specs', material: 'pvc', nps: 6 });
+  });
+
+  test("a word near nothing the app knows is not guessed at: that sentence is still Claude's", () => {
+    expect(localIntent('flange bolt up 12 giraffe', null)).toBeNull();
+    expect(localIntent('two 6 inch welds, weld 14 rejected for porosity', null)).toBeNull();
+    expect(localIntent('hydro passed at 225', null)).toBeNull();
+    expect(localIntent('the weather', null)).toBeNull();
+    expect(lenientIntent('two 6 inch welds, weld 14 rejected for porosity', null)).toBeNull();
+  });
+
+  test('leniently, one word the app could not place is let go and handed back', () => {
+    expect(lenientIntent('bolt up 12 giraffe', null)).toEqual({ ...bolts12, ignored: ['giraffe'] });
+    expect(lenientIntent('bring up the hydro, giraffe', null)).toEqual({ kind: 'open', route: 'PressureTests', ignored: ['giraffe'] });
+    expect(lenientIntent('flange bolt up 12 giraffe elephant', null)).toBeNull();
+    expect(lenientIntent('rice 12', null)).toBeNull();
+  });
+
+  test('every transcript the recogniser offered is tried, whole before lenient', () => {
+    expect(bestLocal(['flange bolt up 12 volt', 'flange bolt up 12 bolt'], null)).toEqual({ cmd: bolts12, heard: 'flange bolt up 12 volt' });
+    expect(bestLocal(['flange bolt up 12 giraffe', 'flange bolt up 12 bolt'], null)).toEqual({ cmd: bolts12, heard: 'flange bolt up 12 bolt' });
+    expect(bestLocal(['flange bolt up 12 giraffe', 'flange bolt up 12 zebra'], null)).toEqual({ cmd: { ...bolts12, ignored: ['giraffe'] }, heard: 'flange bolt up 12 giraffe' });
+    expect(bestLocal(['rise twelve', 'rice 12'], 'RollingOffset')).toEqual({ cmd: { kind: 'open', route: 'RollingOffset', figures: { rise: bare(12) } }, heard: 'rise twelve' });
+    expect(bestLocal(['two 6 inch welds, weld 14 rejected for porosity', 'two six inch welds'], null)).toBeNull();
+    expect(bestLocal(['', '  '], null)).toBeNull();
+    expect(bestLocal([], null)).toBeNull();
+  });
+
+  test('a figure read comes with what it could not place', () => {
+    expect(readFigures(tokens('12 bolt'), 'FlangeBoltUp')).toEqual({ figures: { bolts: bare(12) }, ignored: [] });
+    expect(readFigures(tokens('12 bolt giraffe'), 'FlangeBoltUp')).toBeNull();
+    expect(readFigures(tokens('12 bolt giraffe'), 'FlangeBoltUp', true)).toEqual({ figures: { bolts: bare(12) }, ignored: ['giraffe'] });
   });
 });

@@ -6,8 +6,13 @@
 // hearing the phone's own "Mark 4 cut" back does nothing a second time; and
 // nothing the phone says is a command on its own, because anything heard
 // that is not a mark, a done word or filler means it was not a tick.
+//
+// A word a letter or two off a tick word is heard as it (hear.ts): "4 down"
+// is "4 done", "text" is "next", "under 4" is "undo 4". Every word the phone
+// says back is in the vocabulary, so none of them is ever bent into one.
 
-import { numberAt, tokens } from './words';
+import { snapWords, splitGlued } from './hear';
+import { NUMBER_WORDS, numberAt, tokens } from './words';
 
 export type Tick = { kind: 'set'; key: string; done: boolean } | { kind: 'next' };
 
@@ -16,11 +21,27 @@ const UNDO = new Set(['undo', 'uncut', 'not', 'untick', 'reopen']);
 const FILLER = new Set(['mark', 'number', 'no', 'piece', 'the', 'is', 'has', 'been', 'that', 'its', 'ok', 'okay', 'please', 'and', 'was', 'got', 'just', 'cuts', 'it', 'one', 'now', 'with', 'for']);
 const NEXT = [['next'], ['whats', 'next'], ['what', 'is', 'next'], ['next', 'one'], ['next', 'cut'], ['next', 'piece']];
 
+/** What the phone says back at the saw, and words said round a mark: known, so never heard as something else. */
+const SAID_BACK = [
+  'all', 'nothing', 'left', 'on', 'list', 'this', 'there', 'are', 'tap', 'you', 'mean', 'already', 'hadnt', 'yet', 'to', 'again', 'thats', 'last',
+  'inch', 'inches', 'hands', 'free', 'say', 'then', 'or', 'mic', 'stopped', 'turn', 'line', 'pipe', 'of', 'a', 'in', 'at',
+];
+const VOCAB: ReadonlySet<string> = new Set([...DONE, ...UNDO, ...FILLER, ...NEXT.flat(), ...NUMBER_WORDS, ...SAID_BACK]);
+/** The words a tick turns on, heard from a little further off. */
+const PREFER: ReadonlySet<string> = new Set([...DONE, ...UNDO, 'next']);
+
 /** A mark as it is matched: letters and digits only, lower case. "SP-12-1" is "sp121". */
 export const markKey = (mark: string): string => mark.toLowerCase().replace(/[^a-z0-9]/g, '');
 
 export function readTick(text: string): Tick | null {
-  const ws = tokens(text).map((w) => w.replace(/'/g, ''));
+  const ws = snapWords(
+    splitGlued(
+      tokens(text).map((w) => w.replace(/'/g, '')),
+      VOCAB,
+    ),
+    VOCAB,
+    PREFER,
+  );
   if (!ws.length || ws.length > 10) return null;
   if (NEXT.some((p) => p.length === ws.length && p.every((w, i) => ws[i] === w))) return { kind: 'next' };
 

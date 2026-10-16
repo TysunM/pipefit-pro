@@ -18,6 +18,13 @@ const SPEC_FILLER = new Set([
   'project', 'line', 'type', 'wall', 'size', 'in', 'for', 'ok', 'okay', 'steel', 'tp', 'elbows', 'elbow', 'ells', 'ell', 'fittings',
 ]);
 
+/** Every word a spec can be said with, for the matcher's vocabulary (intent.ts). */
+export const SPEC_WORDS: readonly string[] = [
+  ...SPEC_FILLER,
+  'schedule', 'sch', 'skid', 'sked', 'standard', 'std', 'weight', 'xxs', 'xs', 'double', 'extra', 'strong', 'dr', 'sdr', 'class', 'pressure',
+  's', 'long', 'short', 'radius', 'lr', 'sr', 'inch', 'inches', 'half', 'quarter',
+];
+
 /** "schedule 40", "sch 80", "40s", "forty s", "standard", "double extra strong", "dr 11", "class 52". */
 function wallAt(ws: readonly string[], i: number): { wall: string; next: number } | null {
   const w = ws[i]!;

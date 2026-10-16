@@ -29,7 +29,11 @@ export function canListen(): boolean {
   }
 }
 
-export type Heard = { text: string } | { error: 'no-speech' | 'denied' | 'busy' | 'unavailable' | 'network' | 'aborted' | 'other' };
+/** What was heard: the recogniser's best transcript, and every one it offered, best first (the best is the first). */
+export type Heard = { text: string; alternatives: string[] } | { error: 'no-speech' | 'denied' | 'busy' | 'unavailable' | 'network' | 'aborted' | 'other' };
+
+/** How many transcripts the recogniser is asked for. Its second guess is often the right word. */
+export const ALTERNATIVES = 5;
 
 let permitted = false;
 
@@ -53,19 +57,31 @@ export function stopListening(): void {
 
 type Ended = { error: Exclude<Heard, { text: string }>['error'] } | { ok: true };
 
+/** The transcripts in a result event, best first, with blanks and repeats dropped. */
+export function transcriptsOf(results: unknown): string[] {
+  if (!Array.isArray(results)) return [];
+  const out: string[] = [];
+  for (const r of results) {
+    const t = r && typeof r === 'object' ? (r as { transcript?: unknown }).transcript : undefined;
+    if (typeof t === 'string' && t.trim() && !out.includes(t)) out.push(t);
+  }
+  return out;
+}
+
 /**
- * One listening session. Each thing said comes to `onSaid` as it is finished;
- * the words so far come to `onHeard`. With `continuous`, the session stays
- * open across pauses (Android 13 and up, and Chrome); without, it closes after
- * the first. Settles when the session ends, saying why.
+ * One listening session. Each thing said comes to `onSaid` as it is finished,
+ * with every transcript the recogniser offered for it, best first; the words
+ * so far come to `onHeard`. With `continuous`, the session stays open across
+ * pauses (Android 13 and up, and Chrome); without, it closes after the first.
+ * Settles when the session ends, saying why.
  */
-async function session(opts: { continuous: boolean; onHeard?: (partial: string) => void; onSaid: (text: string) => void }): Promise<Ended> {
+async function session(opts: { continuous: boolean; onHeard?: (partial: string) => void; onSaid: (alternatives: string[]) => void }): Promise<Ended> {
   if (!canListen()) return { error: 'unavailable' };
   if (current) return { error: 'busy' };
   if (!(await permission())) return { error: 'denied' };
 
   return new Promise<Ended>((resolve) => {
-    let last = '';
+    let last: string[] = [];
     let said = 0;
     let done = false;
     const subs: { remove: () => void }[] = [];
@@ -87,18 +103,18 @@ async function session(opts: { continuous: boolean; onHeard?: (partial: string) 
       },
     };
     const flush = () => {
-      if (!last) return;
-      const text = last;
-      last = '';
+      if (!last.length) return;
+      const texts = last;
+      last = [];
       said += 1;
-      opts.onSaid(text);
+      opts.onSaid(texts);
     };
     subs.push(
       mod.addListener('result', (e: any) => {
-        const text: string = e?.results?.[0]?.transcript ?? '';
-        if (text) {
-          last = text;
-          opts.onHeard?.(text);
+        const texts = transcriptsOf(e?.results);
+        if (texts.length) {
+          last = texts;
+          opts.onHeard?.(texts[0]!);
         }
         if (e?.isFinal) flush();
       }),
@@ -130,7 +146,7 @@ async function session(opts: { continuous: boolean; onHeard?: (partial: string) 
       mod.start({
         lang: 'en-US',
         interimResults: true,
-        maxAlternatives: 1,
+        maxAlternatives: ALTERNATIVES,
         continuous: opts.continuous,
         contextualStrings: LISTEN_FOR,
         // Commands, not dictation.
@@ -144,12 +160,12 @@ async function session(opts: { continuous: boolean; onHeard?: (partial: string) 
 
 /** Listen for one thing said, and settle with it, or with why nothing was heard. */
 export async function listenOnce(onHeard?: (partial: string) => void): Promise<Heard> {
-  let text = '';
+  let texts: string[] = [];
   const end = await session({
     continuous: false,
     onHeard,
     onSaid: (t) => {
-      if (!text) text = t;
+      if (!texts.length) texts = t;
       try {
         mod.stop();
       } catch {
@@ -157,7 +173,7 @@ export async function listenOnce(onHeard?: (partial: string) => void): Promise<H
       }
     },
   });
-  if (text) return { text };
+  if (texts.length) return { text: texts[0]!, alternatives: texts };
   return 'error' in end ? end : { error: 'no-speech' };
 }
 
@@ -167,7 +183,7 @@ export async function listenOnce(onHeard?: (partial: string) => void): Promise<H
  * started again; one the phone refuses is not.
  */
 export async function listenOn(
-  onSaid: (text: string) => void,
+  onSaid: (alternatives: string[]) => void,
   opts: { onHeard?: (partial: string) => void; still: () => boolean },
 ): Promise<Exclude<Heard, { text: string }>['error'] | null> {
   while (opts.still()) {
