@@ -3,6 +3,9 @@ import { addCut, emptyCuts } from '../state/cutLog';
 import { emptyLibrary, setTakeout } from '../state/fittingLibrary';
 import { addReading, emptyLog } from '../state/levelLog';
 import { emptyShifts, newReport } from '../state/shiftLog';
+import { EMPTY_LAYOUT, HOME_ZONE, TABS_ZONE, moveId, shippedOrder, withOrder } from '../state/layout';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 const T = 1_760_000_000_000;
 const cut = { pipeKey: 'cs:40|2', pipe: '2" CS SCH 40', c2c: 48, cut: 41.8125, ends: '90 × 90' };
@@ -137,5 +140,44 @@ describe('the Home nudge', () => {
     expect(shouldNudge({ lastAt: null, snoozedUntil: null, records: 0, now }).show).toBe(false);
     expect(shouldNudge({ lastAt: null, snoozedUntil: now + DAY / 2, records: 3, now }).show).toBe(false);
     expect(shouldNudge({ lastAt: null, snoozedUntil: now - 1, records: 3, now }).show).toBe(true);
+  });
+});
+
+describe('the layout in the backup', () => {
+  test('goes with the settings and reads back as it was', () => {
+    const layout = withOrder(withOrder(EMPTY_LAYOUT, TABS_ZONE, moveId(shippedOrder(TABS_ZONE), 'calc', 'edu')), HOME_ZONE, [...shippedOrder(HOME_ZONE)].reverse());
+    const read = readBackup(makeBackup(phone(), {}, new Date(T), layout));
+    if (!read.ok) throw new Error(read.why);
+    expect(read.layout).toEqual(layout);
+    expect(JSON.parse(makeBackup(phone(), {}, new Date(T), layout)).layout.zones[TABS_ZONE]).toEqual(layout.zones[TABS_ZONE]);
+  });
+
+  test('a file with none, from before or from a phone that never moved anything, has none to put back', () => {
+    const read = readBackup(makeBackup(phone(), {}, new Date(T)));
+    expect(read.ok && read.layout).toBeNull();
+    const older = JSON.parse(makeBackup(phone(), {}, new Date(T)));
+    delete older.layout;
+    const back = readBackup(JSON.stringify(older));
+    expect(back.ok && back.layout).toBeNull();
+  });
+
+  test('a damaged layout in the file reads as the shipped one, and never fails the backup', () => {
+    const file = JSON.parse(makeBackup(phone(), {}, new Date(T), EMPTY_LAYOUT));
+    file.layout = { version: 1, zones: { [TABS_ZONE]: 'edu', nowhere: ['x'] } };
+    const read = readBackup(JSON.stringify(file));
+    expect(read.ok && read.layout).toEqual(EMPTY_LAYOUT);
+    file.layout = 'rubbish';
+    const back = readBackup(JSON.stringify(file));
+    expect(back.ok && back.layout).toBeNull();
+  });
+});
+
+describe('what the phone backs up', () => {
+  test('every store the backup knows is read off the phone, not left empty', () => {
+    // The hook is React and cannot run here; its source names each store it
+    // reads, and a store added to backup.ts without being added there would
+    // go into every backup as nothing.
+    const source = readFileSync(join(__dirname, '..', 'state', 'useBackupNow.ts'), 'utf8');
+    for (const s of STORES) expect(source).toContain(`'${s.key}'`);
   });
 });

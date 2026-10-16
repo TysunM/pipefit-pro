@@ -19,12 +19,14 @@ import { ReadBackup, counted, mergeStore, readBackup, restorePlan } from '../sta
 import { pickBackupText } from '../state/backupFile';
 import { useBackupNow } from '../state/useBackupNow';
 import { backupAge } from '../state/lastBackup';
+import { useLayout } from '../state/layouts';
 
 type Read = Extract<ReadBackup, { ok: true }>;
 
 export function BackupScreen() {
   const t = useTheme();
   const { settings, update } = useSettings();
+  const layout = useLayout();
   const { stores, values, summary, total, backUp: shareNow, busy, lastAt } = useBackupNow();
   const age = backupAge(lastAt, Date.now());
 
@@ -75,10 +77,12 @@ export function BackupScreen() {
     if (withSettings && read.settings && typeof read.settings === 'object') {
       update(readSettings(JSON.stringify(read.settings), DEFAULT_SETTINGS).settings);
     }
+    // The layout goes with the settings: where the tabs and tiles stood on the phone that made the file.
+    if (withSettings && read.layout) layout.restore(read.layout);
     void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
     setRead(null);
     setWithSettings(false);
-    setNote({ text: `Restored: ${added} record${added === 1 ? '' : 's'} added${withSettings ? ', and the settings' : ''}. Nothing on the phone was changed.`, warn: false });
+    setNote({ text: `Restored: ${added} record${added === 1 ? '' : 's'} added${withSettings ? `, and the settings${read.layout ? ' and layout' : ''}` : ''}. Nothing else on the phone was changed.`, warn: false });
   };
 
   const made = read?.made ? new Date(read.made) : null;
@@ -142,11 +146,13 @@ export function BackupScreen() {
             style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.md, paddingVertical: t.space.sm }}
           >
             <Ionicons name={withSettings ? 'checkbox' : 'square-outline'} size={24} color={withSettings ? t.colors.accent : t.colors.textMuted} />
-            <Text style={[t.type.body, { color: t.colors.text, flex: 1 }]}>Also put back the settings (units, job, pipe, name). Replaces this phone's.</Text>
+            <Text style={[t.type.body, { color: t.colors.text, flex: 1 }]}>
+              {read.layout ? 'Also put back the settings and layout (units, job, pipe, name, where the tabs and tiles stand). Replaces this phone\'s.' : 'Also put back the settings (units, job, pipe, name). Replaces this phone\'s.'}
+            </Text>
           </Pressable>
           <ControlRow>
             <AccentButton
-              label={adds || withSettings ? `Restore ${adds} record${adds === 1 ? '' : 's'}${withSettings ? ' + settings' : ''}` : 'Nothing new to add'}
+              label={adds || withSettings ? `Restore ${adds} record${adds === 1 ? '' : 's'}${withSettings ? (read.layout ? ' + settings and layout' : ' + settings') : ''}` : 'Nothing new to add'}
               icon="cloud-download-outline"
               onPress={() => (adds || withSettings ? restore() : setRead(null))}
               style={{ flex: 1 }}

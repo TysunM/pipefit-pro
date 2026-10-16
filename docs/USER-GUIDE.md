@@ -78,7 +78,7 @@ The tiles on Home, Tools, Logs and Edu, and the cards down the Projects page, mo
 
 On Home, **Recently used** stays as you left it until you open a tool, which puts that one first, as it always has. The **Field tools** keep the order you put them in.
 
-**Settings → Layout → Put everything back where it shipped** undoes all of it. The order is kept on the phone, not in the backup file.
+**Settings → Layout → Put everything back where it shipped** undoes all of it. The order goes into the backup file with the settings, so a new phone restored with **Also put back the settings and layout** stands the same way.
 
 ---
 
@@ -151,6 +151,7 @@ Everything you save lives on this phone only: pressure tests and signatures, the
 - **Home asks too:** with records on the phone and no backup in a week (or ever), an amber card on Home says what would be lost. **Back up now** makes the file right there; **Not today** hides it for a day.
 - **Restore** on this phone or a new one: **Restore from a backup file**, pick it, and the app shows what it would add for each kind of record before anything is written. A backup that came as text can be pasted instead.
 - **Restore only ever adds.** A record already on the phone stays as it is, so an old backup cannot undo newer work, and restoring the same file twice adds nothing the second time.
+- **Also put back the settings and layout** is the one thing that replaces: units, job, pipe, name, and where the tabs and tiles stand, as they were on the phone that made the file. Leave it off to keep this phone's own.
 - Settings come back only if you tick **Also put back the settings**.
 
 # Part 2 — The three ideas everything is built on
