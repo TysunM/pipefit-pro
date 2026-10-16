@@ -1208,6 +1208,21 @@ Two things it refuses on purpose, because both come down to the same rule — **
 
 ---
 
+### The joint record (ASME PCC-1 Appendix R)
+
+One page per joint, the record a QC file keeps. On a named joint, under **Sign-off**, tap **Share the joint record**: on a phone it becomes a PDF and goes to the share sheet; in a browser it prints.
+
+What is on it:
+
+- The joint and the job, the flange (size and class, the stud count, size and threads from B16.5), the gasket and the method.
+- The bolting spec it was bolted to, with the stud grade, target stress, nut factor and lubricant as copied onto the joint when it was made.
+- The final torque and the torque wrench, with the calibration register's word on it for the day the joint was finished.
+- When the bolt-up started and finished, and **every round**: its load (the torque for that round), its order, the bolts in the sequence they were taken, when it closed, and how a check round ended.
+- The retightening rounds, with torque and notes.
+- **Signatures**: *Assembled by* and *Witnessed by*, drawn on the phone. Type the name, then **Sign as …**; a changed name clears its signature, because a different name is a different person. Unsigned lines print as lines to sign on paper.
+
+An unfinished joint prints with **OPEN** under the title and says where it is; a finished one not yet retightened says that. The app records the sequence; it does not measure torque, and the record says so.
+
 ## Retightening log
 
 **A joint that was right cold can be slack hot. This records what you find when you go back.**
