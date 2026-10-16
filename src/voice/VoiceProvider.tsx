@@ -24,7 +24,7 @@ import { useShifts } from '../state/shifts';
 import { usePreTasks } from '../state/pretasks';
 import { testName } from '../state/pressureLog';
 import { applyPretask, applyShift, applyTest } from './apply';
-import { VoiceCommand, localIntent } from './intent';
+import { VoiceCommand, bestLocal, localIntent } from './intent';
 import { canListen, heardWords, listenOn, listenOnce, stopListening } from './listen';
 import { publishFigures } from './figures';
 import { FigureSpec, Figures, TOOL_FIGURES, isFigureRoute } from './toolFigures';
@@ -174,8 +174,11 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
           const refused = openWith(cmd.route, cmd.figures);
           if (refused) return finish(heard, refused, { tone: 'warn' });
           // Opening a screen is answer enough; figures are shown, not said.
+          // A word the app could not place is shown too, so a mishearing is
+          // seen for what it was rather than silently dropped.
           const said = cmd.figures ? figuresSaid(cmd.route, cmd.figures) : '';
-          return setSheet({ phase: 'done', heard, reply: said ? `${titleOf(cmd.route)}: ${said}` : titleOf(cmd.route), tone: 'ok' });
+          const missed = cmd.ignored?.length ? ` Didn't catch “${cmd.ignored.join(' ')}”.` : '';
+          return setSheet({ phase: 'done', heard, reply: `${said ? `${titleOf(cmd.route)}: ${said}` : titleOf(cmd.route)}${missed}`, tone: missed ? 'warn' : 'ok' });
         }
       }
     },
@@ -248,16 +251,24 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
     [finish, setSpecs],
   );
 
+  // What was heard is tried the way a person would hear it: the screen's own
+  // words first; then every transcript the recogniser offered, each word
+  // taken as the nearest one the app knows, and a command one word short
+  // of whole done anyway with the word shown; only then Claude, with the
+  // top transcript as it was said.
   const run = useCallback(
-    (heard: string) => {
+    (alternatives: string[]) => {
+      const heard = alternatives[0] ?? '';
       const screen = nav.isReady() ? (nav.getCurrentRoute()?.name ?? null) : null;
-      const own = screenVoice.current?.(heard);
-      if (own) return finish(heard, own);
-      const cmd = localIntent(heard, screen);
-      if (cmd) runLocal(heard, cmd);
+      for (const t of alternatives) {
+        const own = screenVoice.current?.(t);
+        if (own) return finish(heard, own);
+      }
+      const local = bestLocal(alternatives, screen);
+      if (local) runLocal(local.heard === heard ? heard : `${heard} (heard as “${local.heard}”)`, local.cmd);
       else void runClaude(heard, screen);
     },
-    [runLocal, runClaude],
+    [finish, runLocal, runClaude],
   );
 
   const talk = useCallback(() => {
@@ -270,7 +281,7 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
     setSheet({ phase: 'listening', heard: '', reply: '', tone: 'ok' });
     void listenOnce((partial) => setSheet((v) => (v?.phase === 'listening' ? { ...v, heard: partial } : v))).then((h) => {
       listening.current = false;
-      if ('text' in h) return run(h.text);
+      if ('text' in h) return run(h.alternatives);
       const words = heardWords(h.error);
       if (!words) return setSheet(null);
       setSheet({ phase: 'done', heard: '', reply: words, tone: 'warn' });
@@ -296,9 +307,11 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
       const h0 = bolts.current;
       if (h0 && freeOn.current) await sayThen(h0('repeat'));
       const err = await listenOn(
-        (heard) => {
+        (alternatives) => {
           if (!freeOn.current) return;
-          const cmd = localIntent(heard, 'FlangeBoltUp');
+          const heard = alternatives[0] ?? '';
+          // Any transcript the recogniser offered that is a bolt word is taken.
+          const cmd = alternatives.map((t) => localIntent(t, 'FlangeBoltUp')).find((c) => c?.kind === 'bolt' || c?.kind === 'cancel') ?? null;
           if (cmd?.kind === 'cancel') return setHandsFree(false);
           if (cmd?.kind !== 'bolt' || !bolts.current) {
             setSheet({ phase: 'listening', heard, reply: 'Say done, undo or repeat.', tone: 'warn' });

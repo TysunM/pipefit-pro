@@ -395,7 +395,7 @@ Socket and no-hub makeups differ by maker (Charlotte, Spears, Tyler, AB&I…), s
 - **"Take it"** shoots, once the label or table fills the frame.
 - The read comes back to check on screen, the same as by hand.
 - **"Save"** keeps what is ticked. **"Again"** goes back to the camera. **"Cancel"** closes it.
-- It answers only those words, said on their own. Anything else, including the phone's own voice, is ignored.
+- It answers only those words, said on their own; a word a letter off one of them ("safe", "a gain") counts. Anything else, including the phone's own voice, is ignored.
 - The job's pipe must be PVC, CPVC or cast iron soil; say it first ("2 inch PVC").
 
 **The fitting library screen** (Logs tab → Fitting library, or say "fitting library") shows every saved takeout by line (PVC SCH 40, CI CISPI 301…):
@@ -424,7 +424,7 @@ The **Cut list** (Projects page, the link under the answer, or say "cut list"):
 
 - A mark is matched by its letters and digits: "S P twelve one" finds SP-12-1.
 - Saying "done" sets a cut done; it never flips it, so saying it twice is harmless.
-- Anything else heard is ignored, including the phone's own voice.
+- A tick word a letter or two off ("4 down", "text", "under 4") is heard as the tick. Anything else heard is ignored, including the phone's own voice.
 
 **From a 3D spool:** tap **Send N legs to cut list** under the drawing (or say **"add it"** with the spool open). Each leg goes on marked by the spool, SP-12-1, SP-12-2…, with its elbows named. Change the spool and send it again: legs not yet cut are updated in place, never listed twice, and a leg already cut is left alone. An unsaved spool is saved first, because its name is the mark.
 
@@ -1512,6 +1512,8 @@ The round mic low on the right of every screen. Tap it, say it, and the app does
 
 Tool names are matched on the phone, at once. Everything else is read by Claude through the app's server, which needs signal.
 
+**Misheard words are taken for what they nearly are.** The phone's recogniser knows everyday speech, not the trade, so it writes "12 volt" for 12 bolt, "bold cup" for bolt up, "hydra" for hydro, "rice 12, role 8" for rise 12, roll 8. The app hears those the way a fitter would: a word it does not know is taken as the nearest one it does, nearer still when it belongs to the tool just named, and every guess the recogniser offered is tried before anything goes to Claude. A command one word short of making sense is done anyway, and the panel says what it did not catch. A word near nothing the app knows is left as said, and that sentence goes to Claude as said, so nothing is quietly made up.
+
 ### Figures by voice
 
 Every bend and offset tool takes its figures by name. Say the tool and the figures together, or open the tool and say just the figures. A number with no name goes in the first field.
@@ -1555,7 +1557,7 @@ Anything else it hears is shown and ignored, so a conversation nearby does not l
 - **"The microphone is off for PipeFit":** phone Settings → Apps → PipeFit Pro → Permissions → Microphone → Allow.
 - **"Claude is not set up on the server":** the Worker needs `ANTHROPIC_API_KEY` and `CLAUDE_MODEL` (see RELEASE.md). Tool names still work.
 - **"Test Claude in Settings shows why":** Settings → Smart help → **Test Claude** asks Claude one word and shows what came back, in Anthropic's words when it is a no. An Anthropic account with no credit, or a retired model name in `CLAUDE_MODEL`, are the usual causes.
-- **Misheard tools:** say the name on the tile ("flange bolt-up", "pressure tests"). Every tile name is taught to the recogniser.
+- **Misheard tools:** a word near a tool's name opens the tool ("hydra" opens the hydro test). If it still misses, say the name on the tile ("flange bolt-up", "pressure tests"). Every tile name is taught to the recogniser.
 
 ---
 

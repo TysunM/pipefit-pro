@@ -23,10 +23,32 @@ test('"next" asks for the next cut', () => {
 });
 
 test("what the phone says back is never a tick", () => {
-  expect(readTick('Mark 4 cut. Next, mark 5: 41 and 13 sixteenths inches.')).toBeNull();
-  expect(readTick('Mark 4 is to cut again.')).toBeNull();
-  expect(readTick('All cut. Nothing left on the list.')).toBeNull();
-  expect(readTick('No mark 9 on the list.')).toBeNull();
+  for (const said of [
+    'Mark 4 cut. Next, mark 5: 41 and 13 sixteenths inches.',
+    'Mark 4 is to cut again.',
+    'All cut. Nothing left on the list.',
+    'No mark 9 on the list.',
+    'No mark 9 on this list.',
+    'Mark 4 is already cut.',
+    "Mark 4 hadn't been cut yet.",
+    'There are 2 mark 4s on this list. Tap the one you mean.',
+    "That's the last one. All cut.",
+    'Next, mark 5: 41 and 13 sixteenths inches, 2 inch PVC.',
+    'Hands free. Say a mark then done, or next.',
+    'The mic stopped. Turn hands-free on again.',
+  ])
+    expect(readTick(said)).toBeNull();
+});
+
+test('a tick word a letter or two off is heard as it', () => {
+  expect(readTick('4 down')).toEqual({ kind: 'set', key: '4', done: true });
+  expect(readTick('mark 4 is cat')).toEqual({ kind: 'set', key: '4', done: true });
+  expect(readTick('12done')).toEqual({ kind: 'set', key: '12', done: true });
+  expect(readTick('under 4')).toEqual({ kind: 'set', key: '4', done: false });
+  expect(readTick('text')).toEqual({ kind: 'next' });
+  // A short word only when it sounds the same: "hot" is not "not".
+  expect(readTick('mark 4 hot')).toBeNull();
+  expect(readTick('4 dun')).toBeNull();
 });
 
 test('a bare number or chatter is not a tick', () => {

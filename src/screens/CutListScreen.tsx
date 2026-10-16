@@ -73,8 +73,11 @@ export function CutListScreen({ navigation }: Props) {
     say('Hands free. Say a mark then done, or next.');
     const start = setTimeout(() => {
       void listenOn(
-        (heard) => {
-          const said = latestHear.current(heard);
+        (alternatives) => {
+          // The first transcript the recogniser offered that is a tick.
+          const heard = alternatives[0] ?? '';
+          let said: string | null = null;
+          for (const t of alternatives) if ((said = latestHear.current(t))) break;
           setSawLine({ heard, said: said ?? '' });
           if (said) say(said);
         },

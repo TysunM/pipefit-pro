@@ -15,16 +15,18 @@
 // over and Claude hears it instead, so nothing said is quietly half-done.
 
 import type { ToolRoute } from '../navigation/groups';
-import { hasPhrase, lengthAt, numberAt, tokens } from './words';
-import { readSpecs, type SpecCommand } from './specs';
+import { MATERIALS } from '../calc/materials';
+import { NUMBER_WORDS, hasPhrase, lengthAt, numberAt, tokens } from './words';
+import { SPEC_WORDS, readSpecs, type SpecCommand } from './specs';
 import { Figure, FigureRoute, FigureSpec, Figures, TOOL_FIGURES, figureNames, isFigureRoute, plausible, primaryFigure } from './toolFigures';
+import { snapPhrases, snapWords, splitGlued } from './hear';
 
 /** Somewhere a voice can open: a tool, or one of the tabs along the bottom, Settings or Backup. */
 export type OpenRoute = ToolRoute | 'Home' | 'Settings' | 'Backup' | 'Projects' | 'Tools' | 'Logs' | 'Edu';
 
 export type VoiceCommand =
-  /** Open a screen; for a tool that takes figures, with what was said for them. */
-  | { kind: 'open'; route: OpenRoute; figures?: Figures }
+  /** Open a screen; for a tool that takes figures, with what was said for them. `ignored` is what was said that the app could not place, when it opened the tool anyway. */
+  | { kind: 'open'; route: OpenRoute; figures?: Figures; ignored?: string[] }
   /** On the bolt-up screen: the bolt asked for is torqued, take the last one back, or say it again. */
   | { kind: 'bolt'; act: 'done' | 'undo' | 'repeat' }
   | { kind: 'addCut' }
@@ -120,6 +122,41 @@ const READ_THINGS = new Set(['box', 'label', 'labels', 'sheet', 'sheets', 'tag',
 /** The words of “add it to the cut list”, beside the filler. */
 const ADD_CUT = new Set(['add', 'save', 'cut', 'list', 'this', 'that', 'one', 'piece']);
 
+const splitWords = (phrases: readonly string[]): string[] => phrases.flatMap((p) => p.split(' '));
+
+/** Every word the app can take by voice: the matcher's vocabulary, for hearing a misheard word as the nearest known one (hear.ts). */
+export const VOCAB: ReadonlySet<string> = new Set([
+  ...splitWords(Object.values(TOOL_WORDS).flat()),
+  ...splitWords(Object.values(TOOL_FIGURES).flatMap((t) => Object.values(t as Record<string, FigureSpec>).flatMap((f) => f.words))),
+  ...FILLER,
+  ...Object.values(BOLT).flat().flat(),
+  ...CANCEL.flat(),
+  ...READ_VERBS,
+  ...READ_THINGS,
+  ...ADD_CUT,
+  ...NUMBER_WORDS,
+  ...SPEC_WORDS,
+  ...splitWords(MATERIALS.flatMap((m) => m.words)),
+  'degree', 'degrees', 'of', 'is', 'at', 'to', 'equals', 'about', 'back', 'done', 'undo', 'repeat',
+]);
+
+/** Every phrase the app can take by voice, for hearing a run of words as the phrase it nearly is (hear.ts). */
+const PHRASES: readonly (readonly string[])[] = [
+  ...Object.values(TOOL_WORDS).flat(),
+  ...Object.values(TOOL_FIGURES).flatMap((t) => Object.values(t as Record<string, FigureSpec>).flatMap((f) => f.words)),
+  ...MATERIALS.flatMap((m) => m.words),
+].map((p) => p.split(' ')).concat(Object.values(BOLT).flat(), CANCEL);
+
+/** The words of a tool's figures, heard from a little further off once the tool is in play. */
+const figureWords = (route: string | null): ReadonlySet<string> =>
+  new Set(isFigureRoute(route) ? splitWords(Object.values(TOOL_FIGURES[route] as Record<string, FigureSpec>).flatMap((f) => f.words)) : []);
+
+/** What was said, with a number split off a word run into it and a run of words that is nearly a phrase the app knows taken as it. */
+const phrased = (text: string): string[] => snapPhrases(splitGlued(tokens(text), VOCAB), PHRASES, VOCAB);
+
+/** What was said, each word heard as the nearest one the app knows, with the open screen's figures in play. */
+export const heardWords = (text: string, screen: string | null): string[] => snapWords(phrased(text), VOCAB, figureWords(screen));
+
 const sayingOnly = (ws: readonly string[], phrases: readonly (readonly string[])[]): boolean =>
   phrases.some((p) => {
     const at = hasPhrase(ws, p);
@@ -131,7 +168,46 @@ const sayingOnly = (ws: readonly string[], phrases: readonly (readonly string[])
  * route on top: on the bolt-up screen, "done" is a bolt.
  */
 export function localIntent(text: string, screen: string | null): VoiceCommand | null {
-  const ws = tokens(text);
+  return intentOf(text, screen, false);
+}
+
+/**
+ * The command in what was said when it is nearly one: the tool named and
+ * its figures taken, with one word the app could not place let go and
+ * handed back as `ignored`. For when Claude is not there to hear the rest,
+ * or has not: "bolt up, 12 giraffe" opens the bolt-up at 12 bolts and says
+ * what it did not catch, rather than doing nothing. Null when more than one
+ * word is unplaced, or no tool is named: that is a sentence, not a slip.
+ */
+export function lenientIntent(text: string, screen: string | null): VoiceCommand | null {
+  return intentOf(text, screen, true);
+}
+
+/**
+ * The first of what the recogniser offered that is a command: the top
+ * transcript first, then its alternatives, each heard the app's way; then
+ * the same again, leniently. The recogniser's second guess is often the
+ * right word ("bolt" behind "volt"), and it costs nothing to look.
+ */
+export function bestLocal(alternatives: readonly string[], screen: string | null): { cmd: VoiceCommand; heard: string } | null {
+  const texts = alternatives.filter((t) => t.trim());
+  for (const t of texts) {
+    const cmd = localIntent(t, screen);
+    if (cmd) return { cmd, heard: t };
+  }
+  for (const t of texts) {
+    const cmd = lenientIntent(t, screen);
+    if (cmd) return { cmd, heard: t };
+  }
+  return null;
+}
+
+function intentOf(text: string, screen: string | null, lenient: boolean): VoiceCommand | null {
+  // The phrases as said, and every word heard as the nearest known one; the
+  // two line up word for word, so a tool found in the one can be cut from
+  // the other.
+  const said = phrased(text);
+  const ws = snapWords(said, VOCAB, figureWords(screen));
   if (!ws.length) return null;
 
   if (ws.length <= 3 && sayingOnly(ws, CANCEL)) return { kind: 'cancel' };
@@ -150,14 +226,14 @@ export function localIntent(text: string, screen: string | null): VoiceCommand |
 
   if (ws.length <= 3 && sayingOnly(ws, [['back'], ['go', 'back']])) return { kind: 'back' };
 
-  const specs = readSpecs(text);
+  const specs = readSpecs(ws.join(' '));
   if (specs) return { kind: 'specs', ...specs };
 
   // With a tool open, its own figures come first: on the saddle, "bend 45"
   // is the saddle's angle, not the pipe bend tool.
   if (isFigureRoute(screen)) {
-    const f = readFigures(ws, screen);
-    if (f && Object.keys(f).length) return { kind: 'open', route: screen, figures: f };
+    const f = readFigures(ws, screen, lenient);
+    if (f && Object.keys(f.figures).length) return { kind: 'open', route: screen, figures: f.figures, ...(f.ignored.length ? { ignored: f.ignored } : {}) };
   }
 
   // The longest tool name in it.
@@ -170,16 +246,23 @@ export function localIntent(text: string, screen: string | null): VoiceCommand |
     }
   }
   if (!best) return null;
-  const rest = without(ws, best.at, best.len);
+  // With the tool named, the rest is heard in its light: its own figure
+  // words come from a little further off, so "12 bowl" on the bolt-up is 12
+  // bolts and not the bill of materials it was as near to with no tool known.
+  const rest = snapWords(without(said, best.at, best.len), VOCAB, figureWords(best.route));
 
   if (isFigureRoute(best.route)) {
-    const f = readFigures(rest, best.route);
+    const f = readFigures(rest, best.route, lenient);
     if (!f) return null;
-    return Object.keys(f).length ? { kind: 'open', route: best.route, figures: f } : { kind: 'open', route: best.route };
+    const open: VoiceCommand = { kind: 'open', route: best.route };
+    if (Object.keys(f.figures).length) open.figures = f.figures;
+    if (f.ignored.length) open.ignored = f.ignored;
+    return open;
   }
-  // A number left with any other tool is something to be done with it: Claude's.
-  if (rest.some((w, i) => !FILLER.has(w) || numberAt(rest, i))) return null;
-  return { kind: 'open', route: best.route };
+  // A number left with any other tool is something to be done with it: Claude's. Leniently, one word or number is let go.
+  const left = rest.filter((w, i) => !FILLER.has(w) || numberAt(rest, i));
+  if (left.length > (lenient ? 1 : 0)) return null;
+  return left.length ? { kind: 'open', route: best.route, ignored: left } : { kind: 'open', route: best.route };
 }
 
 /** A value for a field of this kind at `i`. */
@@ -202,9 +285,10 @@ const LEAD = new Set(['of', 'is', 'at', 'to', 'equals', 'about']);
  * neither a figure, a figure's name nor the words round a command. Each name
  * takes the value after it ("rise 12", "rise of 12") or failing that the one
  * before ("12 inch rise", "45 degrees"); a single bare value with no name
- * fills the tool's first field.
+ * fills the tool's first field. Leniently, one word left over is let go and
+ * handed back as `ignored`; a value no field could hold is never let go.
  */
-export function readFigures(ws: readonly string[], route: FigureRoute): Figures | null {
+export function readFigures(ws: readonly string[], route: FigureRoute, lenient = false): { figures: Figures; ignored: string[] } | null {
   const specs = TOOL_FIGURES[route] as Record<string, FigureSpec>;
   const names = figureNames(route);
   const used = new Array<boolean>(ws.length).fill(false);
@@ -266,9 +350,11 @@ export function readFigures(ws: readonly string[], route: FigureRoute): Figures 
     }
   }
 
-  // Everything else has to be the words round a command.
-  for (let i = 0; i < ws.length; i++) if (!used[i] && !FILLER.has(ws[i]!)) return null;
-  return out;
+  // Everything else has to be the words round a command; leniently, one word that is not.
+  const ignored: string[] = [];
+  for (let i = 0; i < ws.length; i++) if (!used[i] && !FILLER.has(ws[i]!)) ignored.push(ws[i]!);
+  if (ignored.length > (lenient ? 1 : 0)) return null;
+  return { figures: out, ignored };
 }
 
 /**
@@ -277,7 +363,7 @@ export function readFigures(ws: readonly string[], route: FigureRoute): Figures 
  * is none a field of that kind could hold.
  */
 export function spokenValue(text: string, kind: FigureSpec['kind']): Figure | null {
-  const ws = tokens(text);
+  const ws = snapWords(tokens(text), VOCAB);
   for (let i = 0; i < ws.length; i++) {
     const v = valueAt(ws, i, kind);
     if (v) return plausible({ kind }, v.f) ? v.f : null;
