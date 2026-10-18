@@ -32,7 +32,7 @@ import { sizeLabel } from '../calc/materials';
 import { useFittings } from '../state/fittings';
 import { setTakeout } from '../state/fittingLibrary';
 import { canListen, listenOn, stopListening } from '../voice/listen';
-import { cameraWord } from '../voice/cameraWords';
+import { cameraWordOf } from '../voice/cameraWords';
 import { say } from '../audio/say';
 
 type Stage =
@@ -142,8 +142,9 @@ export function FittingSheetReader({
     let live = true;
     const start = setTimeout(() => {
       void listenOn(
-        (heard) => {
-          const word = cameraWord(heard);
+        (alternatives) => {
+          const heard = alternatives[0] ?? '';
+          const word = cameraWordOf(alternatives);
           const { stage: st, shoot: go, save: keep, close: shut } = latest.current;
           setHearing(heard);
           if (word === 'close') return shut();

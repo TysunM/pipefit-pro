@@ -1,4 +1,4 @@
-import { cameraWord } from '../voice/cameraWords';
+import { cameraWord, cameraWordOf } from '../voice/cameraWords';
 import { localIntent } from '../voice/intent';
 
 describe('"read this box"', () => {
@@ -32,5 +32,18 @@ describe('words to the camera', () => {
     expect(cameraWord('Camera up.')).toBeNull();
     expect(cameraWord('take it to the truck')).toBeNull();
     expect(cameraWord('')).toBeNull();
+  });
+
+  test('a word a letter off a command is the command', () => {
+    expect(cameraWord('safe')).toBe('save');
+    expect(cameraWord('a gain')).toBe('retake');
+    expect(cameraWord('closed')).toBe('close');
+    expect(cameraWord('pitcher')).toBeNull();
+  });
+
+  test('every transcript the recogniser offered is tried, best first', () => {
+    expect(cameraWordOf(['snapshot', 'snapped', 'snap'])).toBe('shoot');
+    expect(cameraWordOf(['4 takeouts kept.', 'for takeouts kept'])).toBeNull();
+    expect(cameraWordOf([])).toBeNull();
   });
 });

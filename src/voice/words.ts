@@ -140,6 +140,12 @@ export function lengthAt(ws: readonly string[], i: number): { inches: number; ne
   return { inches: a.value, next, explicit: false };
 }
 
+/** Every word a number or a length can be said with, for the matcher's vocabulary. */
+export const NUMBER_WORDS: readonly string[] = [
+  ...Object.keys(UNITS), ...Object.keys(TENS), ...Object.keys(PARTS), 'hundred', 'point', 'and', 'a', 'an',
+  ...FOOT, ...INCH, ...MM, ...CM, ...METRE,
+];
+
 /** Whether every word of `phrase` appears, in order and together, in `ws`. */
 export function hasPhrase(ws: readonly string[], phrase: readonly string[]): number {
   outer: for (let i = 0; i + phrase.length <= ws.length; i++) {
