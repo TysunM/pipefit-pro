@@ -159,6 +159,28 @@ describe('the page', () => {
   });
 });
 
+describe('the joint records in the package', () => {
+  test('every joint that was bolted gets an Appendix R page of its own; one never started does not', () => {
+    const h = turnoverHtml(input({ joints: [joint('L-204', FULL, ['H1']), joint('L-205', 5), joint('L-206', 0)], heats: [heat('H1')], now: T }));
+    expect(h.match(/Bolted joint assembly record/g)?.length).toBe(2);
+    expect(h.match(/<section class="record">/g)?.length).toBe(2);
+    expect(h).toContain('2 joint records');
+    expect(h).toContain('L-204 · Job BP-1 · ASME PCC-1 Appendix R');
+    expect(h).toContain('L-205 · Job BP-1 · ASME PCC-1 Appendix R');
+    expect(h).not.toContain('L-206 · Job BP-1');
+    // The records come after the package's own sign-off, and carry their own styles.
+    expect(h.indexOf('<section class="record">')).toBeGreaterThan(h.indexOf('<section class="sign">'));
+    expect(h).toContain('.rec .kv th');
+    expect(h).toContain('.record { break-before: page; }');
+  });
+
+  test('a job with nothing bolted has no record pages', () => {
+    const h = turnoverHtml(input({ joints: [joint('L-206', 0)], now: T }));
+    expect(h).not.toContain('Bolted joint assembly record');
+    expect(h).not.toContain('joint record');
+  });
+});
+
 test('dates read as a form writes them', () => {
   expect(day(new Date(2026, 8, 7, 9).getTime())).toBe('7 Sep 2026');
 });

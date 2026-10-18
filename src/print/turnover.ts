@@ -33,6 +33,7 @@ import { type Instrument, findInstrument, goodOn } from '../state/calibration';
 import { dayKey } from '../calc/days';
 import { toScreen } from '../calc/iso';
 import { esc } from './spoolSvg';
+import { JOINT_RECORD_CSS, jointRecordBody, type WrenchLine } from './jointRecord';
 
 export type TurnoverInput = {
   /** The job it is for; '' when it covers every job on the phone. */
@@ -54,6 +55,8 @@ export type TurnoverInput = {
   welders?: readonly Welder[];
   /** The calibration register: each joint's wrench is judged against it on the day it was finished. */
   instruments?: readonly Instrument[];
+  /** The moment it is printed. A joint still open has its wrench judged on this day. */
+  now?: number;
 };
 
 export type OpenItem = { what: string; needs: string };
@@ -110,6 +113,13 @@ export function boltingNote(joints: readonly Joint[]): string {
   if (!by.size) return '';
   const specs = [...by].map(([line, n]) => `${line} (${n} joint${n === 1 ? '' : 's'})`).join('; ');
   return ` Bolted to: ${specs}.${none ? ` ${none} joint${none === 1 ? '' : 's'} with no spec recorded.` : ''}`;
+}
+
+/** The joint's wrench as the calibration register has it, judged on the day the joint was finished, or today while it is open. */
+function wrenchLine(j: Joint, instruments: readonly Instrument[], now: number): WrenchLine | null {
+  if (!j.wrench) return null;
+  const w = findInstrument({ instruments: [...instruments], foreign: false, dropped: 0 }, j.wrench);
+  return w ? { tag: w.tag, name: w.name, max: w.max, verdict: goodOn(w, dayKey(j.completedAt ?? now)) } : null;
 }
 
 export function openItems(joints: readonly Joint[], book: readonly Heat[], tests: readonly PressureTest[] = [], welds: readonly Weld[] = [], instruments: readonly Instrument[] = []): OpenItem[] {
@@ -303,10 +313,20 @@ export function turnoverHtml(i: TurnoverInput): string {
     .map((who) => `<div><span>${who}</span><em>Name</em><em>Signature</em><em>Date</em></div>`)
     .join('');
 
+  // One Appendix R record for every joint that was bolted, each on a page of
+  // its own after the sign-off: the table above lists the joints, the records
+  // prove them, and the QC file needs nothing else from the phone.
+  const now = i.now ?? Date.now();
+  const recorded = i.joints.filter((j) => j.startedAt !== null || isDone(j));
+  const records = recorded
+    .map((j) => `<section class="record">${jointRecordBody({ joint: j, dateLine: i.dateLine, wrench: wrenchLine(j, i.instruments ?? [], now), now })}</section>`)
+    .join('');
+
   const contents = [
     ...(i.tests.length ? [plural(i.tests.length, 'pressure test')] : []),
     ...(i.welds?.length ? [plural(i.welds.length, 'weld')] : []),
     plural(i.joints.length, 'joint'),
+    ...(recorded.length ? [plural(recorded.length, 'joint record')] : []),
     plural(used.length, 'heat'),
     plural(isos.length, 'iso'),
     plural(i.readings.length, 'level reading'),
@@ -317,7 +337,7 @@ export function turnoverHtml(i: TurnoverInput): string {
     '<!doctype html><html><head><meta charset="utf-8">' +
     `<title>${esc(`Turnover package: ${job}`)}</title>` +
     '<meta name="viewport" content="width=device-width, initial-scale=1">' +
-    `<style>${CSS}${EXTRA}</style></head><body>` +
+    `<style>${CSS}${EXTRA}${JOINT_RECORD_CSS}</style></head><body>` +
     '<header><div class="titles"><div>' +
     '<h1>Turnover package</h1>' +
     `<p class="where">Job ${esc(job)}</p>` +
@@ -330,6 +350,7 @@ export function turnoverHtml(i: TurnoverInput): string {
     (i.welds?.length ? `<section class="welds"><h2>Weld log</h2>${weldTables(i.welds, i.welders ?? [], dayKey(Date.now()), (n) => findSize(n).label)}</section>` : '') +
     `<section class="sign"><h2>Sign-off</h2><div class="rows">${sign}</div></section>` +
     `<footer>${esc(FOOTER)}</footer>` +
+    records +
     drawings +
     '</body></html>'
   );
@@ -337,7 +358,8 @@ export function turnoverHtml(i: TurnoverInput): string {
 
 const FOOTER =
   'Made by PipeFit Pro from the records on this phone. Torque is as entered on the joint; heats and cert status are as held in the heat book on the day this was printed. ' +
-  'A heat marked OWED or NOT IN BOOK has no mill cert on file and the joints it went into cannot be called traceable until it does.';
+  'A heat marked OWED or NOT IN BOOK has no mill cert on file and the joints it went into cannot be called traceable until it does. ' +
+  'Every joint that was bolted has its own record after this sign-off, one page each, to ASME PCC-1 Appendix R.';
 
 /** Long tables break across pages and repeat their headings; each iso gets a page of its own. */
 const EXTRA = `
@@ -350,6 +372,7 @@ const EXTRA = `
   .sign span { display: block; font-weight: 700; font-size: 8.5pt; margin-bottom: 4pt; }
   .sign em { display: block; font-style: normal; font-size: 7pt; letter-spacing: 0.4pt; text-transform: uppercase;
              border-bottom: 0.6pt solid #000; padding-top: 14pt; margin-bottom: 2pt; }
+  .record { break-before: page; }
   .iso { break-before: page; }
   .iso .frame { border: 0.7pt solid #000; }
   .iso svg { display: block; width: 100%; height: auto; max-height: 235mm; }
