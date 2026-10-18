@@ -12,6 +12,7 @@
 // says back is in the vocabulary, so none of them is ever bent into one.
 
 import { snapWords, splitGlued } from './hear';
+import { applyLearned } from './learned';
 import { NUMBER_WORDS, numberAt, tokens } from './words';
 
 export type Tick = { kind: 'set'; key: string; done: boolean } | { kind: 'next' };
@@ -36,7 +37,10 @@ export const markKey = (mark: string): string => mark.toLowerCase().replace(/[^a
 export function readTick(text: string): Tick | null {
   const ws = snapWords(
     splitGlued(
-      tokens(text).map((w) => w.replace(/'/g, '')),
+      applyLearned(
+        tokens(text).map((w) => w.replace(/'/g, '')),
+        VOCAB,
+      ),
       VOCAB,
     ),
     VOCAB,

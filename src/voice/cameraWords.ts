@@ -10,6 +10,7 @@
 // command.
 
 import { snapWords } from './hear';
+import { applyLearned } from './learned';
 import { tokens } from './words';
 
 export type CameraWord = 'shoot' | 'save' | 'retake' | 'close';
@@ -30,7 +31,7 @@ const VOCAB: ReadonlySet<string> = new Set([...Object.values(SAID).flat().flat()
 
 /** The camera word said, or null. A phrase must make up what was said, give or take a polite word. */
 export function cameraWord(text: string): CameraWord | null {
-  const ws = snapWords(tokens(text), VOCAB);
+  const ws = snapWords(applyLearned(tokens(text), VOCAB), VOCAB);
   if (!ws.length || ws.length > 5) return null;
   for (const kind of ['close', 'retake', 'save', 'shoot'] as const) {
     for (const p of SAID[kind]) {

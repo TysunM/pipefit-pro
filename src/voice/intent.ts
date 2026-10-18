@@ -20,6 +20,7 @@ import { NUMBER_WORDS, hasPhrase, lengthAt, numberAt, tokens } from './words';
 import { SPEC_WORDS, readSpecs, type SpecCommand } from './specs';
 import { Figure, FigureRoute, FigureSpec, Figures, TOOL_FIGURES, figureNames, isFigureRoute, plausible, primaryFigure } from './toolFigures';
 import { snapPhrases, snapWords, splitGlued } from './hear';
+import { applyLearned } from './learned';
 
 /** Somewhere a voice can open: a tool, or one of the tabs along the bottom, Settings or Backup. */
 export type OpenRoute = ToolRoute | 'Home' | 'Settings' | 'Backup' | 'Projects' | 'Tools' | 'Logs' | 'Edu';
@@ -151,8 +152,14 @@ const PHRASES: readonly (readonly string[])[] = [
 const figureWords = (route: string | null): ReadonlySet<string> =>
   new Set(isFigureRoute(route) ? splitWords(Object.values(TOOL_FIGURES[route] as Record<string, FigureSpec>).flatMap((f) => f.words)) : []);
 
-/** What was said, with a number split off a word run into it and a run of words that is nearly a phrase the app knows taken as it. */
-const phrased = (text: string): string[] => snapPhrases(splitGlued(tokens(text), VOCAB), PHRASES, VOCAB);
+/** What was said, with the words this phone has been taught read as meant, a number split off a word run into it, and a run of words that is nearly a phrase the app knows taken as it. */
+const phrased = (text: string): string[] => snapPhrases(splitGlued(applyLearned(tokens(text), VOCAB), VOCAB), PHRASES, VOCAB);
+
+/** The words a screen is called and takes by voice: what a mishearing in a sentence that opened it would have been (learned.ts). */
+export const routeWords = (route: string): string[] => [
+  ...(TOOL_WORDS[route as OpenRoute] ?? []),
+  ...(isFigureRoute(route) ? Object.values(TOOL_FIGURES[route] as Record<string, FigureSpec>).flatMap((f) => f.words) : []),
+];
 
 /** What was said, each word heard as the nearest one the app knows, with the open screen's figures in play. */
 export const heardWords = (text: string, screen: string | null): string[] => snapWords(phrased(text), VOCAB, figureWords(screen));
@@ -363,7 +370,7 @@ export function readFigures(ws: readonly string[], route: FigureRoute, lenient =
  * is none a field of that kind could hold.
  */
 export function spokenValue(text: string, kind: FigureSpec['kind']): Figure | null {
-  const ws = snapWords(tokens(text), VOCAB);
+  const ws = snapWords(applyLearned(tokens(text), VOCAB), VOCAB);
   for (let i = 0; i < ws.length; i++) {
     const v = valueAt(ws, i, kind);
     if (v) return plausible({ kind }, v.f) ? v.f : null;
@@ -371,11 +378,22 @@ export function spokenValue(text: string, kind: FigureSpec['kind']): Figure | nu
   return null;
 }
 
-/** What the recogniser is told to listen for: every tool name and the bolt-up words. */
+/**
+ * What the recogniser is told to listen for: every tool name, every figure
+ * name, the materials and walls a spec is said with, the bolt-up, camera and
+ * saw words. A recogniser biased to "bolt" writes "bolt" where it would have
+ * written "volt", so this cuts the mishearing at the source; hear.ts catches
+ * what still gets through.
+ */
 export const LISTEN_FOR: string[] = [
   ...new Set([
     ...Object.values(TOOL_WORDS).flat(),
     ...Object.values(TOOL_FIGURES).flatMap((t) => Object.values(t as Record<string, FigureSpec>).flatMap((s) => s.words)),
-    'done', 'undo', 'repeat', 'psi', 'weld', 'rejected', 'porosity',
+    ...MATERIALS.flatMap((m) => m.words),
+    'schedule 10', 'schedule 40', 'schedule 80', 'schedule 160', 'standard weight', 'extra strong', 'double extra strong', '10s', '40s', '80s',
+    'long radius', 'short radius', 'dr 11', 'dr 17', 'class 52', 'pressure class', 'no hub', 'socket weld', 'butt weld',
+    'done', 'undo', 'repeat', 'next', 'torqued', 'tight', 'psi', 'weld', 'rejected', 'porosity', 'root gap', 'foot pounds',
+    'take it', 'snap', 'retake', 'save', 'cancel', 'read this box', 'scan the label', 'mark', 'is cut', 'add it', 'cut list',
+    'hold started', 'hold ended', 'reading', 'test passed', 'test failed', 'safety note', 'toolbox talk',
   ]),
 ];

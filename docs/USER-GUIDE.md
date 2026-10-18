@@ -35,7 +35,7 @@ Nothing here is a rule of thumb someone remembered.
 | Fitting takeouts | The Lindsey Pipefitters Handbook tables, transcribed and checked |
 | Pipe OD and wall | ASME B36.10M |
 | Butt weld fittings | ASME B16.9 |
-| Flanges | ASME B16.5 |
+| Flanges | ASME B16.5 to 24"; ASME B16.47 Series A and Series B above |
 | Screwed fittings | ASME B16.3 |
 | Pipe threads | ASME B1.20.1 |
 | Miter code limit | ASME B31.3 §304.2.3 |
@@ -85,7 +85,7 @@ On Home, **Recently used** stays as you left it until you open a tool, which put
 ## The Projects tab
 Today's date and the time run across the top, so the page left open on a job all day says what day it is.
 
-The job chips pick what the page shows: the active job, another job, All jobs, or No project. Each card lists the newest work under it. **Share turnover PDF** makes the package for what is shown.
+The job chips pick what the page shows: the active job, another job, All jobs, or No project. Each card lists the newest work under it. **Share turnover PDF** makes the package for what is shown. After its sign-off it carries one Appendix R record page for every joint that was bolted, so the QC file needs nothing else from the phone.
 
 **Today** and **Everything** sit under the job chips. The page opens on **Today**: each card lists only what was saved, changed or finished today, and the line above the cards counts it. Nothing is deleted. Earlier work is kept, and **Everything** shows it all. The page rolls over to the new day by itself: at midnight on days, at noon on nights (below). The turnover PDF and **Clear for a new start** always take the whole job, every day's work, whichever view is on.
 
@@ -1042,7 +1042,7 @@ The spec is a record like the joints: a backup from the QC phone carries it to e
 ### Step by step
 
 1. Tap **Flange bolt-up**. It opens on the size the app is set to, Class 150.
-2. Set **CLASS** (150 to 2500 steel, or 125 and 250 cast iron) and **SIZE**. The stud count and size follow from ASME B16.5 — you do not set them.
+2. Set **CLASS** (150 to 2500 steel, or 125 and 250 cast iron) and **SIZE**. The stud count and size follow from ASME B16.5 — you do not set them. Above 24" a steel class is a B16.47 flange, and a **Standard** row appears under the class: **Series A** (the MSS SP-44 drilling, fewer and bigger studs) or **Series B** (API 605, more and smaller). Count the holes to tell them apart, and check the stud size on the screen against the studs in hand: the torque follows it. The tables carry Series A classes 150 and 300 to 60" and 600 and 900 to 48", and Series B classes 150 and 300 to 60". Class 75, class 400, Series B above 300 and Series A 600 above 48" are not tabled: set the bolt count by hand and take the stud size off the drawing.
 3. If the flange is in no table, set **BOLTS** directly. The sequence only needs the count.
 4. Set the **GASKET**. It decides which methods are allowed and goes on the record.
 5. Pick the **METHOD**. Legacy unless the job says otherwise. A method cannot be changed once a bolt is logged; Start over first.
@@ -1215,7 +1215,7 @@ One page per joint, the record a QC file keeps. On a named joint, under **Sign-o
 
 What is on it:
 
-- The joint and the job, the flange (size and class, the stud count, size and threads from B16.5), the gasket and the method.
+- The joint and the job, the flange (size and class, the stud count, size and threads from B16.5 or B16.47), the gasket and the method.
 - The bolting spec it was bolted to, with the stud grade, target stress, nut factor and lubricant as copied onto the joint when it was made.
 - The final torque and the torque wrench, with the calibration register's word on it for the day the joint was finished.
 - When the bolt-up started and finished, and **every round**: its load (the torque for that round), its order, the bolts in the sequence they were taken, when it closed, and how a check round ended.
@@ -1514,13 +1514,15 @@ Tool names are matched on the phone, at once. Everything else is read by Claude 
 
 **Misheard words are taken for what they nearly are.** The phone's recogniser knows everyday speech, not the trade, so it writes "12 volt" for 12 bolt, "bold cup" for bolt up, "hydra" for hydro, "rice 12, role 8" for rise 12, roll 8. The app hears those the way a fitter would: a word it does not know is taken as the nearest one it does, nearer still when it belongs to the tool just named, and every guess the recogniser offered is tried before anything goes to Claude. A command one word short of making sense is done anyway, and the panel says what it did not catch. A word near nothing the app knows is left as said, and that sentence goes to Claude as said, so nothing is quietly made up.
 
+**It learns this phone.** A recogniser is consistent in its mistakes. When one of its other guesses, or Claude, makes sense of a word the top transcript got wrong, the pair is kept on the phone: say it the same way again and it is heard as meant at once, with no signal. A learned word only ever fires on the exact word it was learned from, never on a word the app knows. Settings → In the field → Voice shows what has been learned, with a button to forget it; the list goes into the backup. The recogniser is also told the figure names, the materials and walls, and the camera and saw words, so it writes them right more often in the first place.
+
 ### Figures by voice
 
 Every bend and offset tool takes its figures by name. Say the tool and the figures together, or open the tool and say just the figures. A number with no name goes in the first field.
 
 | Tool | Say |
 |---|---|
-| Flange bolt-up | bolts (4 to 68, in fours) — "flange bolt-up, 12 bolt"; or size and class — "6 inch, class 250" takes the bolt count from the handbook |
+| Flange bolt-up | bolts (4 to 68, in fours) — "flange bolt-up, 12 bolt"; or size and class — "6 inch, class 250" takes the bolt count from the handbook. Above 24" the count picks the B16.47 series: "36 inch class 150, 44 bolt" is Series B, and with no count said it stays on the series the joint is on, else Series A |
 | Simple offset | offset (or set, rise, drop), angle / degrees, run, gap |
 | Rolling offset | rise (or set), roll, run, angle, gap |
 | Cut length | center to center (or length), gap — "cut length, 4 foot 2"; then "add it" puts the cut on the cut list |

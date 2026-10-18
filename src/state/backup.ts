@@ -34,6 +34,7 @@ import { emptyCompletions, emptyCourses, emptyModules, parseCompletions, parseCo
 import { emptyWelders, emptyWelds, numberKey, parseWelders, parseWelds, serialiseWelders, serialiseWelds, stampKey } from './weldLog';
 import { emptySpecBook, parseSpecBook, serialiseSpecBook } from './boltingSpec';
 import { parseLayout, serialiseLayout, type Layout } from './layout';
+import { emptyLearned, parseLearned, serialiseLearned } from '../voice/learned';
 
 export const BACKUP_VERSION = 1;
 export const BACKUP_APP = 'PipeFit Pro';
@@ -78,6 +79,8 @@ export const STORES: readonly Spec[] = [
   { key: 'pipefit.orientation.done.v1', label: 'orientation passes', field: 'completions', idOf: (x) => x.id, empty: emptyCompletions, parse: parseCompletions, serialise: serialiseCompletions },
   // The company's bolting specs: restored onto a crew phone, the one spec there is becomes the one it bolts to.
   { key: 'pipefit.boltspecs.v1', label: 'bolting specs', field: 'specs', idOf: (x) => x.id, empty: emptySpecBook, parse: parseSpecBook, serialise: serialiseSpecBook },
+  // What the phone has learned of its recogniser's mishearings: one pair per word it wrote.
+  { key: 'pipefit.heard.v1', label: 'learned words', field: 'pairs', idOf: (x) => String(x.said ?? ''), empty: emptyLearned, parse: parseLearned, serialise: serialiseLearned },
 ];
 
 export const specOf = (key: string): Spec | undefined => STORES.find((s) => s.key === key);
