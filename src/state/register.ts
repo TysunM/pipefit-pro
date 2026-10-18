@@ -16,6 +16,7 @@
 
 import { CastIronFlangeClass, boltUp } from '../calc/boltUp';
 import { SteelClass, isSteelClass, steelFlange, studLabel } from '../calc/steelFlange';
+import { LARGE_CLASSES, LargeClass, isLargeClass, largeFlange, largeNumber, largeWords } from '../calc/largeFlange';
 import { cleanProject } from './project';
 import { cleanPerson } from './readSettings';
 import { cleanSig, hasSig } from '../calc/signature';
@@ -36,9 +37,15 @@ import {
   withMethod as stateWithMethod,
 } from '../calc/boltUpSequence';
 
-/** Every class a joint can be: the cast iron pair from B16.1 and the steel run from B16.5. */
-export type JointClass = CastIronFlangeClass | SteelClass;
+/** Every class a joint can be: the cast iron pair from B16.1, the steel run from B16.5, and the B16.47 large flanges by series and class. */
+export type JointClass = CastIronFlangeClass | SteelClass | LargeClass;
 export const isCastIron = (cls: JointClass): cls is CastIronFlangeClass => cls === '125' || cls === '250';
+
+/** The class number a joint's class is bolted as: a B16.47 A150 is a class 150 for the spec's rules and the record's words. */
+export const classNumber = (cls: JointClass): string => (isLargeClass(cls) ? largeNumber(cls) : cls);
+
+/** The class in the record's words: "class 150", "class 125 cast iron", "B16.47 Series A class 150". */
+export const classWords = (cls: JointClass): string => (isLargeClass(cls) ? largeWords(cls) : isCastIron(cls) ? `class ${cls} cast iron` : `class ${cls}`);
 
 /** The unnamed joint the flange screen uses until it is given a tag. */
 export const SCRATCH_ID = 'scratch';
@@ -292,7 +299,7 @@ export function validState(v: unknown, bolts: number): BoltUpState | null {
   };
 }
 
-const CLASSES: JointClass[] = ['125', '250', '150', '300', '600', '900', '1500', '2500'];
+const CLASSES: JointClass[] = ['125', '250', '150', '300', '600', '900', '1500', '2500', ...LARGE_CLASSES];
 const GASKET_IDS: Gasket[] = ['unknown', 'soft', 'spiral', 'hard', 'rtj'];
 
 /** A signature as stored, or an unsigned one where there is none or it does not read. */
@@ -750,7 +757,11 @@ export function jointFlange(j: Joint): string {
     const f = steelFlange(j.nps, j.cls);
     if (f) return `${f.label} · class ${j.cls} · ${f.bolts} × ${studLabel(f.stud)} studs`;
   }
-  return `${j.bolts} bolts · class ${j.cls}`;
+  if (j.nps !== null && isLargeClass(j.cls)) {
+    const f = largeFlange(j.nps, j.cls);
+    if (f) return `${f.label} · ${largeWords(j.cls)} · ${f.bolts} × ${studLabel(f.stud)} studs`;
+  }
+  return `${j.bolts} bolts · ${classWords(j.cls)}`;
 }
 
 /** The method the joint is bolted by, as it reads on a record. */
