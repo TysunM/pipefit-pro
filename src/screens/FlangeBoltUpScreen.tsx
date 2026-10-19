@@ -20,6 +20,7 @@ import { Divider } from '../components/Divider';
 import { useTheme, Theme } from '../theme/ThemeProvider';
 import { boltHoleAngles, boltUp, boltUpSizes } from '../calc/boltUp';
 import { isSteelClass, referenceTorque, steelFlange, steelSizes, studLabel, threadsPerInch } from '../calc/steelFlange';
+import { isLargeClass, largeClassOf, largeFlange, largeSizes, largeStuds, largeWords, seriesFor, seriesOf, type LargeClass, type LargeSeries } from '../calc/largeFlange';
 import {
   BoltUpState,
   GASKETS,
@@ -91,6 +92,8 @@ import {
   withMethod,
   withState,
   recentNames,
+  classNumber,
+  classWords,
 } from '../state/register';
 import { PERSON_MAX } from '../state/readSettings';
 import { useInstruments } from '../state/instruments';
@@ -104,7 +107,7 @@ import { FaceLayout, boltCentre, fittedFace, flangeFace } from '../components/fl
 type Props = NativeStackScreenProps<RootStackParamList, 'FlangeBoltUp'>;
 
 /** Bolt counts the handbook flanges actually use, for setting one by hand. */
-const COUNTS = [4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 52, 60, 64, 68];
+const COUNTS = [4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64, 68];
 
 const FACE_MIN = 300;
 const FACE_MAX = 360;
@@ -168,11 +171,11 @@ function flangeFor(nps: number, cls: JointClass): FlangeRow | undefined {
     const f = boltUp(nps, cls);
     return f ? { nps: f.nps, label: f.label, bolts: f.bolts } : undefined;
   }
-  const f = steelFlange(nps, cls);
+  const f = isLargeClass(cls) ? largeFlange(nps, cls) : steelFlange(nps, cls);
   return f ? { nps: f.nps, label: f.label, bolts: f.bolts } : undefined;
 }
 
-const sizesOf = (cls: JointClass): FlangeRow[] => (isCastIron(cls) ? boltUpSizes(cls) : steelSizes(cls)).map((n) => flangeFor(n, cls)!).filter(Boolean);
+const sizesOf = (cls: JointClass): FlangeRow[] => (isCastIron(cls) ? boltUpSizes(cls) : isLargeClass(cls) ? largeSizes(cls) : steelSizes(cls)).map((n) => flangeFor(n, cls)!).filter(Boolean);
 
 const orderWords = (o: Round['order']): string => (o === 'across' ? 'across' : o === 'round' ? 'round' : o === 'quadrant' ? 'by quadrant' : 'together');
 
@@ -262,7 +265,14 @@ function Bolting({
 
   const castIron = useMemo(() => (nps !== null && isCastIron(cls) ? boltUp(nps, cls) : undefined), [nps, cls]);
   const steel = useMemo(() => (nps !== null && isSteelClass(cls) ? steelFlange(nps, cls) : undefined), [nps, cls]);
-  const flange: FlangeRow | undefined = castIron ?? steel;
+  const large = useMemo(() => (nps !== null && isLargeClass(cls) ? largeFlange(nps, cls) : undefined), [nps, cls]);
+  const flange: FlangeRow | undefined = castIron ?? steel ?? large;
+  // Above 24" a steel class is a B16.47 flange, in one of two drillings. The
+  // class chips show the class number; the series row under them picks the
+  // drilling, and goes with the class as it changes.
+  const base = classNumber(cls);
+  const series: LargeSeries | null = isLargeClass(cls) ? seriesOf(cls) : null;
+  const seriesTabled = seriesFor(base);
   const sizes = useMemo(() => sizesOf(cls), [cls]);
 
   const write = useCallback(
@@ -331,8 +341,17 @@ function Bolting({
   };
 
   const pickClass = (c: JointClass) => {
-    const f = flangeFor(nps ?? NaN, c) ?? sizesOf(c).find((row) => row.bolts >= 8) ?? sizesOf(c)[0];
-    if (f) changeFlange({ cls: c, nps: f.nps, bolts: f.bolts });
+    // Staying in the series, where the new class is tabled in it: Series A class 150 to Series A class 300.
+    const target = (series && largeClassOf(series, c)) || c;
+    const f = flangeFor(nps ?? NaN, target) ?? sizesOf(target).find((row) => row.bolts >= 8) ?? sizesOf(target)[0];
+    if (f) changeFlange({ cls: target, nps: f.nps, bolts: f.bolts });
+  };
+
+  const pickSeries = (s: LargeSeries | null) => {
+    const target: JointClass = (s && largeClassOf(s, base)) || (base as JointClass);
+    if (target === cls) return;
+    const f = flangeFor(nps ?? NaN, target) ?? sizesOf(target)[0];
+    if (f) changeFlange({ cls: target, nps: f.nps, bolts: f.bolts });
   };
 
   const pickMethod = (id: MethodId) => {
@@ -347,15 +366,31 @@ function Bolting({
   // flange. A new flange starts the bolt-up over, so once a bolt is logged a
   // spoken one is refused rather than wiping the record.
   useSpokenFigures('FlangeBoltUp', (f) => {
-    const c = f.cls ? (String(f.cls.n) as JointClass) : cls;
-    if (f.cls && !CLASS_IDS.includes(c)) return `No class ${f.cls.n} table. Classes run 150 to 2500, and 125 or 250 cast iron.`;
+    const number = f.cls ? String(f.cls.n) : base;
+    if (f.cls && !CLASS_IDS.includes(number as JointClass)) return `No class ${f.cls.n} table. Classes run 150 to 2500, and 125 or 250 cast iron.`;
+    // Above 24" a steel class is a B16.47 flange: the series this joint is on,
+    // or the one whose bolt count was said with the size ("36 inch class 150,
+    // 44 bolt" is Series B), else Series A.
+    const classFor = (size: number | null): JointClass => {
+      const plain = number as JointClass;
+      const tabled = seriesFor(number);
+      const current = series && tabled.includes(series) ? series : tabled[0];
+      if (!current) return plain;
+      if (size === null) return series ? largeClassOf(current, number)! : plain;
+      if (size <= 24) return plain;
+      const said = f.bolts?.n;
+      const match = said ? tabled.find((s) => largeFlange(size, largeClassOf(s, number)!)?.bolts === said) : undefined;
+      return largeClassOf(match ?? current, number)!;
+    };
     let spec: JointSpec | null = null;
     if (f.size) {
+      const c = classFor(f.size.n);
       const row = flangeFor(f.size.n, c);
-      if (!row) return `No ${f.size.n} inch flange in the class ${c} table. Sizes run ${sizesOf(c)[0]?.label ?? ''} to ${sizesOf(c).at(-1)?.label ?? ''}.`;
+      if (!row) return `No ${f.size.n} inch flange in the ${classWords(c)} table. Sizes run ${sizesOf(c)[0]?.label ?? ''} to ${sizesOf(c).at(-1)?.label ?? ''}.`;
       spec = { cls: c, nps: row.nps, bolts: row.bolts };
-    } else if (f.bolts) spec = { cls: c, nps: null, bolts: f.bolts.n };
+    } else if (f.bolts) spec = { cls: classFor(null), nps: null, bolts: f.bolts.n };
     else if (f.cls) {
+      const c = classFor(null);
       const row = flangeFor(nps ?? NaN, c) ?? sizesOf(c)[0];
       if (row) spec = { cls: c, nps: row.nps, bolts: row.bolts };
     }
@@ -649,9 +684,18 @@ function Bolting({
 
       <HintRow text="Snug first, then the rounds the method lists, a gap check after each, then round the flange at 100% until no nut turns. That is ASME PCC-1. The screen only takes the bolt the sequence is asking for — tap anything else and it points you back." />
 
-      <SectionHeader title="The joint" meta={flange ? `${flange.label} · class ${cls}` : `${bolts} bolts`} />
+      <SectionHeader title="The joint" meta={flange ? `${flange.label} · ${classWords(cls)}` : `${bolts} bolts`} />
 
-      <ChipRow label="Class" options={CLASS_OPTIONS} selected={cls} onSelect={pickClass} />
+      <ChipRow label="Class" options={CLASS_OPTIONS} selected={base as JointClass} onSelect={pickClass} />
+
+      {seriesTabled.length ? (
+        <ChipRow
+          label="Standard"
+          options={[{ value: '', label: 'B16.5, to 24"' }, ...seriesTabled.map((s) => ({ value: s as string, label: `B16.47 Series ${s}` }))]}
+          selected={series ?? ''}
+          onSelect={(v) => pickSeries((v || null) as LargeSeries | null)}
+        />
+      ) : null}
 
       <SizeRow t={t} sizes={sizes} selected={flange ? nps : null} onSelect={pickSize} />
 
@@ -663,7 +707,9 @@ function Bolting({
             ? `${castIron.bolts} × ${formatInches(castIron.boltDiameter)} bolts, ${formatInches(castIron.boltLength)} long, on a ${formatInches(castIron.boltCircle)} bolt circle. Ring gasket ${formatInches(castIron.gasketId)} × ${formatInches(castIron.gasketOd)}. Cast iron is flat-faced and brittle: a full-face gasket and the lower torque its spec gives.`
             : steel
               ? `${steel.bolts} × ${studLabel(steel.stud)} studs, ${threadsPerInch(steel.stud)} threads per inch, ASME B16.5 class ${cls}. Bolt circle and gasket from the job's drawing. The class sets the studs; the studs, the material, the lubricant and the gasket set the torque.`
-              : `${bolts} bolts, set by hand. The sequence works off the count alone, so this covers a flange that is not in the tables.`}
+              : large
+                ? `${largeStuds(large)}, ${threadsPerInch(large.stud)} threads per inch, ASME ${largeWords(cls as LargeClass)}. Series A is the MSS SP-44 drilling, fewer and bigger studs; Series B the API 605 one, more and smaller. Count the holes to tell them apart, and check the stud size against the studs in hand: the torque follows it.`
+                : `${bolts} bolts, set by hand. The sequence works off the count alone, so this covers a flange that is not in the tables: class 75 and 400, Series B above class 300, and Series A class 600 above 48 inch.`}
         </Text>
       </View>
 
@@ -680,7 +726,7 @@ function Bolting({
         <Text style={[t.type.caption, { color: t.colors.textMuted }]}>{chosen.from}.</Text>
         {company && specMethod ? (
           <Text style={[t.type.caption, { color: specMethod === state.method ? t.colors.textMuted : t.colors.warnText }]}>
-            {specMethod === state.method ? `${company.name}: ${method(specMethod).name} for class ${cls}.` : `${company.name} says ${method(specMethod).name} for class ${cls}; this joint is on the ${chosen.name}.`}
+            {specMethod === state.method ? `${company.name}: ${method(specMethod).name} for ${classWords(cls)}.` : `${company.name} says ${method(specMethod).name} for ${classWords(cls)}; this joint is on the ${chosen.name}.`}
           </Text>
         ) : null}
         {locked ? <Text style={[t.type.caption, { color: t.colors.warnText }]}>Bolt-up in progress. Start over to change the method.</Text> : null}

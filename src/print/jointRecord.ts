@@ -9,6 +9,10 @@
 // box under the title, and a finished one not yet retightened says that:
 // nobody should have to read a record to the bottom to learn it is not done.
 //
+// The record is built as a body that stands on its own (jointRecordBody), so
+// the turnover package can carry one page per joint after its sign-off, and
+// as a page of its own (jointRecordHtml) for the joint's share button.
+//
 // Like the other sheets this lays out and does not decide. Every figure is
 // the joint's own, as kept when it was bolted; every value is escaped on the
 // way in.
@@ -17,8 +21,9 @@ import { clockLabel } from '../calc/days';
 import { sigSvg } from '../calc/signature';
 import { boltUpProgress, isAsked, isFinished, loadWords, method, planOf, type Round } from '../calc/boltUpSequence';
 import { isSteelClass, steelFlange, studLabel, threadsPerInch } from '../calc/steelFlange';
+import { isLargeClass, largeFlange, largeWords } from '../calc/largeFlange';
 import { boltUp } from '../calc/boltUp';
-import { isCastIron, isDone, jointFlange, jointProgress, type Joint, type SignRole } from '../state/register';
+import { classWords, isCastIron, isDone, jointFlange, jointProgress, type Joint, type SignRole } from '../state/register';
 import { CSS, table } from './sheet';
 import { esc } from './spoolSvg';
 
@@ -109,14 +114,19 @@ function flangeFacts(j: Joint): [string, string][] {
     const f = steelFlange(j.nps, j.cls);
     if (f) return [['Flange', `${f.label} ASME B16.5 class ${j.cls}`], ['Studs', `${f.bolts} × ${studLabel(f.stud)}, ${threadsPerInch(f.stud)} threads per inch`]];
   }
+  if (j.nps !== null && isLargeClass(j.cls)) {
+    const f = largeFlange(j.nps, j.cls);
+    if (f) return [['Flange', `${f.label} ASME ${largeWords(j.cls)}`], ['Studs', `${f.bolts} × ${studLabel(f.stud)}, ${threadsPerInch(f.stud)} threads per inch`]];
+  }
   if (j.nps !== null && isCastIron(j.cls)) {
     const f = boltUp(j.nps, j.cls);
     if (f) return [['Flange', `${f.label} class ${j.cls} cast iron, flat face`], ['Bolts', `${f.bolts} × ${f.boltDiameter}" × ${f.boltLength}" on a ${f.boltCircle}" circle`]];
   }
-  return [['Flange', `Class ${j.cls}, not in the tables`], ['Bolts', `${j.bolts}, count set by hand`]];
+  return [['Flange', `${classWords(j.cls).replace(/^class/, 'Class')}, not in the tables`], ['Bolts', `${j.bolts}, count set by hand`]];
 }
 
-export function jointRecordHtml(i: JointRecordInput): string {
+/** The record, header to footer, as a block that can sit on a page of its own or in the turnover package. */
+export function jointRecordBody(i: JointRecordInput): string {
   const j = i.joint;
   const m = method(j.state.method);
   const done = isDone(j);
@@ -179,10 +189,7 @@ export function jointRecordHtml(i: JointRecordInput): string {
   const name = j.tag || 'Unnamed joint';
 
   return (
-    '<!doctype html><html><head><meta charset="utf-8">' +
-    `<title>${esc(`Joint record ${name}`)}</title>` +
-    '<meta name="viewport" content="width=device-width, initial-scale=1">' +
-    `<style>${CSS}${EXTRA}</style></head><body>` +
+    '<div class="rec">' +
     '<header><div class="titles"><div>' +
     '<h1>Bolted joint assembly record</h1>' +
     `<p class="where">${esc(`${name} · Job ${j.project || 'none'} · ASME PCC-1 Appendix R`)}</p>` +
@@ -203,6 +210,19 @@ export function jointRecordHtml(i: JointRecordInput): string {
     checks +
     `<section class="sign"><h2>Sign-off</h2><div class="rows">${sign}</div></section>` +
     `<footer>${esc(FOOTER)}</footer>` +
+    '</div>'
+  );
+}
+
+/** The record as a page of its own. */
+export function jointRecordHtml(i: JointRecordInput): string {
+  const name = i.joint.tag || 'Unnamed joint';
+  return (
+    '<!doctype html><html><head><meta charset="utf-8">' +
+    `<title>${esc(`Joint record ${name}`)}</title>` +
+    '<meta name="viewport" content="width=device-width, initial-scale=1">' +
+    `<style>${CSS}${JOINT_RECORD_CSS}</style></head><body>` +
+    jointRecordBody(i) +
     '</body></html>'
   );
 }
@@ -212,16 +232,17 @@ const FOOTER =
   'The torque is the figure entered for the joint, worked from the bolting spec where one was on the phone; the app recorded the sequence and did not measure torque. ' +
   'Laid out to the content of ASME PCC-1 Appendix R: the joint, the gasket, the bolting and its lubricant, the target stress and torque, the tooling and its calibration, the pattern and rounds, the retightening, and who assembled and witnessed it.';
 
-const EXTRA = `
-  .kv th { width: 17%; text-transform: none; font-size: 8pt; letter-spacing: 0; background: #F2F2F2; }
-  .kv td { width: 33%; }
-  .kv tbody tr:nth-child(even) td { background: none; }
-  .sign { margin: 8pt 0; break-inside: avoid; }
-  .sign .rows { display: flex; gap: 8pt; }
-  .sign .rows > div { flex: 1; border: 0.7pt solid #000; padding: 4pt 6pt; }
-  .sign span { display: block; font-weight: 700; font-size: 8.5pt; }
-  .sign .who { margin: 2pt 0 0; font-size: 9pt; min-height: 11pt; }
-  .sign .ink { height: 34pt; border-bottom: 0.6pt solid #000; }
-  .sign .ink svg { height: 34pt; width: auto; display: block; }
-  .sign em { display: block; font-style: normal; font-size: 7pt; letter-spacing: 0.3pt; text-transform: uppercase; padding-top: 2pt; }
+/** The record's own styles, scoped to its block so they hold inside the turnover package as on their own page. */
+export const JOINT_RECORD_CSS = `
+  .rec .kv th { width: 17%; text-transform: none; font-size: 8pt; letter-spacing: 0; background: #F2F2F2; }
+  .rec .kv td { width: 33%; }
+  .rec .kv tbody tr:nth-child(even) td { background: none; }
+  .rec .sign { margin: 8pt 0; break-inside: avoid; }
+  .rec .sign .rows { display: flex; gap: 8pt; }
+  .rec .sign .rows > div { flex: 1; border: 0.7pt solid #000; padding: 4pt 6pt; }
+  .rec .sign span { display: block; font-weight: 700; font-size: 8.5pt; margin: 0; }
+  .rec .sign .who { margin: 2pt 0 0; font-size: 9pt; min-height: 11pt; }
+  .rec .sign .ink { height: 34pt; border-bottom: 0.6pt solid #000; }
+  .rec .sign .ink svg { height: 34pt; width: auto; display: block; }
+  .rec .sign em { display: block; font-style: normal; font-size: 7pt; letter-spacing: 0.3pt; text-transform: uppercase; padding-top: 2pt; border-bottom: 0; }
 `;

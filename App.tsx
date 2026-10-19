@@ -24,6 +24,7 @@ import { FittingsProvider } from "./src/state/fittings";
 import { CutsProvider } from "./src/state/cuts";
 import { RecentsProvider } from "./src/state/recents";
 import { LayoutProvider } from "./src/state/layouts";
+import { LearnedWordsProvider } from "./src/state/learnedWords";
 import { JobPickProvider } from "./src/state/jobPick";
 import { ThemeProvider, useTheme } from "./src/theme/ThemeProvider";
 import { useAppFonts } from "./src/theme/useFonts";
@@ -95,11 +96,13 @@ export default function App() {
                       <LayoutProvider>
                         <JobPickProvider>
                           <LaserProvider>
+                            <LearnedWordsProvider>
                             <VoiceProvider>
                               <UpdatesProvider>
                                 <Gate />
                               </UpdatesProvider>
                             </VoiceProvider>
+                            </LearnedWordsProvider>
                           </LaserProvider>
                         </JobPickProvider>
                       </LayoutProvider>

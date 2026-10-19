@@ -12,7 +12,7 @@
 // The bolt-up screen also runs hands-free: the mic stays open, "done" logs the
 // bolt, and the phone says the next one.
 
-import React, { createContext, useCallback, useContext, useMemo, useRef, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { API_BASE } from '../ai/apiBase';
 import { askVoice, voiceMissWords } from '../ai/voice';
 import { say, sayThen } from '../audio/say';
@@ -24,7 +24,11 @@ import { useShifts } from '../state/shifts';
 import { usePreTasks } from '../state/pretasks';
 import { testName } from '../state/pressureLog';
 import { applyPretask, applyShift, applyTest } from './apply';
-import { VoiceCommand, bestLocal, localIntent } from './intent';
+import { VOCAB, VoiceCommand, bestLocal, localIntent, routeWords } from './intent';
+import { alignToWords, alignTranscripts, learn, learnedMap, setLearnedWords } from './learned';
+import { useLearnedWords } from '../state/learnedWords';
+import { MATERIALS } from '../calc/materials';
+import { SPEC_WORDS } from './specs';
 import { canListen, heardWords, listenOn, listenOnce, stopListening } from './listen';
 import { publishFigures } from './figures';
 import { FigureSpec, Figures, TOOL_FIGURES, isFigureRoute } from './toolFigures';
@@ -102,6 +106,7 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
   const shifts = useShifts();
   const plans = usePreTasks();
   const tests = usePressureTests();
+  const learned = useLearnedWords();
   const [sheet, setSheet] = useState<VoiceSheet | null>(null);
   const [handsFree, setHandsFreeState] = useState(false);
   const bolts = useRef<BoltHandler | null>(null);
@@ -110,8 +115,15 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
   const listening = useRef(false);
   const freeOn = useRef(false);
   // The stores move on; the command runs against what they hold when it lands.
-  const latest = useRef({ shifts, plans, tests, project: settings.projectId, settings, update });
-  latest.current = { shifts, plans, tests, project: settings.projectId, settings, update };
+  const latest = useRef({ shifts, plans, tests, learned, project: settings.projectId, settings, update });
+  latest.current = { shifts, plans, tests, learned, project: settings.projectId, settings, update };
+
+  // The matchers hear with what this phone has learned of its mishearings.
+  useEffect(() => setLearnedWords(learnedMap(learned.book)), [learned.book]);
+  /** Keep what a transcript or Claude showed the recogniser got wrong, for next time (learned.ts). */
+  const teach = useCallback((pairs: { said: string; meant: string }[]) => {
+    if (pairs.length) latest.current.learned.apply((b) => learn(b, pairs, Date.now()));
+  }, []);
 
   const enabled = settings.voice && canListen();
 
@@ -195,6 +207,8 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
       const now = Date.now();
       switch (a.action) {
         case 'open':
+          // Claude read it as this tool: a word the app did not know, near the tool's names, was a mishearing of one.
+          teach(alignToWords(heard, routeWords(a.route), VOCAB));
           return finish(heard, openWith(a.route, a.figures) ?? (a.say || titleOf(a.route)));
         case 'answer':
           if (a.table && nav.isReady()) nav.navigate('ReferenceTable', { id: a.table });
@@ -243,12 +257,13 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
           });
         }
         case 'specs':
+          teach(alignToWords(heard, [...MATERIALS.flatMap((m) => m.words), ...SPEC_WORDS], VOCAB));
           return setSpecs(heard, { material: a.material, nps: a.nps, wall: a.wall, elbow: a.elbow });
         case 'none':
           return finish(heard, a.say, { tone: 'warn' });
       }
     },
-    [finish, setSpecs],
+    [finish, setSpecs, teach],
   );
 
   // What was heard is tried the way a person would hear it: the screen's own
@@ -265,10 +280,13 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
         if (own) return finish(heard, own);
       }
       const local = bestLocal(alternatives, screen);
-      if (local) runLocal(local.heard === heard ? heard : `${heard} (heard as “${local.heard}”)`, local.cmd);
-      else void runClaude(heard, screen);
+      if (local) {
+        // A transcript further down the list made sense of it: what the top one had instead is this phone's mishearing, kept for next time.
+        if (local.heard !== heard) teach(alignTranscripts(heard, local.heard, VOCAB));
+        runLocal(local.heard === heard ? heard : `${heard} (heard as “${local.heard}”)`, local.cmd);
+      } else void runClaude(heard, screen);
     },
-    [finish, runLocal, runClaude],
+    [finish, runLocal, runClaude, teach],
   );
 
   const talk = useCallback(() => {

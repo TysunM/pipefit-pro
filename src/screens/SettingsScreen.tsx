@@ -14,6 +14,8 @@ import { useTheme } from '../theme/ThemeProvider';
 import { useSettings } from '../state/settings';
 import { useLayout } from '../state/layouts';
 import { useBoltingSpecs } from '../state/boltingSpecs';
+import { useLearnedWords } from '../state/learnedWords';
+import { forgetAll } from '../voice/learned';
 import { activeSpec, gasketLabel, methodLabel, newSpec, putSpec, removeSpec, setActive, specId, type BoltingSpec } from '../state/boltingSpec';
 import { BoltingSpecSheet } from '../components/BoltingSpecSheet';
 import { appVersion, buildId, runningBuild, useOtaUpdate, versionRows } from '../state/updates';
@@ -35,6 +37,7 @@ export function SettingsScreen() {
   const layout = useLayout();
   const route = useRoute<RouteProp<RootStackParamList, 'Settings'>>();
   const { book, hydrated: specsIn, apply: applySpecs } = useBoltingSpecs();
+  const learned = useLearnedWords();
   const spec = activeSpec(book);
   const [editing, setEditing] = useState<BoltingSpec | null>(null);
   const fresh = () => newSpec('new', Date.now());
@@ -231,6 +234,18 @@ export function SettingsScreen() {
         weld 14 rejected for porosity"), a test reading ("hold started at 225") or a handbook question. Tool names work on the phone
         with no signal; the rest is read by Claude, said back, and kept on screen with an Undo.
       </Text>
+      {learned.book.pairs.length ? (
+        <View style={{ paddingHorizontal: t.layout.screenPadding, marginTop: -t.space.sm, marginBottom: t.space.lg, gap: t.space.sm }}>
+          <Text style={[t.type.caption, { color: t.colors.textMuted }]}>
+            {`${learned.book.pairs.length} word${learned.book.pairs.length === 1 ? '' : 's'} learned from this phone's mishearings, heard as meant from now on: ${[...learned.book.pairs]
+              .sort((a, b) => b.at - a.at)
+              .slice(0, 4)
+              .map((p) => `"${p.said}" is ${p.meant}`)
+              .join(', ')}${learned.book.pairs.length > 4 ? ', …' : ''}. They go into the backup.`}
+          </Text>
+          <GhostButton label="Forget the learned words" icon="trash-outline" onPress={() => learned.apply(forgetAll)} />
+        </View>
+      ) : null}
       <ChipRow
         label="Read aloud"
         options={[

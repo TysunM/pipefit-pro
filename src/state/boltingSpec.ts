@@ -1,4 +1,6 @@
 import { referenceTorque, steelFlange, isSteelClass } from '../calc/steelFlange';
+import { isLargeClass, largeFlange } from '../calc/largeFlange';
+import { classNumber } from './register';
 import { GASKETS, METHODS, isMethodId, methodBar, type Gasket, type MethodId } from '../calc/boltUpSequence';
 import type { JointBolting, JointClass } from './register';
 
@@ -271,7 +273,8 @@ export function activeSpec(b: SpecBook): BoltingSpec | null {
 
 /** How a class is bolted: its own rule where it has one, else the spec's usual way. */
 export function ruleFor(spec: BoltingSpec, cls: JointClass): Required<ClassRule> {
-  const r = spec.byClass[cls] ?? {};
+  // A B16.47 flange is bolted by its class number's rule: an A150 is a class 150.
+  const r = spec.byClass[classNumber(cls) as JointClass] ?? {};
   return { method: r.method ?? spec.method, gasket: r.gasket ?? spec.gasket, stressKsi: r.stressKsi ?? spec.stressKsi };
 }
 
@@ -292,8 +295,8 @@ export function methodFor(spec: BoltingSpec, cls: JointClass, bolts: number, gas
  * count set by hand.
  */
 export function targetTorque(spec: BoltingSpec, cls: JointClass, nps: number | null): number | null {
-  if (nps === null || !isSteelClass(cls)) return null;
-  const f = steelFlange(nps, cls);
+  if (nps === null) return null;
+  const f = isSteelClass(cls) ? steelFlange(nps, cls) : isLargeClass(cls) ? largeFlange(nps, cls) : undefined;
   if (!f) return null;
   const tq = referenceTorque(f.stud, ruleFor(spec, cls).stressKsi * 1000, spec.nutFactor);
   return Number.isFinite(tq) ? Math.round(tq) : null;
