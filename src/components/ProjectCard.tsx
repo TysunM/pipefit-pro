@@ -1,15 +1,18 @@
 import React from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Platform, Pressable, Text, View } from 'react-native';
 import { useTheme } from '../theme/ThemeProvider';
 import { useSettings } from '../state/settings';
 import { material, pipeSpec, sizeLabel, wallLabel } from '../calc/materials';
 import { SpoolThumb } from './ToolArt';
 import { SHOP, Workshop } from './Workshop';
-import { Plate } from './metal';
+import { CopperPlate, DarkPlate, SteelPlate } from './plates';
 
 /**
  * The job and the pipe every tool starts from, across the top of the home
- * screen, set against the shop wall.
+ * screen, set against the shop wall, on the plates a machine's nameplates
+ * are: the job on a dark plate in a steel bezel, the one button on a copper
+ * plate, the figures on steel plates with their values in dark windows
+ * (plates.tsx).
  *
  * Every answer in the app is worked for one size, one wall and one unit, set
  * once in Settings, and read against one job. So they are the first thing on
@@ -44,31 +47,23 @@ export function ProjectCard({ onEdit }: { onEdit: () => void }) {
     <View style={{ overflow: 'hidden', paddingHorizontal: t.layout.screenPadding, paddingTop: t.space.lg, paddingBottom: t.space.lg }}>
       <Workshop />
       <Text
-        style={[t.type.label, { color: SHOP.text, fontFamily: t.font.sans, fontSize: 16, letterSpacing: 0.7, marginBottom: t.space.md }]}
+        style={[
+          t.type.label,
+          { color: SHOP.text, fontFamily: t.font.sans, fontSize: 16, letterSpacing: 0.7, marginBottom: t.space.md, textShadowColor: '#000000', textShadowOffset: { width: 0, height: 1.5 }, textShadowRadius: 2 },
+        ]}
         accessibilityRole="header"
       >
         Active project details:
       </Text>
 
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: 12,
-          padding: 10,
-          borderRadius: t.radius.lg,
-          borderWidth: 1,
-          borderColor: SHOP.cardEdge,
-          backgroundColor: SHOP.card,
-        }}
-      >
+      <DarkPlate style={{ padding: 14, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
         <View
           style={{
-            width: 76,
-            height: 76,
-            borderRadius: t.radius.md,
-            borderWidth: 1,
-            borderColor: SHOP.cardEdge,
+            width: 72,
+            height: 72,
+            borderRadius: 10,
+            borderWidth: 1.5,
+            borderColor: '#8d939b',
             backgroundColor: SHOP.well,
             alignItems: 'center',
             justifyContent: 'center',
@@ -84,34 +79,28 @@ export function ProjectCard({ onEdit }: { onEdit: () => void }) {
         </View>
         <Pressable onPress={onEdit} accessibilityRole="button" accessibilityLabel="Edit project and pipe specs">
           {({ pressed }) => (
-            <Plate tone="copper" sunk={pressed} radius={t.radius.sm} style={{ paddingHorizontal: 12, height: 44, justifyContent: 'center' }}>
-              <Text style={[t.type.labelSmall, { color: t.colors.onCopper, fontFamily: t.font.sans, fontSize: 13, letterSpacing: 0.6 }]}>
+            <CopperPlate sunk={pressed} style={{ paddingHorizontal: 12, height: 56, justifyContent: 'center', alignItems: 'center' }}>
+              <Text
+                style={[
+                  t.type.labelSmall,
+                  { color: '#2a1606', fontFamily: t.font.sans, fontSize: 12.5, letterSpacing: 0.8, textShadowColor: '#ffd79a', textShadowOffset: { width: 0, height: 0.6 }, textShadowRadius: 0 },
+                ]}
+              >
                 Pipe & material
               </Text>
-            </Plate>
+            </CopperPlate>
           )}
         </Pressable>
-      </View>
+      </DarkPlate>
 
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space.sm, marginTop: t.space.md }}>
         {facts.map((f) => (
-          <View
-            key={f.k}
-            style={{
-              height: 32,
-              paddingHorizontal: 10,
-              borderRadius: t.radius.sm,
-              borderWidth: 1,
-              borderColor: SHOP.chipEdge,
-              backgroundColor: SHOP.chip,
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: 6,
-            }}
-          >
-            <Text style={[t.type.labelSmall, { color: SHOP.muted }]}>{f.k}</Text>
-            <Text style={[t.type.captionStrong, { color: SHOP.text, fontFamily: t.font.sans, fontSize: 14.5 }]}>{f.v}</Text>
-          </View>
+          <SteelPlate key={f.k} style={{ height: 44, paddingHorizontal: 11, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Text style={[t.type.labelSmall, { color: '#2b3036', fontSize: 11.5, letterSpacing: 0.7, textShadowColor: '#ffffff', textShadowOffset: { width: 0, height: 0.8 }, textShadowRadius: 0 }]}>{f.k}</Text>
+            <View style={{ backgroundColor: '#181c21', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 1, borderWidth: 1, borderColor: '#5b6169', borderTopColor: '#0a0c0f' }}>
+              <Text style={[t.type.captionStrong, { color: '#f1f4f8', fontFamily: t.font.sans, fontSize: 14 }]}>{f.v}</Text>
+            </View>
+          </SteelPlate>
         ))}
       </View>
     </View>
@@ -120,7 +109,7 @@ export function ProjectCard({ onEdit }: { onEdit: () => void }) {
 
 function Line({ t, k, v, faint = false }: { t: ReturnType<typeof useTheme>; k: string; v: string; faint?: boolean }) {
   return (
-    <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
+    <Text numberOfLines={Platform.OS === 'web' ? 2 : 1} adjustsFontSizeToFit minimumFontScale={0.78}>
       <Text style={[t.type.labelSmall, { color: SHOP.muted, fontSize: 12 }]}>{`${k}: `}</Text>
       <Text style={[t.type.captionStrong, { color: faint ? SHOP.muted : SHOP.text, fontFamily: t.font.sans, fontSize: 14 }]}>
         {v}
