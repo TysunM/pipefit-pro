@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
-import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import React from 'react';
+import { Image, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Svg, { Circle, ClipPath, Defs, G, Image as SvgImage, Line, LinearGradient, RadialGradient, Rect, Stop, Text as SvgText } from 'react-native-svg';
+import Svg, { Circle, Defs, G, Line, LinearGradient, RadialGradient, Rect, Stop } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../theme/ThemeProvider';
 import { useSvgIds } from './metal';
@@ -14,14 +14,15 @@ import { useSvgIds } from './metal';
 // own P, the one off its icon, then "ipeFit" in chrome and "Pro" in the
 // copper that is the rest of the app's one accent.
 //
-// It is drawn as one SVG at the window's width, which is known, so the
-// Android trouble the flat plates were made to avoid (metal.tsx: a gradient
-// sized by flex before the layout settled) does not arise: nothing here is
-// sized by flex. The lettering is SVG text, because that is the only text
-// the app can fill with a gradient on every platform; its width is taken
-// off a hidden native Text set in the same face, so the mark sits centred.
-// The controls are real Pressables over the drawing, with the forty-point
-// hit box a gloved thumb needs.
+// The plates are drawn as one SVG at the window's width, which is known, so
+// the Android trouble the flat plates were made to avoid (metal.tsx: a
+// gradient sized by flex before the layout settled) does not arise. The
+// wordmark's lettering is a picture, set in the app's serif and rendered
+// once, because SVG text on Android does not find the fonts the app loads
+// and fell back to a plain serif on the phone; a title is native text in
+// the same face, lettered in chrome with a bevel under it. The controls are
+// real Pressables over the drawing, with the forty-point hit box a gloved
+// thumb needs.
 
 const H = 64;
 /** The end plates, with a control each. */
@@ -30,6 +31,17 @@ const RIVET = 4.2;
 const INSET = 11;
 /** The wordmark's P: the app icon, at a size the JS bundle can carry. */
 const ICON_P = require('../../assets/wordmark-p.png');
+/** "ipeFit Pro", lettered in chrome and copper for the dark plates and in dark steel for the light ones. */
+const WORDMARK = { dark: require('../../assets/wordmark-dark.png'), light: require('../../assets/wordmark-light.png') };
+/** The lettering's height on the band; its width follows the picture. */
+const MARK_H = 44;
+const P = 40;
+
+/** A picture's width at a height, from the asset's own size (a number on the phone, an object on the web). */
+function widthAt(src: unknown, height: number): number {
+  const a = typeof src === 'number' ? Image.resolveAssetSource(src) : (src as { width?: number; height?: number });
+  return a?.width && a?.height ? (height * a.width) / a.height : height * 3.4;
+}
 
 type Plate = {
   top: string;
@@ -86,22 +98,12 @@ export function AppHeader({
   const { width: w } = useWindowDimensions();
   const p = t.mode === 'dark' ? DARK : LIGHT;
   const gid = useSvgIds('head');
-  const face = t.type.screenTitle.fontFamily as string;
-  const weight = (t.type.screenTitle.fontWeight ?? '700') as '700';
-
   const wordmark = title === 'PipeFit Pro';
-  // The lettering's widths, measured off hidden native text in the same face.
-  const [ipefit, setIpefit] = useState<number | null>(null);
-  const [pro, setPro] = useState<number | null>(null);
-  const [plain, setPlain] = useState<number | null>(null);
-
-  const avail = w - 2 * PANEL - 16;
-  const F = wordmark ? 31 : 22;
-  const S = 40;
-  const measured = wordmark ? (ipefit !== null && pro !== null ? S + 4 + ipefit + 9 + pro : null) : plain;
-  const scale = measured !== null && measured > avail ? avail / measured : 1;
-  const mid = w / 2;
-  const base = H / 2 + 0.36 * F * scale;
+  const mark = WORDMARK[t.mode === 'dark' ? 'dark' : 'light'];
+  // The mark at its height, or smaller on a narrow screen, so it never runs under a control.
+  const avail = w - 2 * PANEL - 12;
+  const full = P + 4 + widthAt(mark, MARK_H);
+  const fit = Math.min(1, avail / full);
 
   const rivets: [number, number][] = [];
   for (const [x0, x1] of [
@@ -114,24 +116,9 @@ export function AppHeader({
   const left = onBack ? { icon: 'arrow-back' as const, label: 'Back', on: onBack } : onProfile ? { icon: 'person' as const, label: 'Your projects', on: onProfile } : null;
   const right = onSettings ? { icon: 'settings-sharp' as const, label: 'Settings', on: onSettings } : null;
 
-  const measure = (set: (n: number) => void, text: string, size: number) => (
-    <Text
-      style={{ position: 'absolute', top: -200, left: 0, opacity: 0, fontFamily: face, fontWeight: weight, fontSize: size, letterSpacing: wordmark ? -0.6 : -0.2 }}
-      onLayout={(e) => set(e.nativeEvent.layout.width)}
-      pointerEvents="none"
-      accessible={false}
-      importantForAccessibility="no"
-    >
-      {text}
-    </Text>
-  );
-
   return (
     <View style={{ paddingTop: insets.top, backgroundColor: p.low }} accessibilityRole="header" accessibilityLabel={title}>
       <View style={{ height: H, overflow: 'hidden' }}>
-        {wordmark ? measure(setIpefit, 'ipeFit', F) : null}
-        {wordmark ? measure(setPro, 'Pro', F) : null}
-        {!wordmark ? measure(setPlain, title, F) : null}
         <Svg width={w} height={H} style={StyleSheet.absoluteFill} pointerEvents="none">
           <Defs>
             <LinearGradient id={gid('p')} x1="0" y1="0" x2="0" y2="1">
@@ -143,19 +130,6 @@ export function AppHeader({
               <Stop offset="0" stopColor={p.rivetHi} />
               <Stop offset="1" stopColor={p.rivetLo} />
             </RadialGradient>
-            <LinearGradient id={gid('c')} x1="0" y1="0" x2="0" y2="1">
-              {p.chrome.map((c, i) => (
-                <Stop key={c + i} offset={[0, 0.44, 0.5, 0.58, 1][i]} stopColor={c} />
-              ))}
-            </LinearGradient>
-            <LinearGradient id={gid('o')} x1="0" y1="0" x2="0" y2="1">
-              {p.copper.map((c, i) => (
-                <Stop key={c + i} offset={[0, 0.46, 0.56, 1][i]} stopColor={c} />
-              ))}
-            </LinearGradient>
-            <ClipPath id={gid('k')}>
-              <Rect x={mid - (measured ?? 0) * scale / 2} y={H / 2 - (S * scale) / 2} width={S * scale} height={S * scale} rx={9 * scale} />
-            </ClipPath>
           </Defs>
 
           {/* The band, with the lit top edge and the shadowed bottom one. */}
@@ -188,45 +162,40 @@ export function AppHeader({
           {left ? <Circle cx={PANEL / 2} cy={H / 2} r={18} fill={p.bezel} stroke={p.bezelRing} strokeWidth={1.6} /> : null}
           {right ? <Circle cx={w - PANEL / 2} cy={H / 2} r={18} fill={p.bezel} stroke={p.bezelRing} strokeWidth={1.6} /> : null}
 
-          {/* The lettering: a dark copy a hair below for the bevel, the chrome on top. */}
-          {wordmark && measured !== null ? (
-            <G>
-              <SvgImage
-                href={ICON_P}
-                x={mid - (measured * scale) / 2}
-                y={H / 2 - (S * scale) / 2}
-                width={S * scale}
-                height={S * scale}
-                preserveAspectRatio="xMidYMid slice"
-                clipPath={`url(#${gid('k')})`}
-              />
-              {lettered(mid - (measured * scale) / 2 + (S + 4) * scale, base, 'ipeFit', F * scale, -0.6 * scale, `url(#${gid('c')})`, p.chromeEdge, face, weight)}
-              {lettered(mid - (measured * scale) / 2 + (S + 4 + ipefit! + 9) * scale, base, 'Pro', F * scale, -0.6 * scale, `url(#${gid('o')})`, p.copperEdge, face, weight)}
-            </G>
-          ) : !wordmark ? (
-            lettered(mid, base, title, F * scale, -0.2 * scale, `url(#${gid('c')})`, p.chromeEdge, face, weight, 'middle')
-          ) : null}
         </Svg>
+
+        {/* The lettering, centred on the middle plate. */}
+        <View pointerEvents="none" style={{ position: 'absolute', left: PANEL, right: PANEL, top: 0, bottom: 0, alignItems: 'center', justifyContent: 'center', flexDirection: 'row' }}>
+          {wordmark ? (
+            <>
+              <Image source={ICON_P} style={{ width: P * fit, height: P * fit, borderRadius: 9 * fit, marginRight: 4 * fit }} accessibilityIgnoresInvertColors />
+              <Image source={mark} style={{ width: widthAt(mark, MARK_H) * fit, height: MARK_H * fit }} resizeMode="contain" accessibilityIgnoresInvertColors />
+            </>
+          ) : (
+            <Text
+              style={[
+                t.type.screenTitle,
+                {
+                  color: p.chrome[1],
+                  textShadowColor: p.chromeEdge,
+                  textShadowOffset: { width: 0, height: 1.4 },
+                  textShadowRadius: 0.5,
+                  paddingHorizontal: 6,
+                },
+              ]}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.7}
+            >
+              {title}
+            </Text>
+          )}
+        </View>
 
         {left ? <Control side="left" icon={left.icon} label={left.label} onPress={left.on} glyph={p.glyph} /> : null}
         {right ? <Control side="right" icon={right.icon} label={right.label} onPress={right.on} glyph={p.glyph} /> : null}
       </View>
     </View>
-  );
-}
-
-/** Lettering with a bevel: the same text in the edge colour a little lower, then the metal over it. */
-function lettered(x: number, y: number, text: string, size: number, spacing: number, fill: string, edge: string, face: string, weight: '700', anchor: 'start' | 'middle' = 'start') {
-  const common = { x, textAnchor: anchor, fontFamily: face, fontWeight: weight, fontSize: size, letterSpacing: spacing } as const;
-  return (
-    <G>
-      <SvgText {...common} y={y + 1.4} fill={edge} opacity={0.9}>
-        {text}
-      </SvgText>
-      <SvgText {...common} y={y} fill={fill}>
-        {text}
-      </SvgText>
-    </G>
   );
 }
 
