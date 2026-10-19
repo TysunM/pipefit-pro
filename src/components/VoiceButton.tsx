@@ -21,10 +21,11 @@ export function VoiceButton() {
   const v = useVoice();
   const s = v.sheet;
 
-  // A finished answer goes away on its own; one with an Undo stays longer.
+  // A finished answer goes away on its own; one with an Undo, or other
+  // guesses to tap, stays longer.
   useEffect(() => {
     if (!s || s.phase !== 'done' || v.handsFree) return;
-    const id = setTimeout(v.dismiss, s.undo ? 15_000 : 7_000);
+    const id = setTimeout(v.dismiss, s.undo ? 15_000 : s.others?.length ? 12_000 : 7_000);
     return () => clearTimeout(id);
   }, [s, v.dismiss, v.handsFree]);
 
@@ -106,6 +107,33 @@ export function VoiceButton() {
         <Text style={[t.type.body, { color: s.tone === 'warn' ? t.colors.warnText : t.colors.data }]} numberOfLines={5}>
           {s.reply}
         </Text>
+      ) : null}
+      {s.phase === 'done' && s.others?.length ? (
+        <View style={{ gap: 6 }}>
+          <Text style={[t.type.caption, { color: t.colors.textMuted }]}>Not that? Tap what you said, and the phone learns it:</Text>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space.sm }}>
+            {s.others.map((o) => (
+              <Pressable
+                key={o}
+                onPress={() => v.retry(o)}
+                accessibilityRole="button"
+                accessibilityLabel={`I said ${o}`}
+                style={({ pressed }) => ({
+                  minHeight: 44,
+                  maxWidth: '100%',
+                  justifyContent: 'center',
+                  paddingHorizontal: t.space.md,
+                  borderRadius: t.radius.md,
+                  borderWidth: 1,
+                  borderColor: t.colors.border,
+                  backgroundColor: pressed ? t.colors.bgSubtle : t.colors.bg,
+                })}
+              >
+                <Text style={[t.type.body, { color: t.colors.text }]} numberOfLines={1}>{`“${o}”`}</Text>
+              </Pressable>
+            ))}
+          </View>
+        </View>
       ) : null}
 
       <View style={{ flexDirection: 'row', gap: t.space.md, marginTop: t.space.sm }}>

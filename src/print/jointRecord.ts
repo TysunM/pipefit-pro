@@ -21,7 +21,7 @@ import { clockLabel } from '../calc/days';
 import { sigSvg } from '../calc/signature';
 import { boltUpProgress, isAsked, isFinished, loadWords, method, planOf, type Round } from '../calc/boltUpSequence';
 import { isSteelClass, steelFlange, studLabel, threadsPerInch } from '../calc/steelFlange';
-import { isLargeClass, largeFlange, largeWords } from '../calc/largeFlange';
+import { gasketWords, isLargeClass, largeFlange, largeWords } from '../calc/largeFlange';
 import { boltUp } from '../calc/boltUp';
 import { classWords, isCastIron, isDone, jointFlange, jointProgress, type Joint, type SignRole } from '../state/register';
 import { CSS, table } from './sheet';
@@ -116,7 +116,12 @@ function flangeFacts(j: Joint): [string, string][] {
   }
   if (j.nps !== null && isLargeClass(j.cls)) {
     const f = largeFlange(j.nps, j.cls);
-    if (f) return [['Flange', `${f.label} ASME ${largeWords(j.cls)}`], ['Studs', `${f.bolts} × ${studLabel(f.stud)}, ${threadsPerInch(f.stud)} threads per inch`]];
+    if (f)
+      return [
+        ['Flange', `${f.label} ASME ${largeWords(j.cls)}`],
+        ['Studs', `${f.bolts} × ${studLabel(f.stud)}, ${threadsPerInch(f.stud)} threads per inch`],
+        ['Gasket size', gasketWords(j.nps, j.cls)],
+      ];
   }
   if (j.nps !== null && isCastIron(j.cls)) {
     const f = boltUp(j.nps, j.cls);

@@ -24,7 +24,7 @@ import { useShifts } from '../state/shifts';
 import { usePreTasks } from '../state/pretasks';
 import { testName } from '../state/pressureLog';
 import { applyPretask, applyShift, applyTest } from './apply';
-import { VOCAB, VoiceCommand, bestLocal, localIntent, routeWords } from './intent';
+import { VOCAB, VoiceCommand, bestLocal, localIntent, othersOf, routeWords } from './intent';
 import { alignToWords, alignTranscripts, learn, learnedMap, setLearnedWords } from './learned';
 import { useLearnedWords } from '../state/learnedWords';
 import { MATERIALS } from '../calc/materials';
@@ -54,6 +54,8 @@ export type VoiceSheet = {
   undo?: () => void;
   /** A screen to go and look at what was written. */
   open?: { label: string; go: () => void };
+  /** The recogniser's other guesses at what was said. Tapping one runs it, and teaches the phone the words it got wrong. */
+  others?: string[];
 };
 
 type Ctx = {
@@ -62,6 +64,8 @@ type Ctx = {
   sheet: VoiceSheet | null;
   /** Tap: listen and do it. Tap while listening: stop. */
   talk: () => void;
+  /** "Not that?": run one of the recogniser's other transcripts as what was said, and learn from the difference. */
+  retry: (text: string) => void;
   dismiss: () => void;
   handsFree: boolean;
   setHandsFree: (on: boolean) => void;
@@ -125,10 +129,41 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
     if (pairs.length) latest.current.learned.apply((b) => learn(b, pairs, Date.now()));
   }, []);
 
+  useEffect(() => {
+    const opened = () => {
+      const miss = lastMiss.current;
+      if (!miss || Date.now() - miss.at > 30_000 || !nav.isReady()) return;
+      const route = nav.getCurrentRoute()?.name;
+      if (!route || route === miss.route || !tool(route)) return;
+      lastMiss.current = null;
+      teach(alignToWords(miss.heard, routeWords(route), VOCAB));
+    };
+    // The navigator is not ready when the provider mounts; wait for it, then listen.
+    let off: (() => void) | null = null;
+    const wait = setInterval(() => {
+      if (!nav.isReady()) return;
+      clearInterval(wait);
+      off = nav.addListener('state', opened);
+    }, 500);
+    return () => {
+      clearInterval(wait);
+      off?.();
+    };
+  }, [teach]);
+
   const enabled = settings.voice && canListen();
 
+  // What the recogniser offered besides the transcript acted on, and that
+  // transcript, kept for the panel's "Not that?" and the learning behind it.
+  const others = useRef<string[]>([]);
+  const lastHeard = useRef('');
+  // A command nothing could make sense of. A tool opened by hand in the next
+  // half minute is taken as what it meant, and the words that should have
+  // opened it are learned (learned.ts).
+  const lastMiss = useRef<{ heard: string; route: string | null; at: number } | null>(null);
+
   const finish = useCallback((heard: string, reply: string, extra: Partial<VoiceSheet> = {}) => {
-    setSheet({ phase: 'done', heard, reply, tone: extra.tone ?? 'ok', ...extra });
+    setSheet({ phase: 'done', heard, reply, tone: extra.tone ?? 'ok', ...(others.current.length ? { others: others.current } : {}), ...extra });
     if (reply) say(reply);
   }, []);
 
@@ -190,7 +225,13 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
           // seen for what it was rather than silently dropped.
           const said = cmd.figures ? figuresSaid(cmd.route, cmd.figures) : '';
           const missed = cmd.ignored?.length ? ` Didn't catch “${cmd.ignored.join(' ')}”.` : '';
-          return setSheet({ phase: 'done', heard, reply: `${said ? `${titleOf(cmd.route)}: ${said}` : titleOf(cmd.route)}${missed}`, tone: missed ? 'warn' : 'ok' });
+          return setSheet({
+            phase: 'done',
+            heard,
+            reply: `${said ? `${titleOf(cmd.route)}: ${said}` : titleOf(cmd.route)}${missed}`,
+            tone: missed ? 'warn' : 'ok',
+            ...(others.current.length ? { others: others.current } : {}),
+          });
         }
       }
     },
@@ -202,6 +243,7 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
     async (heard: string, screen: string | null) => {
       setSheet({ phase: 'thinking', heard, reply: '', tone: 'ok' });
       const a = await askVoice(API_BASE, { said: heard, screen: screen ?? '' });
+      if (typeof a === 'string' || a.action === 'none') lastMiss.current = { heard, route: screen, at: Date.now() };
       if (typeof a === 'string') return finish(heard, voiceMissWords(a), { tone: 'warn' });
       const { shifts: s, tests: p, project } = latest.current;
       const now = Date.now();
@@ -274,6 +316,8 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
   const run = useCallback(
     (alternatives: string[]) => {
       const heard = alternatives[0] ?? '';
+      lastHeard.current = heard;
+      others.current = othersOf(alternatives);
       const screen = nav.isReady() ? (nav.getCurrentRoute()?.name ?? null) : null;
       for (const t of alternatives) {
         const own = screenVoice.current?.(t);
@@ -287,6 +331,18 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
       } else void runClaude(heard, screen);
     },
     [finish, runLocal, runClaude, teach],
+  );
+
+  // "Not that?": what was said is what the man says it was. The difference
+  // between the two transcripts is the recogniser's mistake, learned whether
+  // or not the app can do anything with the words.
+  const retry = useCallback(
+    (text: string) => {
+      const was = lastHeard.current;
+      if (was && was !== text) teach(alignTranscripts(was, text, VOCAB));
+      run([text]);
+    },
+    [run, teach],
   );
 
   const talk = useCallback(() => {
@@ -370,8 +426,8 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const value = useMemo<Ctx>(
-    () => ({ enabled, sheet, talk, dismiss: () => setSheet(null), handsFree, setHandsFree, useBolts, useCutAdder, releaseCutAdder, useScreenVoice, releaseScreenVoice }),
-    [enabled, sheet, talk, handsFree, setHandsFree, useBolts, useCutAdder, releaseCutAdder, useScreenVoice, releaseScreenVoice],
+    () => ({ enabled, sheet, talk, retry, dismiss: () => setSheet(null), handsFree, setHandsFree, useBolts, useCutAdder, releaseCutAdder, useScreenVoice, releaseScreenVoice }),
+    [enabled, sheet, talk, retry, handsFree, setHandsFree, useBolts, useCutAdder, releaseCutAdder, useScreenVoice, releaseScreenVoice],
   );
   return <VoiceCtx.Provider value={value}>{children}</VoiceCtx.Provider>;
 }

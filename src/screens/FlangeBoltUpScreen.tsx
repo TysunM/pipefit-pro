@@ -20,7 +20,7 @@ import { Divider } from '../components/Divider';
 import { useTheme, Theme } from '../theme/ThemeProvider';
 import { boltHoleAngles, boltUp, boltUpSizes } from '../calc/boltUp';
 import { isSteelClass, referenceTorque, steelFlange, steelSizes, studLabel, threadsPerInch } from '../calc/steelFlange';
-import { isLargeClass, largeClassOf, largeFlange, largeSizes, largeStuds, largeWords, seriesFor, seriesOf, type LargeClass, type LargeSeries } from '../calc/largeFlange';
+import { gasketWords, isLargeClass, largeClassOf, largeFlange, largeSizes, largeStuds, largeWords, seriesFor, seriesOf, type LargeClass, type LargeSeries } from '../calc/largeFlange';
 import {
   BoltUpState,
   GASKETS,
@@ -150,7 +150,7 @@ function boltSkin(t: Theme, level: number): BoltSkin {
 
 const LEVEL_LABELS = ['Not started', 'Snugged', '20–30%', '50–70%', 'Full load', 'Checked'];
 
-/** Every class a joint can be, as the chips offer them. */
+/** Every class a joint can be, as the chips offer them. Class 400 is a B16.47 class only, so it is offered once a series is on. */
 const CLASS_OPTIONS: { value: JointClass; label: string }[] = [
   { value: '150', label: '150' },
   { value: '300', label: '300' },
@@ -162,6 +162,7 @@ const CLASS_OPTIONS: { value: JointClass; label: string }[] = [
   { value: '250', label: '250 cast iron' },
 ];
 const CLASS_IDS = CLASS_OPTIONS.map((c) => c.value);
+const CLASS_400 = { value: 'A400' as JointClass, label: '400' };
 
 type FlangeRow = { nps: number; label: string; bolts: number };
 
@@ -342,7 +343,7 @@ function Bolting({
 
   const pickClass = (c: JointClass) => {
     // Staying in the series, where the new class is tabled in it: Series A class 150 to Series A class 300.
-    const target = (series && largeClassOf(series, c)) || c;
+    const target = (series && largeClassOf(series, classNumber(c))) || c;
     const f = flangeFor(nps ?? NaN, target) ?? sizesOf(target).find((row) => row.bolts >= 8) ?? sizesOf(target)[0];
     if (f) changeFlange({ cls: target, nps: f.nps, bolts: f.bolts });
   };
@@ -367,17 +368,18 @@ function Bolting({
   // spoken one is refused rather than wiping the record.
   useSpokenFigures('FlangeBoltUp', (f) => {
     const number = f.cls ? String(f.cls.n) : base;
-    if (f.cls && !CLASS_IDS.includes(number as JointClass)) return `No class ${f.cls.n} table. Classes run 150 to 2500, and 125 or 250 cast iron.`;
+    const tabled = seriesFor(number);
+    const small = CLASS_IDS.includes(number as JointClass);
+    if (f.cls && !small && !tabled.length) return `No class ${f.cls.n} table. Classes run 150 to 2500, and 125 or 250 cast iron.`;
     // Above 24" a steel class is a B16.47 flange: the series this joint is on,
     // or the one whose bolt count was said with the size ("36 inch class 150,
-    // 44 bolt" is Series B), else Series A.
-    const classFor = (size: number | null): JointClass => {
+    // 44 bolt" is Series B), else Series A. Class 400 is only there.
+    const classFor = (size: number | null): JointClass | null => {
       const plain = number as JointClass;
-      const tabled = seriesFor(number);
       const current = series && tabled.includes(series) ? series : tabled[0];
       if (!current) return plain;
-      if (size === null) return series ? largeClassOf(current, number)! : plain;
-      if (size <= 24) return plain;
+      if (size === null) return series || !small ? largeClassOf(current, number)! : plain;
+      if (size <= 24) return small ? plain : null;
       const said = f.bolts?.n;
       const match = said ? tabled.find((s) => largeFlange(size, largeClassOf(s, number)!)?.bolts === said) : undefined;
       return largeClassOf(match ?? current, number)!;
@@ -385,12 +387,13 @@ function Bolting({
     let spec: JointSpec | null = null;
     if (f.size) {
       const c = classFor(f.size.n);
+      if (!c) return `Class ${number} is a B16.47 class: sizes run 26 to 60 inch.`;
       const row = flangeFor(f.size.n, c);
       if (!row) return `No ${f.size.n} inch flange in the ${classWords(c)} table. Sizes run ${sizesOf(c)[0]?.label ?? ''} to ${sizesOf(c).at(-1)?.label ?? ''}.`;
       spec = { cls: c, nps: row.nps, bolts: row.bolts };
-    } else if (f.bolts) spec = { cls: classFor(null), nps: null, bolts: f.bolts.n };
+    } else if (f.bolts) spec = { cls: classFor(null) ?? cls, nps: null, bolts: f.bolts.n };
     else if (f.cls) {
-      const c = classFor(null);
+      const c = classFor(null) ?? cls;
       const row = flangeFor(nps ?? NaN, c) ?? sizesOf(c)[0];
       if (row) spec = { cls: c, nps: row.nps, bolts: row.bolts };
     }
@@ -686,7 +689,12 @@ function Bolting({
 
       <SectionHeader title="The joint" meta={flange ? `${flange.label} · ${classWords(cls)}` : `${bolts} bolts`} />
 
-      <ChipRow label="Class" options={CLASS_OPTIONS} selected={base as JointClass} onSelect={pickClass} />
+      <ChipRow
+        label="Class"
+        options={series ? [...CLASS_OPTIONS.slice(0, 2), CLASS_400, ...CLASS_OPTIONS.slice(2)] : CLASS_OPTIONS}
+        selected={(series && base === '400' ? 'A400' : base) as JointClass}
+        onSelect={pickClass}
+      />
 
       {seriesTabled.length ? (
         <ChipRow
@@ -708,8 +716,8 @@ function Bolting({
             : steel
               ? `${steel.bolts} × ${studLabel(steel.stud)} studs, ${threadsPerInch(steel.stud)} threads per inch, ASME B16.5 class ${cls}. Bolt circle and gasket from the job's drawing. The class sets the studs; the studs, the material, the lubricant and the gasket set the torque.`
               : large
-                ? `${largeStuds(large)}, ${threadsPerInch(large.stud)} threads per inch, ASME ${largeWords(cls as LargeClass)}. Series A is the MSS SP-44 drilling, fewer and bigger studs; Series B the API 605 one, more and smaller. Count the holes to tell them apart, and check the stud size against the studs in hand: the torque follows it.`
-                : `${bolts} bolts, set by hand. The sequence works off the count alone, so this covers a flange that is not in the tables: class 75 and 400, Series B above class 300, and Series A class 600 above 48 inch.`}
+                ? `${largeStuds(large)}, ${threadsPerInch(large.stud)} threads per inch, ASME ${largeWords(cls as LargeClass)}. Series A is the MSS SP-44 drilling, fewer and bigger studs; Series B the API 605 one, more and smaller${large.nps >= 38 && base !== '150' && base !== '300' ? ', the same drilling from 38 inch up in this class' : ''}. Count the holes to tell them apart, and check the stud size against the studs in hand: the torque follows it. ${gasketWords(large.nps, cls as LargeClass)}`
+                : `${bolts} bolts, set by hand. The sequence works off the count alone, so this covers a flange that is not in the tables: class 75, class 400 under 26 inch, and class 900 above 48 inch.`}
         </Text>
       </View>
 
