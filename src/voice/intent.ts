@@ -155,6 +155,9 @@ const figureWords = (route: string | null): ReadonlySet<string> =>
 /** What was said, with the words this phone has been taught read as meant, a number split off a word run into it, and a run of words that is nearly a phrase the app knows taken as it. */
 const phrased = (text: string): string[] => snapPhrases(splitGlued(applyLearned(tokens(text), VOCAB), VOCAB), PHRASES, VOCAB);
 
+/** The recogniser's other transcripts, for the panel's "Not that?": the ones after the first, blanks and repeats dropped, three at most. */
+export const othersOf = (alternatives: readonly string[]): string[] => [...new Set(alternatives.slice(1).map((t) => t.trim()).filter(Boolean))].slice(0, 3);
+
 /** The words a screen is called and takes by voice: what a mishearing in a sentence that opened it would have been (learned.ts). */
 export const routeWords = (route: string): string[] => [
   ...(TOOL_WORDS[route as OpenRoute] ?? []),

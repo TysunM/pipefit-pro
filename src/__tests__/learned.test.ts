@@ -1,5 +1,5 @@
 import { MAX_LEARNED, alignToWords, alignTranscripts, applyLearned, emptyLearned, forgetAll, learn, learnedMap, parseLearned, serialiseLearned, setLearnedWords } from '../voice/learned';
-import { VOCAB, localIntent, routeWords, spokenValue } from '../voice/intent';
+import { VOCAB, localIntent, othersOf, routeWords, spokenValue } from '../voice/intent';
 import { cameraWord } from '../voice/cameraWords';
 import { readTick } from '../voice/cutTick';
 import { STORES } from '../state/backup';
@@ -72,6 +72,16 @@ describe('what is learned', () => {
     setLearnedWords(new Map());
     expect(localIntent('tork pattern', null)).toBeNull();
   });
+});
+
+test('the panel offers the other transcripts, blanks and repeats dropped, three at most', () => {
+  expect(othersOf(['flange bolt up 12 volt', 'flange bolt up 12 bolt', ' ', 'flange bolt up 12 bolt', 'flange bold up', 'bolt up 12', 'twelve bolt'])).toEqual([
+    'flange bolt up 12 bolt',
+    'flange bold up',
+    'bolt up 12',
+  ]);
+  expect(othersOf(['only one'])).toEqual([]);
+  expect(othersOf([])).toEqual([]);
 });
 
 test('the learned words go into the backup', () => {
