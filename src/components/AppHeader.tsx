@@ -36,6 +36,8 @@ const WORDMARK = { dark: require('../../assets/wordmark-dark.png'), light: requi
 /** The lettering's height on the band; its width follows the picture. */
 const MARK_H = 44;
 const P = 40;
+/** Between the P's tile and the i: tight, so the two read as one word. */
+const GAP = 2;
 
 /** A picture's width at a height, from the asset's own size (a number on the phone, an object on the web). */
 function widthAt(src: unknown, height: number): number {
@@ -102,7 +104,7 @@ export function AppHeader({
   const mark = WORDMARK[t.mode === 'dark' ? 'dark' : 'light'];
   // The mark at its height, or smaller on a narrow screen, so it never runs under a control.
   const avail = w - 2 * PANEL - 12;
-  const full = P + 4 + widthAt(mark, MARK_H);
+  const full = P + GAP + widthAt(mark, MARK_H);
   const fit = Math.min(1, avail / full);
 
   const rivets: [number, number][] = [];
@@ -168,7 +170,7 @@ export function AppHeader({
         <View pointerEvents="none" style={{ position: 'absolute', left: PANEL, right: PANEL, top: 0, bottom: 0, alignItems: 'center', justifyContent: 'center', flexDirection: 'row' }}>
           {wordmark ? (
             <>
-              <Image source={ICON_P} style={{ width: P * fit, height: P * fit, borderRadius: 9 * fit, marginRight: 4 * fit }} accessibilityIgnoresInvertColors />
+              <Image source={ICON_P} style={{ width: P * fit, height: P * fit, borderRadius: 9 * fit, marginRight: GAP * fit }} accessibilityIgnoresInvertColors />
               <Image source={mark} style={{ width: widthAt(mark, MARK_H) * fit, height: MARK_H * fit }} resizeMode="contain" accessibilityIgnoresInvertColors />
             </>
           ) : (
