@@ -16,8 +16,51 @@ import { useSvgIds } from './metal';
 
 type Box = { w: number; h: number };
 
+/** A plate's colours: the band, its seams, the screws and the lettering on it. The header's and the tab bar's. */
+export type Plate = {
+  top: string;
+  mid: string;
+  low: string;
+  seamDark: string;
+  seamLight: string;
+  rivetHi: string;
+  rivetLo: string;
+  rivetRing: string;
+  slot: string;
+  bezel: string;
+  bezelRing: string;
+  glyph: string;
+  /** The chrome lettering, top to bottom, and its outline. */
+  chrome: readonly string[];
+  chromeEdge: string;
+  copper: readonly string[];
+  copperEdge: string;
+};
+
+const DARK: Plate = {
+  top: '#5f646c', mid: '#3e434a', low: '#2a2e34',
+  seamDark: '#15181c', seamLight: '#767c85',
+  rivetHi: '#c9ced5', rivetLo: '#767c84', rivetRing: '#181b1f', slot: '#2b2f35',
+  bezel: '#2a2e34', bezelRing: '#9097a0', glyph: '#e2e6eb',
+  chrome: ['#ffffff', '#e4e7eb', '#9ba1a9', '#d6dadf', '#f4f6f8'], chromeEdge: '#1b1f24',
+  copper: ['#ffd38f', '#f5a034', '#d86f10', '#f2a84b'], copperEdge: '#3c2007',
+};
+
+const LIGHT: Plate = {
+  top: '#e3e6eb', mid: '#c3c8cf', low: '#aab0b8',
+  seamDark: '#7d838c', seamLight: '#f4f6f8',
+  rivetHi: '#f6f7f9', rivetLo: '#aeb4bc', rivetRing: '#5f656d', slot: '#8b9199',
+  bezel: '#eef0f3', bezelRing: '#8e949c', glyph: '#1f242a',
+  chrome: ['#6b7178', '#3a3f46', '#1c2025', '#454a51', '#6f757d'], chromeEdge: '#f2f4f6',
+  copper: ['#f6a64a', '#dd7a14', '#b85c0a', '#e58a2a'], copperEdge: '#fff1dd',
+};
+
+/** The plates by theme: brushed dark steel for the slate theme, light steel for daylight. */
+export const PLATE = { dark: DARK, light: LIGHT } as const;
+
+
 /** The size a view measures, for drawing to. */
-function useBox(): [Box | null, (e: LayoutChangeEvent) => void] {
+export function useBox(): [Box | null, (e: LayoutChangeEvent) => void] {
   const [box, setBox] = useState<Box | null>(null);
   return [
     box,
@@ -31,7 +74,7 @@ function useBox(): [Box | null, (e: LayoutChangeEvent) => void] {
 }
 
 /** A Phillips screw head. */
-function Screw({ cx, cy, face, ring, slot, r = 4.2 }: { cx: number; cy: number; face: string; ring: string; slot: string; r?: number }) {
+export function Screw({ cx, cy, face, ring, slot, r = 4.2 }: { cx: number; cy: number; face: string; ring: string; slot: string; r?: number }) {
   return (
     <G>
       <Circle cx={cx} cy={cy} r={r + 0.9} fill={ring} />
@@ -42,7 +85,7 @@ function Screw({ cx, cy, face, ring, slot, r = 4.2 }: { cx: number; cy: number; 
   );
 }
 
-const corners = (w: number, h: number, inset: number): [number, number][] => [
+export const corners = (w: number, h: number, inset: number): [number, number][] => [
   [inset, inset],
   [w - inset, inset],
   [inset, h - inset],

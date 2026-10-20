@@ -25,6 +25,7 @@ import { gasketWords, isLargeClass, largeFlange, largeWords } from '../calc/larg
 import { boltUp } from '../calc/boltUp';
 import { classWords, isCastIron, isDone, jointFlange, jointProgress, type Joint, type SignRole } from '../state/register';
 import { CSS, table } from './sheet';
+import { BRAND_DEFS, NAMEPLATE_CSS, nameplate } from './nameplate';
 import { esc } from './spoolSvg';
 
 export type WrenchLine = {
@@ -195,7 +196,9 @@ export function jointRecordBody(i: JointRecordInput): string {
 
   return (
     '<div class="rec">' +
-    '<header><div class="titles"><div>' +
+    '<header>' +
+    nameplate() +
+    '<div class="titles"><div>' +
     '<h1>Bolted joint assembly record</h1>' +
     `<p class="where">${esc(`${name} · Job ${j.project || 'none'} · ASME PCC-1 Appendix R`)}</p>` +
     `</div><div class="when">${esc(i.dateLine)}</div></div>` +
@@ -226,7 +229,7 @@ export function jointRecordHtml(i: JointRecordInput): string {
     '<!doctype html><html><head><meta charset="utf-8">' +
     `<title>${esc(`Joint record ${name}`)}</title>` +
     '<meta name="viewport" content="width=device-width, initial-scale=1">' +
-    `<style>${CSS}${JOINT_RECORD_CSS}</style></head><body>` +
+    `<style>${CSS}${NAMEPLATE_CSS}${JOINT_RECORD_CSS}</style></head><body>${BRAND_DEFS}` +
     jointRecordBody(i) +
     '</body></html>'
   );

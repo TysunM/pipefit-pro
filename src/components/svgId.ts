@@ -20,7 +20,7 @@
  */
 
 /** Every prefix used for an SVG id in this app. */
-export const SVG_PREFIXES = ['dark', 'glow', 'head', 'plate', 'shop', 'spool', 'steel', 'tube'] as const;
+export const SVG_PREFIXES = ['dark', 'foot', 'glow', 'head', 'plate', 'shop', 'spool', 'steel', 'tube'] as const;
 
 export type SvgPrefix = (typeof SVG_PREFIXES)[number];
 

@@ -34,6 +34,7 @@ import { dayKey } from '../calc/days';
 import { toScreen } from '../calc/iso';
 import { esc } from './spoolSvg';
 import { JOINT_RECORD_CSS, jointRecordBody, type WrenchLine } from './jointRecord';
+import { BRAND_DEFS, NAMEPLATE_CSS, nameplate } from './nameplate';
 
 export type TurnoverInput = {
   /** The job it is for; '' when it covers every job on the phone. */
@@ -337,8 +338,10 @@ export function turnoverHtml(i: TurnoverInput): string {
     '<!doctype html><html><head><meta charset="utf-8">' +
     `<title>${esc(`Turnover package: ${job}`)}</title>` +
     '<meta name="viewport" content="width=device-width, initial-scale=1">' +
-    `<style>${CSS}${EXTRA}${JOINT_RECORD_CSS}</style></head><body>` +
-    '<header><div class="titles"><div>' +
+    `<style>${CSS}${NAMEPLATE_CSS}${EXTRA}${JOINT_RECORD_CSS}</style></head><body>${BRAND_DEFS}` +
+    '<header>' +
+    nameplate() +
+    '<div class="titles"><div>' +
     '<h1>Turnover package</h1>' +
     `<p class="where">Job ${esc(job)}</p>` +
     `</div><div class="when">${esc(i.dateLine)}</div></div>` +
