@@ -50,6 +50,17 @@ rebuilt before it could take another OTA update. `KEEP_HTML=1` leaves the
 intermediate page next to the PDF, which is the only way to see what went into
 it without a PDF renderer to hand.
 
+## brand.mjs — the pictures on a printed record
+
+Writes `src/print/brand.ts`: the app icon's P and the light wordmark, the
+same files the header draws from, as base64 for the steel nameplate that heads
+the turnover package and every joint record (`src/print/nameplate.ts`). Run it
+after either picture changes; `nameplate.test.ts` fails until it has been.
+
+```
+node tools/brand.mjs
+```
+
 ## scan.py — reading the scanned handbooks
 
 The handbook scans are mixed raster: a blurred JPEG 2000 background carrying

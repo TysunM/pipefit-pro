@@ -65,8 +65,11 @@ const PAIRS: { fg: keyof Colors; bg: keyof Colors; min: number; what: string }[]
   { fg: 'textMuted', bg: 'featureLo', min: 4.5, what: 'a featured tile subtitle at the foot' },
   { fg: 'feature', bg: 'featureHi', min: 4.5, what: 'the tag on a featured tile' },
   { fg: 'feature', bg: 'featureLo', min: 4.5, what: 'the tag at the foot of a featured tile' },
-  { fg: 'text', bg: 'tabBar', min: 4.5, what: 'the selected tab' },
-  { fg: 'textFaint', bg: 'tabBar', min: 4.5, what: 'a tab not selected' },
+  // The tab bar is a plate too, so its labels are checked at both ends of the sheen.
+  { fg: 'onTabBar', bg: 'tabBarHi', min: 4.5, what: 'the selected tab, at the lit top of the plate' },
+  { fg: 'onTabBar', bg: 'tabBarLo', min: 4.5, what: 'the selected tab, at the shadowed foot' },
+  { fg: 'onTabBarFaint', bg: 'tabBarHi', min: 4.5, what: 'a tab not selected, at the top of the plate' },
+  { fg: 'onTabBarFaint', bg: 'tabBarLo', min: 4.5, what: 'a tab not selected, at the foot' },
   { fg: 'textMuted', bg: 'bgRaised', min: 4.5, what: 'secondary text on a card' },
   { fg: 'textFaint', bg: 'metalHi', min: 4.5, what: 'a note on a joint card, top of the plate' },
   { fg: 'textFaint', bg: 'metalLo', min: 4.5, what: 'a note on a joint card, foot of the plate' },

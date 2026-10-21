@@ -63,8 +63,11 @@ export type Colors = {
   featureLo: string;
   featureEdge: string;
   feature: string;
-  /** The tab bar along the foot of the tab screens. */
-  tabBar: string;
+  /** The tab bar along the foot of the tab screens: a steel plate, lit at the top and shadowed at the foot, and the labels on it. */
+  tabBarHi: string;
+  tabBarLo: string;
+  onTabBar: string;
+  onTabBarFaint: string;
 };
 
 // The palette
@@ -137,7 +140,10 @@ export const palette: Record<Mode, Colors> = {
     featureLo: '#D4EAEC',
     featureEdge: '#9CCBCF',
     feature: '#0E6A70',
-    tabBar: '#FFFFFF',
+    tabBarHi: '#E8EBEF',
+    tabBarLo: '#BCC2CA',
+    onTabBar: '#14181C',
+    onTabBarFaint: '#3A4047',
   },
   dark: {
     bg: '#1A2029',
@@ -190,7 +196,10 @@ export const palette: Record<Mode, Colors> = {
     featureLo: '#1E3139',
     featureEdge: '#3A6670',
     feature: '#6FD3D6',
-    tabBar: '#141A21',
+    tabBarHi: '#4A4F56',
+    tabBarLo: '#262A2F',
+    onTabBar: '#FFFFFF',
+    onTabBarFaint: '#C5CBD2',
   },
 };
 

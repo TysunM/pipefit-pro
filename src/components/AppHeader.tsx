@@ -5,6 +5,7 @@ import Svg, { Circle, Defs, G, Line, LinearGradient, RadialGradient, Rect, Stop 
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../theme/ThemeProvider';
 import { useSvgIds } from './metal';
+import { PLATE } from './plates';
 
 // The nameplate
 // -------------
@@ -29,59 +30,21 @@ const H = 64;
 const PANEL = 72;
 const RIVET = 4.2;
 const INSET = 11;
-/** The wordmark's P: the app icon, at a size the JS bundle can carry. */
+/** The wordmark's P: the app icon's pipe, cut out of its plate, at a size the JS bundle can carry. */
 const ICON_P = require('../../assets/wordmark-p.png');
 /** "ipeFit Pro", lettered in chrome and copper for the dark plates and in dark steel for the light ones. */
 const WORDMARK = { dark: require('../../assets/wordmark-dark.png'), light: require('../../assets/wordmark-light.png') };
 /** The lettering's height on the band; its width follows the picture. */
 const MARK_H = 44;
 const P = 40;
-/** Between the P's tile and the i: tight, so the two read as one word. */
-const GAP = 2;
+/** Between the P and the i: the lettering's own spacing, so the two read as one word. */
+const GAP = 3;
 
 /** A picture's width at a height, from the asset's own size (a number on the phone, an object on the web). */
 function widthAt(src: unknown, height: number): number {
   const a = typeof src === 'number' ? Image.resolveAssetSource(src) : (src as { width?: number; height?: number });
   return a?.width && a?.height ? (height * a.width) / a.height : height * 3.4;
 }
-
-type Plate = {
-  top: string;
-  mid: string;
-  low: string;
-  seamDark: string;
-  seamLight: string;
-  rivetHi: string;
-  rivetLo: string;
-  rivetRing: string;
-  slot: string;
-  bezel: string;
-  bezelRing: string;
-  glyph: string;
-  /** The chrome lettering, top to bottom, and its outline. */
-  chrome: readonly string[];
-  chromeEdge: string;
-  copper: readonly string[];
-  copperEdge: string;
-};
-
-const DARK: Plate = {
-  top: '#5f646c', mid: '#3e434a', low: '#2a2e34',
-  seamDark: '#15181c', seamLight: '#767c85',
-  rivetHi: '#c9ced5', rivetLo: '#767c84', rivetRing: '#181b1f', slot: '#2b2f35',
-  bezel: '#2a2e34', bezelRing: '#9097a0', glyph: '#e2e6eb',
-  chrome: ['#ffffff', '#e4e7eb', '#9ba1a9', '#d6dadf', '#f4f6f8'], chromeEdge: '#1b1f24',
-  copper: ['#ffd38f', '#f5a034', '#d86f10', '#f2a84b'], copperEdge: '#3c2007',
-};
-
-const LIGHT: Plate = {
-  top: '#e3e6eb', mid: '#c3c8cf', low: '#aab0b8',
-  seamDark: '#7d838c', seamLight: '#f4f6f8',
-  rivetHi: '#f6f7f9', rivetLo: '#aeb4bc', rivetRing: '#5f656d', slot: '#8b9199',
-  bezel: '#eef0f3', bezelRing: '#8e949c', glyph: '#1f242a',
-  chrome: ['#6b7178', '#3a3f46', '#1c2025', '#454a51', '#6f757d'], chromeEdge: '#f2f4f6',
-  copper: ['#f6a64a', '#dd7a14', '#b85c0a', '#e58a2a'], copperEdge: '#fff1dd',
-};
 
 export function AppHeader({
   title,
@@ -98,13 +61,13 @@ export function AppHeader({
   const t = useTheme();
   const insets = useSafeAreaInsets();
   const { width: w } = useWindowDimensions();
-  const p = t.mode === 'dark' ? DARK : LIGHT;
+  const p = PLATE[t.mode === 'dark' ? 'dark' : 'light'];
   const gid = useSvgIds('head');
   const wordmark = title === 'PipeFit Pro';
   const mark = WORDMARK[t.mode === 'dark' ? 'dark' : 'light'];
   // The mark at its height, or smaller on a narrow screen, so it never runs under a control.
   const avail = w - 2 * PANEL - 12;
-  const full = P + GAP + widthAt(mark, MARK_H);
+  const full = widthAt(ICON_P, P) + GAP + widthAt(mark, MARK_H);
   const fit = Math.min(1, avail / full);
 
   const rivets: [number, number][] = [];
@@ -170,7 +133,7 @@ export function AppHeader({
         <View pointerEvents="none" style={{ position: 'absolute', left: PANEL, right: PANEL, top: 0, bottom: 0, alignItems: 'center', justifyContent: 'center', flexDirection: 'row' }}>
           {wordmark ? (
             <>
-              <Image source={ICON_P} style={{ width: P * fit, height: P * fit, borderRadius: 9 * fit, marginRight: GAP * fit }} accessibilityIgnoresInvertColors />
+              <Image source={ICON_P} style={{ width: widthAt(ICON_P, P) * fit, height: P * fit, marginRight: GAP * fit }} resizeMode="contain" accessibilityIgnoresInvertColors />
               <Image source={mark} style={{ width: widthAt(mark, MARK_H) * fit, height: MARK_H * fit }} resizeMode="contain" accessibilityIgnoresInvertColors />
             </>
           ) : (

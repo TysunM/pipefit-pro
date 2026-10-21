@@ -4,6 +4,7 @@ import { emptyLibrary, setTakeout } from '../state/fittingLibrary';
 import { addReading, emptyLog } from '../state/levelLog';
 import { emptyShifts, newReport } from '../state/shiftLog';
 import { EMPTY_LAYOUT, HOME_ZONE, TABS_ZONE, moveId, shippedOrder, withOrder } from '../state/layout';
+import { emptyLearned, learn } from '../voice/learned';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -179,5 +180,34 @@ describe('what the phone backs up', () => {
     // go into every backup as nothing.
     const source = readFileSync(join(__dirname, '..', 'state', 'useBackupNow.ts'), 'utf8');
     for (const s of STORES) expect(source).toContain(`'${s.key}'`);
+  });
+});
+
+describe('what the phone has learned travels too', () => {
+  test('learned words go into the backup and come back onto a new phone', () => {
+    const book = learn(emptyLearned(), [{ said: 'volt', meant: 'bolt' }, { said: 'bowl', meant: 'bolt' }], T);
+    const values = { ...phone(), 'pipefit.heard.v1': book };
+    const read = readBackup(makeBackup(values, {}, new Date(T)));
+    if (!read.ok) throw new Error(read.why);
+    expect(backupSummary(values)).toContainEqual({ label: 'learned words', count: 2 });
+    expect(restorePlan(read, {}).find((p) => p.label === 'learned words')).toEqual({ key: 'pipefit.heard.v1', label: 'learned words', inFile: 2, adds: 2 });
+    const { value, added } = mergeStore('pipefit.heard.v1', emptyLearned(), read.stores['pipefit.heard.v1']!);
+    expect(added).toBe(2);
+    expect(value.pairs.map((p: any) => [p.said, p.meant])).toEqual([
+      ['volt', 'bolt'],
+      ['bowl', 'bolt'],
+    ]);
+  });
+
+  test('a word the new phone has since learned its own way is kept as that phone has it', () => {
+    const read = readBackup(makeBackup({ 'pipefit.heard.v1': learn(emptyLearned(), [{ said: 'volt', meant: 'bolt' }, { said: 'bowl', meant: 'bolt' }], T) }, {}, new Date(T)));
+    if (!read.ok) throw new Error(read.why);
+    const own = learn(emptyLearned(), [{ said: 'volt', meant: 'volts' }], T + 5);
+    const { value, added } = mergeStore('pipefit.heard.v1', own, read.stores['pipefit.heard.v1']!);
+    expect(added).toBe(1);
+    expect(value.pairs.map((p: any) => [p.said, p.meant])).toEqual([
+      ['volt', 'volts'],
+      ['bowl', 'bolt'],
+    ]);
   });
 });

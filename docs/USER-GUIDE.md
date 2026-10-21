@@ -1211,7 +1211,7 @@ Two things it refuses on purpose, because both come down to the same rule — **
 
 ### The joint record (ASME PCC-1 Appendix R)
 
-One page per joint, the record a QC file keeps. On a named joint, under **Sign-off**, tap **Share the joint record**: on a phone it becomes a PDF and goes to the share sheet; in a browser it prints.
+One page per joint, the record a QC file keeps. On a named joint, under **Sign-off**, tap **Share the joint record**: on a phone it becomes a PDF and goes to the share sheet; in a browser it prints. The page, like the turnover package, is headed by the app's own nameplate, so a sheet that gets separated from the rest still says what made it.
 
 What is on it:
 
