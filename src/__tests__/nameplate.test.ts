@@ -31,7 +31,8 @@ describe('the printed nameplate', () => {
     const m = /<use href="#pf-mark" x="([\d.]+)" y="[\d.]+" width="([\d.]+)"/.exec(plate)!;
     const x0 = Number(p[1]);
     const x1 = Number(m[1]) + Number(m[2]);
-    expect(Number(m[1]) - (x0 + Number(p[3]))).toBeCloseTo(0.45, 2);
+    expect(Number(m[1]) - (x0 + Number(p[3]))).toBeCloseTo(0.6, 2);
+    expect(Number(p[3]) / 8.4).toBeCloseTo(BRAND_P.w / BRAND_P.h, 1);
     expect((x0 + x1) / 2).toBeCloseTo(93, 0);
     // The pictures themselves are not in the plate: they are drawn by reference.
     expect(plate).not.toContain('base64');
