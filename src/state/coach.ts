@@ -28,6 +28,10 @@ export const COACH: Readonly<Record<CoachScreen, CoachPlan>> = {
       { text: 'Name the joint by its tag', why: 'A joint with a tag is a record; the unnamed one is scratch and is not kept.' },
       { text: 'Set the flange: class and size, and the gasket', why: 'The stud count and size come from the class and size, and the gasket decides which methods are allowed.' },
       { text: 'Check the torque: the company\'s spec fills it in', why: 'Torque is worked from the stud size, the target stress and the nut factor on the spec, never from the class. With no spec on the phone, type the figure from the job\'s spec; guessing it is how gaskets leak or crush.' },
+      {
+        text: 'Before the first bolt: faces clean, flanges lined up, threads lubricated, a new gasket centred',
+        why: 'B31.3 wants the faces parallel within 1/16" per foot of diameter and the holes within 1/8"; pull the pipe straight, never the bolts. Lubricate the threads and the nut face, leave two or three threads showing past the nut, and never a used gasket or two of them.',
+      },
       { text: 'Tap each bolt as the screen asks, snug first', why: 'The cross pattern seats the gasket evenly. Round the circle cocks the flange and it leaks on the far side.' },
       { text: 'Rounds at 20–30%, 50–70% and 100%, a gap check after each, then check rounds until no nut turns', why: 'Bolts relax as the gasket seats. The check rounds catch what the earlier ones let go.' },
       { text: 'Have it witnessed, and pick the wrench', why: 'QC accepts the joint on the witness and the wrench\'s calibration. Without both it is redone.' },

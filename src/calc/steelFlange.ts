@@ -13,6 +13,8 @@
 // Studs 1" and under are UNC; 1-1/8" and up are 8-UN, which is what the
 // threads-per-inch helper encodes.
 
+import { formatInches } from './ftin';
+
 export type SteelClass = '150' | '300' | '600' | '900' | '1500' | '2500';
 
 export const STEEL_CLASSES: readonly SteelClass[] = ['150', '300', '600', '900', '1500', '2500'];
@@ -129,4 +131,49 @@ export function referenceTorque(stud: number, stressPsi: number, nutFactor: numb
   const area = rootArea(stud);
   if (!Number.isFinite(area) || !(stressPsi > 0) || !(nutFactor > 0)) return NaN;
   return (nutFactor * stud * stressPsi * area) / 12;
+}
+
+// ------------------------------------------------------------ the gasket
+
+// The B16.21 full face gasket for a flat-faced class 150 flange: bore,
+// outside diameter, and the holes it is punched with, which are the B16.5
+// class 150 drilling and so hold for a raised face too. From the published
+// table (wermac.org, as supplied, in millimetres; the sixteenth is never in
+// doubt), the holes checked against the studs above. Inches.
+const FULL_FACE_150: readonly (readonly [nps: number, id: number, od: number, holes: number, hole: number, bc: number])[] = [
+  [0.5, 0.8125, 3.5, 4, 0.625, 2.37],
+  [0.75, 1.0625, 3.875, 4, 0.625, 2.75],
+  [1, 1.3125, 4.25, 4, 0.625, 3.13],
+  [1.25, 1.625, 4.625, 4, 0.625, 3.5],
+  [1.5, 1.9375, 5, 4, 0.625, 3.87],
+  [2, 2.375, 6, 4, 0.75, 4.75],
+  [2.5, 2.875, 7, 4, 0.75, 5.5],
+  [3, 3.5, 7.5, 4, 0.75, 6],
+  [3.5, 4, 8.5, 8, 0.75, 7],
+  [4, 4.5, 9, 8, 0.75, 7.5],
+  [5, 5.5625, 10, 8, 0.875, 8.5],
+  [6, 6.625, 11, 8, 0.875, 9.5],
+  [8, 8.625, 13.5, 8, 0.875, 11.75],
+  [10, 10.75, 16, 12, 1, 14.25],
+  [12, 12.75, 19, 12, 1, 17],
+  [14, 14, 21, 12, 1.125, 18.75],
+  [16, 16, 23.5, 16, 1.125, 21.25],
+  [18, 18, 25, 16, 1.25, 22.75],
+  [20, 20, 27.5, 20, 1.25, 25],
+  [24, 24, 32, 20, 1.375, 29.5],
+];
+
+export type FullFaceGasket = { id: number; od: number; holes: number; hole: number; bc: number };
+
+/** The class 150 full face gasket, and the drilling it is punched to, where the table has it. */
+export function fullFaceGasket(nps: number): FullFaceGasket | undefined {
+  const r = FULL_FACE_150.find((x) => x[0] === nps);
+  return r ? { id: r[1], od: r[2], holes: r[3], hole: r[4], bc: r[5] } : undefined;
+}
+
+/** The class 150 drilling and the full face gasket in words, for the caption and the record. */
+export function fullFaceWords(nps: number): string {
+  const g = fullFaceGasket(nps);
+  if (!g) return '';
+  return `Class 150 drilling: ${g.holes} holes ${formatInches(g.hole)} on a ${formatInches(g.bc)} bolt circle. Full face gasket to ASME B16.21, for a flat face: ${formatInches(g.id)} bore × ${formatInches(g.od)} outside, punched to the same holes; a raised face takes a ring gasket from the drawing.`;
 }
