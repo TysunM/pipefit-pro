@@ -1,6 +1,6 @@
 import { JOINING_LABEL, MATERIALS, MaterialGroup, calcSchedule, material, resolveSpec, sizeLabel, wallLabel, wallsAt } from '../calc/materials';
 import { wallFor } from '../voice/specs';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { Platform, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Screen } from '../components/Screen';
@@ -16,6 +16,7 @@ import { useLayout } from '../state/layouts';
 import { useBoltingSpecs } from '../state/boltingSpecs';
 import { useLearnedWords } from '../state/learnedWords';
 import { forgetAll } from '../voice/learned';
+import { getMicPlace, setMicPlace, subscribeMicPlace } from '../voice/micPlaceStore';
 import { activeSpec, gasketLabel, methodLabel, newSpec, putSpec, removeSpec, setActive, specId, type BoltingSpec } from '../state/boltingSpec';
 import { BoltingSpecSheet } from '../components/BoltingSpecSheet';
 import { appVersion, buildId, runningBuild, useOtaUpdate, versionRows } from '../state/updates';
@@ -38,6 +39,7 @@ export function SettingsScreen() {
   const route = useRoute<RouteProp<RootStackParamList, 'Settings'>>();
   const { book, hydrated: specsIn, apply: applySpecs } = useBoltingSpecs();
   const learned = useLearnedWords();
+  const micMoved = useSyncExternalStore(subscribeMicPlace, getMicPlace, getMicPlace) !== null;
   const spec = activeSpec(book);
   const [editing, setEditing] = useState<BoltingSpec | null>(null);
   const fresh = () => newSpec('new', Date.now());
@@ -232,8 +234,14 @@ export function SettingsScreen() {
       <Text style={[t.type.caption, { color: t.colors.textMuted, paddingHorizontal: t.layout.screenPadding, marginTop: -t.space.sm, marginBottom: t.space.lg }]}>
         Tap the mic on any screen and say it: a tool ("bolt up", "rolling offset, rise 12, roll 8, run 30"), a weld ("two 6 inch welds,
         weld 14 rejected for porosity"), a test reading ("hold started at 225") or a handbook question. Tool names work on the phone
-        with no signal; the rest is read by Claude, said back, and kept on screen with an Undo.
+        with no signal; the rest is read by Claude, said back, and kept on screen with an Undo. Drag the mic anywhere on the screen and
+        it stays where you leave it, on every page.
       </Text>
+      {settings.voice && micMoved ? (
+        <View style={{ paddingHorizontal: t.layout.screenPadding, marginTop: -t.space.sm, marginBottom: t.space.lg }}>
+          <GhostButton label="Put the mic back in its corner" icon="mic-outline" onPress={() => setMicPlace(null)} />
+        </View>
+      ) : null}
       {learned.book.pairs.length ? (
         <View style={{ paddingHorizontal: t.layout.screenPadding, marginTop: -t.space.sm, marginBottom: t.space.lg, gap: t.space.sm }}>
           <Text style={[t.type.caption, { color: t.colors.textMuted }]}>
@@ -277,10 +285,18 @@ export function SettingsScreen() {
       <SectionHeader title="Layout" meta={layout.customised ? 'Moved about' : 'As shipped'} />
       <Text style={[t.type.caption, { color: t.colors.textMuted, paddingHorizontal: t.layout.screenPadding, marginBottom: t.space.md }]}>
         Hold a tab on the bar, or a tile or card on a page, until it lifts, then carry it where you want it. A tab goes anywhere along the bar; a tile or
-        card anywhere in its own section. The phone keeps the order.
+        card anywhere in its own section; the mic anywhere on the screen. The phone keeps the order, and putting it back puts the mic back too.
       </Text>
       <ControlRow>
-        <GhostButton label="Put everything back where it shipped" icon="grid-outline" onPress={layout.reset} style={{ flex: 1, opacity: layout.customised ? 1 : 0.5 }} />
+        <GhostButton
+          label="Put everything back where it shipped"
+          icon="grid-outline"
+          onPress={() => {
+            layout.reset();
+            setMicPlace(null);
+          }}
+          style={{ flex: 1, opacity: layout.customised || micMoved ? 1 : 0.5 }}
+        />
       </ControlRow>
 
       <SectionHeader title="Units" />
