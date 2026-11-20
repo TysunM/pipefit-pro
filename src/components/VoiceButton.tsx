@@ -1,17 +1,21 @@
 // The mic, on every screen
 // ------------------------
 // A big round button low on the right, where a thumb lands with the phone in
-// one hand, sized for a gloved knuckle. Tap it and talk; what was heard and
+// one hand, sized for a gloved knuckle, and dragged anywhere else a man would
+// rather have it. Tap it and talk; what was heard and
 // what the app did comes up in a panel along the foot of the screen, with
 // Undo on anything written to a record.
 
-import React, { useEffect, useSyncExternalStore } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import React, { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import { PanResponder, Pressable, Text, View, useWindowDimensions, type PanResponderGestureState } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../theme/ThemeProvider';
 import { useVoice } from '../voice/VoiceProvider';
 import { floatingMicHidden, subscribeMicSpot } from '../voice/micSpot';
+import { clampPoint, isTap, micArea, placeToPoint, pointToPlace, type Point } from '../voice/micPlace';
+import { getMicPlace, loadMicPlace, setMicPlace, subscribeMicPlace } from '../voice/micPlaceStore';
 import { TAB_BAR_HEIGHT } from './TabBar';
 
 const SIZE = 64;
@@ -24,6 +28,58 @@ export function VoiceButton() {
   // A screen with a mic of its own (the calculator) has asked this one to step aside.
   const stepAside = useSyncExternalStore(subscribeMicSpot, floatingMicHidden, floatingMicHidden);
 
+  // Where it stands: where it was last let go (micPlace.ts), else where it shipped, low on the
+  // right above the tab bar. Dragged past a tap's wander it follows the finger and stays where it
+  // is dropped; a press that stays put is a tap and opens the mic.
+  const kept = useSyncExternalStore(subscribeMicPlace, getMicPlace, getMicPlace);
+  const { width, height } = useWindowDimensions();
+  const area = micArea(width, height, insets, SIZE);
+  const home = clampPoint({ x: width - 16 - SIZE, y: height - (insets.bottom + TAB_BAR_HEIGHT + 14) - SIZE }, area);
+  const [drag, setDrag] = useState<Point | null>(null);
+  const at = drag ?? (kept ? placeToPoint(kept, area) : home);
+  const live = useRef({ at, area });
+  live.current = { at, area };
+  const start = useRef<Point>(at);
+  useEffect(() => {
+    void loadMicPlace();
+  }, []);
+  const [pressed, setPressed] = useState(false);
+  const moved = useRef(false);
+  const talk = useRef(v.talk);
+  talk.current = v.talk;
+  // One touch handler does both, so a tap and a drag can never fight over the press: it stays a
+  // tap until the finger wanders past the slop, then the mic follows the finger.
+  const pan = useMemo(() => {
+    const to = (g: PanResponderGestureState) => clampPoint({ x: start.current.x + g.dx, y: start.current.y + g.dy }, live.current.area);
+    const end = (g: PanResponderGestureState, released: boolean) => {
+      setPressed(false);
+      if (moved.current) setMicPlace(pointToPlace(to(g), live.current.area));
+      else if (released) talk.current();
+      moved.current = false;
+      setDrag(null);
+    };
+    return PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: () => {
+        start.current = live.current.at;
+        moved.current = false;
+        setPressed(true);
+      },
+      onPanResponderMove: (_, g) => {
+        if (!moved.current) {
+          if (isTap(g.dx, g.dy)) return;
+          moved.current = true;
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+        }
+        setDrag(to(g));
+      },
+      onPanResponderRelease: (_, g) => end(g, true),
+      onPanResponderTerminate: (_, g) => end(g, false),
+      onPanResponderTerminationRequest: () => !moved.current,
+    });
+  }, []);
+
   // A finished answer goes away on its own; one with an Undo, or other
   // guesses to tap, stays longer.
   useEffect(() => {
@@ -34,37 +90,46 @@ export function VoiceButton() {
 
   if (!v.enabled) return null;
 
-  const bottom = insets.bottom + TAB_BAR_HEIGHT + 14;
-
   if (!s) {
     if (stepAside) return null;
     return (
-      <Pressable
-        onPress={v.talk}
+      <View
+        {...pan.panHandlers}
+        testID="floating-mic"
+        accessible
         accessibilityRole="button"
         accessibilityLabel="Speak a command"
-        hitSlop={8}
-        style={({ pressed }) => ({
-          position: 'absolute',
-          right: 16,
-          bottom,
-          width: SIZE,
-          height: SIZE,
-          borderRadius: SIZE / 2,
-          backgroundColor: pressed ? t.colors.primaryPressed : t.colors.primary,
-          alignItems: 'center',
-          justifyContent: 'center',
-          borderWidth: 2,
-          borderColor: t.colors.onPrimary,
-          shadowColor: '#000',
-          shadowOpacity: 0.35,
-          shadowRadius: 8,
-          shadowOffset: { width: 0, height: 3 },
-          elevation: 8,
-        })}
+        accessibilityHint="Drag it to move it anywhere on the screen"
+        accessibilityActions={[{ name: 'activate' }]}
+        onAccessibilityAction={(e) => {
+          if (e.nativeEvent.actionName === 'activate') v.talk();
+        }}
+        style={
+          {
+            position: 'absolute',
+            left: at.x,
+            top: at.y,
+            width: SIZE,
+            height: SIZE,
+            borderRadius: SIZE / 2,
+            backgroundColor: pressed ? t.colors.primaryPressed : t.colors.primary,
+            alignItems: 'center',
+            justifyContent: 'center',
+            borderWidth: 2,
+            borderColor: t.colors.onPrimary,
+            shadowColor: '#000',
+            shadowOpacity: drag ? 0.5 : 0.35,
+            shadowRadius: drag ? 14 : 8,
+            shadowOffset: { width: 0, height: drag ? 6 : 3 },
+            elevation: drag ? 12 : 8,
+            transform: drag ? [{ scale: 1.12 }] : undefined,
+            userSelect: 'none',
+            cursor: drag ? 'grabbing' : 'pointer',
+          } as never
+        }
       >
         <Ionicons name="mic" size={30} color={t.colors.onPrimary} />
-      </Pressable>
+      </View>
     );
   }
 

@@ -1542,6 +1542,8 @@ Use it when you want to see the figure the calculation used rather than take it 
 
 The round mic low on the right of every screen. Tap it, say it, and the app does it — for a hood, gloves or two dirty hands.
 
+**Put it where you want it.** Press the mic and drag it anywhere on the screen; let go and it stays there, on every page and after the app is shut. A tap that wanders a little is still a tap, so a gloved press does not move it by accident. It keeps its place as a share of the screen, so turning the phone or restoring onto a bigger one still finds it on the screen. **Settings → In the field → Put the mic back in its corner** returns it, and so does **Settings → Layout → Put everything back where it shipped**. On the Calculator tab it sits in the top row instead, clear of both keypads.
+
 ### What you can say
 
 | Say | What happens |
