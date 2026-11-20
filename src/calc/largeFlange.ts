@@ -26,12 +26,16 @@
 // same size and class are different sizes, so the record names the series
 // the gasket is for, and gives figures where a table could be verified: the
 // B16.21 flat ring for both series in classes 150 to 600, and the B16.20
-// spiral wound gasket in class 150, from the published tables (wermac.org,
-// as supplied) checked against each other, against the class 150 ring table
-// this file carried first, and against a second site's inch figures. The
-// spiral wound outer ring and the flat ring come out the same diameter at
-// every size, as they must, both sitting inside the same bolts. The other
-// spiral wound classes wait on their tables.
+// spiral wound gasket in class 150 (both series), Series B class 400 and
+// Series B class 900, from the published tables (wermac.org) checked row by
+// row against a second site's (piping-world.com), and in classes 150 and 400
+// against the flat ring table: the spiral wound outer ring and the flat ring
+// come out the same diameter at every size, as they must, both sitting
+// inside the same bolts. The other spiral wound classes are left out because
+// the sources do not bear them out: Series A classes 300, 400 and 900, where
+// the two sites differ; Series A and B class 600 and Series B class 300,
+// where both sites agree but the 60" outer ring is not the flat ring's
+// diameter.
 
 import { formatInches } from './ftin';
 import { studLabel, type SteelBolting } from './steelFlange';
@@ -189,11 +193,13 @@ export function ringGasket(nps: number, cls: LargeClass): { id: number; od: numb
   return od === undefined ? undefined : { id: nps, od };
 }
 
-// Spiral wound gaskets, ASME B16.20, class 150: inner ring bore, sealing
-// element bore and outside diameter, outer ring outside diameter, in inches
-// to two places as the standard gives them, from the B16.20 tables for
-// B16.47 Series A and Series B (wermac.org, as supplied, in millimetres),
-// checked against a second site's inch figures at both ends of each table.
+// Spiral wound gaskets, ASME B16.20: inner ring bore, sealing element bore
+// and outside diameter, outer ring outside diameter, in inches to two places
+// as the standard gives them, from the B16.20 tables for B16.47 (wermac.org,
+// in millimetres), every row of which piping-world.com prints the same to
+// 0.2 mm. Class 150 in both series; Series B class 400 to 60" and class 900
+// to 48". From 38" up the Series B class 400 and 900 gaskets are those of
+// the Series A flange the Series B one becomes there.
 const SPIRAL_A150: Record<number, readonly [number, number, number, number]> = {
   26: [25.75, 26.5, 27.75, 30.5],
   28: [27.75, 28.5, 29.75, 32.75],
@@ -234,7 +240,46 @@ const SPIRAL_B150: Record<number, readonly [number, number, number, number]> = {
   58: [58.19, 59.06, 60.19, 62.19],
   60: [60.44, 61.31, 62.44, 64.19],
 };
-const SPIRAL: Partial<Record<LargeClass, Record<number, readonly [number, number, number, number]>>> = { A150: SPIRAL_A150, B150: SPIRAL_B150 };
+const SPIRAL_B400: Record<number, readonly [number, number, number, number]> = {
+  26: [25.75, 26.25, 27.5, 29.38],
+  28: [27.63, 28.13, 29.5, 31.5],
+  30: [29.63, 30.13, 31.75, 33.75],
+  32: [31.5, 32, 33.88, 35.88],
+  34: [33.5, 34.13, 35.88, 37.88],
+  36: [35.38, 36.13, 38, 40.25],
+  38: [37.5, 38.25, 40.25, 42.25],
+  40: [39.38, 40.38, 42.38, 44.38],
+  42: [41.38, 42.38, 44.38, 46.38],
+  44: [43.5, 44.5, 46.5, 48.5],
+  46: [46, 47, 49, 50.75],
+  48: [47.5, 49, 51, 53],
+  50: [49.5, 51, 53, 55.25],
+  52: [51.5, 53, 55, 57.25],
+  54: [53.25, 55.25, 57.25, 59.75],
+  56: [55.25, 57.25, 59.25, 61.75],
+  58: [57.25, 59.25, 61.25, 63.75],
+  60: [59.75, 61.75, 63.75, 66.25],
+};
+const SPIRAL_B900: Record<number, readonly [number, number, number, number]> = {
+  26: [26.25, 27.25, 29.5, 33],
+  28: [28.25, 29.25, 31.5, 35.5],
+  30: [30.75, 31.75, 33.75, 37.75],
+  32: [33, 34, 36, 40],
+  34: [35.25, 36.25, 38.25, 42.25],
+  36: [36.25, 37.25, 39.25, 44.25],
+  38: [39.75, 40.75, 42.75, 47.25],
+  40: [41.75, 43.25, 45.25, 49.25],
+  42: [43.75, 45.25, 47.25, 51.25],
+  44: [45.5, 47.5, 49.5, 53.88],
+  46: [48, 50, 52, 56.5],
+  48: [50, 52, 54, 58.5],
+};
+const SPIRAL: Partial<Record<LargeClass, Record<number, readonly [number, number, number, number]>>> = {
+  A150: SPIRAL_A150,
+  B150: SPIRAL_B150,
+  B400: SPIRAL_B400,
+  B900: SPIRAL_B900,
+};
 
 export type SpiralGasket = { innerId: number; sealId: number; sealOd: number; ringOd: number };
 
