@@ -62,7 +62,7 @@ export type Tool = {
 
 /** Every tool, once. The subtitles are short enough to sit on two lines of a tile. */
 export const TOOLS: Tool[] = [
-  { route: 'Calculator', title: 'Calculator', subtitle: 'Feet, inches and fractions', icon: 'calculator-outline' },
+  { route: 'Calculator', title: 'Calculator', subtitle: 'Trade, standard and unit converter', icon: 'calculator-outline' },
   { route: 'Reference', title: 'Handbook', subtitle: 'Material specs and tables', icon: 'book-outline' },
   { route: 'Level', title: 'Level', subtitle: 'Lay phone on pipe to read angle', icon: 'git-commit-outline' },
   { route: 'Measure', title: 'Measure', subtitle: 'AR tracing and the laser meter', icon: 'scan-outline' },
