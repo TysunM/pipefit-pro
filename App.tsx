@@ -23,6 +23,7 @@ import { LaserProvider } from "./src/state/laser";
 import { FittingsProvider } from "./src/state/fittings";
 import { CutsProvider } from "./src/state/cuts";
 import { RecentsProvider } from "./src/state/recents";
+import { CalcPrefsProvider } from "./src/state/calcPrefsStore";
 import { LayoutProvider } from "./src/state/layouts";
 import { LearnedWordsProvider } from "./src/state/learnedWords";
 import { JobPickProvider } from "./src/state/jobPick";
@@ -93,6 +94,7 @@ export default function App() {
                       <FittingsProvider>
                       <CutsProvider>
                       <RecentsProvider>
+                      <CalcPrefsProvider>
                       <LayoutProvider>
                         <JobPickProvider>
                           <LaserProvider>
@@ -106,6 +108,7 @@ export default function App() {
                           </LaserProvider>
                         </JobPickProvider>
                       </LayoutProvider>
+                      </CalcPrefsProvider>
                       </RecentsProvider>
                       </CutsProvider>
                       </FittingsProvider>

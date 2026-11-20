@@ -5,12 +5,13 @@
 // what the app did comes up in a panel along the foot of the screen, with
 // Undo on anything written to a record.
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useSyncExternalStore } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../theme/ThemeProvider';
 import { useVoice } from '../voice/VoiceProvider';
+import { floatingMicHidden, subscribeMicSpot } from '../voice/micSpot';
 import { TAB_BAR_HEIGHT } from './TabBar';
 
 const SIZE = 64;
@@ -20,6 +21,8 @@ export function VoiceButton() {
   const insets = useSafeAreaInsets();
   const v = useVoice();
   const s = v.sheet;
+  // A screen with a mic of its own (the calculator) has asked this one to step aside.
+  const stepAside = useSyncExternalStore(subscribeMicSpot, floatingMicHidden, floatingMicHidden);
 
   // A finished answer goes away on its own; one with an Undo, or other
   // guesses to tap, stays longer.
@@ -34,6 +37,7 @@ export function VoiceButton() {
   const bottom = insets.bottom + TAB_BAR_HEIGHT + 14;
 
   if (!s) {
+    if (stepAside) return null;
     return (
       <Pressable
         onPress={v.talk}

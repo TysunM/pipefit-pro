@@ -939,6 +939,54 @@ answer: it means there is nothing being wasted to recover.
 
 ## Calculator
 
+Two calculators in one tab. The switch at the top picks **Trade** or **Standard**, and the tab opens on whichever you used last. Each keeps its own sum, so flipping across and back loses nothing. While this tab is open the mic sits at the end of that top row instead of floating over the keys.
+
+### Standard: the phone calculator
+
+Laid out like the calculator on the phone, so there is nothing to learn.
+
+- **Type the sum as it reads.** `2` `+` `3` `×` `4` is 14: multiply and divide go before add and subtract. The answer shows under the sum as you type; **=** keeps it.
+- **( )** is one key, as on the phone. It opens a bracket, or closes one when there is something to close. Brackets left open close themselves at =.
+- **%** after **+** or **−** is a percentage of what it is added to: `200` `+` `10` `%` is 220, so price plus tax is one sum. Anywhere else 10% is 0.1.
+- **+/−** makes the number being typed negative, and takes it back off.
+- **Backspace** (top right of the strip) takes back the last thing typed. **C** clears it all.
+- After **=**, a digit starts a new sum and an operator carries the answer on.
+- A number against a bracket, π or a function multiplies: `2` `π` is 2×π.
+
+The strip under the display:
+
+- **History** (clock): every sum finished with **=**, newest first, kept on the phone. Tap one to put its answer into the sum you are on. **Clear history** empties it.
+- **Unit converter** (arrows): see below.
+- **Scientific** (flask): √, sin, cos, tan, ln, log, 1/x, x², xʸ, |x|, π, e and x!, with **2nd** for ∛, sin⁻¹, cos⁻¹, tan⁻¹, eˣ, 10ˣ and x³. **Deg** and **Rad** switch the angle; it opens in degrees and stays as you leave it. In degrees the angles a fitter uses come out exact: sin 30 is 0.5, tan 45 is 1, and tan 90 says *Invalid input* instead of a giant number.
+
+What cannot be worked says why and leaves the sum on the display: *Can't divide by 0.*, *Invalid input.*, *Invalid format used.*, *Value too large.* Answers are kept to fifteen figures, so 0.1 + 0.2 is 0.3.
+
+### The unit converter
+
+Pick a category along the top, type the figure, and **every unit in the category shows under it at once**. Tap any of them to type in that unit instead. The category and the unit you type in are remembered.
+
+| Category | Units |
+|---|---|
+| Length | mm, cm, m, km, inch, foot, yard, mile, nautical mile, thou, µm; plus **feet and inches** and **inches to the fraction** you read to in Settings |
+| Area | mm², cm², m², hectare, km², in², ft², yd², acre, mi² |
+| Volume | mL, L, m³, in³, ft³, yd³, US gallon, quart, pint, cup, fl oz, tbsp, tsp, imperial gallon, oil barrel |
+| Mass | mg, g, kg, tonne, oz, lb, stone, short ton, long ton |
+| Temperature | °C, °F, K, °R (use **+/−** for below zero) |
+| Speed | m/s, km/h, mph, ft/s, ft/min, knot |
+| Time | ms, s, min, h, day, week |
+| Data | bit, B, kB, MB, GB, TB, and KiB, MiB, GiB, TiB |
+| Pressure | psi, ksi, Pa, kPa, MPa, bar, mbar, atm, inHg, mmHg, inH₂O, ft H₂O |
+| Flow | gpm, gph, L/min, L/s, m³/h, cfm, bbl/day |
+| Torque | N·m, ft·lb, in·lb, kgf·m |
+| Force | N, kN, lbf, kip, kgf |
+| Power | W, kW, hp, BTU/h, ton of refrigeration |
+| Energy | J, kJ, kWh, BTU, therm, cal, kcal |
+| Angle | degree, radian, gradian, arc minute, arc second, revolution |
+
+Water column is at 4 °C and mercury at 0 °C, the standard reference temperatures. Every unit agrees with the trade calculator's conversions wherever the two share one.
+
+### Trade
+
 A trade calculator that understands feet, inches and fractions — and **stays in inches**.
 
 ### How to enter a dimension
