@@ -20,7 +20,7 @@
 import { clockLabel } from '../calc/days';
 import { sigSvg } from '../calc/signature';
 import { boltUpProgress, isAsked, isFinished, loadWords, method, planOf, type Round } from '../calc/boltUpSequence';
-import { isSteelClass, steelFlange, studLabel, threadsPerInch } from '../calc/steelFlange';
+import { fullFaceGasket, fullFaceWords, isSteelClass, steelFlange, studLabel, threadsPerInch } from '../calc/steelFlange';
 import { gasketWords, isLargeClass, largeFlange, largeWords } from '../calc/largeFlange';
 import { boltUp } from '../calc/boltUp';
 import { classWords, isCastIron, isDone, jointFlange, jointProgress, type Joint, type SignRole } from '../state/register';
@@ -113,7 +113,12 @@ export function roundRows(j: Joint): string[][] {
 function flangeFacts(j: Joint): [string, string][] {
   if (j.nps !== null && isSteelClass(j.cls)) {
     const f = steelFlange(j.nps, j.cls);
-    if (f) return [['Flange', `${f.label} ASME B16.5 class ${j.cls}`], ['Studs', `${f.bolts} × ${studLabel(f.stud)}, ${threadsPerInch(f.stud)} threads per inch`]];
+    if (f)
+      return [
+        ['Flange', `${f.label} ASME B16.5 class ${j.cls}`],
+        ['Studs', `${f.bolts} × ${studLabel(f.stud)}, ${threadsPerInch(f.stud)} threads per inch`],
+        ...(j.cls === '150' && fullFaceGasket(j.nps) ? [['Gasket size', fullFaceWords(j.nps)] as [string, string]] : []),
+      ];
   }
   if (j.nps !== null && isLargeClass(j.cls)) {
     const f = largeFlange(j.nps, j.cls);

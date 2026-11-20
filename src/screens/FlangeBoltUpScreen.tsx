@@ -19,7 +19,7 @@ import { HintRow } from '../components/HintRow';
 import { Divider } from '../components/Divider';
 import { useTheme, Theme } from '../theme/ThemeProvider';
 import { boltHoleAngles, boltUp, boltUpSizes } from '../calc/boltUp';
-import { isSteelClass, referenceTorque, steelFlange, steelSizes, studLabel, threadsPerInch } from '../calc/steelFlange';
+import { fullFaceWords, isSteelClass, referenceTorque, steelFlange, steelSizes, studLabel, threadsPerInch } from '../calc/steelFlange';
 import { gasketWords, isLargeClass, largeClassOf, largeFlange, largeSizes, largeStuds, largeWords, seriesFor, seriesOf, type LargeClass, type LargeSeries } from '../calc/largeFlange';
 import {
   BoltUpState,
@@ -714,7 +714,7 @@ function Bolting({
           {castIron
             ? `${castIron.bolts} × ${formatInches(castIron.boltDiameter)} bolts, ${formatInches(castIron.boltLength)} long, on a ${formatInches(castIron.boltCircle)} bolt circle. Ring gasket ${formatInches(castIron.gasketId)} × ${formatInches(castIron.gasketOd)}. Cast iron is flat-faced and brittle: a full-face gasket and the lower torque its spec gives.`
             : steel
-              ? `${steel.bolts} × ${studLabel(steel.stud)} studs, ${threadsPerInch(steel.stud)} threads per inch, ASME B16.5 class ${cls}. Bolt circle and gasket from the job's drawing. The class sets the studs; the studs, the material, the lubricant and the gasket set the torque.`
+              ? `${steel.bolts} × ${studLabel(steel.stud)} studs, ${threadsPerInch(steel.stud)} threads per inch, ASME B16.5 class ${cls}. ${(cls === '150' && fullFaceWords(steel.nps)) || "Bolt circle and gasket from the job's drawing."} The class sets the studs; the studs, the material, the lubricant and the gasket set the torque.`
               : large
                 ? `${largeStuds(large)}, ${threadsPerInch(large.stud)} threads per inch, ASME ${largeWords(cls as LargeClass)}. Series A is the MSS SP-44 drilling, fewer and bigger studs; Series B the API 605 one, more and smaller${large.nps >= 38 && base !== '150' && base !== '300' ? ', the same drilling from 38 inch up in this class' : ''}. Count the holes to tell them apart, and check the stud size against the studs in hand: the torque follows it. ${gasketWords(large.nps, cls as LargeClass)}`
                 : `${bolts} bolts, set by hand. The sequence works off the count alone, so this covers a flange that is not in the tables: class 75, class 400 under 26 inch, and class 900 above 48 inch.`}

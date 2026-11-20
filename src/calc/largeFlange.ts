@@ -24,9 +24,16 @@
 //
 // The gasket follows the series too: a Series A and a Series B gasket of the
 // same size and class are different sizes, so the record names the series
-// the gasket is for. The one gasket table that could be verified, the
-// B16.21 flat ring for a Series A class 150 raised face, is here in figures.
+// the gasket is for, and gives figures where a table could be verified: the
+// B16.21 flat ring for both series in classes 150 to 600, and the B16.20
+// spiral wound gasket in class 150, from the published tables (wermac.org,
+// as supplied) checked against each other, against the class 150 ring table
+// this file carried first, and against a second site's inch figures. The
+// spiral wound outer ring and the flat ring come out the same diameter at
+// every size, as they must, both sitting inside the same bolts. The other
+// spiral wound classes wait on their tables.
 
+import { formatInches } from './ftin';
 import { studLabel, type SteelBolting } from './steelFlange';
 
 export type LargeSeries = 'A' | 'B';
@@ -124,33 +131,131 @@ export const largeStuds = (f: LargeBolting): string => `${f.bolts} × ${studLabe
 
 // ------------------------------------------------------------ the gasket
 
-/**
- * The B16.21 flat ring gasket for a Series A class 150 raised face: the bore
- * is the pipe size and the outside diameter the raised face, which is the
- * B16.1 class 125 facing at every size the two share. The one gasket table
- * that could be verified; the other classes and Series B carry their
- * designation and no figures.
- */
-const RING_A150: Record<number, number> = {
-  26: 30.5, 28: 32.75, 30: 34.75, 32: 37, 34: 39, 36: 41.25, 38: 43.75, 40: 45.75, 42: 48,
-  44: 50.25, 46: 52.25, 48: 54.5, 50: 56.5, 52: 58.75, 54: 61, 56: 63.25, 58: 65.5, 60: 67.5,
+// Flat ring gaskets, ASME B16.21, for a raised face: the bore is the pipe
+// size and the outside diameter the raised face. Outside diameters in inches
+// by class, 150, 300, 400 and 600, from the B16.21 tables for B16.47 Series A
+// and Series B (wermac.org, as supplied, in millimetres to the millimetre:
+// the nearest sixteenth is never in doubt). Class 900 is not tabled. In
+// Series B, classes 400 and 600 are tabled to 36": from 38" up the flange is
+// the Series A flange, and the Series A figure is the Series B figure too.
+const RING_A: Record<number, readonly [number, number, number, number]> = {
+  26: [30.5, 32.875, 32.75, 34.125],
+  28: [32.75, 35.375, 35.125, 36],
+  30: [34.75, 37.5, 37.25, 38.25],
+  32: [37, 39.625, 39.5, 40.25],
+  34: [39, 41.625, 41.5, 42.25],
+  36: [41.25, 44, 44, 44.5],
+  38: [43.75, 41.5, 42.25, 43.5],
+  40: [45.75, 43.875, 44.375, 45.5],
+  42: [48, 45.875, 46.375, 48],
+  44: [50.25, 48, 48.5, 50],
+  46: [52.25, 50.125, 50.75, 52.25],
+  48: [54.5, 52.125, 53, 54.75],
+  50: [56.5, 54.25, 55.25, 57],
+  52: [58.75, 56.25, 57.25, 59],
+  54: [61, 58.75, 59.75, 61.25],
+  56: [63.25, 60.75, 61.75, 63.5],
+  58: [65.5, 62.75, 63.75, 65.5],
+  60: [67.5, 64.75, 66.25, 67.75],
 };
+const RING_B: Record<number, readonly number[]> = {
+  26: [28.5625, 30.375, 29.375, 30.125],
+  28: [30.5625, 32.5, 31.5, 32.25],
+  30: [32.5625, 34.875, 33.75, 34.625],
+  32: [34.6875, 37, 35.875, 36.75],
+  34: [36.8125, 39.125, 37.875, 39.25],
+  36: [38.875, 41.25, 40.25, 41.25],
+  38: [41.125, 43.25],
+  40: [43.125, 45.25],
+  42: [45.125, 47.25],
+  44: [47.125, 49.25],
+  46: [49.4375, 51.875],
+  48: [51.4375, 53.875],
+  50: [53.4375, 55.875],
+  52: [55.4375, 57.875],
+  54: [57.625, 60.25],
+  56: [59.625, 62.75],
+  58: [62.1875, 65.1875],
+  60: [64.1875, 67.125],
+};
+const RING_COLUMN: Record<string, number> = { '150': 0, '300': 1, '400': 2, '600': 3 };
 
 /** The flat ring gasket's bore and outside diameter, inches, where the table has them. */
 export function ringGasket(nps: number, cls: LargeClass): { id: number; od: number } | undefined {
-  if (cls !== 'A150') return undefined;
-  const od = RING_A150[nps];
+  const col = RING_COLUMN[largeNumber(cls)];
+  if (col === undefined) return undefined;
+  const own = (seriesOf(cls) === 'A' ? RING_A : RING_B)[nps]?.[col];
+  const od = own ?? (seriesOf(cls) === 'B' && col >= 2 ? RING_A[nps]?.[col] : undefined);
   return od === undefined ? undefined : { id: nps, od };
+}
+
+// Spiral wound gaskets, ASME B16.20, class 150: inner ring bore, sealing
+// element bore and outside diameter, outer ring outside diameter, in inches
+// to two places as the standard gives them, from the B16.20 tables for
+// B16.47 Series A and Series B (wermac.org, as supplied, in millimetres),
+// checked against a second site's inch figures at both ends of each table.
+const SPIRAL_A150: Record<number, readonly [number, number, number, number]> = {
+  26: [25.75, 26.5, 27.75, 30.5],
+  28: [27.75, 28.5, 29.75, 32.75],
+  30: [29.75, 30.5, 31.75, 34.75],
+  32: [31.75, 32.5, 33.88, 37],
+  34: [33.75, 34.5, 35.88, 39],
+  36: [35.75, 36.5, 38.13, 41.25],
+  38: [37.75, 38.5, 40.13, 43.75],
+  40: [39.75, 40.5, 42.13, 45.75],
+  42: [41.75, 42.5, 44.25, 48],
+  44: [43.75, 44.5, 46.38, 50.25],
+  46: [45.75, 46.5, 48.38, 52.25],
+  48: [47.75, 48.5, 50.38, 54.5],
+  50: [49.75, 50.5, 52.5, 56.5],
+  52: [51.75, 52.5, 54.5, 58.75],
+  54: [53.5, 54.5, 56.5, 61],
+  56: [55.5, 56.5, 58.5, 63.25],
+  58: [57.5, 58.5, 60.5, 65.5],
+  60: [59.5, 60.5, 62.5, 67.5],
+};
+const SPIRAL_B150: Record<number, readonly [number, number, number, number]> = {
+  26: [25.75, 26.5, 27.5, 28.56],
+  28: [27.75, 28.5, 29.5, 30.56],
+  30: [29.75, 30.5, 31.5, 32.56],
+  32: [31.75, 32.5, 33.5, 34.69],
+  34: [33.75, 34.5, 35.75, 36.81],
+  36: [35.75, 36.5, 37.75, 38.88],
+  38: [37.75, 38.38, 39.75, 41.13],
+  40: [39.75, 40.25, 41.88, 43.13],
+  42: [41.75, 42.5, 43.88, 45.13],
+  44: [43.75, 44.25, 45.88, 47.13],
+  46: [45.75, 46.5, 48.19, 49.44],
+  48: [47.75, 48.5, 50, 51.44],
+  50: [49.75, 50.5, 52.19, 53.44],
+  52: [51.75, 52.5, 54.19, 55.44],
+  54: [53.75, 54.5, 56, 57.63],
+  56: [56, 56.88, 58.19, 59.63],
+  58: [58.19, 59.06, 60.19, 62.19],
+  60: [60.44, 61.31, 62.44, 64.19],
+};
+const SPIRAL: Partial<Record<LargeClass, Record<number, readonly [number, number, number, number]>>> = { A150: SPIRAL_A150, B150: SPIRAL_B150 };
+
+export type SpiralGasket = { innerId: number; sealId: number; sealOd: number; ringOd: number };
+
+/** The spiral wound gasket's four diameters, inches, where the table has them. */
+export function spiralGasket(nps: number, cls: LargeClass): SpiralGasket | undefined {
+  const r = SPIRAL[cls]?.[nps];
+  return r ? { innerId: r[0], sealId: r[1], sealOd: r[2], ringOd: r[3] } : undefined;
 }
 
 /**
  * What the gasket for a large flange is ordered as. A Series A and a Series
  * B gasket of the same size and class are different sizes, so the series is
- * part of the name and the record says the other one does not fit.
+ * part of the name and the record says the other one does not fit; then the
+ * figures, where the tables have them.
  */
 export function gasketWords(nps: number, cls: LargeClass): string {
   const s = seriesOf(cls);
   const ring = ringGasket(nps, cls);
-  const figures = ring ? ` Flat ring ${studLabel(ring.id)} bore × ${studLabel(ring.od)} outside.` : '';
+  const spiral = spiralGasket(nps, cls);
+  const figures =
+    (ring ? ` Flat ring ${formatInches(ring.id)} bore × ${formatInches(ring.od)} outside.` : '') +
+    (spiral ? ` Spiral wound: sealing element ${formatInches(spiral.sealId)} × ${formatInches(spiral.sealOd)}, outer ring ${formatInches(spiral.ringOd)}, inner ring ${formatInches(spiral.innerId)} bore.` : '');
   return `Gasket to ASME B16.20 (spiral wound) or B16.21 (flat ring) for B16.47 Series ${s}, NPS ${nps} class ${largeNumber(cls)}; a Series ${s === 'A' ? 'B' : 'A'} gasket does not fit.${figures}`;
 }
