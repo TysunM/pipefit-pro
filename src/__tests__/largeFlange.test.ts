@@ -98,9 +98,19 @@ describe('the B16.47 bolting tables', () => {
     expect(ringGasket(62, 'A150')).toBeUndefined();
     expect(spiralGasket(36, 'A150')).toEqual({ innerId: 35.75, sealId: 36.5, sealOd: 38.13, ringOd: 41.25 });
     expect(spiralGasket(60, 'B150')).toEqual({ innerId: 60.44, sealId: 61.31, sealOd: 62.44, ringOd: 64.19 });
-    expect(spiralGasket(36, 'A300')).toBeUndefined();
+    expect(spiralGasket(36, 'B400')).toEqual({ innerId: 35.38, sealId: 36.13, sealOd: 38, ringOd: 40.25 });
+    expect(spiralGasket(48, 'B900')).toEqual({ innerId: 50, sealId: 52, sealOd: 54, ringOd: 58.5 });
+    // Left out: the two sources differ (A300, A400, A900), or the 60" outer ring is off the flat ring (B300, A600, B600).
+    for (const c of ['A300', 'A400', 'A600', 'A900', 'B300', 'B600'] as const) expect(spiralGasket(36, c)).toBeUndefined();
+    expect(spiralGasket(50, 'B900')).toBeUndefined();
     expect(gasketWords(36, 'A150')).toBe(
       'Gasket to ASME B16.20 (spiral wound) or B16.21 (flat ring) for B16.47 Series A, NPS 36 class 150; a Series B gasket does not fit. Flat ring 36" bore × 41-1/4" outside. Spiral wound: sealing element 36-1/2" × 38-1/8", outer ring 41-1/4", inner ring 35-3/4" bore.'
+    );
+    expect(gasketWords(36, 'B400')).toBe(
+      'Gasket to ASME B16.20 (spiral wound) or B16.21 (flat ring) for B16.47 Series B, NPS 36 class 400; a Series A gasket does not fit. Flat ring 36" bore × 40-1/4" outside. Spiral wound: sealing element 36-1/8" × 38", outer ring 40-1/4", inner ring 35-3/8" bore.'
+    );
+    expect(gasketWords(40, 'B900')).toBe(
+      'Gasket to ASME B16.20 (spiral wound) or B16.21 (flat ring) for B16.47 Series B, NPS 40 class 900; a Series A gasket does not fit. Spiral wound: sealing element 43-1/4" × 45-1/4", outer ring 49-1/4", inner ring 41-3/4" bore.'
     );
     expect(gasketWords(36, 'B300')).toBe('Gasket to ASME B16.20 (spiral wound) or B16.21 (flat ring) for B16.47 Series B, NPS 36 class 300; a Series A gasket does not fit. Flat ring 36" bore × 41-1/4" outside.');
     expect(gasketWords(40, 'A900')).toBe('Gasket to ASME B16.20 (spiral wound) or B16.21 (flat ring) for B16.47 Series A, NPS 40 class 900; a Series B gasket does not fit.');
@@ -179,6 +189,17 @@ describe('the gasket tables, against the pages they came from', () => {
     38: [958.9, 974.9, 1009.7, 1044.7], 40: [1009.7, 1022.4, 1063.8, 1095.5], 42: [1060.5, 1079.5, 1114.6, 1146.3], 44: [1111.3, 1124, 1165.4, 1197.1], 46: [1162.1, 1181.1, 1224, 1255.8], 48: [1212.9, 1231.9, 1270, 1306.6],
     50: [1263.7, 1282.7, 1325.6, 1357.4], 52: [1314.5, 1333.5, 1376.4, 1408.2], 54: [1365.3, 1384.3, 1422.4, 1463.8], 56: [1422.4, 1444.8, 1478, 1514.6], 58: [1478, 1500.1, 1528.8, 1579.6], 60: [1535.2, 1557.3, 1586, 1630.4],
   };
+  // ASME B16.20 spiral wound, Series B classes 400 and 900, mm (wermac.org; piping-world.com prints every row the same to 0.2 mm).
+  const SPIRAL_B400_MM: Record<number, number[]> = {
+    26: [654.1, 666.8, 698.5, 746.3], 28: [701.8, 714.5, 749.3, 800.1], 30: [752.6, 765.3, 806.5, 857.3], 32: [800.1, 812.8, 860.6, 911.4], 34: [850.9, 866.9, 911.4, 962.2], 36: [898.7, 917.7, 965.2, 1022.4],
+    38: [952.5, 971.6, 1022.4, 1073.2], 40: [1000.3, 1025.7, 1076.5, 1127.3], 42: [1051.1, 1076.5, 1127.3, 1178.1], 44: [1104.9, 1130.3, 1181.1, 1231.9], 46: [1168.4, 1193.8, 1244.6, 1289.1], 48: [1206.5, 1244.6, 1295.4, 1346.2],
+    50: [1257.3, 1295.4, 1346.2, 1403.4], 52: [1308.1, 1346.2, 1397, 1454.2], 54: [1352.6, 1403.4, 1454.2, 1517.7], 56: [1403.4, 1454.2, 1505, 1568.5], 58: [1454.2, 1505, 1555.8, 1619.3], 60: [1517.7, 1568.5, 1619.3, 1682.8],
+  };
+  const SPIRAL_B900_MM: Record<number, number[]> = {
+    26: [666.8, 692.2, 749.3, 838.2], 28: [717.6, 743, 800.1, 901.7], 30: [781.1, 806.5, 857.3, 958.9], 32: [838.2, 863.6, 914.4, 1016], 34: [895.4, 920.8, 971.6, 1073.2], 36: [920.8, 946.2, 997, 1124],
+    38: [1009.7, 1035.1, 1085.9, 1200.2], 40: [1060.5, 1098.6, 1149.4, 1251], 42: [1111.3, 1149.4, 1200.2, 1301.8], 44: [1155.7, 1206.5, 1257.3, 1368.6], 46: [1219.2, 1270, 1320.8, 1435.1], 48: [1270, 1320.8, 1371.6, 1485.9],
+  };
+  const SPIRAL_MM = [['A150', SPIRAL_A150_MM], ['B150', SPIRAL_B150_MM], ['B400', SPIRAL_B400_MM], ['B900', SPIRAL_B900_MM]] as const;
   const classes = ['150', '300', '400', '600'] as const;
 
   it('reads the flat ring tables to the sixteenth, both series', () => {
@@ -191,17 +212,27 @@ describe('the gasket tables, against the pages they came from', () => {
         });
   });
 
-  it('reads the class 150 spiral wound tables to the hundredth, both series', () => {
-    for (const [cls, table] of [['A150', SPIRAL_A150_MM], ['B150', SPIRAL_B150_MM]] as const)
+  it('reads the spiral wound tables to the hundredth, at every size the class tables', () => {
+    for (const [cls, table] of SPIRAL_MM) {
+      expect(Object.keys(table).map(Number)).toEqual(largeSizes(cls));
       for (const [nps, row] of Object.entries(table)) {
         const g = spiralGasket(Number(nps), cls)!;
         [g.innerId, g.sealId, g.sealOd, g.ringOd].forEach((inch, i) => expect(Math.abs(inch * 25.4 - row[i]!)).toBeLessThan(0.15));
         expect(g.innerId < g.sealId && g.sealId < g.sealOd && g.sealOd < g.ringOd).toBe(true);
       }
+    }
+  });
+
+  it('has every spiral wound diameter grow with the pipe size', () => {
+    for (const [cls] of SPIRAL_MM) {
+      const rows = largeSizes(cls).map((n) => spiralGasket(n, cls)!);
+      for (let i = 1; i < rows.length; i++)
+        for (const k of ['innerId', 'sealId', 'sealOd', 'ringOd'] as const) expect(rows[i]![k]).toBeGreaterThan(rows[i - 1]![k]);
+    }
   });
 
   it('puts the spiral wound outer ring on the flat ring diameter at every size, as both sit inside the same bolts', () => {
-    for (const cls of ['A150', 'B150'] as const)
+    for (const cls of ['A150', 'B150', 'B400'] as const)
       for (const nps of largeSizes(cls)) expect(formatInches(spiralGasket(nps, cls)!.ringOd)).toBe(formatInches(ringGasket(nps, cls)!.od));
   });
 
