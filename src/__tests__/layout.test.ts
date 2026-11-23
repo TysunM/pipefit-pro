@@ -72,12 +72,13 @@ describe('a stored order made good', () => {
     expect(normaliseOrder(['c', 'x', 'a', 'c', 'b', 'd'], shipped)).toEqual(['c', 'a', 'b', 'd']);
   });
 
-  test('what was left out comes after, in shipped order', () => {
-    expect(normaliseOrder(['d', 'b'], shipped)).toEqual(['d', 'b', 'a', 'c']);
+  test('what was left out, which can only be new, stands after what it ships after', () => {
+    expect(normaliseOrder(['d', 'b'], shipped)).toEqual(['a', 'd', 'b', 'c']);
+    expect(normaliseOrder(['d', 'c', 'a'], shipped)).toEqual(['d', 'c', 'a', 'b']);
   });
 
   test('anything that is not an id is skipped', () => {
-    expect(normaliseOrder([3, null, 'b', {}, 'a'], shipped)).toEqual(['b', 'a', 'c', 'd']);
+    expect(normaliseOrder([3, null, 'b', {}, 'a'], shipped)).toEqual(['b', 'c', 'd', 'a']);
   });
 });
 
@@ -164,8 +165,8 @@ describe('the layout', () => {
     expect(orderOf(l, HOME_ZONE)).toEqual(['Level', 'IsoSketch', 'FlangeBoltUp', 'SpoolBuilder']);
   });
 
-  test('the shipped tab order is Home, Calculator, Tools, Projects, Logs, Edu', () => {
-    expect(orderOf(EMPTY_LAYOUT, TABS_ZONE)).toEqual(['home', 'calc', 'tools', 'projects', 'logs', 'edu']);
+  test('the shipped tab order is Home, Calculator, PipeFit, Weld, Projects, Logs, Edu', () => {
+    expect(orderOf(EMPTY_LAYOUT, TABS_ZONE)).toEqual(['home', 'calc', 'tools', 'weld', 'projects', 'logs', 'edu']);
   });
 });
 
@@ -187,7 +188,7 @@ describe('reading what was stored', () => {
   test('a zone that is gone, or that is not a list, is dropped; the rest is kept', () => {
     const l = parseLayout(store({ 'tools.nothing': ['IsoSketch'], [HOME_ZONE]: 'IsoSketch', [TABS_ZONE]: ['edu', 'home'] }));
     expect(Object.keys(l.zones)).toEqual([TABS_ZONE]);
-    expect(l.zones[TABS_ZONE]).toEqual(['edu', 'home', 'calc', 'tools', 'projects', 'logs']);
+    expect(l.zones[TABS_ZONE]).toEqual(['edu', 'home', 'calc', 'tools', 'weld', 'projects', 'logs']);
   });
 
   test('a stored order that comes to the shipped one is not kept as a change', () => {
@@ -195,11 +196,16 @@ describe('reading what was stored', () => {
     expect(isCustomised(l)).toBe(false);
   });
 
-  test('a tool added to a section in an update shows up at the end of a saved order', () => {
+  test('a tool added to a section in an update shows up beside the one it ships after', () => {
     const zone = sectionZone('tools', 'fitup');
     const was = shippedOrder(zone).filter((r) => r !== 'Measure').reverse();
     const l = parseLayout(store({ [zone]: was }));
-    expect(l.zones[zone]).toEqual([...was, 'Measure']);
+    expect(l.zones[zone]).toEqual(['Level', 'Measure', 'FlangeBoltUp', 'SpoolBuilder', 'IsoSketch']);
+  });
+
+  test('the Weld tab, new in an update, stands straight after PipeFit in a saved tab order', () => {
+    const l = parseLayout(store({ [TABS_ZONE]: ['edu', 'tools', 'home', 'calc', 'projects', 'logs'] }));
+    expect(l.zones[TABS_ZONE]).toEqual(['edu', 'tools', 'weld', 'home', 'calc', 'projects', 'logs']);
   });
 });
 

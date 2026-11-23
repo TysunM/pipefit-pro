@@ -56,9 +56,11 @@ export const shippedOrder = (zone: string): readonly string[] => ZONES[zone] ?? 
 
 /**
  * A stored order made good against the shipped one: ids the zone does not
- * hold are dropped, a repeat is dropped, and any shipped id the stored order
- * left out is put after, in shipped order, so a tool added to a section in an
- * update shows up at the end of it rather than nowhere.
+ * hold are dropped, and a repeat is dropped. A shipped id the stored order
+ * left out can only be one added in an update, since nothing can be taken off
+ * a zone by hand, so it stands where it was designed to: straight after the
+ * id it ships after, or first if it ships first. A Weld tab added beside
+ * PipeFit lands beside PipeFit, however the tabs have been moved about.
  */
 export function normaliseOrder(stored: readonly unknown[], shipped: readonly string[]): string[] {
   const out: string[] = [];
@@ -67,7 +69,18 @@ export function normaliseOrder(stored: readonly unknown[], shipped: readonly str
     if (!shipped.includes(id) || out.includes(id)) continue;
     out.push(id);
   }
-  for (const id of shipped) if (!out.includes(id)) out.push(id);
+  shipped.forEach((id, i) => {
+    if (out.includes(id)) return;
+    let at = 0;
+    for (let j = i - 1; j >= 0; j--) {
+      const k = out.indexOf(shipped[j]!);
+      if (k >= 0) {
+        at = k + 1;
+        break;
+      }
+    }
+    out.splice(at, 0, id);
+  });
   return out;
 }
 

@@ -35,6 +35,7 @@ import { emptyWelders, emptyWelds, numberKey, parseWelders, parseWelds, serialis
 import { emptySpecBook, parseSpecBook, serialiseSpecBook } from './boltingSpec';
 import { parseLayout, serialiseLayout, type Layout } from './layout';
 import { emptyLearned, parseLearned, serialiseLearned } from '../voice/learned';
+import { emptyHeatInputs, parseHeatInputs, serialiseHeatInputs } from './heatInputLog';
 
 export const BACKUP_VERSION = 1;
 export const BACKUP_APP = 'PipeFit Pro';
@@ -81,6 +82,7 @@ export const STORES: readonly Spec[] = [
   { key: 'pipefit.boltspecs.v1', label: 'bolting specs', field: 'specs', idOf: (x) => x.id, empty: emptySpecBook, parse: parseSpecBook, serialise: serialiseSpecBook },
   // What the phone has learned of its recogniser's mishearings: one pair per word it wrote.
   { key: 'pipefit.heard.v1', label: 'learned words', field: 'pairs', idOf: (x) => String(x.said ?? ''), empty: emptyLearned, parse: parseLearned, serialise: serialiseLearned },
+  { key: 'pipefit.heatinput.v1', label: 'heat inputs', field: 'entries', idOf: (x) => x.id, empty: emptyHeatInputs, parse: parseHeatInputs, serialise: serialiseHeatInputs },
 ];
 
 export const specOf = (key: string): Spec | undefined => STORES.find((s) => s.key === key);

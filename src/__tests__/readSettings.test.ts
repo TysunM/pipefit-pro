@@ -22,6 +22,10 @@ const DEFAULTS: Settings = {
   voice: true,
   shift: 'days',
   coach: 'on',
+  heatUnit: 'auto',
+  speedUnit: 'auto',
+  arcMode: 'va',
+  weldFields: [],
   look: LOOK,
 };
 
@@ -142,5 +146,20 @@ describe('the shift', () => {
     expect(readSettings(JSON.stringify(before), DEFAULTS).settings.shift).toBe('days');
     expect(readSettings(JSON.stringify({ ...DEFAULTS, shift: 'nights' }), DEFAULTS).settings.shift).toBe('nights');
     expect(readSettings(JSON.stringify({ ...DEFAULTS, shift: 'swing' }), DEFAULTS).settings.shift).toBe('days');
+  });
+});
+
+describe('the welding settings', () => {
+  const read = (stored: object) => readSettings(JSON.stringify({ ...stored, look: LOOK }), DEFAULTS).settings;
+  test('kept when they are real choices', () => {
+    const s = read({ heatUnit: 'J/in', speedUnit: 'mm/s', arcMode: 'energy', weldFields: ['WPS', 'Welder'] });
+    expect([s.heatUnit, s.speedUnit, s.arcMode, s.weldFields]).toEqual(['J/in', 'mm/s', 'energy', ['WPS', 'Welder']]);
+  });
+  test('anything else reads as the defaults', () => {
+    const s = read({ heatUnit: 'BTU', speedUnit: 7, arcMode: 'magic', weldFields: 'WPS' });
+    expect([s.heatUnit, s.speedUnit, s.arcMode, s.weldFields]).toEqual(['auto', 'auto', 'va', []]);
+  });
+  test('field names are trimmed, deduplicated and kept to four', () => {
+    expect(read({ weldFields: [' WPS ', 'wps', '', 3, 'Welder', 'Pass', 'Joint', 'Heat'] }).weldFields).toEqual(['WPS', 'Welder', 'Pass', 'Joint']);
   });
 });

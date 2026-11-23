@@ -35,6 +35,8 @@ import { FittingLibraryScreen } from '../screens/FittingLibraryScreen';
 import { CutListScreen } from '../screens/CutListScreen';
 import { WeldLogScreen } from '../screens/WeldLogScreen';
 import { WeldScreen } from '../screens/WeldScreen';
+import { HeatInputScreen } from '../screens/HeatInputScreen';
+import { WeldabilityScreen } from '../screens/WeldabilityScreen';
 import { CalibrationScreen } from '../screens/CalibrationScreen';
 import { BackupScreen } from '../screens/BackupScreen';
 import { PassportScreen } from '../screens/PassportScreen';
@@ -132,6 +134,8 @@ export function RootNavigator() {
         <Stack.Screen name="FittingLibrary" component={FittingLibraryScreen} options={{ title: 'Fitting library' }} />
         <Stack.Screen name="CutList" component={CutListScreen} options={{ title: 'Cut list' }} />
         <Stack.Screen name="WeldLog" component={WeldLogScreen} options={{ title: 'Weld log' }} />
+        <Stack.Screen name="HeatInput" component={HeatInputScreen} options={{ title: 'Heat input' }} />
+        <Stack.Screen name="Weldability" component={WeldabilityScreen} options={{ title: 'Weldability' }} />
         <Stack.Screen name="Weld" component={WeldScreen} options={{ title: 'Weld' }} />
         <Stack.Screen name="Calibration" component={CalibrationScreen} options={{ title: 'Calibration' }} />
         <Stack.Screen name="Backup" component={BackupScreen} options={{ title: 'Backup' }} />

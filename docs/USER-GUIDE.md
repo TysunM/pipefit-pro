@@ -72,9 +72,9 @@ The app agrees with every one of them to **four decimal places**, and a test pro
 
 ## Make it yours: moving the tabs and tiles
 
-The six tabs along the foot ship as **Home, Calculator, Tools, Projects, Logs, Edu**. Hold any tab until it lifts, carry it along the bar, let go. It stays there on every screen.
+The seven tabs along the foot ship as **Home, Calculator, PipeFit, Weld, Projects, Logs, Edu**. PipeFit is the tab that used to be called Tools. A phone that already moved its tabs keeps its order, and Weld comes in right after PipeFit. Hold any tab until it lifts, carry it along the bar, let go. It stays there on every screen.
 
-The tiles on Home, Tools, Logs and Edu, and the cards down the Projects page, move the same way: hold one until it lifts and buzzes, carry it, let go. A tile moves anywhere in its own section (Layout & fit-up, Bends & offsets, Records…); a card anywhere down the page. Carry one to the top or foot of the screen and the page scrolls with it. A finger that drifts while holding is a scroll, not a hold: hold still.
+The tiles on Home, PipeFit, Weld, Logs and Edu, and the cards down the Projects page, move the same way: hold one until it lifts and buzzes, carry it, let go. A tile moves anywhere in its own section (Layout & fit-up, Bends & offsets, Records…); a card anywhere down the page. Carry one to the top or foot of the screen and the page scrolls with it. A finger that drifts while holding is a scroll, not a hold: hold still.
 
 On Home, **Recently used** stays as you left it until you open a tool, which puts that one first, as it always has. The **Field tools** keep the order you put them in.
 
@@ -1342,7 +1342,7 @@ The heading above the log then reads one of four things: *Retighten after* a tim
 
 ## Measure: laser meter and AR
 
-Tools → **Measure**. Both run in **Chrome on Android**, not in the installed app; in the app, the button opens the web app in Chrome on this screen.
+PipeFit → **Measure**. Both run in **Chrome on Android**, not in the installed app; in the app, the button opens the web app in Chrome on this screen.
 
 ### Laser meter
 
@@ -1432,9 +1432,68 @@ It does not work the B31.3 stress-ratio increase for a design temperature above 
 
 ---
 
+## Heat input
+
+**The heat input a WPS or PQR records, from the machine and a tape.** Weld tab → **Heat input**, or say "heat input".
+
+### Step by step
+1. **Volts & amps** for a conventional machine: type the amperage and voltage off the meters. **Total energy** for a waveform-controlled machine (pulse, STT, RMD and the like): type the kJ the machine shows for the pass. ASME IX QW-409.1(c) wants that figure on those machines; volts × amps reads them wrong.
+2. **Weld:** **Length** for a straight run, or **Round a pipe** and type the OD. One full pass round the pipe is π × OD.
+3. **Arc time:** type it as seconds or m:ss, or press **Start the timer** when the arc strikes and **Stop the timer** when it breaks.
+4. **Process:** leave **None (ASME IX)** for an ASME WPS or PQR. Pick the process only when the document is to EN 1011-1 or ISO, which apply a thermal efficiency k.
+5. **Save** puts it in the history with the date and the job, and the fields you named in Settings (WPS, welder, pass, joint) show under **Saved with it**. **Share** sends the figure as text. **Send the history as a spreadsheet** sends every saved heat input as a CSV file, one column per field.
+
+### What each number means
+- **Heat input:** the energy per length of weld after the efficiency k. With **None (ASME IX)** k is 1, so it equals the arc energy.
+- **Arc energy:** volts × amps × seconds ÷ length, or total energy ÷ length.
+- **Travel speed:** length ÷ arc time, in the speed unit you picked.
+
+### Worked example
+180 A at 24 V, 11.811" (300 mm) in 1:00.
+- Arc energy: 180 × 24 × 60 ÷ 11.811 = 21,946 J/in = **21.9 kJ/in**. Travel speed **11.8 in/min**.
+- To EN 1011-1 with SMAW (k = 0.8): 21.9 × 0.8 = **17.6 kJ/in**.
+- Round a 6" pipe (6.625" OD) in the same minute: π × 6.625 = 20.813", so **12.5 kJ/in** arc energy, **9.96 kJ/in** with SMAW.
+- A pulse machine that shows 52 kJ over 23.622" (600 mm): 52,000 ÷ 23.622 = **2.20 kJ/in**, or **1.76 kJ/in** with SMAW.
+
+### Where people go wrong
+- **Applying k on an ASME job.** ASME IX has no efficiency factor. A PQR figure with 0.8 taken off reads 20% low, and the WPS range built on it is wrong.
+- **Volts and amps on a pulse machine.** The meters average a waveform; use **Total energy** and the machine's own kJ.
+- **Timing the stop and start.** Arc time is arc on, not the time at the joint. Use the timer per pass, or type the arc time the machine logs.
+- **Mixing units.** The length goes in in the same units as the screen (inches in imperial, mm in metric). Settings → Welding changes the units shown, not the inputs.
+
+---
+
+## Weldability
+
+**The carbon equivalents off a mill cert, in one place.** Weld tab → **Weldability**, or say "carbon equivalent".
+
+Type each element in weight percent, as the cert prints it. A blank counts as zero.
+
+| Figure | Formula | What it is for |
+|---|---|---|
+| **CE (IIW)** | C + Mn/6 + (Cr+Mo+V)/5 + (Ni+Cu)/15 | The headline figure for carbon steels above 0.12% C |
+| **CET** | C + (Mn+Mo)/10 + (Cr+Cu)/20 + Ni/40 | EN 1011-2 preheat method |
+| **CE (AWS)** | C + (Mn+Si)/6 + (Cr+Mo+V)/5 + (Ni+Cu)/15 | AWS D1.1 preheat guide |
+| **Pcm** | C + Si/30 + (Mn+Cu+Cr)/20 + Ni/60 + Mo/15 + V/10 + 5B | Low carbon steels, 0.12% C or less |
+| **PREN** | Cr + 3.3Mo + 16N | Pitting resistance of stainless: 316L about 24, 2205 about 35 |
+
+The reading under CE (IIW): 0.35 or less excellent, up to 0.40 very good, up to 0.45 good, up to 0.50 fair (preheat and low-hydrogen practice likely), above 0.50 poor.
+
+### Worked example
+C 0.20, Mn 1.20, Si 0.30, Cr 0.10, Ni 0.10, Mo 0.05, Cu 0.15, V 0.02, N 0.008, B 0.0005.
+- CE (IIW) = 0.20 + 0.20 + 0.034 + 0.017 = **0.45**, fair.
+- CET **0.34**, CE (AWS) **0.50**, Pcm **0.292**, PREN **0.4**.
+
+### Where people go wrong
+- **Reading a preheat off the CE.** The CE says how hard the steel is to weld. The preheat comes from the WPS and the code it was qualified to.
+- **Using the spec maximums.** The figure that matters is the heat in the joint. Type the cert, not the material spec.
+- **Boron left off.** Pcm carries 5 × B. A cert showing B < 0.0005 is near enough zero; a cert showing 0.003 moves Pcm by 0.015.
+
+---
+
 ## Weld log
 
-**Every weld on the job, the welders who made it, and the NDE the code still asks for.** Logs tab → **Weld log**, or say "weld log".
+**Every weld on the job, the welders who made it, and the NDE the code still asks for.** Weld tab → **Weld log**, or say "weld log".
 
 ### Logging welds
 1. **Log a weld.** Line or iso, weld number (the next one on the line is filled in), the day, size, joint (butt, socket, fillet, branch), process and WPS.
@@ -1623,6 +1682,7 @@ Anything else it hears is shown and ignored, so a conversation nearby does not l
 | **Length readout** | Inches, or feet + inches, for the calculator |
 | **Pipe & fitting** | Material, size, wall and elbow radius the job runs. Each material shows its own walls and sizes — see Materials below. |
 | **Weld gap** | Your standard root gap |
+| **Welding** | The unit heat input is shown in (kJ or J, per inch or per mm), the travel speed unit, and up to four named fields saved with every heat input (WPS, welder, pass, joint). **Auto** follows Units. Heat input → **Units, and fields to save with it** opens here. |
 | **Stock length** | The length you buy. The cut list packs onto it, and the offset and cut-length screens check against it. |
 | **Saw cut** | What the blade takes, default 1/8". Charged on every cut in the cut list. |
 | **Smart fill** | Whether a heat scan and the handbook search ask Jev, with signal |

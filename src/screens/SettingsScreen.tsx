@@ -17,6 +17,8 @@ import { useBoltingSpecs } from '../state/boltingSpecs';
 import { useLearnedWords } from '../state/learnedWords';
 import { forgetAll } from '../voice/learned';
 import { getMicPlace, setMicPlace, subscribeMicPlace } from '../voice/micPlaceStore';
+import { HEAT_UNITS, SPEED_UNITS, type HeatUnitSetting, type SpeedUnitSetting } from '../calc/heatInput';
+import { FIELD_NAME_MAX } from '../state/heatInputLog';
 import { activeSpec, gasketLabel, methodLabel, newSpec, putSpec, removeSpec, setActive, specId, type BoltingSpec } from '../state/boltingSpec';
 import { BoltingSpecSheet } from '../components/BoltingSpecSheet';
 import { appVersion, buildId, runningBuild, useOtaUpdate, versionRows } from '../state/updates';
@@ -84,8 +86,12 @@ export function SettingsScreen() {
     );
   }, [settings.unitSystem, settings.defaultGap, settings.stockLength, settings.cutAllowance]);
 
+  const weldingFirst = route.params?.open === 'welding';
+  const welding = <WeldingSettings />;
+
   return (
     <Screen>
+      {weldingFirst ? welding : null}
       <SectionHeader
         title="Backup"
         meta={lastBackup.at ? (backup.days === 0 ? 'Backed up today' : `Backed up ${backup.days} day${backup.days === 1 ? '' : 's'} ago`) : 'Never backed up'}
@@ -331,6 +337,8 @@ export function SettingsScreen() {
         onSelect={(v) => update({ fractionDenominator: v as FractionDenominator })}
       />
 
+      {weldingFirst ? null : welding}
+
       <SectionHeader title="Pipe on this job" meta="Material · wall · size" />
       {(['Steels', 'Chrome-moly', 'Iron', 'Plastics & lined'] as MaterialGroup[]).map((g) => (
         <ChipRow
@@ -521,3 +529,52 @@ export function SettingsScreen() {
   );
 }
 
+/**
+ * Heat input (HeatInputScreen.tsx): the units its answer and the travel speed
+ * read in, and the job's own fields saved with each result and exported as
+ * columns. Lengths go in in the units set above.
+ */
+function WeldingSettings() {
+  const t = useTheme();
+  const { settings, update } = useSettings();
+  const [slots, setSlots] = useState<string[]>(() => [0, 1, 2, 3].map((i) => settings.weldFields[i] ?? ''));
+  const setSlot = (i: number, v: string) => {
+    const next = slots.map((x, j) => (j === i ? v.slice(0, FIELD_NAME_MAX) : x));
+    setSlots(next);
+    update({ weldFields: next.map((x) => x.trimStart()).filter((x) => x.trim()) });
+  };
+  const imperial = settings.unitSystem === 'imperial';
+  return (
+    <>
+      <SectionHeader title="Welding" meta="Heat input" />
+      <ChipRow
+        label="Heat input in"
+        options={[{ value: 'auto', label: `Auto (${imperial ? 'kJ/in' : 'kJ/mm'})` }, ...HEAT_UNITS.map((u) => ({ value: u, label: u }))]}
+        selected={settings.heatUnit}
+        onSelect={(v) => update({ heatUnit: v as HeatUnitSetting })}
+      />
+      <ChipRow
+        label="Travel speed"
+        options={[{ value: 'auto', label: `Auto (${imperial ? 'in/min' : 'mm/min'})` }, ...SPEED_UNITS.map((u) => ({ value: u, label: u }))]}
+        selected={settings.speedUnit}
+        onSelect={(v) => update({ speedUnit: v as SpeedUnitSetting })}
+      />
+      <Text style={[t.type.caption, { color: t.colors.textMuted, paddingHorizontal: t.layout.screenPadding, marginTop: -t.space.sm, marginBottom: t.space.lg }]}>
+        Auto follows Units: kJ per inch and inches per minute in imperial, kJ per mm and mm per minute in metric. The length welded goes in in the same units.
+      </Text>
+      <Text style={[t.type.label, { color: t.colors.textMuted, paddingHorizontal: t.layout.screenPadding, marginBottom: t.space.sm }]}>FIELDS SAVED WITH EACH HEAT INPUT</Text>
+      {[0, 2].map((i) => (
+        <FieldRow key={i}>
+          {[i, i + 1].map((j) => (
+            <DimensionInput key={j} label={`Field ${j + 1}`} value={slots[j] ?? ''} onChangeText={(v) => setSlot(j, v)} placeholder={FIELD_HINTS[j]} keyboardType="default" autoCapitalize="words" />
+          ))}
+        </FieldRow>
+      ))}
+      <Text style={[t.type.caption, { color: t.colors.textMuted, paddingHorizontal: t.layout.screenPadding, marginTop: -t.space.sm, marginBottom: t.space.lg }]}>
+        Name up to four, such as the WPS, the welder's stamp, the pass and the joint. Each shows on the heat input screen, is saved with the result, and is a column in the spreadsheet.
+      </Text>
+    </>
+  );
+}
+
+const FIELD_HINTS = ['WPS', 'Welder', 'Pass', 'Joint'];

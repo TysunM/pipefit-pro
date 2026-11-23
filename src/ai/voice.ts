@@ -41,6 +41,7 @@ export const VOICE_ROUTES = [
   'Backup',
   'Projects',
   'Tools',
+  'Weld',
   'Logs',
   'Edu',
   'Calculator',
@@ -64,6 +65,8 @@ export const VOICE_ROUTES = [
   'FittingLibrary',
   'CutList',
   'WeldLog',
+  'HeatInput',
+  'Weldability',
   'Calibration',
   'Passport',
   'Orientation',
@@ -77,8 +80,9 @@ const ROUTE_WORDS: Record<VoiceRoute, string> = {
   Settings: 'settings: units, fractions, theme, the job number, the fitter name',
   Backup: 'backup and restore: everything on the phone to one file, and back',
   Projects: 'the Projects tab: every job\'s saved work, the turnover package PDF, and clearing a job off the phone',
-  Tools: 'the Tools tab: iso sketch, 3D spool, bolt-up, level, measure, and every bend and offset',
-  Logs: 'the Logs tab: weld log, pressure tests, joint log, heat book, shift report, calibration, pre-task plan, handbook',
+  Tools: 'the PipeFit tab (once called Tools): iso sketch, 3D spool, bolt-up, level, measure, and every bend and offset',
+  Weld: 'the Weld tab: heat input, weldability, and the weld log',
+  Logs: 'the Logs tab: pressure tests, joint log, heat book, shift report, calibration, pre-task plan, handbook',
   Edu: 'the Edu tab: site orientation and the skills passport',
   Calculator: 'trade calculator: feet, inches and fractions',
   Level: 'digital level: lay the phone on a pipe to read slope and fall',
@@ -105,6 +109,8 @@ const ROUTE_WORDS: Record<VoiceRoute, string> = {
   Orientation: 'site orientation: the modules a new hire takes before the gate, built-in general practice and the company\'s own rules, read or spoken in English or Spanish, with a check at the end',
   PreTask: "pre-task plan: the morning JSA for the job and day: task, hazards with controls, permits, PPE, muster point, toolbox talk, crew sign-in and the foreman's signature",
   WeldLog: 'weld log: every weld with its welders, heats and NDE results, the random and tracer x-rays owed, and each welder\'s continuity',
+  HeatInput: 'heat input: kJ per inch or per mm from volts, amps, length welded and arc time, or a machine\'s total energy; travel speed; saved and exported',
+  Weldability: 'weldability: carbon equivalents (IIW, CET, AWS, Pcm) and PREN from a mill cert\'s chemistry',
 };
 
 export const TEST_OPS = ['start_hold', 'reading', 'end_hold', 'pass', 'fail'] as const;
