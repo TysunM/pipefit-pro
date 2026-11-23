@@ -1,5 +1,7 @@
 import type { Settings } from './settings';
 import { calcSchedule, resolveSpec } from '../calc/materials';
+import { HEAT_UNITS, SPEED_UNITS } from '../calc/heatInput';
+import { cleanFieldNames } from './heatInputLog';
 
 /**
  * Which look the stored settings were written under.
@@ -49,6 +51,10 @@ export function readSettings(
   merged.voice = typeof stored.voice === 'boolean' ? stored.voice : defaults.voice;
   merged.shift = stored.shift === 'days' || stored.shift === 'nights' ? stored.shift : defaults.shift;
   merged.coach = stored.coach === 'off' ? 'off' : defaults.coach;
+  merged.heatUnit = stored.heatUnit === 'auto' || (HEAT_UNITS as readonly string[]).includes(String(stored.heatUnit)) ? (stored.heatUnit as Settings['heatUnit']) : defaults.heatUnit;
+  merged.speedUnit = stored.speedUnit === 'auto' || (SPEED_UNITS as readonly string[]).includes(String(stored.speedUnit)) ? (stored.speedUnit as Settings['speedUnit']) : defaults.speedUnit;
+  merged.arcMode = stored.arcMode === 'energy' || stored.arcMode === 'va' ? stored.arcMode : defaults.arcMode;
+  merged.weldFields = stored.weldFields === undefined ? defaults.weldFields : cleanFieldNames(stored.weldFields);
   // Material, size and wall are kept as a set that exists. Settings from before
   // materials are carbon steel at the schedule they already had.
   const spec = resolveSpec(stored.material ?? 'cs', merged.defaultNps, stored.wall ?? merged.defaultSchedule);

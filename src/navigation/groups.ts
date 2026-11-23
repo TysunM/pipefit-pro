@@ -3,12 +3,13 @@ import type { RootStackParamList } from './types';
 
 // What each tab holds
 // -------------------
-// Six tabs across the foot (tabs.ts says which, and in what order): Home, the
-// Calculator, Tools, Projects, Logs and Edu.
+// Seven tabs across the foot (tabs.ts says which, and in what order): Home,
+// the Calculator, PipeFit, Weld, Projects, Logs and Edu.
 //
 //   Home       the job card and the tools this man used last.
 //   Calculator the trade calculator, straight to the keys.
-//   Tools      the instruments he works with, and every bend and offset.
+//   PipeFit    the instruments he works with, and every bend and offset.
+//   Weld       heat input, weldability, and the weld log.
 //   Projects   everything saved: bolt-ups, isos, spools, level readings.
 //   Logs       the books he keeps and looks things up in.
 //   Edu        what a new hire learns and proves: orientation and the passport.
@@ -44,6 +45,8 @@ export type ToolRoute =
   | 'FittingLibrary'
   | 'CutList'
   | 'WeldLog'
+  | 'HeatInput'
+  | 'Weldability'
   | 'Calibration'
   | 'Passport'
   | 'Orientation'
@@ -71,6 +74,8 @@ export const TOOLS: Tool[] = [
   { route: 'Joints', title: 'Joint log', subtitle: 'Every bolt-up on the job', icon: 'pricetags-outline' },
   { route: 'FlangeBoltUp', title: 'Flange bolt-up', subtitle: 'Interactive cross-pattern check', icon: 'sync-circle-outline' },
   { route: 'WeldLog', title: 'Weld log', subtitle: 'Welds, welders, NDE and continuity', icon: 'flame-outline' },
+  { route: 'HeatInput', title: 'Heat input', subtitle: 'kJ per inch from volts, amps and travel', icon: 'thermometer-outline' },
+  { route: 'Weldability', title: 'Weldability', subtitle: 'Carbon equivalents and PREN', icon: 'flask-outline' },
   { route: 'Calibration', title: 'Calibration', subtitle: 'Gauges and wrenches, and when due', icon: 'build-outline' },
   { route: 'Passport', title: 'Skills passport', subtitle: 'What you can do, proved and signed', icon: 'ribbon-outline' },
   { route: 'Orientation', title: 'Orientation', subtitle: 'Site rules, taught and checked', icon: 'school-outline' },
@@ -100,14 +105,14 @@ export type SectionSize = 'big' | 'wide' | 'small';
 /** `id` names the section in the saved layout, so it must not change once shipped; the title may. */
 export type Section = { id: string; title: string; size: SectionSize; tools: Tool[] };
 
-export type GroupId = 'tools' | 'logs' | 'edu';
+export type GroupId = 'tools' | 'weld' | 'logs' | 'edu';
 export type Group = { id: GroupId; title: string; subtitle: string; sections: Section[] };
 
-/** What the Tools and Logs tabs hold. */
+/** What the PipeFit, Weld, Logs and Edu tabs hold. The PipeFit tab keeps the id 'tools' it shipped with, so the saved order of its tiles carries over. */
 export const GROUPS: Group[] = [
   {
     id: 'tools',
-    title: 'Tools',
+    title: 'PipeFit',
     subtitle: 'The iso paper, the spool, the bolt-up, the level and the measure, then every bend and offset.',
     sections: [
       { id: 'fitup', title: 'Layout & fit-up', size: 'big', tools: pick(['IsoSketch', 'SpoolBuilder', 'FlangeBoltUp', 'Level', 'Measure']) },
@@ -120,11 +125,19 @@ export const GROUPS: Group[] = [
     ],
   },
   {
+    id: 'weld',
+    title: 'Weld',
+    subtitle: 'Heat input for the WPS and PQR, the carbon equivalents off a mill cert, and the weld log with its NDE.',
+    sections: [
+      { id: 'welding', title: 'Welding', size: 'big', tools: pick(['HeatInput', 'Weldability', 'WeldLog']) },
+    ],
+  },
+  {
     id: 'logs',
     title: 'Logs',
-    subtitle: 'The books the job keeps: every weld and its NDE, every test, every joint bolted up, the heats in them, the shift report, the morning pre-task plan, the handbook and your fitting takeouts.',
+    subtitle: 'The books the job keeps: every test, every joint bolted up, the heats in them, the shift report, the morning pre-task plan, the handbook and your fitting takeouts. The weld log is on the Weld tab.',
     sections: [
-      { id: 'records', title: 'Records', size: 'big', tools: pick(['PreTask', 'WeldLog', 'PressureTests', 'Joints', 'Heats', 'ShiftReport', 'Calibration']) },
+      { id: 'records', title: 'Records', size: 'big', tools: pick(['PreTask', 'PressureTests', 'Joints', 'Heats', 'ShiftReport', 'Calibration']) },
       { id: 'lookup', title: 'Look-up', size: 'wide', tools: pick(['Reference', 'FittingLibrary']) },
     ],
   },

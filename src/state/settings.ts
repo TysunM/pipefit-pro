@@ -6,6 +6,7 @@ import { FractionDenominator } from '../calc/format';
 import { ElbowRadius, Schedule } from '../calc/pipe';
 import { LOOK, readSettings } from './readSettings';
 import type { Shift } from '../calc/days';
+import type { ArcMode, HeatUnitSetting, SpeedUnitSetting } from '../calc/heatInput';
 
 export type ThemePreference = 'light' | 'dark' | 'system';
 
@@ -86,6 +87,16 @@ export type Settings = {
    * fading as the skills passport fills. Off for a crew that already knows.
    */
   coach: 'on' | 'off';
+  /**
+   * Heat input (calc/heatInput.ts): the unit the answer reads in and the travel
+   * speed's, each auto to follow imperial or metric; whether the arc energy is
+   * worked from volts and amps or read off a waveform-controlled machine's
+   * total; and the job's own fields saved with each result, at most four.
+   */
+  heatUnit: HeatUnitSetting;
+  speedUnit: SpeedUnitSetting;
+  arcMode: ArcMode;
+  weldFields: string[];
   /** Which look these were written under — see readSettings. */
   look: number;
 };
@@ -113,6 +124,10 @@ export const DEFAULT_SETTINGS: Settings = {
   voice: true,
   shift: 'days',
   coach: 'on',
+  heatUnit: 'auto',
+  speedUnit: 'auto',
+  arcMode: 'va',
+  weldFields: [],
   look: LOOK,
 };
 

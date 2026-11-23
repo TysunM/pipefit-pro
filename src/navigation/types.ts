@@ -1,7 +1,7 @@
 export type RootStackParamList = {
   Home: undefined;
   /** The Tools or Logs tab — see navigation/groups.ts. */
-  Group: { id: 'tools' | 'logs' | 'edu' };
+  Group: { id: 'tools' | 'weld' | 'logs' | 'edu' };
   /** Everything saved on the phone, one card per kind. */
   Projects: undefined;
   SimpleOffset: undefined;
@@ -38,6 +38,10 @@ export type RootStackParamList = {
   CutList: undefined;
   WeldLog: { tab?: 'welds' | 'nde' | 'welders' } | undefined;
   Weld: { id?: string; line?: string };
+  /** Heat input from volts, amps and travel, or a machine's total energy; saved and exported. */
+  HeatInput: undefined;
+  /** Carbon equivalents and PREN from a mill cert's chemistry. */
+  Weldability: undefined;
   Calibration: undefined;
   /** The skills passport: what this hand can do, proved by the records and signed off. */
   Passport: undefined;
@@ -52,7 +56,7 @@ export type RootStackParamList = {
   FittingLibrary: { line?: string; read?: number } | undefined;
   ReferenceTable: { id: string };
   /** `open` lands on a section's sheet: the company bolting spec, from the bolt-up screen. */
-  Settings: { open?: 'bolting' } | undefined;
+  Settings: { open?: 'bolting' | 'welding' } | undefined;
   /** Everything on the phone to one file, and back. */
   Backup: undefined;
 };

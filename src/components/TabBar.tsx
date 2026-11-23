@@ -16,8 +16,8 @@ export type { TabId } from '../navigation/tabs';
 
 // The tab bar
 // -----------
-// Six ways into the app from its foot, the same six on every tab (tabs.ts says
-// which). It sits on the tab screens and not on a tool: a tool is where a man
+// Seven ways into the app from its foot, the same seven on every tab (tabs.ts
+// says which). It sits on the tab screens and not on a tool: a tool is where a man
 // is working, and the level's dial and the spool's model want every point of
 // the screen they can get. The calculator is the exception because it is a
 // tab, the one tool used all day long.
@@ -38,8 +38,8 @@ export type { TabId } from '../navigation/tabs';
 export const TAB_BAR_HEIGHT = 62;
 /** Where the screws sit, in from the plate's corners. */
 const INSET = 11;
-/** The tabs keep clear of the screws. */
-const EDGE = 18;
+/** The tabs keep clear of the screws: seven tabs across leave room for no more. */
+const EDGE = 12;
 
 const tabId = (x: Tab) => x.id;
 
@@ -120,10 +120,10 @@ export function TabBar({ active }: { active: TabId }) {
                   ) : null}
                   <Ionicons name={on ? tab.on : tab.icon} size={23} color={color} />
                   <Text
-                    style={[t.type.labelSmall, { color, fontSize: 10.5, letterSpacing: 0.4 }]}
+                    style={[t.type.labelSmall, { color, fontSize: 9.5, letterSpacing: 0.2 }]}
                     numberOfLines={1}
                     adjustsFontSizeToFit
-                    minimumFontScale={0.8}
+                    minimumFontScale={0.75}
                   >
                     {tab.label}
                   </Text>

@@ -23,6 +23,7 @@ import { usePreTasks } from './pretasks';
 import { useBoltingSpecs } from './boltingSpecs';
 import { useLayout } from './layouts';
 import { useLearnedWords } from './learnedWords';
+import { useHeatInputs } from './heatInputs';
 import { STORES, backupFileName, backupSummary, makeBackup } from './backup';
 import { shareBackup, type FileOutcome } from './backupFile';
 import { useLastBackup } from './lastBackup';
@@ -51,6 +52,7 @@ export function useBackupNow() {
   const plans = usePreTasks();
   const specs = useBoltingSpecs();
   const learned = useLearnedWords();
+  const heatInputs = useHeatInputs();
   const layout = useLayout();
   const last = useLastBackup();
   const [busy, setBusy] = useState(false);
@@ -75,6 +77,7 @@ export function useBackupNow() {
     'pipefit.orientation.done.v1': { value: done.done, apply: done.apply as any },
     'pipefit.boltspecs.v1': { value: specs.book, apply: specs.apply as any },
     'pipefit.heard.v1': { value: learned.book, apply: learned.apply as any },
+    'pipefit.heatinput.v1': { value: heatInputs.log, apply: heatInputs.apply as any },
   };
   // Every store the backup knows is here, or the file would carry it empty
   // and a restore would find nothing to add. Loud in development, so a store

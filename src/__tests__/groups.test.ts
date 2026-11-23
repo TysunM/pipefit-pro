@@ -31,6 +31,8 @@ const EXPECTED: ToolRoute[] = [
   'FittingLibrary',
   'CutList',
   'WeldLog',
+  'HeatInput',
+  'Weldability',
   'Calibration',
   'Passport',
   'Orientation',
@@ -42,7 +44,7 @@ const sorted = (xs: string[]) => [...xs].sort();
 const reach = [...GROUPS.flatMap(groupTools), ...PROJECT_TOOLS, ...TAB_TOOLS];
 
 describe('every tool is listed once', () => {
-  test('the list holds all twenty and nothing else', () => {
+  test('the list holds every tool and nothing else', () => {
     expect(sorted(routes(TOOLS))).toEqual(sorted(EXPECTED));
     expect(new Set(routes(TOOLS)).size).toBe(TOOLS.length);
   });
@@ -74,8 +76,13 @@ describe('the tabs reach every tool, once', () => {
     expect(routes(g?.sections[1]?.tools ?? [])).toEqual(['SimpleOffset', 'RollingOffset', 'CutLength', 'SaddleBend', 'MiterBend', 'HandBender']);
   });
 
+  test('weld: heat input, weldability and the weld log, under the Weld tab', () => {
+    expect(routes(groupTools(group('weld')!))).toEqual(['HeatInput', 'Weldability', 'WeldLog']);
+    expect(group('tools')!.title).toBe('PipeFit');
+  });
+
   test('logs: the tests, the joint log, the heat book, the shift report, the handbook and the fitting library', () => {
-    expect(sorted(routes(groupTools(group('logs')!)))).toEqual(sorted(['Calibration', 'PreTask', 'WeldLog', 'PressureTests', 'Joints', 'Heats', 'ShiftReport', 'Reference', 'FittingLibrary']));
+    expect(sorted(routes(groupTools(group('logs')!)))).toEqual(sorted(['Calibration', 'PreTask', 'PressureTests', 'Joints', 'Heats', 'ShiftReport', 'Reference', 'FittingLibrary']));
     expect(routes(groupTools(group('edu')!))).toEqual(['Orientation', 'Passport']);
   });
 

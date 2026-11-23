@@ -23,7 +23,7 @@ import { snapPhrases, snapWords, splitGlued } from './hear';
 import { applyLearned } from './learned';
 
 /** Somewhere a voice can open: a tool, or one of the tabs along the bottom, Settings or Backup. */
-export type OpenRoute = ToolRoute | 'Home' | 'Settings' | 'Backup' | 'Projects' | 'Tools' | 'Logs' | 'Edu';
+export type OpenRoute = ToolRoute | 'Home' | 'Settings' | 'Backup' | 'Projects' | 'Tools' | 'Weld' | 'Logs' | 'Edu';
 
 export type VoiceCommand =
   /** Open a screen; for a tool that takes figures, with what was said for them. `ignored` is what was said that the app could not place, when it opened the tool anyway. */
@@ -45,7 +45,8 @@ export type VoiceCommand =
 export const TOOL_WORDS: Record<OpenRoute, readonly string[]> = {
   Home: ['home', 'home screen', 'main menu', 'start screen', 'home tab'],
   Projects: ['projects', 'project', 'projects tab', 'my projects', 'jobs', 'turnover', 'turnover package'],
-  Tools: ['tools', 'tools tab', 'tool tab', 'all tools', 'tool box', 'toolbox'],
+  Tools: ['tools', 'tools tab', 'tool tab', 'all tools', 'tool box', 'toolbox', 'pipe fit tab', 'pipe fitting tab', 'pipefitting', 'fitting tools'],
+  Weld: ['weld tab', 'welding', 'welding tab', 'weld tools', 'welding tools'],
   Logs: ['logs', 'logs tab', 'log tab', 'log book', 'records', 'the books'],
   Edu: ['edu', 'edu tab', 'education', 'education tab', 'learning', 'learn', 'training tab', 'school'],
   Settings: ['settings', 'setting', 'preferences'],
@@ -73,6 +74,8 @@ export const TOOL_WORDS: Record<OpenRoute, readonly string[]> = {
   Orientation: ['orientation', 'site orientation', 'training', 'site rules', 'safety training', 'induction', 'onboarding', 'new hire training', 'orientation course'],
   PreTask: ['pre-task plan', 'pretask plan', 'pre task plan', 'pre-task', 'pretask', 'jsa', 'jha', 'job hazard analysis', 'job safety analysis', 'toolbox talk', 'tailgate', 'tailboard', 'safety meeting', 'morning meeting', 'task plan'],
   WeldLog: ['weld log', 'welds', 'weld map', 'welders', 'welder log', 'nde', 'x ray', 'x-ray', 'radiography', 'rt log', 'continuity'],
+  HeatInput: ['heat input', 'heat input calculator', 'arc energy', 'travel speed', 'kilojoules per inch', 'joules per inch', 'kj per inch', 'kj per mm'],
+  Weldability: ['weldability', 'carbon equivalent', 'carbon equivalents', 'ce calculator', 'pcm', 'pren', 'pitting resistance'],
   CutList: ['cut list', 'cut sheet', 'saw list', 'cutting list', 'cuts list'],
   FittingLibrary: ['fitting library', 'fittings library', 'takeout library', 'saved takeouts', 'fitting takeouts', 'library'],
 };

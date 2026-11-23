@@ -243,6 +243,45 @@ const art: Partial<Record<ToolRoute, (k: Ink) => React.ReactNode>> = {
     </G>
   ),
 
+  // The arc on a plate, the volts and amps on the machine's face, and the bead it laid.
+  HeatInput: (k) => (
+    <G fill="none" strokeLinecap="round" strokeLinejoin="round">
+      <Rect x={6} y={10} width={28} height={22} rx={3} stroke={k.line} strokeWidth={2} />
+      <SvgText x={20} y={19.5} fill={k.accent} stroke="none" fontSize={7.5} fontWeight={k.bold} fontFamily={k.font} textAnchor="middle">
+        24V
+      </SvgText>
+      <SvgText x={20} y={28.5} fill={k.line} stroke="none" fontSize={7.5} fontWeight={k.bold} fontFamily={k.font} textAnchor="middle">
+        180A
+      </SvgText>
+      <Path d="M4 52 H76" stroke={k.line} strokeWidth={2.4} />
+      <Path d="M12 50 q3 -4 6 0 q3 -4 6 0 q3 -4 6 0 q3 -4 6 0 q3 -4 6 0" stroke={k.accent} strokeWidth={2.2} />
+      <Path d="M52 18 L46 44" stroke={k.line} strokeWidth={2.4} />
+      <Path d="M46 44 l-3 6 M46 44 l3 5 M46 44 l6 3" stroke={k.accent} strokeWidth={2} />
+      <Path d="M58 30 h14 M65 23 v14" stroke={k.soft} strokeWidth={1.6} />
+      <SvgText x={65} y={46} fill={k.line} stroke="none" fontSize={6.5} fontWeight={k.bold} fontFamily={k.font} textAnchor="middle">
+        kJ/in
+      </SvgText>
+    </G>
+  ),
+
+  // A mill cert's chemistry line, and the carbon equivalent read off it.
+  Weldability: (k) => (
+    <G fill="none" strokeLinecap="round" strokeLinejoin="round">
+      <Rect x={8} y={6} width={40} height={52} rx={3} stroke={k.line} strokeWidth={2} />
+      <Path d="M14 16 H42 M14 24 H36 M14 32 H40 M14 40 H32" stroke={k.soft} strokeWidth={1.6} />
+      <SvgText x={28} y={52} fill={k.line} stroke="none" fontSize={7} fontWeight={k.bold} fontFamily={k.font} textAnchor="middle">
+        C Mn Cr
+      </SvgText>
+      <Rect x={50} y={22} width={26} height={20} rx={4} stroke={k.accent} strokeWidth={2.2} />
+      <SvgText x={63} y={30} fill={k.accent} stroke="none" fontSize={6} fontWeight={k.bold} fontFamily={k.font} textAnchor="middle">
+        CE
+      </SvgText>
+      <SvgText x={63} y={38.5} fill={k.line} stroke="none" fontSize={7.5} fontWeight={k.bold} fontFamily={k.font} textAnchor="middle">
+        0.42
+      </SvgText>
+    </G>
+  ),
+
   // A pipe with a weld at the joint, and the arc still going.
   WeldLog: (k) => (
     <G fill="none" strokeLinecap="round" strokeLinejoin="round">

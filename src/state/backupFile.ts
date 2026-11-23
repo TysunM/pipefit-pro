@@ -12,10 +12,22 @@ import { File, Paths } from 'expo-file-system';
 
 export type FileOutcome = { ok: true } | { ok: false; why: string };
 
-export async function shareBackup(text: string, name: string): Promise<FileOutcome> {
+export function shareBackup(text: string, name: string): Promise<FileOutcome> {
+  return shareTextFile(text, name, { mimeType: 'application/json', UTI: 'public.json', dialogTitle: 'Keep this backup somewhere safe', failed: 'The backup could not be made.' });
+}
+
+/**
+ * Any text as a file: the share sheet on the phone, a download in the browser.
+ * The backup and the heat input spreadsheet both go out this way.
+ */
+export async function shareTextFile(
+  text: string,
+  name: string,
+  o: { mimeType: string; UTI: string; dialogTitle: string; failed: string }
+): Promise<FileOutcome> {
   try {
     if (Platform.OS === 'web') {
-      const url = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
+      const url = URL.createObjectURL(new Blob([text], { type: o.mimeType }));
       const a = document.createElement('a');
       a.href = url;
       a.download = name;
@@ -28,11 +40,11 @@ export async function shareBackup(text: string, name: string): Promise<FileOutco
     const file = new File(Paths.cache, name);
     file.create({ overwrite: true });
     file.write(text);
-    if (!(await Sharing.isAvailableAsync())) return { ok: false, why: 'This phone has nothing to share the backup to.' };
-    await Sharing.shareAsync(file.uri, { mimeType: 'application/json', dialogTitle: 'Keep this backup somewhere safe', UTI: 'public.json' });
+    if (!(await Sharing.isAvailableAsync())) return { ok: false, why: 'This phone has nothing to share the file to.' };
+    await Sharing.shareAsync(file.uri, { mimeType: o.mimeType, dialogTitle: o.dialogTitle, UTI: o.UTI });
     return { ok: true };
   } catch (e) {
-    return { ok: false, why: e instanceof Error && e.message ? e.message : 'The backup could not be made.' };
+    return { ok: false, why: e instanceof Error && e.message ? e.message : o.failed };
   }
 }
 
