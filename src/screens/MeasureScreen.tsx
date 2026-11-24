@@ -27,6 +27,7 @@ import { M_TO_IN, V3, slopeBand, trace } from '../calc/spatial';
 import { useLaser } from '../state/laser';
 import { clockLabel } from '../calc/days';
 import { WEB_APP_URL } from '../ai/apiBase';
+import { VoicePressable } from '../voice/VoicePressable';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Measure'>;
 
@@ -130,7 +131,7 @@ export function MeasureScreen({ navigation }: Props) {
                 (() => {
                   const o = r.offsets[i - 1]!;
                   return (
-                    <Pressable
+                    <VoicePressable
                       onPress={() => navigation.navigate('RollingOffset', { rise: Math.abs(o.rise), roll: Math.abs(o.roll), run: Math.abs(o.advance) })}
                       accessibilityRole="button"
                       accessibilityLabel={`Work this offset in Rolling offset`}
@@ -153,7 +154,7 @@ export function MeasureScreen({ navigation }: Props) {
                         </Text>
                       </View>
                       <Ionicons name="arrow-forward" size={18} color={t.colors.accent} />
-                    </Pressable>
+                    </VoicePressable>
                   );
                 })()
               ) : null}

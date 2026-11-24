@@ -1,7 +1,8 @@
 import { displayText, initialState, press, pressMany, type CalcState } from '../calc/engine';
 import { DEFAULT_TAKEOFF_OPTIONS, elbowTakeout, endTakeout } from '../calc/takeoffCatalog';
 import { backArc, findSize, throatArc } from '../calc/pipe';
-import { elbowAnswer, memorySteps, readElbow, readMemory, readShow, readTrade, readTriangle, registerKey, triangleSteps, unknowns } from '../voice/tradeSpeech';
+import { elbowAnswer, memorySteps, readElbow, readKeys, readMemory, readShow, readTrade, readTriangle, registerKey, triangleSteps, unknowns } from '../voice/tradeSpeech';
+import { DEFAULT_PIPE } from '../calc/pipeKeys';
 
 const near = (a: number, b: number, tol = 1e-6) => expect(Math.abs(a - b)).toBeLessThan(tol);
 
@@ -144,5 +145,85 @@ describe('which reads first', () => {
     expect(readTrade('store that in 2')?.kind).toBe('memory');
     expect(readTrade('offset 12 run 30 travel')?.kind).toBe('triangle');
     expect(readTrade('12 plus 30')).toBeNull();
+  });
+});
+
+describe('a rolling offset, said', () => {
+  const at6: CalcState = initialState(16, 'in', { ...DEFAULT_PIPE, nps: 6 });
+  const held = (said: string, from: CalcState = at6) => {
+    const t = readTriangle(said);
+    if (!t) throw new Error(`not a triangle: ${said}`);
+    return pressMany(from, triangleSteps(t));
+  };
+  test('rise, roll and the angle, said every way', () => {
+    for (const said of ['rolling offset rise 12 roll 8 at 45', 'rise 12 roll 8 45 degrees', '12 inch rise 8 inch roll 45 degrees whats the travel', 'roll of 8 rise of 12 at 45 rolling offset'])
+      near(press(held(said), 'travel').acc!.value, Math.hypot(12, 8) * Math.SQRT2, 1e-9);
+  });
+  test('a figure said before its name is that name\'s', () => {
+    const t = readTriangle('12 inch rise 8 inch roll 45 degrees')!;
+    expect(t.given.find((g) => g.field === 'offset')?.item.value).toBe(12);
+    expect(t.roll?.value).toBe(8);
+  });
+  test('the true offset and the cut, worked for the pipe set', () => {
+    const s = held('rolling offset rise 12 roll 8 at 45');
+    near(press(s, 'roll').acc!.value, Math.hypot(12, 8));
+    near(press(press(s, 'travel'), 'travel').acc!.value, Math.hypot(12, 8) * Math.SQRT2 - 2 * 3.75 - 2 * DEFAULT_PIPE.gap, 1e-9);
+  });
+  test('a plain triangle said after it lets the roll go', () => {
+    const after = held('offset 12 at 45', held('rolling offset rise 12 roll 8 at 45'));
+    expect(after.roll).toBeNull();
+    near(press(after, 'travel').acc!.value, 12 * Math.SQRT2, 1e-9);
+  });
+  test('a rolling offset with no roll said is the rolling offset screen\'s', () => {
+    expect(readTriangle('rolling offset rise 12 at 45')).toBeNull();
+    expect(readTriangle('offset 12 at 45 whats the cut')).toMatchObject({ cut: true, roll: null });
+  });
+});
+
+describe('the trade keys, said by name', () => {
+  /** As the calculator works a "keys" reading: the steps, then the key pressed again to step through it. */
+  const said = (text: string, from: CalcState = initialState()) => {
+    const r = readKeys(text);
+    if (!r) throw new Error(`not a key: ${text}`);
+    let s = pressMany(r.fresh ? press(press(from, 'clear'), 'clear') : { ...from, cycle: null }, r.steps);
+    const rows: CalcState[] = [];
+    for (let i = 0; i < (r.repeat?.times ?? 0); i++) rows.push((s = press(s, r.repeat!.key)));
+    return { last: s, rows: rows.length ? rows : [s] };
+  };
+  test('pipe size and the welder\'s gap set the pipe, exactly', () => {
+    expect(said('pipe size 6').last.pipe.nps).toBe(6);
+    expect(said('set the pipe size to 2 and a half').last.pipe.nps).toBe(2.5);
+    expect(said('welders gap 3/32').last.pipe.gap).toBe(0.09375);
+    expect(said('gap an eighth').last.pipe.gap).toBe(0.125);
+    expect(displayText(said('whats the gap').last)).toBe('3/32"');
+  });
+  test('the take-out and its arcs on the pipe set, at an angle said or a 90', () => {
+    const six = initialState(16, 'in', { ...DEFAULT_PIPE, nps: 6 });
+    expect(said('takeout', six).rows.map((r) => r.acc!.value)).toEqual([9, throatArc(6, 'LR', 90, 6.625), 9 * Math.PI / 2, backArc(6, 'LR', 90, 6.625)]);
+    near(said('takeout at 30', six).rows[0]!.acc!.value, elbowTakeout(6, 'LR', 30).value);
+    near(said('takeout on a 22 and a half').rows[0]!.acc!.value, elbowTakeout(2, 'LR', 22.5).value);
+  });
+  test('after a triangle: the cut and the true offset', () => {
+    const t = readTriangle('rolling offset rise 12 roll 8 at 45')!;
+    const s = pressMany(initialState(16, 'in', { ...DEFAULT_PIPE, nps: 6 }), triangleSteps(t));
+    const solved = press(s, 'travel');
+    near(said('whats the cut', solved).last.acc!.value, Math.hypot(12, 8) * Math.SQRT2 - 2 * 3.75 - 2 * DEFAULT_PIPE.gap, 1e-9);
+    near(said('true offset', s).last.acc!.value, Math.hypot(12, 8));
+  });
+  test('the pipe\'s figures, a circle, the push on a cap and the velocity', () => {
+    expect(displayText(said('whats the od').last)).toBe('2.375"');
+    expect(displayText(said('wall thickness').last)).toBe('0.154"');
+    near(said('area of a 10 inch circle').last.acc!.value, 25 * Math.PI);
+    expect(displayText(said('circumference of 10 inch').last)).toBe('31-7/16"');
+    near(said('force at 150 psi').last.acc!.value, 150 * (Math.PI * 2.067 ** 2) / 4);
+    expect(said('velocity at 10 gpm').last.acc!.value).toBeCloseTo(0.956, 3);
+    near(said('cutback for a 6 inch spread').last.acc!.value, 6);
+  });
+  test('an elbow past 90 is keyed, and the calculator says why not', () => {
+    expect(said('takeout at 120').last.error).toMatch(/no more than 90/);
+  });
+  test('not a key', () => {
+    for (const s of ['pipe size six inch schedule 80 stainless', 'area', 'hello', 'gap of the door'])
+      expect(readKeys(s)).toBeNull();
   });
 });

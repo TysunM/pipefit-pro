@@ -2,6 +2,8 @@ import React, { useRef, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { useTheme } from '../theme/ThemeProvider';
 import { nearestStop } from '../calc/stops';
+import { useVoiceTargets } from '../voice/useVoiceTargets';
+import { spokenNumber } from '../voice/intent';
 
 /**
  * A slider that only lands on the values that exist.
@@ -27,6 +29,29 @@ export function StopSlider({
   format?: (v: number) => string;
 }) {
   const t = useTheme();
+  // "Bolts 16", "more bolts", "fewer bolts": only a value the slider has.
+  const name = label ?? 'Value';
+  const step = (by: 1 | -1) => {
+    const i = Math.max(0, stops.indexOf(selected)) + by;
+    const next = stops[Math.max(0, Math.min(stops.length - 1, i))]!;
+    onSelect(next);
+    return `${name} ${format(next)}.`;
+  };
+  useVoiceTargets([
+    {
+      kind: 'field',
+      label: name,
+      field: 'number',
+      run: (said) => {
+        const n = spokenNumber(said)?.n;
+        if (n === undefined || !stops.includes(n)) return null;
+        onSelect(n);
+        return `${name} ${format(n)}.`;
+      },
+    },
+    { kind: 'press', label: `More ${name.toLowerCase()}`, run: () => step(1) },
+    { kind: 'press', label: `Fewer ${name.toLowerCase()}`, run: () => step(-1) },
+  ]);
   const [width, setWidth] = useState(0);
   const pad = 14;
   const inner = Math.max(0, width - pad * 2);

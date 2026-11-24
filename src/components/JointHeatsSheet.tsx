@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useTheme } from '../theme/ThemeProvider';
 import { Heat, normaliseHeat } from '../calc/heat';
+import { VoicePressable } from '../voice/VoicePressable';
 
 export function JointHeatsSheet({
   visible,
@@ -71,9 +72,9 @@ export function JointHeatsSheet({
                   : `${heats.length} on the joint · every cert in hand`}
             </Text>
           </View>
-          <Pressable onPress={onClose} accessibilityRole="button" accessibilityLabel="Close">
+          <VoicePressable onPress={onClose} accessibilityRole="button" accessibilityLabel="Close">
             <Ionicons name="close" size={24} color={t.colors.textMuted} />
-          </Pressable>
+          </VoicePressable>
         </View>
 
         {book.length === 0 ? (

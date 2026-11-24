@@ -22,6 +22,7 @@ import {
   type BoltingSpec,
   type ClassRule,
 } from '../state/boltingSpec';
+import { VoicePressable } from '../voice/VoicePressable';
 
 // The company's bolting spec, as a form.
 //
@@ -141,7 +142,7 @@ export function BoltingSpecSheet({
                 const on = open === cls;
                 return (
                   <View key={cls}>
-                    <Pressable
+                    <VoicePressable
                       onPress={() => setOpen(on ? null : cls)}
                       accessibilityRole="button"
                       accessibilityLabel={`${classLabel(cls)}: ${summary}`}
@@ -149,7 +150,7 @@ export function BoltingSpecSheet({
                     >
                       <Text style={[t.type.body, { color: t.colors.text, width: 150 }]}>{classLabel(cls)}</Text>
                       <Text style={[t.type.caption, { color: r ? t.colors.data : t.colors.textMuted, flex: 1 }]}>{summary}</Text>
-                    </Pressable>
+                    </VoicePressable>
                     {on ? (
                       <View style={{ paddingTop: t.space.md, backgroundColor: t.colors.bgSubtle, paddingBottom: t.space.sm }}>
                         <ChipRow label="Method" options={[{ value: AS_SPEC, label: 'As spec' }, ...METHODS.map((m) => ({ value: m.id as string, label: m.short }))]} selected={r?.method ?? AS_SPEC} onSelect={(v) => rule(cls, { method: v === AS_SPEC ? undefined : (v as MethodId) })} />

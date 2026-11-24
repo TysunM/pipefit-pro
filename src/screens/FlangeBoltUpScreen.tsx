@@ -103,6 +103,7 @@ import { clockLabel, dayKey } from '../calc/days';
 import { useVoice } from '../voice/VoiceProvider';
 import { useSpokenFigures } from '../voice/figures';
 import { FaceLayout, boltCentre, fittedFace, flangeFace } from '../components/flange/face';
+import { VoicePressable } from '../voice/VoicePressable';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'FlangeBoltUp'>;
 
@@ -1372,9 +1373,9 @@ function JointBar({
       <Pressable onPress={onName} hitSlop={10} accessibilityRole="button">
         <Text style={[t.type.labelSmall, { color: t.colors.data }]}>{named ? 'Rename' : 'Name it'}</Text>
       </Pressable>
-      <Pressable onPress={onRegister} hitSlop={10} accessibilityRole="button" accessibilityLabel="Open the joint register">
+      <VoicePressable onPress={onRegister} hitSlop={10} accessibilityRole="button" accessibilityLabel="Open the joint register">
         <Ionicons name="list-outline" size={20} color={t.colors.text} />
-      </Pressable>
+      </VoicePressable>
     </View>
   );
 }
@@ -1428,7 +1429,7 @@ function SignOff({
         {picks.length ? (
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space.sm }}>
             {picks.map((n) => (
-              <Pressable
+              <VoicePressable
                 key={n}
                 onPress={() => onChange({ [role]: n })}
                 accessibilityRole="button"
@@ -1444,7 +1445,7 @@ function SignOff({
                 })}
               >
                 <Text style={[t.type.caption, { color: t.colors.text }]}>{n}</Text>
-              </Pressable>
+              </VoicePressable>
             ))}
           </View>
         ) : null}
@@ -1453,9 +1454,9 @@ function SignOff({
             <>
               <SignatureView sig={joint.signatures[role].sig} />
               <Text style={[t.type.caption, { color: t.colors.textMuted, flex: 1 }]}>{at !== null ? `Signed ${clockLabel(at)} ${new Date(at).toLocaleDateString()}` : 'Signed'}</Text>
-              <Pressable onPress={() => onUnsign(role)} hitSlop={10} accessibilityRole="button" accessibilityLabel={`Clear the ${label} signature`}>
+              <VoicePressable onPress={() => onUnsign(role)} hitSlop={10} accessibilityRole="button" accessibilityLabel={`Clear the ${label} signature`}>
                 <Text style={[t.type.labelSmall, { color: t.colors.textMuted }]}>Clear</Text>
-              </Pressable>
+              </VoicePressable>
             </>
           ) : (
             <GhostButton
@@ -1708,24 +1709,24 @@ function CheckRow({ t, check, onRemove }: { t: Theme; check: ReCheck; onRemove: 
             <Pressable onPress={() => setConfirming(false)} hitSlop={10} accessibilityRole="button">
               <Text style={[t.type.labelSmall, { color: t.colors.textMuted }]}>Keep</Text>
             </Pressable>
-            <Pressable
+            <VoicePressable
               onPress={onRemove}
               hitSlop={10}
               accessibilityRole="button"
               accessibilityLabel={`Confirm delete the check from ${checkDate(check.at)}`}
             >
               <Text style={[t.type.labelSmall, { color: t.colors.danger }]}>Delete</Text>
-            </Pressable>
+            </VoicePressable>
           </>
         ) : (
-          <Pressable
+          <VoicePressable
             onPress={() => setConfirming(true)}
             hitSlop={10}
             accessibilityRole="button"
             accessibilityLabel={`Delete the check from ${checkDate(check.at)}`}
           >
             <Ionicons name="trash-outline" size={15} color={t.colors.textFaint} />
-          </Pressable>
+          </VoicePressable>
         )}
       </View>
       <Text style={[t.type.caption, { color: t.colors.textMuted }]}>

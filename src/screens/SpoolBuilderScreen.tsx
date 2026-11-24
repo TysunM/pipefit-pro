@@ -50,6 +50,7 @@ import {
 } from '../calc/direction';
 import { parseNumber, toFraction } from '../calc/format';
 import { fromInches } from '../calc/units';
+import { VoicePressable } from '../voice/VoicePressable';
 
 let counter = 0;
 const nextId = () => `leg${(counter += 1)}`;
@@ -720,9 +721,9 @@ export function SpoolBuilderScreen({ route, navigation }: Props) {
               </View>
               <Ionicons name={expanded ? 'chevron-up' : 'chevron-down'} size={16} color={t.colors.textFaint} />
               {legs.length > 1 ? (
-                <Pressable onPress={() => removeLeg(l.id)} hitSlop={12} accessibilityLabel={`Remove leg ${i + 1}`}>
+                <VoicePressable onPress={() => removeLeg(l.id)} hitSlop={12} accessibilityLabel={`Remove leg ${i + 1}`}>
                   <Ionicons name="trash-outline" size={18} color={t.colors.textFaint} />
-                </Pressable>
+                </VoicePressable>
               ) : null}
             </Pressable>
 
@@ -848,11 +849,11 @@ export function SpoolBuilderScreen({ route, navigation }: Props) {
         </>
       ) : null}
       {shelf.dropped > 0 ? (
-        <Pressable onPress={spoolsCtx.clearDropped} accessibilityRole="button" accessibilityLabel="Dismiss the dropped spools notice">
+        <VoicePressable voiceLabel={'Dismiss the notice'} onPress={spoolsCtx.clearDropped} accessibilityRole="button" accessibilityLabel="Dismiss the dropped spools notice">
           <WarningBanner
             text={`${shelf.dropped} saved spool${shelf.dropped === 1 ? '' : 's'} could not be read and ${shelf.dropped === 1 ? 'was' : 'were'} left out. Tap to dismiss.`}
           />
-        </Pressable>
+        </VoicePressable>
       ) : null}
 
 
@@ -860,7 +861,7 @@ export function SpoolBuilderScreen({ route, navigation }: Props) {
         const here = s.id === loadedId;
         const legsWord = `${s.legs.length} leg${s.legs.length === 1 ? '' : 's'}`;
         return (
-          <Pressable
+          <VoicePressable
             key={s.id}
             onPress={() => loadSpool(s)}
             accessibilityRole="button"
@@ -885,7 +886,7 @@ export function SpoolBuilderScreen({ route, navigation }: Props) {
               </Text>
             </View>
             {confirmDelete === s.id ? (
-              <Pressable
+              <VoicePressable
                 onPress={() => removeSpool(s.id)}
                 hitSlop={12}
                 accessibilityLabel={`Really delete ${s.name}`}
@@ -897,17 +898,17 @@ export function SpoolBuilderScreen({ route, navigation }: Props) {
                 }}
               >
                 <Text style={[t.type.captionStrong, { color: t.colors.onAccent }]}>Delete?</Text>
-              </Pressable>
+              </VoicePressable>
             ) : (
-              <Pressable
+              <VoicePressable
                 onPress={() => setConfirmDelete(s.id)}
                 hitSlop={12}
                 accessibilityLabel={`Delete saved spool ${s.name}`}
               >
                 <Ionicons name="trash-outline" size={18} color={t.colors.textFaint} />
-              </Pressable>
+              </VoicePressable>
             )}
-          </Pressable>
+          </VoicePressable>
         );
       })}
       {shelf.spools.length === 0 && !shelf.foreign ? (

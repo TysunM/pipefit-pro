@@ -45,6 +45,7 @@ import { dayKey, usDate } from '../calc/days';
 import { sizeLabel } from '../calc/materials';
 import { shareSheet } from '../print/share';
 import { weldLogHtml } from '../print/weldLog';
+import { VoicePressable } from '../voice/VoicePressable';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'WeldLog'>;
 type Tab = 'welds' | 'nde' | 'welders';
@@ -297,7 +298,7 @@ function WeldsPage({ t, welds, today, onOpen, onAdd, onPrint, note }: { t: Theme
         <View key={l || '-'}>
           <SectionHeader title={l || 'No line'} meta={`${ws.filter((w) => w.day).length} of ${ws.length} welded · ${fig(diameterInches(ws))} dia-in`} />
           {ws.map((w) => (
-            <Pressable
+            <VoicePressable voiceLabel={`Weld ${weldName(w)}`}
               key={w.id}
               onPress={() => onOpen(w.id)}
               accessibilityRole="button"
@@ -323,7 +324,7 @@ function WeldsPage({ t, welds, today, onOpen, onAdd, onPrint, note }: { t: Theme
                 <Text style={[t.type.caption, { color: t.colors.textFaint }]} numberOfLines={1}>{`${w.day ? usDate(w.day) : 'Not welded yet'}${w.pct ? ` · ${w.pct}% ${w.method}` : ' · visual'}${w.mapAt ? ' · on the map' : ''}`}</Text>
               </View>
               <Text style={[t.type.captionStrong, { color: ink(w) }]}>{STATE_LABEL[weldState(w)]}</Text>
-            </Pressable>
+            </VoicePressable>
           ))}
         </View>
       ))}

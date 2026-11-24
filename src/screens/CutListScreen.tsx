@@ -30,6 +30,7 @@ import { say } from '../audio/say';
 import { spokenLength } from '../calc/spoken';
 import { shareSheet } from '../print/share';
 import { cutSheetHtml } from '../print/cutSheet';
+import { VoicePressable } from '../voice/VoicePressable';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CutList'>;
 
@@ -171,7 +172,7 @@ export function CutListScreen({ navigation }: Props) {
                 opacity: c.done ? 0.55 : 1,
               }}
             >
-              <Pressable
+              <VoicePressable voiceLabel={`Mark ${c.mark} ${c.done ? 'not cut' : 'cut'}`}
                 onPress={() => {
                   void Haptics.selectionAsync();
                   apply((l) => toggleCut(l, c.id));
@@ -192,10 +193,10 @@ export function CutListScreen({ navigation }: Props) {
                     {`C-C ${len(c.c2c)}${c.ends ? ` · ${c.ends}` : ''}`}
                   </Text>
                 </View>
-              </Pressable>
-              <Pressable onPress={() => apply((l) => deleteCut(l, c.id))} hitSlop={10} accessibilityRole="button" accessibilityLabel={`Take mark ${c.mark} off the list`}>
+              </VoicePressable>
+              <VoicePressable onPress={() => apply((l) => deleteCut(l, c.id))} hitSlop={10} accessibilityRole="button" accessibilityLabel={`Take mark ${c.mark} off the list`}>
                 <Ionicons name="trash-outline" size={20} color={t.colors.textFaint} />
-              </Pressable>
+              </VoicePressable>
             </View>
           ))}
           {g.toGo ? (

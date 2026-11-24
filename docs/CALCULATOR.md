@@ -76,33 +76,35 @@ left unimplemented rather than filled with plausible numbers.
 | Branch and hole templates | `calc/template.ts` | Tee and lateral, exact cylinder intersection |
 | Dividing the circumference | `calc/template.ts` | Segment length from actual outside diameter |
 | Two or more pipes at equal spread | `calc/offsetBend.ts` | The advance C, spread times the tangent of half the angle |
+| Every keypad key live | `calc/engine.ts`, `calc/pipeKeys.ts` | No key is a no-op; a test presses each one |
+| T.O./Arc | `calc/pipeKeys.ts` | Handbook take-out at 90 and 45, bend radius otherwise; arcs in, centre, out |
+| Cutback | `calc/engine.ts` | Concentric pipes at a spread: spread × tan(angle / 2), at the triangle's angle |
+| Roll and rolling offset | `calc/engine.ts` | Offset is the rise; the triangle works on the true offset from any two (angle, run or travel); Roll reads true offset and roll angle |
+| Cut length on the keypad | `calc/pipeKeys.ts` | Travel again: travel − 2 take-outs − 2 welder's gaps |
+| Welder's Gap | `calc/engine.ts` | Set and read back; applied to the keypad cut length |
+| Pipe Size, Pipe, Pipe Mat'l, Elbow | `calc/pipeKeys.ts` | The app's own pipe (Settings), every material in `calc/materials.ts`; a wall keyed by number. Pipe reads capacity and filled weight |
+| Circle | `calc/engine.ts` | Area, then circumference |
+| Flow and Velocity | `calc/engine.ts` | Through the bore of the pipe set |
+| Pressure, Force, Area | `calc/engine.ts` | Any two give the third; the area defaults to the pipe set's bore |
+| Prefs | `calc/engine.ts` | Fraction resolution, shared with Settings |
+| Tape readback | `calc/engine.ts` | Newest first |
 
 ## Remaining
 
+The keys are matched from the guide's descriptions of what each one is for;
+the exact keystroke order of the 4095 for each was not available to check
+against. Where the app's order differs from a fitter's habit on that
+calculator, the line under the figure says what it is.
+
 | Function | Guide | Blocker |
 |---|---|---|
-| Pipe Size key | p22, App. A | Steel and stainless present. Copper and plastic still need their tables. |
-| Pipe Material and Pipe Type keys | p21, p23 | Menus are encoded; selecting one needs the data above |
-| Elbow Type | p23 | Long radius butt weld is the default; short radius and threaded need take-out values |
-| Take-out and butt weld elbow cut marks | p32 | Partly covered by `calc/cutLength.ts` |
 | Cut length from a known take-out | p33 | Done — the fitting picker reads the handbook tables |
 | Simple offset, known and unknown bend angle | p24–25 | Partly covered by `calc/offset.ts` |
-| Simple offset cut length | p25 | Needs Welder's Gap wired in |
-| Rolling offset, known and unknown angle, cut length | p27–29 | Partly covered by `calc/rolling.ts` |
-| Concentric pipe bend cutback | p31 | |
 | Combination rolling offset | p34 | |
 | Horizontal to horizontal | p36 | |
 | Drop | p37 | |
-| Flow rate | p37 | Unblocked — bore area is available |
-| Velocity | p39 | Unblocked |
 | Pressure loss | p40 | Needs surface roughness per material |
-| Pressure and force | p42 | |
-| Area key | p42 | |
-| Pipe capacity | p43 | Built into `pipeDims` as gallons per foot |
-| Weight of filled pipe | p43 | Built into `pipeDims` |
-| Circle area and circumference | p45 | |
-| Welder's Gap setting | p6 | Default 1/8 inch encoded; not yet applied to cut lengths |
-| Preference settings | p9, App. C | Types encoded; no UI |
+| Preference settings beyond the fraction | p9, App. C | Area, volume, metre and degree display, and chain maths: types encoded, no key |
 
 ## Data this project still needs
 

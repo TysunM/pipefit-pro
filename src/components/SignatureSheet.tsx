@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../theme/ThemeProvider';
 import { AccentButton, GhostButton } from './Buttons';
 import { Pt, SIG_H, SIG_W, decodeSig, encodeSig, strokePath } from '../calc/signature';
+import { VoicePressable } from '../voice/VoicePressable';
 
 /**
  * A signature, drawn with a finger, in a sheet of its own.
@@ -103,9 +104,9 @@ export function SignatureSheet({
             <Text style={[t.type.bodyStrong, { color: t.colors.text, flex: 1 }]} numberOfLines={1}>
               {title}
             </Text>
-            <Pressable onPress={() => { close(); onCancel(); }} hitSlop={12} accessibilityRole="button" accessibilityLabel="Cancel signing">
+            <VoicePressable onPress={() => { close(); onCancel(); }} hitSlop={12} accessibilityRole="button" accessibilityLabel="Cancel signing">
               <Ionicons name="close" size={22} color={t.colors.textMuted} />
-            </Pressable>
+            </VoicePressable>
           </View>
 
           {/* Paper is white whatever the theme: it is what the signature prints on. */}

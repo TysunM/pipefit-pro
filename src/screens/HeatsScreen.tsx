@@ -33,6 +33,7 @@ import { isScratch } from '../state/register';
 import { HeatScanSheet } from '../components/HeatScanSheet';
 import { useSettings } from '../state/settings';
 import { HeatDetails, describeHeatDetails } from '../ai/heatFill';
+import { VoicePressable } from '../voice/VoicePressable';
 
 export function HeatsScreen() {
   const t = useTheme();
@@ -149,9 +150,9 @@ export function HeatsScreen() {
           <Text style={[t.type.caption, { color: t.colors.text, flex: 1 }]}>
             {`From the scan: ${describeHeatDetails(pending.details)}. Filled in when you add it.`}
           </Text>
-          <Pressable onPress={() => setScanned(null)} hitSlop={10} accessibilityRole="button" accessibilityLabel="Do not fill in from the scan">
+          <VoicePressable onPress={() => setScanned(null)} hitSlop={10} accessibilityRole="button" accessibilityLabel="Do not fill in from the scan">
             <Ionicons name="close" size={18} color={t.colors.textMuted} />
-          </Pressable>
+          </VoicePressable>
         </View>
       ) : null}
 

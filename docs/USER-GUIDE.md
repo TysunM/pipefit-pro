@@ -957,7 +957,13 @@ Tap the mic and say it the way you would say it to the man next to you. The sum 
 | "Convert 3 feet to millimetres", "how many psi in 10 bar", "100 degrees Fahrenheit to Celsius", "50 foot pounds to newton metres" | The converter opens at that figure, with every unit of the category under it; the answer is read out. |
 | "Equals", "clear", "backspace" | Those keys. |
 | "Trade calculator", "standard", "history", "unit converter", "scientific keys", "keypad" | Switches the calculator or its panel. |
-| "Offset 12, run 30, what's the travel?", "travel for a 12 inch offset at 45 degrees", "angle 30 offset 10 run" | The triangle: the two given go in their registers (Offset, Run, Travel, Angle/Slope), the one asked is solved and left on the display, and the other is read out with it. Figures in feet and inches work; an angle is in degrees. |
+| "Offset 12, run 30, what's the travel?", "travel for a 12 inch offset at 45 degrees", "offset 12 at 45, what's the cut?" | The triangle: the two given go in their registers (Offset, Run, Travel, Angle/Slope), the one asked is solved and left on the display, and the others are read out with it. Figures in feet and inches work; an angle is in degrees, and a plain figure after "at" is the angle. Ask for **the cut** and you get the pipe between the two elbows too. |
+| "Rolling offset, rise 12, roll 8, at 45", "12 inch rise 8 inch roll 45 degrees what's the travel", "roll 8 rise 12 run 30" | A rolling offset on the Roll key: true offset, travel, run and the cut between the elbows, for the pipe set. The **ROLL** marker stays lit while a roll is held; a plain triangle said after it lets the roll go. |
+| "What's the cut", "true offset", "roll angle" | After a triangle: the cut between the elbows (a takeout off each end and a gap at each weld), a rolling offset's true offset, and its roll angle. |
+| "Takeout", "takeout at 30", "arcs for a 22 and a half" | T.O./Arc on the pipe set: the takeout, then where to mark the throat, centre line and heel, all read out. With no angle said it is the triangle's angle, or a 90. |
+| "Pipe size 6", "gap an eighth", "welder's gap 3/32", "what's the gap" | Sets (or reads back) the pipe size and welder's gap. "6 inch schedule 80", "stainless", "short radius" set the pipe from any screen. |
+| "The OD", "ID", "wall thickness", "weight per foot", "capacity" | The pipe set's figure, from the tables. |
+| "Cutback for a 6 inch spread", "area of a 10 inch circle", "circumference of 10 inch", "force at 150 psi", "velocity at 10 gpm", "read the tape" | Those keys: concentric cutback at the triangle's angle, circle area and wrap, the push on a cap or blind of the pipe set, the speed through its bore, the last answer on the tape. |
 | "Store that in 3", "recall 3", "memory plus", "memory minus", "recall memory", "clear memory" | The memory keys: registers 1 to 9, and the accumulator. |
 | "In feet", "show it in inches", "in millimetres" | The answer on the display read in that unit. |
 | "Takeout on a 6 inch 45", "takeout on a 6 inch 90 then minus 3" | The elbow's takeout goes on the display, ready for the next sum (see below). |
@@ -1035,15 +1041,29 @@ Type the number, **then** the unit. Not the other way round.
 
 ### The trade keys
 
-The dark keys along the top are the pipefitting ones. **Conv** turns on the second function printed above each key.
+The copper keys along the top are the pipefitting ones. **Conv** turns on the second function printed above each key. Every key on the pad does something: no key is decoration.
+
+The trade keys work on **the pipe set**: its size, material, wall, elbow radius and welder's gap. That is the same pipe the rest of the app is set to (Settings, or "6 inch schedule 80" said anywhere), so changing it on the keypad changes it everywhere, and the other way round. The line under the figure always says what the figure is and what it was worked for: **T.O. · 6" LR 45°**, **OD · 2" SCH 40 CS**, **TRAVEL**.
 
 | Key | What it does |
 |---|---|
-| **Offset**, **Run**, **Travel** | Enter any two, the third solves |
-| **Angle/Slope** | Angle or slope of a run |
-| **Pipe Size**, **Pipe Mat'l** | Set the pipe for the trade keys |
-| **Circle**, **x²**, **√x** | Area and diameter work |
-| **Store** / **Rcl** | Hold a figure while you work something else |
+| **Offset**, **Run**, **Travel**, **Angle/Slope** | Key a figure and press one to hold it; press one with nothing keyed and it solves from the last two held. **Travel pressed again** gives the **cut**: the travel less the elbow takeout at each end and a welder's gap at each weld. Again goes back to the travel. |
+| **Roll** (Conv Travel) | Key the roll of a rolling offset and press Roll. Offset is then the **rise**, and Travel, Run and Angle are worked on the true offset. Roll with nothing keyed reads the **true offset**, then the **roll angle**. `0` Roll lets it go. The **ROLL** marker shows while one is held. |
+| **T.O./Arc** (Conv Angle/Slope) | The takeout of the pipe's elbow at the angle keyed, or the triangle's angle, or a 90: the handbook figure at 90 and 45, the bend radius at any other. Press again for where to mark a cut: **ARC IN** (throat), **ARC CTR** (centre line), **ARC OUT** (heel). |
+| **Cutback** (Conv Run) | Pipes running together: key the spread between them and press Cutback for how far along each next pipe's elbow or bend is set, at the triangle's angle (a 90 with none). |
+| **Welder's** (Conv Offset) | Key a gap and press it to set the welder's gap (0 to 1/2"). With nothing keyed it reads the gap back. |
+| **Pipe Size** | Key a size and press it to set the pipe size; a size the material is not made in is refused. With nothing keyed it reads the size back. |
+| **Pipe** (Conv Pipe Size) | The pipe set's figures, one a press: OD, ID, wall, lb/ft, lb/ft full of water, gallons a foot. The figure stays on the display to work with: OD then **Circle Circle** is the wrap. |
+| **Pipe Mat'l** | Shows the material; each press after the first moves to the next. Key a number first to set the **wall**: `80` is SCH 80, `40` on stainless is 40S, `11` on HDPE is DR 11. |
+| **Elbow** (Conv Pipe Mat'l) | Shows long or short radius; each press after the first changes it. Galvanised is screwed and plastic is the fitting library's, set by the material. |
+| **Circle** | Key a diameter (or have one on the display): the area, then the circumference. |
+| **Flow**, **Velocity** (Conv `(` and `)`) | Key one and press its key; press the other for it worked through the bore of the pipe set. 10 gpm in 2" schedule 40 is 0.956 ft/sec. |
+| **Pressure**, **Force**, **Area** (Conv Circle, x², √x) | Key any two and press the third. With no area keyed, the area is the pipe set's bore: `150` Pressure, Force is the push on a 2" cap at 150 psi. |
+| **%** (Conv Clear) | Percent of the figure before: `200 + 10 %` is 220. |
+| **Store** / **Rcl**, **M+** / **M−**, **MC** | Registers 1 to 9, and the accumulator. |
+| **Prefs** (Conv Store) | The fraction answers are read to; each press after the first steps 1/16, 1/32, 1/64, 1/8. Set here, it is set in Settings too. |
+| **Tape** (Conv =) | The last 30 answers, newest first, a press each. |
+| **Clear All** | Clears the sum, memory, triangle and roll. The pipe set stays: it is the job's. |
 
 ### Where people go wrong
 
@@ -1649,6 +1669,10 @@ Whatever you can see, you can say. Every button, chip, switch and box tells the 
 | "Amperage 180 voltage 24 length welded 11.8 arc time 60" | Several number boxes in one breath, each to the next box's name. |
 | "WPS is WPS-101", "note the pump came in late" | A text box takes the words as said; a note box adds them to what is there. |
 | "Clear the note", "amperage blank" | Empties that box. |
+| "Close", "delete W14", "remove leg 2", "turn the light on", "read aloud", "hide the coaching", "open the joint register" | The icon buttons — a cross, a bin, a pencil, a torch — by the name they carry. A delete that asks for a second tap asks by voice too: "really delete". |
+| "Day before", "yesterday", "today", "next day" | The day stepper on a record screen. Never past today. |
+| "More bolts", "fewer bolts", "bolts 16" | The bolt-count slider on the bolt-up: only a count the flange has. |
+| "One more 2 inch weld", "one fewer 6 inch weld" | The weld count steppers on the shift report. |
 | "What can I say?" | Reads out what this screen answers to. |
 
 "Tap", "press", "please" and "button" round a command are ignored. A sheet open over a page wins a tie: "cancel" presses the sheet's Cancel, not the page's. A button is pressed quietly; a box or a chip is said back, so a mishearing is caught. Works with no signal, at no cost.
@@ -1659,7 +1683,7 @@ Whatever you can see, you can say. Every button, chip, switch and box tells the 
 |---|---|
 | "Bolt up", "hydro", "heat book", "shift report" | That tool opens. Works with no signal. |
 | "Home", "projects", "PipeFit", "weld", "logs", "calculator", "edu" | That tab opens; "logs" opens the Logs tab on the Projects page. |
-| "Rolling offset, rise 12, roll 8 and a half, run 30" | Rolling offset opens with the figures in. "3 foot 6", "12 and 3/8" and "350 millimetres" are understood. |
+| "Rolling offset, rise 12, roll 8 and a half, run 30", "rolling offset rise 12 roll 8 at 45" | Rolling offset opens with the figures in. "3 foot 6", "12 and 3/8" and "350 millimetres" are understood, and a plain figure after "at" is the angle. Said on the Calculator, it is worked there instead (see Calculator → Say the sum). |
 | "Simple offset, 14 and a half at 22 and a half degrees" | Any bend or offset tool opens filled in — see the table below. |
 | "Rise 12", "leg b 3 foot 6" (with the tool open) | Fills that field on the screen you are on. |
 | "Two 6 inch welds", "weld 14 rejected for porosity", "spools 3 and 4 done", "crew of 6", "10 hours" | Added to today's shift report for the job on the home screen. |

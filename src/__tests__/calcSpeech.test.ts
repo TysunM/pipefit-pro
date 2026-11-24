@@ -39,7 +39,7 @@ describe('a sum said to the trade calculator, worked by its own engine', () => {
     ['square root of 144', '12'],
     ['square root of open bracket 9 plus 7 close bracket', '4'],
     ['sine of 30', '0.5'],
-    ['200 plus 10 percent', '210'],
+    ['200 plus 10 percent', '220'],
     ['open bracket 2 plus 3 close bracket times 4', '20'],
     ['add 12 and 3', '15'],
     ['subtract 3 from 10', '7'],

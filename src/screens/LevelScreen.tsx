@@ -32,6 +32,7 @@ import { Hold, Orientation, inchesPerFoot, levelWord, sightDir } from '../calc/s
 import { useLevels } from '../state/levels';
 import { useSettings } from '../state/settings';
 import { TAG_MAX, addReading, deleteReading } from '../state/levelLog';
+import { VoicePressable } from '../voice/VoicePressable';
 
 const RATE_MS = 60;
 
@@ -201,9 +202,9 @@ export function LevelScreen() {
                 />
               </View>
             ) : (
-              <Pressable onPress={() => setConfirm(r.id)} hitSlop={10} accessibilityRole="button" accessibilityLabel={`Delete ${r.tag}`}>
+              <VoicePressable onPress={() => setConfirm(r.id)} hitSlop={10} accessibilityRole="button" accessibilityLabel={`Delete ${r.tag}`}>
                 <Ionicons name="trash-outline" size={20} color={t.colors.textFaint} />
-              </Pressable>
+              </VoicePressable>
             )}
           </Plate>
         </View>

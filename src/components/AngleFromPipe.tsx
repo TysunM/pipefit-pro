@@ -33,6 +33,7 @@ import {
   sightDir,
   steadyDir,
 } from '../calc/sight';
+import { VoicePressable } from '../voice/VoicePressable';
 
 const BURST_MS = 1000;
 const RATE_MS = 50;
@@ -196,9 +197,9 @@ export function AngleFromPipe({
           }}
         >
           <Text style={[t.type.sectionTitle, { color: t.colors.text, flex: 1 }]}>{`${title} off the pipe`}</Text>
-          <Pressable onPress={onClose} accessibilityRole="button" accessibilityLabel="Close">
+          <VoicePressable onPress={onClose} accessibilityRole="button" accessibilityLabel="Close">
             <Ionicons name="close" size={24} color={t.colors.textMuted} />
-          </Pressable>
+          </VoicePressable>
         </View>
 
         {unavailable ? (

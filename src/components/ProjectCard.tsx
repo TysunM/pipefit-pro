@@ -6,6 +6,7 @@ import { material, pipeSpec, sizeLabel, wallLabel } from '../calc/materials';
 import { SpoolThumb } from './ToolArt';
 import { SHOP, Workshop } from './Workshop';
 import { CopperPlate, DarkPlate, SteelPlate } from './plates';
+import { VoicePressable } from '../voice/VoicePressable';
 
 /**
  * The job and the pipe every tool starts from, across the top of the home
@@ -77,7 +78,7 @@ export function ProjectCard({ onEdit }: { onEdit: () => void }) {
           <Line t={t} k="Spec" v={m.spec.replace(/^ASTM /, '')} />
           <Line t={t} k="Unit" v={metric ? 'Metric' : 'Imperial'} />
         </View>
-        <Pressable onPress={onEdit} accessibilityRole="button" accessibilityLabel="Edit project and pipe specs">
+        <VoicePressable onPress={onEdit} accessibilityRole="button" accessibilityLabel="Edit project and pipe specs">
           {({ pressed }) => (
             <CopperPlate sunk={pressed} style={{ paddingHorizontal: 12, height: 56, justifyContent: 'center', alignItems: 'center' }}>
               <Text
@@ -90,7 +91,7 @@ export function ProjectCard({ onEdit }: { onEdit: () => void }) {
               </Text>
             </CopperPlate>
           )}
-        </Pressable>
+        </VoicePressable>
       </DarkPlate>
 
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space.sm, marginTop: t.space.md }}>

@@ -37,6 +37,7 @@ import { AREAS, AREA_TITLES, ROLES, Role, STANDING_WORDS, SkillStanding, Standin
 import { dayKey, usDate } from '../calc/days';
 import { shareSheet } from '../print/share';
 import { passportHtml } from '../print/passport';
+import { VoicePressable } from '../voice/VoicePressable';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Passport'>;
 
@@ -116,7 +117,7 @@ export function PassportScreen(_: Props) {
           <View key={area}>
             <SectionHeader title={AREA_TITLES[area]} meta={`${xs.filter((x) => x.standing === 'competent').length} of ${xs.length} signed off`} />
             {xs.map((r) => (
-              <Pressable
+              <VoicePressable voiceLabel={r.skill.title}
                 key={r.skill.id}
                 onPress={() => setOpen(r.skill.id)}
                 accessibilityRole="button"
@@ -144,7 +145,7 @@ export function PassportScreen(_: Props) {
                   {r.skill.needs ? `\n${r.evidence.length} of ${r.skill.needs}` : r.attestations.length ? `\n${r.attestations.length} ${r.attestations.length === 1 ? 'sign-off' : 'sign-offs'}` : ''}
                 </Text>
                 <Ionicons name="chevron-forward" size={18} color={t.colors.textFaint} />
-              </Pressable>
+              </VoicePressable>
             ))}
           </View>
         );
@@ -244,14 +245,14 @@ function SkillSheet({
                         <Text style={[t.type.caption, { color: t.colors.textMuted }]}>{`${usDate(dayKey(a.at))}${a.project ? ` · ${a.project}` : ''} · code ${recordCode(a, holder)}`}</Text>
                         {a.note ? <Text style={[t.type.caption, { color: t.colors.textMuted }]}>{a.note}</Text> : null}
                       </View>
-                      <Pressable
+                      <VoicePressable voiceLabel={`${armed === a.id ? 'Really remove' : 'Remove'} the sign-off by ${a.by}`}
                         onPress={() => (armed === a.id ? (apply((p) => revoke(p, a.id)), setArmed(null)) : setArmed(a.id))}
                         hitSlop={8}
                         accessibilityRole="button"
                         accessibilityLabel={armed === a.id ? 'Tap again to remove this sign-off' : 'Remove this sign-off'}
                       >
                         <Ionicons name={armed === a.id ? 'warning-outline' : 'trash-outline'} size={20} color={armed === a.id ? t.colors.danger : t.colors.textFaint} />
-                      </Pressable>
+                      </VoicePressable>
                     </View>
                   ))}
                 </View>

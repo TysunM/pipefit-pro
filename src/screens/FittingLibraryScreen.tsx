@@ -24,6 +24,7 @@ import { useFittings } from '../state/fittings';
 import { SavedTakeout, clearLine, clearTakeout, entriesFor, libraryText, linesIn, lookup, setTakeout } from '../state/fittingLibrary';
 import { LIBRARY_FAMILY, LIBRARY_FITTINGS } from '../calc/takeoffCatalog';
 import { material, sizeLabel, sizesFor, wallLabel } from '../calc/materials';
+import { VoicePressable } from '../voice/VoicePressable';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'FittingLibrary'>;
 
@@ -134,7 +135,7 @@ export function FittingLibraryScreen({ route }: Props) {
             const next = u.parse(editText);
             return (
               <View key={key} style={{ borderTopWidth: t.hairline, borderTopColor: t.colors.border, marginHorizontal: t.layout.screenPadding }}>
-                <Pressable
+                <VoicePressable
                   onPress={() => {
                     setEditing(open ? null : key);
                     setEditText('');
@@ -153,7 +154,7 @@ export function FittingLibraryScreen({ route }: Props) {
                   <Text style={[t.type.caption, { color: t.colors.textFaint, flex: 1 }]}>{`set ${new Date(r.setAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}`}</Text>
                   <Text style={[t.type.bodyStrong, { color: t.colors.data }]}>{len(r.takeout)}</Text>
                   <Ionicons name={open ? 'chevron-up' : 'create-outline'} size={18} color={t.colors.textMuted} />
-                </Pressable>
+                </VoicePressable>
                 {open ? (
                   <View style={{ paddingBottom: t.space.md, gap: t.space.sm }}>
                     <FieldRow>

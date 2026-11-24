@@ -34,6 +34,7 @@ const FAMILY_FOR: Partial<Record<MaterialId, JointKind>> = LIBRARY_FAMILY;
 const firstOf = (family: JointKind): string =>
   optionsForFamily(family).find((o) => o.id !== 'none' && o.id !== 'custom')?.id ?? 'custom';
 import { FlangeClass, flangedClasses } from '../calc/flangedFitting';
+import { VoicePressable } from '../voice/VoicePressable';
 
 export function CutLengthScreen() {
   const t = useTheme();
@@ -369,9 +370,9 @@ function SetTakeout({
           <Text style={[t.type.caption, { color: t.colors.textMuted, flex: 1 }]}>
             {`${title}: takeout ${len(value)}, from your fitting library.`}
           </Text>
-          <Pressable onPress={() => setEditing(true)} hitSlop={10} accessibilityRole="button" accessibilityLabel={`Change the ${title} takeout`}>
+          <VoicePressable onPress={() => setEditing(true)} hitSlop={10} accessibilityRole="button" accessibilityLabel={`Change the ${title} takeout`}>
             <Text style={[t.type.captionStrong, { color: t.colors.data }]}>Change</Text>
-          </Pressable>
+          </VoicePressable>
         </View>
       </>
     );

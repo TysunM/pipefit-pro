@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/ThemeProvider';
 import { useOtaUpdate } from '../state/updates';
+import { VoicePressable } from '../voice/VoicePressable';
 
 /**
  * Shown only once a new bundle is already downloaded, so tapping it is a
@@ -64,7 +65,7 @@ export function UpdateBanner() {
         <Text style={[t.type.body, { color: t.colors.onPrimary, flex: 1 }]} numberOfLines={1}>
           Update ready
         </Text>
-        <Pressable
+        <VoicePressable
           accessibilityRole="button"
           accessibilityLabel="Restart to apply the update"
           onPress={apply}
@@ -77,8 +78,8 @@ export function UpdateBanner() {
           })}
         >
           <Text style={[t.type.label, { color: t.colors.onPrimary }]}>Restart</Text>
-        </Pressable>
-        <Pressable
+        </VoicePressable>
+        <VoicePressable
           accessibilityRole="button"
           accessibilityLabel="Dismiss"
           onPress={dismiss}
@@ -86,7 +87,7 @@ export function UpdateBanner() {
           style={{ padding: t.space.sm }}
         >
           <Ionicons name="close" size={18} color={t.colors.onPrimary} />
-        </Pressable>
+        </VoicePressable>
       </View>
     </View>
   );

@@ -6,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../theme/ThemeProvider';
 import { useSvgIds } from './metal';
 import { PLATE } from './plates';
+import { VoicePressable } from '../voice/VoicePressable';
 
 // The nameplate
 // -------------
@@ -167,7 +168,7 @@ export function AppHeader({
 /** A control over its bezel: the glyph in chrome, sunk a shade while pressed. */
 function Control({ side, icon, label, onPress, glyph }: { side: 'left' | 'right'; icon: keyof typeof Ionicons.glyphMap; label: string; onPress: () => void; glyph: string }) {
   return (
-    <Pressable
+    <VoicePressable
       onPress={onPress}
       hitSlop={8}
       accessibilityRole="button"
@@ -185,6 +186,6 @@ function Control({ side, icon, label, onPress, glyph }: { side: 'left' | 'right'
       })}
     >
       <Ionicons name={icon} size={icon === 'person' ? 22 : 24} color={glyph} />
-    </Pressable>
+    </VoicePressable>
   );
 }

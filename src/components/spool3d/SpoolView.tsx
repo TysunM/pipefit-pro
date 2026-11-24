@@ -26,6 +26,7 @@ import {
   project,
   viewAt,
 } from './project';
+import { VoicePressable } from '../../voice/VoicePressable';
 
 const W = 360;
 const H = 360;
@@ -410,7 +411,7 @@ export function SpoolView({
       {views.map((v) => {
         const on = here?.id === v.id;
         return (
-          <Pressable
+          <VoicePressable
             key={v.id}
             accessibilityRole="button"
             accessibilityLabel={v.title}
@@ -426,7 +427,7 @@ export function SpoolView({
             <Text style={[t.type.captionStrong, { color: on ? t.colors.data : t.colors.textFaint }]}>
               {v.label}
             </Text>
-          </Pressable>
+          </VoicePressable>
         );
       })}
     </View>
@@ -640,7 +641,7 @@ export function SpoolView({
         {/* touchAction: a drag on the drawing turns the spool, not the browser page. */}
         <View style={[StyleSheet.absoluteFill, Platform.OS === 'web' ? ({ touchAction: 'none' } as ViewStyle) : null]} {...pan.panHandlers} />
         {onFullScreen ? (
-          <Pressable
+          <VoicePressable
             onPress={onFullScreen}
             accessibilityRole="button"
             accessibilityLabel={fill ? 'Leave full screen' : 'Full screen'}
@@ -661,7 +662,7 @@ export function SpoolView({
             })}
           >
             {({ pressed }) => <Ionicons name={fill ? 'contract-outline' : 'expand-outline'} size={20} color={pressed ? t.colors.onPrimary : t.colors.text} />}
-          </Pressable>
+          </VoicePressable>
         ) : null}
       </View>
 

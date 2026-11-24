@@ -11,6 +11,7 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../theme/ThemeProvider';
 import { AccentButton, GhostButton } from './Buttons';
+import { VoicePressable } from '../voice/VoicePressable';
 
 type Ocr = { recognizeText: (uri: string) => Promise<{ text: string }> };
 let ocr: Ocr | null = null;
@@ -62,9 +63,9 @@ export function PageScanSheet({ visible, onClose, onText }: { visible: boolean; 
       <View style={{ flex: 1, backgroundColor: t.colors.bg, paddingTop: t.space.xl }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: t.layout.screenPadding, gap: t.space.md }}>
           <Text style={[t.type.sectionTitle, { color: t.colors.text, flex: 1 }]}>Read a page of rules</Text>
-          <Pressable onPress={close} hitSlop={10} accessibilityRole="button" accessibilityLabel="Close">
+          <VoicePressable onPress={close} hitSlop={10} accessibilityRole="button" accessibilityLabel="Close">
             <Ionicons name="close" size={26} color={t.colors.text} />
-          </Pressable>
+          </VoicePressable>
         </View>
         {!permission?.granted ? (
           <View style={{ padding: t.layout.screenPadding, gap: t.space.lg }}>

@@ -11,6 +11,7 @@ import { REFERENCE_TABLES, ReferenceGroup, ReferenceTable, searchReference } fro
 import { useSettings } from '../state/settings';
 import { API_BASE } from '../ai/apiBase';
 import { BEST_AT, HandbookPick, fetchHandbookPick } from '../ai/handbookPick';
+import { VoicePressable } from '../voice/VoicePressable';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Reference'>;
 
@@ -62,7 +63,7 @@ export function ReferenceScreen({ navigation }: Props) {
   const nothingAnywhere = found.length === 0 && picked.length === 0;
 
   const row = (x: ReferenceTable, key: string) => (
-    <Pressable
+    <VoicePressable voiceLabel={x.title}
       key={key}
       onPress={() => navigation.navigate('ReferenceTable', { id: x.id })}
       accessibilityRole="button"
@@ -79,7 +80,7 @@ export function ReferenceScreen({ navigation }: Props) {
           <Ionicons name="chevron-forward" size={18} color={t.colors.textMuted} />
         </Plate>
       )}
-    </Pressable>
+    </VoicePressable>
   );
 
   return (
@@ -113,9 +114,9 @@ export function ReferenceScreen({ navigation }: Props) {
             style={[t.type.body, { flex: 1, color: t.colors.text, paddingVertical: 0 }]}
           />
           {query ? (
-            <Pressable onPress={() => setQuery('')} hitSlop={12} accessibilityLabel="Clear search">
+            <VoicePressable onPress={() => setQuery('')} hitSlop={12} accessibilityLabel="Clear search">
               <Ionicons name="close-circle" size={18} color={t.colors.textFaint} />
-            </Pressable>
+            </VoicePressable>
           ) : null}
         </View>
       </View>
