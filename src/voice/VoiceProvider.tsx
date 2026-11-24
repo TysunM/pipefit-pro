@@ -28,6 +28,7 @@ import { API_BASE } from '../ai/apiBase';
 import { askVoice, voiceMissShort, voiceMissWords, type VoiceAnswer } from '../ai/voice';
 import { matchScreen, screenHelp, screenPhrases, targetsOn, type Entry, type ScreenMatch } from './onScreen';
 import { recordAnswer } from './records';
+import { readCalc, worksOut } from './calcSpeech';
 import { say, sayThen } from '../audio/say';
 import { nav } from '../navigation/navRef';
 import { tool } from '../navigation/groups';
@@ -53,8 +54,10 @@ export type BoltAct = 'done' | 'undo' | 'repeat';
 export type BoltHandler = (act: BoltAct) => string;
 /** Cut Length, while it is open, adds the cut on screen to the list: what to say back, and whether it went on. */
 export type CutAdder = () => { said: string; ok: boolean };
+/** What a screen says back: one line shown and said, or a line shown and another said ("50-1/2"" shown, "50 and 1/2 inches" said). */
+export type ScreenReply = string | { reply: string; say: string; tone?: 'ok' | 'warn' };
 /** A screen's own words, tried first while it is in front: what to say back, or null when they are not its. */
-export type ScreenVoice = (heard: string) => string | null;
+export type ScreenVoice = (heard: string) => ScreenReply | null;
 
 export type VoiceSheet = {
   phase: 'listening' | 'thinking' | 'done';
@@ -339,6 +342,45 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
     [finish, applyAnswer],
   );
 
+  /** A screen's own answer: shown, and said in its own words where it has them. */
+  const answerScreen = useCallback(
+    (heard: string, own: ScreenReply) => {
+      if (typeof own === 'string') return finish(heard, own);
+      setSheet({ phase: 'done', heard, reply: own.reply, tone: own.tone ?? 'ok', ...(others.current.length ? { others: others.current } : {}) });
+      if (own.say) say(own.say);
+    },
+    [finish],
+  );
+
+  /**
+   * A sum or a conversion said anywhere: the calculator opens and works it.
+   * Its words are taken once it is in front and listening, which is a beat
+   * after it is opened.
+   */
+  const runOnCalculator = useCallback(
+    (heard: string, text: string) => {
+      if (!nav.isReady()) return;
+      const before = screenVoice.current;
+      nav.navigate('Calculator' as never);
+      setSheet({ phase: 'thinking', heard, reply: '', tone: 'ok' });
+      let tries = 0;
+      const wait = setInterval(() => {
+        tries += 1;
+        const here = nav.isReady() && nav.getCurrentRoute()?.name === 'Calculator';
+        const h = screenVoice.current;
+        if (here && h && h !== before) {
+          clearInterval(wait);
+          return answerScreen(heard, h(text) ?? 'The calculator did not take that.');
+        }
+        if (tries > 40) {
+          clearInterval(wait);
+          finish(heard, 'The calculator did not open in time. Say it again on the calculator.', { tone: 'warn' });
+        }
+      }, 75);
+    },
+    [answerScreen, finish],
+  );
+
   /** Something on the screen, said by its label: pressed, picked or filled in. */
   const runScreen = useCallback(
     (heard: string, m: ScreenMatch, here: readonly Entry[]) => {
@@ -379,7 +421,7 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
       const as = (t: string) => (t === heard ? heard : `${heard} (heard as “${t}”)`);
       for (const t of alternatives) {
         const own = screenVoice.current?.(t);
-        if (own) return finish(heard, own);
+        if (own) return answerScreen(heard, own);
       }
       // On a bend, offset or bolt-up, figures go through the tool's own matcher first, which has its checks (a flange refused once bolts are logged).
       const toolFigures = screen !== null && isFigureRoute(screen);
@@ -398,6 +440,11 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
       if (local && !nearMiss) return doLocal(local);
       const part = matchScreen(heard, here, { whole: false });
       if (part) return runScreen(heard, part, here);
+      // A sum or a conversion, said on any screen: worked on the calculator.
+      for (const t of alternatives) {
+        const c = readCalc(t);
+        if (c && ((c.kind === 'sum' && worksOut(c.items)) || c.kind === 'convert')) return runOnCalculator(as(t), t);
+      }
       for (const t of alternatives) {
         const a = recordAnswer(t);
         if (a) return applyAnswer(as(t), a);
@@ -414,7 +461,7 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
           : undefined,
       );
     },
-    [finish, runLocal, runClaude, runScreen, applyAnswer, teach],
+    [finish, runLocal, runClaude, runScreen, applyAnswer, answerScreen, runOnCalculator, teach],
   );
 
   // The web app takes a command typed into the browser's console, as if said:

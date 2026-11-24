@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { useVoiceMaybe } from '../voice/VoiceProvider';
 import { hideFloatingMic } from '../voice/micSpot';
@@ -10,13 +10,18 @@ import { KEYPAD } from '../calc/keys';
 import { TabBar } from '../components/TabBar';
 import { useTheme } from '../theme/ThemeProvider';
 import { useSettings } from '../state/settings';
-import { displayText, initialState, press, type CalcState } from '../calc/engine';
+import { displayText, initialState, press, pressMany, type CalcState } from '../calc/engine';
 import { entryUnitWord, isEntryEmpty } from '../calc/ftin';
 import type { KeyAction } from '../calc/keys';
 import type { FracDen } from '../calc/ftin';
 import { Well } from '../components/metal';
 import { StandardCalc } from '../components/StandardCalc';
-import { initialBasic, type BasicState } from '../calc/basic';
+import { equalsBasic, exprText, initialBasic, pressBasic, remember, type BasicState } from '../calc/basic';
+import { formatConverted } from '../calc/convert';
+import { useScreenVoice } from '../voice/useScreenVoice';
+import { useVoiceTargets } from '../voice/useVoiceTargets';
+import type { ScreenReply } from '../voice/VoiceProvider';
+import { converted, hasLengths, readCalc, speakDisplay, standardKeys, tradeSteps, worksOut } from '../voice/calcSpeech';
 import { useCalcPrefs } from '../state/calcPrefsStore';
 import type { CalcMode } from '../state/calcPrefs';
 
@@ -33,6 +38,8 @@ function ModeSwitch({ mode, onChange }: { mode: CalcMode; onChange: (m: CalcMode
     { value: 'trade', label: 'Trade', icon: 'construct-outline' },
     { value: 'standard', label: 'Standard', icon: 'calculator-outline' },
   ];
+  // "Trade calculator", "standard": the switch by voice.
+  useVoiceTargets(options.map((o) => ({ kind: 'pick', label: `${o.label} calculator`, on: o.value === mode, run: () => (onChange(o.value), `${o.label} calculator.`) })));
   return (
     <Well radius={t.radius.pill} style={{ flexDirection: 'row', padding: 3, height: 40 }}>
       {options.map((o) => {
@@ -101,6 +108,85 @@ export function CalculatorScreen() {
   const keyHeight = room === null ? KEY_HEIGHT : Math.max(34, Math.min(KEY_HEIGHT, Math.floor(room / KEYPAD.length - ROW_EXTRA)));
 
   const handle = (action: KeyAction, arg?: string) => setState((s) => press(s, action, arg));
+
+  // Said to the calculator: a sum is keyed into it the way it would be typed
+  // and worked by its own engine (voice/calcSpeech.ts). A sum in feet, inches
+  // or millimetres goes to the trade calculator whichever is showing; a plain
+  // one to the one that is. A conversion opens the converter at it.
+  const tradeNow = useRef(state);
+  tradeNow.current = state;
+  const basicNow = useRef(basic);
+  basicNow.current = basic;
+  const modeNow = useRef(mode);
+  modeNow.current = mode;
+  const hear = (said: string): ScreenReply | null => {
+    const c = readCalc(said);
+    if (!c) return null;
+    const onTrade = modeNow.current === 'trade';
+    const fromTrade = (s: CalcState): ScreenReply => (s.error ? { reply: s.error, say: s.error, tone: 'warn' } : { reply: `= ${displayText(s)}`, say: speakDisplay(displayText(s)) });
+    const fromBasic = (s: BasicState): ScreenReply => {
+      if (s.error) return { reply: s.error, say: s.error, tone: 'warn' };
+      const shown = exprText(s.toks) || '0';
+      return { reply: `= ${shown}`, say: shown.replace(/−/g, 'minus ').replace(/,/g, '') };
+    };
+    const keep = (r: ReturnType<typeof equalsBasic>) => {
+      if (r.entry) {
+        const entry = r.entry;
+        update((p) => ({ ...p, history: remember(p.history, entry) }));
+      }
+      return r.state;
+    };
+    switch (c.kind) {
+      case 'clear':
+        if (onTrade) setState((s) => press(press(s.shift ? press(s, 'conv') : s, 'clear'), 'clear'));
+        else setBasic((s) => pressBasic(s, { t: 'clear' }));
+        return 'Cleared.';
+      case 'back':
+        if (onTrade) setState((s) => press(s, 'backspace'));
+        else setBasic((s) => pressBasic(s, { t: 'back' }));
+        return 'Back one.';
+      case 'equals': {
+        if (onTrade) {
+          const next = press(tradeNow.current, 'equals');
+          setState(next);
+          return fromTrade(next);
+        }
+        const next = keep(equalsBasic(basicNow.current));
+        setBasic(next);
+        return fromBasic(next);
+      }
+      case 'convert': {
+        const v = converted(c);
+        update((p) => ({ ...p, mode: 'standard', panel: 'convert', category: c.cat.id, from: { ...p.from, [c.cat.id]: c.from.id } }));
+        setConvInput(String(Number(c.value.toPrecision(10))));
+        const line = `${formatConverted(c.value)} ${c.from.sym} = ${formatConverted(v)} ${c.to.sym}`;
+        return { reply: line, say: `${formatConverted(c.value)} ${c.from.name.toLowerCase()} is ${formatConverted(v)} ${c.to.name.toLowerCase()}` };
+      }
+      case 'sum': {
+        if (onTrade || hasLengths(c.items)) {
+          const steps = tradeSteps(c.items);
+          if (!steps) return { reply: 'The trade calculator has no factorial: say "standard calculator" first.', say: 'The trade calculator has no factorial.', tone: 'warn' };
+          let s = tradeNow.current;
+          if (s.shift) s = press(s, 'conv');
+          const empty = isEntryEmpty(s.entry) && !s.acc;
+          // "Minus 5" with nothing on the display is nought minus five.
+          if (c.carry && empty && c.items[0]?.k === 'op' && c.items[0].op === '-') s = press(press(press(s, 'clear'), 'clear'), 'digit', '0');
+          else if (!c.carry) s = press(press(s, 'clear'), 'clear');
+          s = pressMany(s, steps);
+          if (worksOut(c.items)) s = press(s, 'equals');
+          setState(s);
+          if (!onTrade) update((p) => ({ ...p, mode: 'trade' }));
+          return fromTrade(s);
+        }
+        let s = c.carry ? basicNow.current : pressBasic(basicNow.current, { t: 'clear' });
+        for (const k of standardKeys(c.items) ?? []) s = pressBasic(s, k);
+        if (worksOut(c.items)) s = keep(equalsBasic(s));
+        setBasic(s);
+        return fromBasic(s);
+      }
+    }
+  };
+  useScreenVoice(hear);
 
   return (
     <View style={{ flex: 1, backgroundColor: t.colors.bg }}>
