@@ -1,9 +1,10 @@
 export type RootStackParamList = {
   Home: undefined;
-  /** The Tools or Logs tab — see navigation/groups.ts. */
+  /** The PipeFit, Weld or Edu tab, or the Logs tiles — see navigation/groups.ts. */
   Group: { id: 'tools' | 'weld' | 'logs' | 'edu' };
   /** Everything saved on the phone, one card per kind. */
-  Projects: undefined;
+  /** view: which tab at the top of the page it opens on, the job's records or the Logs. */
+  Projects: { view?: 'jobs' | 'logs' } | undefined;
   SimpleOffset: undefined;
   /** Figures to start from, in inches: an offset measured with AR measure. */
   RollingOffset: { rise?: number; roll?: number; run?: number } | undefined;

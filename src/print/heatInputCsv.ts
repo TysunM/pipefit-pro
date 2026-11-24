@@ -1,12 +1,14 @@
 // The heat input log as a spreadsheet
 // -----------------------------------
 // One row per saved heat input, in the units the reader has set, with the
-// job's own fields as columns, for the PQR file or the QC folder. Text a man
+// WPS it was checked against and how it came out, and the job's own fields as
+// columns, for the PQR file or the QC folder. Text a man
 // typed is quoted where it must be and never starts with = + - or @, so a
 // spreadsheet opening it cannot take a welder's note for a formula.
 
 import { figure, inHeatUnit, inSpeedUnit, MM_PER_IN, processOf, type HeatUnit, type SpeedUnit } from '../calc/heatInput';
 import type { HeatInputEntry } from '../state/heatInputLog';
+import { verdictLine } from '../state/wpsBook';
 
 const cell = (s: string): string => {
   const safe = /^[=+\-@\t\r]/.test(s) ? `'${s}` : s;
@@ -42,6 +44,8 @@ export function heatInputCsv(entries: readonly HeatInputEntry[], o: { heat: Heat
     `Travel speed (${o.speed})`,
     `Arc energy (${o.heat})`,
     `Heat input (${o.heat})`,
+    'Checked against',
+    'WPS check',
     ...names,
   ];
   const rows = entries.map((e) => {
@@ -63,6 +67,8 @@ export function heatInputCsv(entries: readonly HeatInputEntry[], o: { heat: Heat
       e.travel === null ? '' : figure(inSpeedUnit(e.travel, o.speed)).replace(/,/g, ''),
       figure(inHeatUnit(e.arcEnergy, o.heat)).replace(/,/g, ''),
       figure(inHeatUnit(e.heatInput, o.heat)).replace(/,/g, ''),
+      e.wps?.name ?? '',
+      e.wps ? (e.wps.out.length ? `Out of range: ${verdictLine(e.wps, o)}` : e.wps.checked.length ? 'In range' : 'Not checked') : '',
       ...names.map(value),
     ];
   });

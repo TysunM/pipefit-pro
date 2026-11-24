@@ -165,8 +165,8 @@ describe('the layout', () => {
     expect(orderOf(l, HOME_ZONE)).toEqual(['Level', 'IsoSketch', 'FlangeBoltUp', 'SpoolBuilder']);
   });
 
-  test('the shipped tab order is Home, Calculator, PipeFit, Weld, Projects, Logs, Edu', () => {
-    expect(orderOf(EMPTY_LAYOUT, TABS_ZONE)).toEqual(['home', 'calc', 'tools', 'weld', 'projects', 'logs', 'edu']);
+  test('the shipped tab order is Home, Calculator, PipeFit, Weld, Projects, Edu', () => {
+    expect(orderOf(EMPTY_LAYOUT, TABS_ZONE)).toEqual(['home', 'calc', 'tools', 'weld', 'projects', 'edu']);
   });
 });
 
@@ -188,11 +188,11 @@ describe('reading what was stored', () => {
   test('a zone that is gone, or that is not a list, is dropped; the rest is kept', () => {
     const l = parseLayout(store({ 'tools.nothing': ['IsoSketch'], [HOME_ZONE]: 'IsoSketch', [TABS_ZONE]: ['edu', 'home'] }));
     expect(Object.keys(l.zones)).toEqual([TABS_ZONE]);
-    expect(l.zones[TABS_ZONE]).toEqual(['edu', 'home', 'calc', 'tools', 'weld', 'projects', 'logs']);
+    expect(l.zones[TABS_ZONE]).toEqual(['edu', 'home', 'calc', 'tools', 'weld', 'projects']);
   });
 
   test('a stored order that comes to the shipped one is not kept as a change', () => {
-    const l = parseLayout(store({ [TABS_ZONE]: ['home', 'calc', 'Gone', 'tools', 'projects', 'logs', 'edu'] }));
+    const l = parseLayout(store({ [TABS_ZONE]: ['home', 'calc', 'Gone', 'tools', 'projects', 'edu'] }));
     expect(isCustomised(l)).toBe(false);
   });
 
@@ -205,7 +205,12 @@ describe('reading what was stored', () => {
 
   test('the Weld tab, new in an update, stands straight after PipeFit in a saved tab order', () => {
     const l = parseLayout(store({ [TABS_ZONE]: ['edu', 'tools', 'home', 'calc', 'projects', 'logs'] }));
-    expect(l.zones[TABS_ZONE]).toEqual(['edu', 'tools', 'weld', 'home', 'calc', 'projects', 'logs']);
+    expect(l.zones[TABS_ZONE]).toEqual(['edu', 'tools', 'weld', 'home', 'calc', 'projects']);
+  });
+
+  test('the Logs, gone from the foot onto the Projects page, drop out of a saved tab order; the rest stand as they were', () => {
+    const l = parseLayout(store({ [TABS_ZONE]: ['logs', 'edu', 'home', 'calc', 'tools', 'weld', 'projects'] }));
+    expect(l.zones[TABS_ZONE]).toEqual(['edu', 'home', 'calc', 'tools', 'weld', 'projects']);
   });
 });
 

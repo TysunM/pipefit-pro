@@ -72,7 +72,7 @@ The app agrees with every one of them to **four decimal places**, and a test pro
 
 ## Make it yours: moving the tabs and tiles
 
-The seven tabs along the foot ship as **Home, Calculator, PipeFit, Weld, Projects, Logs, Edu**. PipeFit is the tab that used to be called Tools. A phone that already moved its tabs keeps its order, and Weld comes in right after PipeFit. Hold any tab until it lifts, carry it along the bar, let go. It stays there on every screen.
+The six tabs along the foot ship as **Home, Calculator, PipeFit, Weld, Projects, Edu**. PipeFit is the tab that used to be called Tools. The **Logs** are a tab at the top of the Projects page now, not one along the foot. A phone that already moved its tabs keeps its order without Logs, and Weld comes in right after PipeFit. Hold any tab until it lifts, carry it along the bar, let go. It stays there on every screen.
 
 The tiles on Home, PipeFit, Weld, Logs and Edu, and the cards down the Projects page, move the same way: hold one until it lifts and buzzes, carry it, let go. A tile moves anywhere in its own section (Layout & fit-up, Bends & offsets, Records…); a card anywhere down the page. Carry one to the top or foot of the screen and the page scrolls with it. A finger that drifts while holding is a scroll, not a hold: hold still.
 
@@ -84,6 +84,8 @@ On Home, **Recently used** stays as you left it until you open a tool, which put
 
 ## The Projects tab
 Today's date and the time run across the top, so the page left open on a job all day says what day it is.
+
+Two tabs sit under the job line: **Projects**, the job's records below, and **Logs**: pressure tests, the joint log, the heat book, the shift report, calibration, the pre-task plan, the handbook and the fitting library. The page opens on whichever was used last. Say "logs" and it opens on the Logs.
 
 The job chips pick what the page shows: the active job, another job, All jobs, or No project. Each card lists the newest work under it. **Share turnover PDF** makes the package for what is shown. After its sign-off it carries one Appendix R record page for every joint that was bolted, so the QC file needs nothing else from the phone.
 
@@ -113,7 +115,7 @@ The job chips pick what the page shows: the active job, another job, All jobs, o
 
 ## The pre-task plan
 
-**Logs → Pre-task plan.** The morning sheet, one per job per day: a JSA, a JHA, a tailgate, by whatever name the site uses.
+**Projects → Logs → Pre-task plan.** The morning sheet, one per job per day: a JSA, a JHA, a tailgate, by whatever name the site uses.
 
 - **The task** and where. **Hazards** are tapped off a library of what hurts pipefitting crews, and each comes with the control a journeyman would name; change it to say what this crew does about it here. Add any other hazard by typing it.
 - **Permits** and **PPE beyond the basics** are chips. **Muster point** and where the eyewash, extinguisher, first aid and rescue are.
@@ -398,7 +400,7 @@ Socket and no-hub makeups differ by maker (Charlotte, Spears, Tyler, AB&I…), s
 - It answers only those words, said on their own; a word a letter off one of them ("safe", "a gain") counts. Anything else, including the phone's own voice, is ignored.
 - The job's pipe must be PVC, CPVC or cast iron soil; say it first ("2 inch PVC").
 
-**The fitting library screen** (Logs tab → Fitting library, or say "fitting library") shows every saved takeout by line (PVC SCH 40, CI CISPI 301…):
+**The fitting library screen** (Projects → Logs → Fitting library, or say "fitting library") shows every saved takeout by line (PVC SCH 40, CI CISPI 301…):
 
 - Tap a size to change or remove its figure.
 - **Add a figure**: pick the fitting and size, type the takeout, Save. The size moves on to the next one up, so a maker's table goes in row after row.
@@ -1382,7 +1384,7 @@ Phone AR is good to a centimetre or two on a textured surface at arm's length. T
 
 ## Pressure tests
 
-Every hydro and pneumatic test on the job, as a record QC signs: Logs → **Pressure tests**.
+Every hydro and pneumatic test on the job, as a record QC signs: Projects → Logs → **Pressure tests**.
 
 ### What it is for
 
@@ -1455,11 +1457,20 @@ It does not work the B31.3 stress-ratio increase for a design temperature above 
 - Round a 6" pipe (6.625" OD) in the same minute: π × 6.625 = 20.813", so **12.5 kJ/in** arc energy, **9.96 kJ/in** with SMAW.
 - A pulse machine that shows 52 kJ over 23.622" (600 mm): 52,000 ÷ 23.622 = **2.20 kJ/in**, or **1.76 kJ/in** with SMAW.
 
+### Checking against the WPS
+1. Under **WPS**, press **Check against a WPS** (or **New WPS**) and type the window off the WPS's parameter table: amps, volts, travel speed and heat input, a minimum and a maximum for each. A blank box is no limit. Where the WPS gives a different window per pass or process, enter each as its own: WPS-101 GTAW root, WPS-101 SMAW fill.
+2. Pick the process, and how the WPS takes heat input: **ASME IX / AWS, no k**, or **EN ISO, with k**. Picking the WPS sets the Process chip to match, and the check always takes heat input the WPS's way.
+3. Every figure is checked as you type. A green line under the result says **In range**; a red one names each figure out and the limit it missed. The table under **WPS** shows each figure against its range.
+4. **Save** keeps the verdict with the result, as the WPS stood that day. The history shows it in green or red, and the spreadsheet has **Checked against** and **WPS check** columns.
+
+The check reads each figure as the screen shows it: 21.946 kJ/in shows as 21.9, and passes a 21.9 maximum. Amps and volts are checked as typed. A field named WPS in Settings → Welding fills itself with the WPS picked. The WPS windows go into the backup file, so the QC phone's list reaches the crew with an ordinary restore.
+
 ### Where people go wrong
 - **Applying k on an ASME job.** ASME IX has no efficiency factor. A PQR figure with 0.8 taken off reads 20% low, and the WPS range built on it is wrong.
 - **Volts and amps on a pulse machine.** The meters average a waveform; use **Total energy** and the machine's own kJ.
 - **Timing the stop and start.** Arc time is arc on, not the time at the joint. Use the timer per pass, or type the arc time the machine logs.
-- **Mixing units.** The length goes in in the same units as the screen (inches in imperial, mm in metric). Settings → Welding changes the units shown, not the inputs.
+- **Mixing units.** The length goes in in the same units as the screen (inches in imperial, mm in metric). Settings → Welding changes the units shown, not the inputs. A WPS limit goes in in the units shown on its box, and follows a change of units.
+- **One window for a multi-process WPS.** A GTAW root and an SMAW fill have different amps. Enter each pass's window as its own WPS entry, or the root reads out of range against the fill's numbers.
 
 ---
 
@@ -1541,7 +1552,7 @@ ASME IX QW-322: a welder's qualification on a process **lapses after six months 
 
 ## Calibration register
 
-**Every gauge, wrench and instrument a record is read off, and when each one is due.** Logs tab → **Calibration**, or say "calibration".
+**Every gauge, wrench and instrument a record is read off, and when each one is due.** Projects → Logs → **Calibration**, or say "calibration".
 
 - **Add an instrument:** what it is (pressure gauge, torque wrench, relief valve, chart recorder, thermometer, meter, other), tag or serial as stamped on it, full scale, make and model, and how often it is calibrated. Gauges default to 6 months, the rest to 12. Enter the last calibration (the day, certificate number, lab) and it is due that many months on.
 - **The list runs worst first:** Overdue, Never calibrated, Due soon (inside 30 days), In calibration, Out of service. A red banner says how many are overdue.
@@ -1557,7 +1568,7 @@ Each record is judged by the certificate in force **on the day it was made**, no
 
 ## Shift report
 
-The day, written up once at the end of it: Logs → **Shift report**.
+The day, written up once at the end of it: Projects → Logs → **Shift report**.
 
 ### What it is for
 

@@ -5,9 +5,11 @@
 // length. Time it with the timer or type it. The length is a straight run or,
 // for a pass all the way round, the pipe's diameter. Save the result with the
 // job's own fields (Settings → Welding) and the history goes out as a
-// spreadsheet. calc/heatInput.ts does the sums; heatInputLog.ts keeps them.
+// spreadsheet. Pick the WPS and every figure is checked against its window
+// as it is typed, and the verdict is saved with the result. calc/heatInput.ts
+// does the sums, heatInputLog.ts keeps them, wpsBook.ts holds the WPS ranges.
 
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Pressable, Share, Text, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
@@ -23,7 +25,26 @@ import { Banner, NumField, useNow, type BannerTone } from '../components/FormFie
 import { FooterNote, ResultBanner } from '../components/Results';
 import { useTheme } from '../theme/ThemeProvider';
 import { useSettings } from '../state/settings';
-import { useHeatInputs } from '../state/heatInputs';
+import { useHeatInputs, useWpsBook } from '../state/heatInputs';
+import { WpsSheet } from '../components/WpsSheet';
+import {
+  PARAMS,
+  PARAM_LABEL,
+  activeWps,
+  checkWps,
+  heatFor,
+  limitFigure,
+  newWps,
+  putWps,
+  rangeText,
+  removeWps,
+  setActiveWps,
+  verdictLine,
+  wpsId,
+  type Param,
+  type Verdict,
+  type Wps,
+} from '../state/wpsBook';
 import { addHeatInput, deleteHeatInput, FIELD_VALUE_MAX, type HeatInputEntry } from '../state/heatInputLog';
 import { shareTextFile } from '../state/backupFile';
 import { heatInputCsv } from '../print/heatInputCsv';
@@ -69,6 +90,18 @@ export function HeatInputScreen({ navigation }: Props) {
   const [fields, setFields] = useState<Record<string, string>>({});
   const [note, setNote] = useState<{ tone: BannerTone; text: string } | null>(null);
   const [armed, setArmed] = useState<string | null>(null);
+  const { book, apply: applyWps } = useWpsBook();
+  const [editing, setEditing] = useState<Wps | null>(null);
+  const units = { heat: hu, speed: su };
+  const wps = activeWps(book);
+  const wpsField = settings.weldFields.find((n) => n.toLowerCase() === 'wps');
+  // A WPS sets how heat input is taken: the Process chip follows it, and a
+  // field named WPS takes its number.
+  useEffect(() => {
+    if (!wps) return;
+    setProcess(wps.basis === 'asme' ? 'none' : wps.process);
+    if (wpsField) setFields((f) => ({ ...f, [wpsField]: wps.name.slice(0, FIELD_VALUE_MAX) }));
+  }, [wps?.id, wps?.basis, wps?.process, wps?.name, wpsField]);
 
   const running = timerStart !== null;
   const now = useNow(running, 200);
@@ -77,6 +110,7 @@ export function HeatInputScreen({ navigation }: Props) {
   const lengthMm = weldLength(length, imperial, around);
   const k = processOf(process).k;
   const res = heatInput({ mode, amps, volts, energyKJ: energy, lengthMm, seconds, k });
+  const verdict: Verdict | null = wps && res ? checkWps(wps, { amps: mode === 'va' ? amps : null, volts: mode === 'va' ? volts : null, travel: res.travel, arcEnergy: res.arcEnergy }, units) : null;
 
   const heat = res ? `${figure(inHeatUnit(res.heatInput, hu))} ${hu}` : '—';
   const travel = res?.travel != null ? `${figure(inSpeedUnit(res.travel, su))} ${su}` : null;
@@ -127,12 +161,14 @@ export function HeatInputScreen({ navigation }: Props) {
           heatInput: res.heatInput,
           travel: res.travel,
           fields: entryFields,
+          wps: verdict,
         },
         Date.now()
       )
     );
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-    say('ok', `Saved: ${heat}${entryFields.length ? `, ${entryFields.map((f) => `${f.name} ${f.value}`).join(', ')}` : ''}.`);
+    const outside = verdict && verdict.out.length ? ` Outside ${verdict.name}: ${verdictLine(verdict, units)}.` : '';
+    say(outside ? 'warn' : 'ok', `Saved: ${heat}${entryFields.length ? `, ${entryFields.map((f) => `${f.name} ${f.value}`).join(', ')}` : ''}.${outside}`);
   };
 
   const describe = (e: Pick<HeatInputEntry, 'mode' | 'amps' | 'volts' | 'energyKJ' | 'lengthMm' | 'seconds' | 'process' | 'around'>): string =>
@@ -147,7 +183,7 @@ export function HeatInputScreen({ navigation }: Props) {
 
   const share = () => {
     if (!res) return;
-    const lines = [`Heat input ${heat}`, travel ? `Travel speed ${travel}` : '', describe({ mode, amps, volts, energyKJ: energy, lengthMm: lengthMm ?? 0, seconds: seconds ?? null, process, around }), ...entryFields.map((f) => `${f.name}: ${f.value}`)];
+    const lines = [`Heat input ${heat}`, travel ? `Travel speed ${travel}` : '', describe({ mode, amps, volts, energyKJ: energy, lengthMm: lengthMm ?? 0, seconds: seconds ?? null, process, around }), ...entryFields.map((f) => `${f.name}: ${f.value}`), verdict ? verdictSentence(verdict) : ''];
     Share.share({ message: lines.filter(Boolean).join('\n') }).catch(() => {});
   };
 
@@ -160,6 +196,17 @@ export function HeatInputScreen({ navigation }: Props) {
   };
 
   const shown = useMemo(() => log.entries.slice(0, SHOWN), [log.entries]);
+
+  /** The figure the check reads for one limit, as the screen shows it; null when it was not measured. */
+  const measured = (p: Param): string | null => {
+    if (!res || !wps) return null;
+    if (p === 'amps') return mode === 'va' && amps !== null ? `${limitFigure(amps)} A` : null;
+    if (p === 'volts') return mode === 'va' && volts !== null ? `${limitFigure(volts)} V` : null;
+    if (p === 'speed') return res.travel !== null ? `${figure(inSpeedUnit(res.travel, su))} ${su}` : null;
+    return `${figure(inHeatUnit(heatFor(wps, res.arcEnergy), hu))} ${hu}`;
+  };
+  const verdictSentence = (v: Verdict): string =>
+    v.out.length ? `Outside ${v.name}: ${verdictLine(v, units)}.` : v.checked.length ? `In range of ${v.name}: ${verdictLine(v, units).replace(/^In range: /, '')}.` : `${v.name}: ${verdictLine(v, units).toLowerCase()}.`;
 
   return (
     <Screen>
@@ -178,6 +225,13 @@ export function HeatInputScreen({ navigation }: Props) {
         <AccentButton label="Save" icon="save-outline" onPress={save} style={{ flex: 1, opacity: res ? 1 : 0.5 }} />
       </ControlRow>
       {note ? <Banner tone={note.tone} icon={note.tone === 'ok' ? 'checkmark-circle-outline' : 'alert-circle-outline'} text={note.text} /> : null}
+      {verdict && !note ? (
+        <Banner
+          tone={verdict.out.length ? 'danger' : verdict.checked.length ? 'ok' : 'info'}
+          icon={verdict.out.length ? 'close-circle-outline' : verdict.checked.length ? 'shield-checkmark-outline' : 'help-circle-outline'}
+          text={verdictSentence(verdict)}
+        />
+      ) : null}
 
       {mode === 'va' ? (
         <FieldRow>
@@ -225,6 +279,58 @@ export function HeatInputScreen({ navigation }: Props) {
           : `Thermal efficiency k = ${k} for ${processOf(process).label}, ISO/TR 17671-1.`}
       </Text>
 
+      <SectionHeader title="WPS" meta={wps ? undefined : book.wps.length ? 'Not checking' : undefined} />
+      {book.wps.length ? (
+        <ChipRow
+          label="Check against"
+          options={[{ value: '', label: 'None' }, ...book.wps.map((w) => ({ value: w.id, label: w.name }))]}
+          selected={wps?.id ?? ''}
+          onSelect={(id) => applyWps((b) => setActiveWps(b, id || null))}
+        />
+      ) : (
+        <Text style={[t.type.caption, { color: t.colors.textMuted, paddingHorizontal: t.layout.screenPadding, marginBottom: t.space.md }]}>
+          Put in the window off the WPS (amps, volts, travel speed, heat input) and every figure here is checked against it as you type, and the verdict is saved with the result.
+        </Text>
+      )}
+      {wps ? (
+        <View style={{ paddingHorizontal: t.layout.screenPadding, marginBottom: t.space.md }}>
+          {PARAMS.filter((p) => wps[p].min !== null || wps[p].max !== null).map((p) => {
+            const value = measured(p);
+            const miss = verdict?.out.find((m) => m.param === p);
+            const ink = value === null ? t.colors.textMuted : miss ? t.colors.danger : t.colors.success;
+            return (
+              <View key={p} accessibilityLabel={`${PARAM_LABEL[p]}: ${value ?? 'not measured'}, WPS ${rangeText(p, wps[p], units)}${value === null ? '' : miss ? ', out of range' : ', in range'}`} style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.md, paddingVertical: t.space.sm, borderBottomWidth: t.hairline, borderBottomColor: t.colors.border }}>
+                <Ionicons name={value === null ? 'remove-circle-outline' : miss ? 'close-circle' : 'checkmark-circle'} size={20} color={ink} />
+                <Text style={[t.type.body, { color: t.colors.text, flex: 1 }]}>{PARAM_LABEL[p]}</Text>
+                <Text style={[t.type.bodyStrong, { color: ink }]}>{value ?? '—'}</Text>
+                <Text style={[t.type.caption, { color: t.colors.textMuted, width: 120, textAlign: 'right' }]}>{rangeText(p, wps[p], units)}</Text>
+              </View>
+            );
+          })}
+          {wps.note ? <Text style={[t.type.caption, { color: t.colors.textMuted, marginTop: t.space.sm }]}>{wps.note}</Text> : null}
+        </View>
+      ) : null}
+      <ControlRow>
+        {wps ? <GhostButton label={`Edit ${wps.name}`} icon="create-outline" onPress={() => setEditing(wps)} style={{ flex: 1 }} /> : null}
+        <GhostButton label={book.wps.length ? 'New WPS' : 'Check against a WPS'} icon="add-outline" onPress={() => setEditing(newWps(Date.now()))} style={{ flex: 1 }} />
+      </ControlRow>
+      <WpsSheet
+        wps={editing}
+        units={units}
+        onClose={() => setEditing(null)}
+        onSave={(saved) => {
+          const now = Date.now();
+          const w = saved.id === 'new' ? { ...saved, id: wpsId(saved.name, now), createdAt: now } : saved;
+          applyWps((b) => {
+            const put = putWps(b, w);
+            if (!put.ok) say('warn', 'The phone holds 50 WPS windows. Delete one to add another.');
+            // The one just set up is the one being checked against.
+            return put.ok ? setActiveWps(put.book, w.id) : b;
+          });
+        }}
+        onDelete={(id) => applyWps((b) => removeWps(b, id))}
+      />
+
       {settings.weldFields.length ? (
         <>
           <SectionHeader title="Saved with it" />
@@ -254,6 +360,11 @@ export function HeatInputScreen({ navigation }: Props) {
                 <Text style={[t.type.caption, { color: t.colors.textMuted }]} numberOfLines={2}>
                   {[describe(e), ...e.fields.map((f) => `${f.name} ${f.value}`), e.project ? `Job ${e.project}` : null, when(e.createdAt)].filter(Boolean).join(' · ')}
                 </Text>
+                {e.wps ? (
+                  <Text style={[t.type.caption, { color: e.wps.out.length ? t.colors.danger : e.wps.checked.length ? t.colors.success : t.colors.textMuted }]} numberOfLines={3}>
+                    {verdictSentence(e.wps)}
+                  </Text>
+                ) : null}
               </View>
               <Pressable
                 onPress={() => {
@@ -285,7 +396,7 @@ export function HeatInputScreen({ navigation }: Props) {
         text={
           'Arc energy = volts × amps × arc time ÷ length welded, or a waveform-controlled machine\'s total energy ÷ length (ASME IX QW-409.1). ' +
           'Heat input = arc energy × k, the process\'s thermal efficiency, where the procedure applies one. Travel speed = length ÷ arc time. ' +
-          'Round a pipe takes the length as π × the diameter, for a pass all the way round. Check the result against the WPS range.'
+          'Round a pipe takes the length as π × the diameter, for a pass all the way round. The WPS check reads each figure as shown here, and takes heat input as the WPS does: without k for ASME IX and AWS, with it for EN ISO.'
         }
       />
     </Screen>

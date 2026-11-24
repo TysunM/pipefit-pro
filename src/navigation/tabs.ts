@@ -3,7 +3,7 @@ import type { RootStackParamList } from './types';
 
 // The tabs
 // --------
-// Seven ways into the app from its foot, the same seven on every tab. This
+// Six ways into the app from its foot, the same six on every tab. This
 // file says which and in what order they stand before anyone has moved one;
 // state/layout.ts keeps the order a man drags them into.
 //
@@ -14,11 +14,14 @@ import type { RootStackParamList } from './types';
 //              Its id is still 'tools', which it shipped as, so a saved
 //              order and the tiles moved on it carry over.
 //   Weld       heat input, weldability, and the weld log.
-//   Projects   everything saved: bolt-ups, isos, spools, level readings.
-//   Logs       the books he keeps and looks things up in.
+//   Projects   everything saved: bolt-ups, isos, spools, level readings;
+//              and, a tab at the top of the page, the Logs: the books he
+//              keeps and looks things up in. Logs stood on its own at the
+//              foot until it joined Projects; a saved order that holds it
+//              drops it (layout.ts), and its tiles keep their order.
 //   Edu        what a new hire learns and proves: orientation and the passport.
 
-export type TabId = 'home' | 'calc' | 'tools' | 'weld' | 'projects' | 'logs' | 'edu';
+export type TabId = 'home' | 'calc' | 'tools' | 'weld' | 'projects' | 'edu';
 
 export type TabRoute = { name: keyof RootStackParamList; params?: object };
 
@@ -38,11 +41,10 @@ export const TABS: readonly Tab[] = [
   { id: 'tools', label: 'PipeFit', icon: 'construct-outline', on: 'construct', route: { name: 'Group', params: { id: 'tools' } } },
   { id: 'weld', label: 'Weld', icon: 'flame-outline', on: 'flame', route: { name: 'Group', params: { id: 'weld' } } },
   { id: 'projects', label: 'Projects', icon: 'folder-outline', on: 'folder', route: { name: 'Projects' } },
-  { id: 'logs', label: 'Logs', icon: 'journal-outline', on: 'journal', route: { name: 'Group', params: { id: 'logs' } } },
   { id: 'edu', label: 'Edu', icon: 'school-outline', on: 'school', route: { name: 'Group', params: { id: 'edu' } } },
 ];
 
-/** The tab ids in their shipped order: Home, Calculator, PipeFit, Weld, Projects, Logs, Edu. */
+/** The tab ids in their shipped order: Home, Calculator, PipeFit, Weld, Projects, Edu. */
 export const TAB_ORDER: readonly TabId[] = TABS.map((t) => t.id);
 
 export const isTabId = (x: string): x is TabId => TAB_ORDER.includes(x as TabId);
