@@ -246,7 +246,7 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
           return setSheet({
             phase: 'done',
             heard,
-            reply: `${said ? `${titleOf(cmd.route)}: ${said}` : titleOf(cmd.route)}${missed}`,
+            reply: `${said ? `${titleOf(cmd.route)}: ${said}` : titleOf(cmd.route)}${missed ? `.${missed}` : ''}`,
             tone: missed ? 'warn' : 'ok',
             ...(others.current.length ? { others: others.current } : {}),
           });
@@ -322,11 +322,16 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
     [finish, setSpecs, teach],
   );
 
-  /** What needs the cloud. */
+  /**
+   * What needs the cloud. `guess`: the phone's own near-miss (a tool, one word
+   * not caught), done instead when the cloud cannot be asked or cannot tell,
+   * so nothing is lost with no signal; the cloud gets a short wait for it.
+   */
   const runClaude = useCallback(
-    async (heard: string, screen: string | null) => {
+    async (heard: string, screen: string | null, guess?: () => void) => {
       setSheet({ phase: 'thinking', heard, reply: '', tone: 'ok' });
-      const a = await askVoice(API_BASE, { said: heard, screen: screen ?? '' });
+      const a = await askVoice(API_BASE, { said: heard, screen: screen ?? '' }, guess ? { timeoutMs: 6000 } : {});
+      if (guess && (typeof a === 'string' || a.action === 'none')) return guess();
       if (typeof a === 'string' || a.action === 'none') lastMiss.current = { heard, route: screen, at: Date.now() };
       if (typeof a === 'string') return finish(heard, voiceMissWords(a), { tone: 'warn' });
       return applyAnswer(heard, a);
@@ -383,18 +388,22 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
         if (m) return runScreen(as(t), m, here);
       }
       const local = bestLocal(alternatives, screen);
-      if (local) {
+      // A tool with a word left over that could not be placed is a near miss: "the heat thing for welding" is not the Weld tab.
+      const nearMiss = local && local.cmd.kind === 'open' && local.cmd.ignored?.length ? local : null;
+      const doLocal = (l: NonNullable<typeof local>) => {
         // A transcript further down the list made sense of it: what the top one had instead is this phone's mishearing, kept for next time.
-        if (local.heard !== heard) teach(alignTranscripts(heard, local.heard, VOCAB));
-        return runLocal(as(local.heard), local.cmd);
-      }
+        if (l.heard !== heard) teach(alignTranscripts(heard, l.heard, VOCAB));
+        runLocal(as(l.heard), l.cmd);
+      };
+      if (local && !nearMiss) return doLocal(local);
       const part = matchScreen(heard, here, { whole: false });
       if (part) return runScreen(heard, part, here);
       for (const t of alternatives) {
         const a = recordAnswer(t);
         if (a) return applyAnswer(as(t), a);
       }
-      void runClaude(heard, screen);
+      // The cloud makes sense of it if it can; a near miss is done as heard if it cannot.
+      void runClaude(heard, screen, nearMiss ? () => doLocal(nearMiss) : undefined);
     },
     [finish, runLocal, runClaude, runScreen, applyAnswer, teach],
   );
