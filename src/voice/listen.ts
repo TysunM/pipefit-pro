@@ -75,7 +75,7 @@ export function transcriptsOf(results: unknown): string[] {
  * pauses (Android 13 and up, and Chrome); without, it closes after the first.
  * Settles when the session ends, saying why.
  */
-async function session(opts: { continuous: boolean; onHeard?: (partial: string) => void; onSaid: (alternatives: string[]) => void }): Promise<Ended> {
+async function session(opts: { continuous: boolean; onHeard?: (partial: string) => void; onSaid: (alternatives: string[]) => void; words?: readonly string[] }): Promise<Ended> {
   if (!canListen()) return { error: 'unavailable' };
   if (current) return { error: 'busy' };
   if (!(await permission())) return { error: 'denied' };
@@ -148,7 +148,7 @@ async function session(opts: { continuous: boolean; onHeard?: (partial: string) 
         interimResults: true,
         maxAlternatives: ALTERNATIVES,
         continuous: opts.continuous,
-        contextualStrings: LISTEN_FOR,
+        contextualStrings: opts.words?.length ? [...new Set([...opts.words, ...LISTEN_FOR])] : LISTEN_FOR,
         // Commands, not dictation.
         androidIntentOptions: { EXTRA_LANGUAGE_MODEL: 'web_search' },
       });
@@ -158,12 +158,13 @@ async function session(opts: { continuous: boolean; onHeard?: (partial: string) 
   });
 }
 
-/** Listen for one thing said, and settle with it, or with why nothing was heard. */
-export async function listenOnce(onHeard?: (partial: string) => void): Promise<Heard> {
+/** Listen for one thing said, and settle with it, or with why nothing was heard. `words`: what is on the screen, listened for first. */
+export async function listenOnce(onHeard?: (partial: string) => void, words?: readonly string[]): Promise<Heard> {
   let texts: string[] = [];
   const end = await session({
     continuous: false,
     onHeard,
+    words,
     onSaid: (t) => {
       if (!texts.length) texts = t;
       try {

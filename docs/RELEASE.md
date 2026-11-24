@@ -468,6 +468,17 @@ still works; the two features simply say the server is not set up.
 | `TYPESAFE_API_KEY` | Secret | Jev: smart fill on a heat scan, and the handbook search |
 | `ANTHROPIC_API_KEY` | Secret | Claude: the shift report summary, spoken commands, fitting sheets and orientation courses |
 | `CLAUDE_MODEL` | Variable (plain text) | Which Claude model does it: a current model id such as `claude-opus-5-5`. Changing it needs no build and no deploy. |
+| `WORKERS_AI_MODEL` | Variable (plain text), optional | The free voice helper's model, when Claude is not set up or not paid for. Defaults to `@cf/meta/llama-3.3-70b-instruct-fp8-fast`; `@cf/meta/llama-3.1-8b-instruct-fast` costs about a sixth as much of the daily allowance. |
+
+The free voice helper needs no key: `wrangler.jsonc` binds Cloudflare Workers
+AI as `AI`, and a deploy sets it up. Spoken commands the phone cannot work out
+go to Claude when `ANTHROPIC_API_KEY` works, and to Workers AI when it is
+missing, refused or out of credit. The account's free allowance is 10,000
+Neurons a day, reset at 00:00 UTC; past it the call fails and nothing is
+billed. Its prompt is the voice rules and the handbook's index, about 3,600
+tokens, so on the default model a free day holds roughly 70 to 80 cloud
+commands. Everything on the screen, every tool and the record sentences are
+worked out on the phone and never spend it.
 
 `wrangler.jsonc` sets `keep_vars: true`, so a deploy keeps the plain
 variables set in the dashboard. Without it every push would deploy the Worker

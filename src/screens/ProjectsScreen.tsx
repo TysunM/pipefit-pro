@@ -43,6 +43,7 @@ import { clockLabel, dayLabel, workDay } from '../calc/days';
 import { useSettings } from '../state/settings';
 import { workedOn } from '../state/today';
 import { Segmented } from '../components/Segmented';
+import { useVoiceTargets } from '../voice/useVoiceTargets';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Projects'>;
 
@@ -645,6 +646,7 @@ function Card({
 }
 
 function SmallButton({ label, onPress, strong = false }: { label: string; onPress: () => void; strong?: boolean }) {
+  useVoiceTargets([{ kind: 'press', label, run: () => (onPress(), label) }]);
   const t = useTheme();
   const c = t.colors;
   return (

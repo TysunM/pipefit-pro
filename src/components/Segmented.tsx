@@ -2,6 +2,7 @@ import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { useTheme } from '../theme/ThemeProvider';
 import { Well } from './metal';
+import { useVoiceTargets } from '../voice/useVoiceTargets';
 
 /**
  * A few choices in one pill, the chosen one lit blue.
@@ -22,6 +23,7 @@ export function Segmented<T extends string | number>({
   onSelect: (value: T) => void;
 }) {
   const t = useTheme();
+  useVoiceTargets(options.map((o) => ({ kind: 'pick', label: o.label, group: label, on: o.value === selected, run: () => (onSelect(o.value), label ? `${label}: ${o.label}` : o.label) })));
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: t.layout.screenPadding, marginBottom: t.space.lg, gap: t.space.md }}>
       {label ? <Text style={[t.type.label, { color: t.colors.textMuted, width: 64 }]}>{label}</Text> : null}

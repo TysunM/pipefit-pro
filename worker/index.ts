@@ -18,6 +18,7 @@ import { HANDBOOK_PICK_PATH, MAX_QUERY, cleanQuery, handbookRequest, readHandboo
 import { SHIFT_POLISH_PATH } from '../src/ai/shiftPolish';
 import { MODEL_ID, claudeCheck, fittingSheet, orientationCourse, shiftPolish, voiceCommand, type Reply } from './claude';
 import { VOICE_PATH } from '../src/ai/voice';
+import { AI_MODEL_ID, DEFAULT_AI_MODEL, voiceByWorkersAi, type Ai } from './workersAi';
 import { FITTING_SHEET_PATH, MAX_SHEET_BODY } from '../src/ai/fittingSheet';
 import { MAX_ORIENTATION_BODY, ORIENTATION_PATH } from '../src/ai/orientation';
 import { CLAUDE_CHECK_PATH, MAX_CHECK_BODY } from '../src/ai/claudeCheck';
@@ -33,7 +34,22 @@ export interface Env {
   CLAUDE_MODEL?: string;
   /** The web app's static files. */
   ASSETS?: { fetch: (req: Request) => Promise<Response> };
+  /** Cloudflare Workers AI, bound in wrangler.jsonc: the free cloud helper for voice when Claude is not paid for (workersAi.ts). */
+  AI?: Ai;
+  /** Which Workers AI model; DEFAULT_AI_MODEL when unset. A plain variable, set in the dashboard. */
+  WORKERS_AI_MODEL?: string;
 }
+
+/**
+ * Why Claude did not answer, when the free helper should be asked instead:
+ * not set up, a key turned down, out of credit, or not reached. Not when
+ * Claude declined, or the request itself was bad: the free model would only
+ * be asked the same bad thing.
+ */
+const claudeUnavailable = (r: { status: number; body: unknown }): boolean => {
+  const e = r.body && typeof r.body === 'object' ? (r.body as Record<string, unknown>).error : undefined;
+  return e === 'not_configured' || e === 'upstream' || e === 'upstream_unreachable';
+};
 
 /** How long Jev gets. It usually answers in well under a second; this is for a bad network day. */
 const UPSTREAM_MS = 8000;
@@ -108,10 +124,18 @@ export async function handle(req: Request, env: Env, fetchImpl: typeof fetch = f
     const apiKey = env.ANTHROPIC_API_KEY?.trim();
     const model = env.CLAUDE_MODEL?.trim() ?? '';
     const missing = [!apiKey && 'ANTHROPIC_API_KEY', !MODEL_ID.test(model) && 'CLAUDE_MODEL'].filter(Boolean);
-    if (!apiKey || missing.length) return json(503, { error: 'not_configured', missing });
+    // Voice has a second helper: Cloudflare's free model, when Claude is not set up or not paid for.
+    const free = url.pathname === VOICE_PATH && env.AI ? env.AI : null;
+    if ((!apiKey || missing.length) && !free) return json(503, { error: 'not_configured', missing });
     if (Number(req.headers.get('content-length') ?? 0) > claude.maxBody) return json(413, { error: 'too_large' });
     const raw = await req.text();
-    const out = await claude.run(raw, apiKey, model, fetchImpl);
+    const out = apiKey && !missing.length ? await claude.run(raw, apiKey, model, fetchImpl) : { status: 503, body: { error: 'not_configured', missing } };
+    if (free && claudeUnavailable(out)) {
+      const aiModel = env.WORKERS_AI_MODEL?.trim() || DEFAULT_AI_MODEL;
+      if (!AI_MODEL_ID.test(aiModel)) return json(503, { error: 'not_configured', missing: ['WORKERS_AI_MODEL'] });
+      const viaAi = await voiceByWorkersAi(raw, free, aiModel);
+      return json(viaAi.status, viaAi.body);
+    }
     return json(out.status, out.body);
   }
   if (!route) return json(404, { error: 'not_found' });

@@ -1,9 +1,19 @@
 // Talking to the app
 // ------------------
 // Tap the mic, say it, and the app does it: opens the tool, fills in the
-// figures, writes the weld or the test reading, or answers from the handbook
-// out loud. What can be worked out on the phone is (voice/intent.ts); the rest
-// goes to Claude through the Worker (ai/voice.ts).
+// figures, presses what is on the screen, writes the weld or the test reading,
+// or opens the handbook at the table. In this order, the first that makes
+// sense of it wins:
+//   1. the screen's own words (the cut list's "4 done");
+//   2. anything on the screen said by its label: a button, a chip, a field
+//      and its figure (voice/onScreen.ts);
+//   3. a tool by name, with its figures (voice/intent.ts);
+//   4. part of a label on the screen, when it can mean one thing;
+//   5. the shift report, pre-task plan, pressure test and handbook sentences
+//      (voice/records.ts);
+//   6. the cloud, through the Worker: Claude, or Cloudflare's free model when
+//      Claude is not paid for (ai/voice.ts, worker/).
+// One to five run on the phone, with no signal and at no cost.
 //
 // Anything written to a record is said back and left on screen with an Undo,
 // because a recogniser in a loud shop will mishear a number sooner or later,
@@ -13,8 +23,11 @@
 // bolt, and the phone says the next one.
 
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { Platform } from 'react-native';
 import { API_BASE } from '../ai/apiBase';
-import { askVoice, voiceMissWords } from '../ai/voice';
+import { askVoice, voiceMissWords, type VoiceAnswer } from '../ai/voice';
+import { matchScreen, screenHelp, screenPhrases, targetsOn, type Entry, type ScreenMatch } from './onScreen';
+import { recordAnswer } from './records';
 import { say, sayThen } from '../audio/say';
 import { nav } from '../navigation/navRef';
 import { tool } from '../navigation/groups';
@@ -243,13 +256,9 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
     [finish, setSpecs],
   );
 
-  /** What needs Claude. */
-  const runClaude = useCallback(
-    async (heard: string, screen: string | null) => {
-      setSheet({ phase: 'thinking', heard, reply: '', tone: 'ok' });
-      const a = await askVoice(API_BASE, { said: heard, screen: screen ?? '' });
-      if (typeof a === 'string' || a.action === 'none') lastMiss.current = { heard, route: screen, at: Date.now() };
-      if (typeof a === 'string') return finish(heard, voiceMissWords(a), { tone: 'warn' });
+  /** Do what an answer says, whether the phone worked it out (records.ts) or the cloud did: said back, with an Undo. */
+  const applyAnswer = useCallback(
+    (heard: string, a: VoiceAnswer) => {
       const { shifts: s, tests: p, project } = latest.current;
       const now = Date.now();
       switch (a.action) {
@@ -313,6 +322,42 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
     [finish, setSpecs, teach],
   );
 
+  /** What needs the cloud. */
+  const runClaude = useCallback(
+    async (heard: string, screen: string | null) => {
+      setSheet({ phase: 'thinking', heard, reply: '', tone: 'ok' });
+      const a = await askVoice(API_BASE, { said: heard, screen: screen ?? '' });
+      if (typeof a === 'string' || a.action === 'none') lastMiss.current = { heard, route: screen, at: Date.now() };
+      if (typeof a === 'string') return finish(heard, voiceMissWords(a), { tone: 'warn' });
+      return applyAnswer(heard, a);
+    },
+    [finish, applyAnswer],
+  );
+
+  /** Something on the screen, said by its label: pressed, picked or filled in. */
+  const runScreen = useCallback(
+    (heard: string, m: ScreenMatch, here: readonly Entry[]) => {
+      if (m.kind === 'help') return finish(heard, screenHelp(here));
+      if (m.kind === 'which') return finish(heard, `Say which: ${m.targets.map((t) => t.label).join(', ')}.`, { tone: 'warn' });
+      const items = m.kind === 'many' ? m.items : [{ target: m.target, value: m.value }];
+      const said: string[] = [];
+      for (const it of items) {
+        const reply = it.target.run(it.value);
+        if (reply === null) {
+          const what = it.target.kind === 'field' ? `No ${it.target.field === 'number' ? 'figure' : 'words'} for ${it.target.label} in “${it.value}”.` : `${it.target.label} did not take that.`;
+          return finish(heard, [...said, what].join(' '), { tone: 'warn' });
+        }
+        said.push(reply);
+      }
+      // A button pressed is its own answer, shown and not said; a figure or a choice is said back, to catch a mishearing.
+      if (items.length === 1 && items[0]!.target.kind === 'press') {
+        return setSheet({ phase: 'done', heard, reply: said[0] ?? '', tone: 'ok', ...(others.current.length ? { others: others.current } : {}) });
+      }
+      return finish(heard, said.join(' '));
+    },
+    [finish],
+  );
+
   // What was heard is tried the way a person would hear it: the screen's own
   // words first; then every transcript the recogniser offered, each word
   // taken as the nearest one the app knows, and a command one word short
@@ -323,20 +368,44 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
       const heard = alternatives[0] ?? '';
       lastHeard.current = heard;
       others.current = othersOf(alternatives);
-      const screen = nav.isReady() ? (nav.getCurrentRoute()?.name ?? null) : null;
+      const current = nav.isReady() ? nav.getCurrentRoute() : undefined;
+      const screen = current?.name ?? null;
+      const here = targetsOn(current?.key ?? null);
+      const as = (t: string) => (t === heard ? heard : `${heard} (heard as “${t}”)`);
       for (const t of alternatives) {
         const own = screenVoice.current?.(t);
         if (own) return finish(heard, own);
+      }
+      // On a bend, offset or bolt-up, figures go through the tool's own matcher first, which has its checks (a flange refused once bolts are logged).
+      const toolFigures = screen !== null && isFigureRoute(screen);
+      for (const t of alternatives) {
+        const m = matchScreen(t, here, { whole: true, fields: !toolFigures });
+        if (m) return runScreen(as(t), m, here);
       }
       const local = bestLocal(alternatives, screen);
       if (local) {
         // A transcript further down the list made sense of it: what the top one had instead is this phone's mishearing, kept for next time.
         if (local.heard !== heard) teach(alignTranscripts(heard, local.heard, VOCAB));
-        runLocal(local.heard === heard ? heard : `${heard} (heard as “${local.heard}”)`, local.cmd);
-      } else void runClaude(heard, screen);
+        return runLocal(as(local.heard), local.cmd);
+      }
+      const part = matchScreen(heard, here, { whole: false });
+      if (part) return runScreen(heard, part, here);
+      for (const t of alternatives) {
+        const a = recordAnswer(t);
+        if (a) return applyAnswer(as(t), a);
+      }
+      void runClaude(heard, screen);
     },
-    [finish, runLocal, runClaude, teach],
+    [finish, runLocal, runClaude, runScreen, applyAnswer, teach],
   );
+
+  // The web app takes a command typed into the browser's console, as if said:
+  // pipefitSay('amperage 180'). For testing the whole path without a mic, and
+  // for support to try what a man says he said.
+  useEffect(() => {
+    if (Platform.OS !== 'web' || typeof window === 'undefined') return;
+    (window as unknown as { pipefitSay?: (text: string) => void }).pipefitSay = (text: string) => run([text]);
+  }, [run]);
 
   // "Not that?": what was said is what the man says it was. The difference
   // between the two transcripts is the recogniser's mistake, learned whether
@@ -358,7 +427,9 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
     if (freeOn.current) return;
     listening.current = true;
     setSheet({ phase: 'listening', heard: '', reply: '', tone: 'ok' });
-    void listenOnce((partial) => setSheet((v) => (v?.phase === 'listening' ? { ...v, heard: partial } : v))).then((h) => {
+    // The recogniser listens for what is on the screen first, then every tool's name.
+    const words = screenPhrases(targetsOn(nav.isReady() ? (nav.getCurrentRoute()?.key ?? null) : null));
+    void listenOnce((partial) => setSheet((v) => (v?.phase === 'listening' ? { ...v, heard: partial } : v)), words).then((h) => {
       listening.current = false;
       if ('text' in h) return run(h.alternatives);
       const words = heardWords(h.error);

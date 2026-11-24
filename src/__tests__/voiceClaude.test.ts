@@ -1,6 +1,7 @@
 import { handle } from '../../worker/index';
 import { TOOLS } from '../navigation/groups';
-import { VOICE_ROUTES, VOICE_SCHEMA, VOICE_SYSTEM, askVoice, cleanVoiceBody, readVoice, voiceMessage } from '../ai/voice';
+import { VOICE_ROUTES, VOICE_SCHEMA, VOICE_SYSTEM, VOICE_SYSTEM_LITE, askVoice, cleanVoiceBody, readVoice, voiceMessage, voiceMissOf, voiceMissWords } from '../ai/voice';
+import { DEFAULT_AI_MODEL, aiJson } from '../../worker/workersAi';
 import { REFERENCE_TABLES } from '../calc/reference';
 
 const ENV = { ANTHROPIC_API_KEY: 'sk-test-secret', CLAUDE_MODEL: 'test-model' };
@@ -181,5 +182,76 @@ describe('the app asking', () => {
       throw new Error('no network');
     }) as unknown as typeof fetch;
     expect(await askVoice('', { said: 'x', screen: '' }, { fetchImpl: offline })).toBe('offline');
+  });
+});
+
+describe('the free cloud helper, when Claude is not paid for', () => {
+  type Ran = { model: string; inputs: Record<string, unknown> };
+  const ai = (answers: unknown[], ran: Ran[] = []) => ({
+    run: async (model: string, inputs: Record<string, unknown>) => {
+      ran.push({ model, inputs });
+      const a = answers.shift();
+      if (a instanceof Error) throw a;
+      return a;
+    },
+  });
+  const OPEN = { action: 'open', say: 'Heat input.', route: 'HeatInput' };
+
+  test('with no Claude key, voice goes to Workers AI: the index of the handbook, not the book; held to the schema', async () => {
+    const ran: Ran[] = [];
+    const res = await handle(post({ said: 'the heat thing for welding', screen: 'Home' }), { AI: ai([{ response: OPEN }], ran) }, api(200, {}));
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ answer: OPEN, engine: 'workers-ai' });
+    expect(ran).toHaveLength(1);
+    expect(ran[0]!.model).toBe(DEFAULT_AI_MODEL);
+    const messages = ran[0]!.inputs.messages as { role: string; content: string }[];
+    expect(messages[0]!.content).toBe(VOICE_SYSTEM_LITE);
+    expect(VOICE_SYSTEM_LITE).toContain('- takeout-45: Screwed elbow takeout, 45°, page 4-39');
+    expect(VOICE_SYSTEM_LITE).not.toContain('### takeout-45:');
+    expect(VOICE_SYSTEM_LITE.length / 4).toBeLessThan(6000);
+    expect(ran[0]!.inputs.response_format).toEqual({ type: 'json_schema', json_schema: VOICE_SCHEMA });
+  });
+
+  test('Claude out of credit or its key refused: the free helper answers instead', async () => {
+    for (const status of [400, 401]) {
+      const body = status === 400 ? { type: 'error', error: { type: 'invalid_request_error', message: 'Your credit balance is too low to access the Anthropic API.' } } : { type: 'error', error: { type: 'authentication_error', message: 'invalid x-api-key' } };
+      const res = await handle(post({ said: 'x' }), { ...ENV, AI: ai([{ response: OPEN }]) }, api(status, body));
+      expect(await res.json()).toEqual({ answer: OPEN, engine: 'workers-ai' });
+    }
+  });
+
+  test('Claude answering is used, and the free helper is never asked', async () => {
+    const ran: Ran[] = [];
+    const res = await handle(post({ said: 'x' }), { ...ENV, AI: ai([{ response: OPEN }], ran) }, api(200, message({ action: 'none', say: 'Say that again?' })));
+    expect(await res.json()).toEqual({ answer: { action: 'none', say: 'Say that again?' } });
+    expect(ran).toHaveLength(0);
+  });
+
+  test('a model that cannot meet the schema is asked once more for plain JSON; a string answer is read', async () => {
+    const ran: Ran[] = [];
+    const res = await handle(post({ said: 'x' }), { AI: ai([new Error("JSON Mode couldn't be met"), { response: `Sure: ${JSON.stringify(OPEN)}` }], ran) }, api(200, {}));
+    expect(await res.json()).toEqual({ answer: OPEN, engine: 'workers-ai' });
+    expect(ran).toHaveLength(2);
+    expect(ran[1]!.inputs.response_format).toBeUndefined();
+  });
+
+  test("the day's free allowance spent says so, and the app says when it comes back", async () => {
+    const res = await handle(post({ said: 'x' }), { AI: ai([new Error('4006: you have used up your daily free allocation of 10,000 neurons')]) }, api(200, {}));
+    expect(res.status).toBe(429);
+    expect(await res.json()).toEqual({ error: 'daily_limit', engine: 'workers-ai' });
+    expect(voiceMissOf({ error: 'daily_limit' })).toBe('daily_limit');
+    expect(voiceMissWords('daily_limit')).toMatch(/midnight UTC/);
+  });
+
+  test('an answer out of shape is never passed on', async () => {
+    const res = await handle(post({ said: 'x' }), { AI: ai([{ response: { action: 'shift', say: 'ok', welds: [{ nps: 7, count: 2 }] } }]) }, api(200, {}));
+    expect(await res.json()).toEqual({ answer: { action: 'none', say: 'ok' }, engine: 'workers-ai' });
+    expect(aiJson({ response: 'no json here' })).toBeUndefined();
+  });
+
+  test('a model id that is not one is said to be wrong; the other Claude routes never use the free helper', async () => {
+    expect(await (await handle(post({ said: 'x' }), { AI: ai([]), WORKERS_AI_MODEL: 'llama please' }, api(200, {}))).json()).toEqual({ error: 'not_configured', missing: ['WORKERS_AI_MODEL'] });
+    const shift = await handle(new Request('https://pipefit.test/api/shift-polish', { method: 'POST', body: '{}' }), { AI: ai([{ response: OPEN }]) }, api(200, {}));
+    expect(shift.status).toBe(503);
   });
 });
