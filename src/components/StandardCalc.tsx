@@ -7,6 +7,7 @@ import { CalcKey, type KeyTone } from './CalcKey';
 import { UnitConverter } from './UnitConverter';
 import { equalsBasic, previewBasic, pressBasic, remember, tokText, type BasicKey, type BasicState } from '../calc/basic';
 import { useCalcPrefs } from '../state/calcPrefsStore';
+import { useVoiceTargets } from '../voice/useVoiceTargets';
 import type { StandardPanel } from '../state/calcPrefs';
 
 // The phone calculator
@@ -96,6 +97,14 @@ export function StandardCalc({
       return r.state;
     });
   const show = (next: StandardPanel) => update((p) => ({ ...p, panel: p.panel === next ? 'keys' : next }));
+  const scientific = () => update((p) => ({ ...p, scientific: p.panel !== 'keys' ? true : !p.scientific, panel: 'keys' }));
+  // The strip by voice: "history", "unit converter", "scientific keys"; "keypad" goes back to the keys.
+  useVoiceTargets([
+    { kind: 'press', label: 'History', run: () => (show('history'), panel === 'history' ? 'Keypad.' : 'History.') },
+    { kind: 'press', label: 'Unit converter', run: () => (show('convert'), panel === 'convert' ? 'Keypad.' : 'Unit converter.') },
+    { kind: 'press', label: 'Scientific keys', run: () => (scientific(), 'Scientific keys.') },
+    { kind: 'press', label: 'Keypad', run: () => (update((p) => ({ ...p, panel: 'keys' })), 'Keypad.') },
+  ]);
 
   const rows = [...(sci && panel === 'keys' ? sciRows(state.second, state.angle) : []), ...PAD];
   // The pad fills the room under the display, as the phone's does: taller keys on a tall phone, shorter on a short one.
@@ -113,7 +122,7 @@ export function StandardCalc({
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
       {tool('time-outline', 'History', panel === 'history', () => show('history'))}
       {tool('swap-horizontal-outline', 'Unit converter', panel === 'convert', () => show('convert'))}
-      {tool('flask-outline', 'Scientific keys', sci && panel === 'keys', () => update((p) => ({ ...p, scientific: p.panel !== 'keys' ? true : !p.scientific, panel: 'keys' })))}
+      {tool('flask-outline', 'Scientific keys', sci && panel === 'keys', scientific)}
       <View style={{ flex: 1 }} />
       {panel === 'keys' ? tool('backspace-outline', 'Backspace', false, () => press({ t: 'back' })) : null}
     </View>

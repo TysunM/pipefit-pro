@@ -943,6 +943,23 @@ answer: it means there is nothing being wasted to recover.
 
 Two calculators in one tab. The switch at the top picks **Trade** or **Standard**, and the tab opens on whichever you used last. Each keeps its own sum, so flipping across and back loses nothing. While this tab is open the mic sits at the end of that top row instead of floating over the keys.
 
+### Say the sum
+
+Tap the mic and say it the way you would say it to the man next to you. The sum is keyed into the calculator exactly as it would be typed, worked by the same keys, and the answer is shown on the display and read out.
+
+| Say | What happens |
+|---|---|
+| "12 and a half plus 3 foot 2", "10 foot minus 3 and a quarter", "350 mil plus 2 inches" | Worked on the **Trade** calculator in feet, inches and fractions, whichever calculator is showing: 50-1/2", 116-3/4", 15-3/4". A bare figure in a sum of lengths is inches. |
+| "2 foot times 3", "what's 12 times 8 divided by 3" | Times and divide keep a bare figure a plain number: 72". |
+| "Times 2", "plus 3 foot", "minus 6" | Starts with an operation: carries on from the answer on the display. |
+| "Square root of 144", "5 squared", "2 to the power of 10", "sine of 30", "200 plus 10 percent", "open bracket 2 plus 3 close bracket times 4" | Roots, powers, trig in degrees, percent and brackets, on either calculator. "5 factorial" works on Standard. |
+| "Add 12 and 3", "subtract 3 from 10", "multiply 6 by 7", "divide 100 by 8" | Said verb first, worked the right way round. |
+| "Convert 3 feet to millimetres", "how many psi in 10 bar", "100 degrees Fahrenheit to Celsius", "50 foot pounds to newton metres" | The converter opens at that figure, with every unit of the category under it; the answer is read out. |
+| "Equals", "clear", "backspace" | Those keys. |
+| "Trade calculator", "standard", "history", "unit converter", "scientific keys", "keypad" | Switches the calculator or its panel. |
+
+Say a sum or a conversion on **any** screen and the Calculator opens and works it. Works with no signal.
+
 ### Standard: the phone calculator
 
 Laid out like the calculator on the phone, so there is nothing to learn.
@@ -1645,6 +1662,7 @@ Whatever you can see, you can say. Every button, chip, switch and box tells the 
 | "Hazards hot work and lifting", "toolbox talk ladders", "task is tie-in at rack 3", "crew is John and Luis" | Written on today's pre-task plan. Hazards are heard by any name a crew uses: "rigging", "heights", "LOTO", "trench". |
 | "What's the takeout on a 45?", "look up the U-bolts" | The handbook opens at the table that holds it, with its page. |
 | "Half inch stainless 40S", "6 inch chrome moly P22 schedule 80 long radius", "4 inch PVC" | Sets the job's pipe: size, material, wall, elbow radius — any of them. Said back with an Undo. A calculator already open follows it straight away (Cut Length also moves to the new material's joints) and shows an amber "Pipe changed to …" bar with a buzz, so it is seen as well as heard; changed from Settings, the bar shows when you go back to the calculator. A saved spool keeps its own pipe. |
+| "What's 12 and a half plus 3 foot 2", "convert 3 feet to millimetres" | The Calculator opens and works it (see Calculator → Say the sum). |
 | "Back", "cancel" | Goes back a screen, or closes the panel. |
 
 **What runs where.** Everything above is worked out on the phone, at once, with no signal and at no cost: the screen's labels first, then tool names and figures, then the record sentences. Only a sentence none of those make sense of goes to the cloud, which needs signal:
