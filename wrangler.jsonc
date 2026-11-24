@@ -25,6 +25,11 @@
   // shift report's Claude button goes back to "not switched on". Secrets
   // (TYPESAFE_API_KEY, ANTHROPIC_API_KEY) are kept either way.
   "keep_vars": true,
+  // Cloudflare Workers AI: the free cloud helper for voice when Claude is not
+  // paid for (worker/workersAi.ts). No key; the account's free allowance is
+  // 10,000 Neurons a day. WORKERS_AI_MODEL, a plain variable in the
+  // dashboard, changes the model; it defaults to Llama 3.3 70B.
+  "ai": { "binding": "AI" },
   "assets": {
     "directory": "./dist",
     "binding": "ASSETS",

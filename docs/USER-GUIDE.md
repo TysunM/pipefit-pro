@@ -1614,23 +1614,45 @@ The round mic low on the right of every screen. Tap it, say it, and the app does
 
 **Put it where you want it.** Press the mic and drag it anywhere on the screen; let go and it stays there, on every page and after the app is shut. A tap that wanders a little is still a tap, so a gloved press does not move it by accident. It keeps its place as a share of the screen, so turning the phone or restoring onto a bigger one still finds it on the screen. **Settings → In the field → Put the mic back in its corner** returns it, and so does **Settings → Layout → Put everything back where it shipped**. On the Calculator tab it sits in the top row instead, clear of both keypads.
 
+### Anything on the screen, by what it says
+
+Whatever you can see, you can say. Every button, chip, switch and box tells the voice its label, on every screen, so no screen has to be taught its words:
+
+| Say | What happens |
+|---|---|
+| "Save", "share", "new WPS", "send the history" | That button is pressed. Part of a long label is enough when it can only mean one button; when it could mean two, the panel asks which. |
+| "SMAW stick", "total energy", "logs", "process SMAW stick" | That chip or switch is picked. The row's name in front is optional. |
+| "Amperage 180", "set the voltage to 24.5", "amps 180" | That box is filled. |
+| "Amperage 180 voltage 24 length welded 11.8 arc time 60" | Several number boxes in one breath, each to the next box's name. |
+| "WPS is WPS-101", "note the pump came in late" | A text box takes the words as said; a note box adds them to what is there. |
+| "Clear the note", "amperage blank" | Empties that box. |
+| "What can I say?" | Reads out what this screen answers to. |
+
+"Tap", "press", "please" and "button" round a command are ignored. A sheet open over a page wins a tie: "cancel" presses the sheet's Cancel, not the page's. A button is pressed quietly; a box or a chip is said back, so a mishearing is caught. Works with no signal, at no cost.
+
 ### What you can say
 
 | Say | What happens |
 |---|---|
 | "Bolt up", "hydro", "heat book", "shift report" | That tool opens. Works with no signal. |
-| "Home", "projects", "tools", "logs", "calculator", "edu" | That tab along the bottom opens. |
+| "Home", "projects", "PipeFit", "weld", "logs", "calculator", "edu" | That tab opens; "logs" opens the Logs tab on the Projects page. |
 | "Rolling offset, rise 12, roll 8 and a half, run 30" | Rolling offset opens with the figures in. "3 foot 6", "12 and 3/8" and "350 millimetres" are understood. |
 | "Simple offset, 14 and a half at 22 and a half degrees" | Any bend or offset tool opens filled in — see the table below. |
 | "Rise 12", "leg b 3 foot 6" (with the tool open) | Fills that field on the screen you are on. |
-| "Two 6 inch welds, weld 14 rejected for porosity" | Added to today's shift report for the job on the home screen. |
-| "Safety note: fire watch posted at the tank" | Added under Safety on today's report. Issues, Tomorrow and Notes work the same way. |
-| "Hold started at 225", "reading 224", "hold ended at 224", "test passed" | Written on the pressure test on screen, or the job's latest open test. |
-| "What's the takeout on a 2 inch screwed 90?" | Answered out loud from the handbook, and the table opens with its page number. |
+| "Two 6 inch welds", "weld 14 rejected for porosity", "spools 3 and 4 done", "crew of 6", "10 hours" | Added to today's shift report for the job on the home screen. |
+| "Safety: fire watch posted at the tank" | Added under Safety on today's report. Issue, Tomorrow and Note work the same way. |
+| "Start the hold at 225", "reading 224 psi", "end the hold at 224", "test passed", "test failed, leak at flange 3" | Written on the pressure test on screen, or the job's latest open test. |
+| "Hazards hot work and lifting", "toolbox talk ladders", "task is tie-in at rack 3", "crew is John and Luis" | Written on today's pre-task plan. Hazards are heard by any name a crew uses: "rigging", "heights", "LOTO", "trench". |
+| "What's the takeout on a 45?", "look up the U-bolts" | The handbook opens at the table that holds it, with its page. |
 | "Half inch stainless 40S", "6 inch chrome moly P22 schedule 80 long radius", "4 inch PVC" | Sets the job's pipe: size, material, wall, elbow radius — any of them. Said back with an Undo. A calculator already open follows it straight away (Cut Length also moves to the new material's joints) and shows an amber "Pipe changed to …" bar with a buzz, so it is seen as well as heard; changed from Settings, the bar shows when you go back to the calculator. A saved spool keeps its own pipe. |
 | "Back", "cancel" | Goes back a screen, or closes the panel. |
 
-Tool names are matched on the phone, at once. Everything else is read by Claude through the app's server, which needs signal.
+**What runs where.** Everything above is worked out on the phone, at once, with no signal and at no cost: the screen's labels first, then tool names and figures, then the record sentences. Only a sentence none of those make sense of goes to the cloud, which needs signal:
+
+- **Claude**, when the server has a paid Anthropic key. Claude also reads a figure out of the handbook aloud.
+- **Cloudflare's free model** otherwise: no key, no bill. It works out what was meant the same way, and points to the handbook table rather than reading a figure from it. It has a free allowance of 10,000 Neurons a day for the whole account, which comes back at midnight UTC; past it the panel says so, and everything on the phone carries on.
+
+The app never writes a record from a cloud answer it has not checked against the same rules, whichever one answered.
 
 **Misheard words are taken for what they nearly are.** The phone's recogniser knows everyday speech, not the trade, so it writes "12 volt" for 12 bolt, "bold cup" for bolt up, "hydra" for hydro, "rice 12, role 8" for rise 12, roll 8. The app hears those the way a fitter would: a word it does not know is taken as the nearest one it does, nearer still when it belongs to the tool just named, and every guess the recogniser offered is tried before anything goes to Claude. A command one word short of making sense is done anyway, and the panel says what it did not catch. A word near nothing the app knows is left as said, and that sentence goes to Claude as said, so nothing is quietly made up.
 
@@ -1677,7 +1699,8 @@ Anything else it hears is shown and ignored, so a conversation nearby does not l
 
 - **No mic button:** it is off under Settings → In the field → Voice, or the phone has no speech recogniser (install or update the Google app).
 - **"The microphone is off for PipeFit":** phone Settings → Apps → PipeFit Pro → Permissions → Microphone → Allow.
-- **"Claude is not set up on the server":** the Worker needs `ANTHROPIC_API_KEY` and `CLAUDE_MODEL` (see RELEASE.md). Tool names still work.
+- **"The cloud helper is not set up on the server":** the Worker has neither an Anthropic key nor the Workers AI binding. The binding ships in `wrangler.jsonc`, so a deploy restores it. Everything on the screen still works.
+- **"Today's free cloud allowance is used up":** the account's 10,000 free Neurons are spent; they come back at midnight UTC. Everything worked out on the phone still works. A Cloudflare Workers Paid plan ($5 a month) lifts the cap at about a dollar per thousand commands.
 - **"Test Claude in Settings shows why":** Settings → Smart help → **Test Claude** asks Claude one word and shows what came back, in Anthropic's words when it is a no. An Anthropic account with no credit, or a retired model name in `CLAUDE_MODEL`, are the usual causes.
 - **Misheard tools:** a word near a tool's name opens the tool ("hydra" opens the hydro test). If it still misses, say the name on the tile ("flange bolt-up", "pressure tests"). Every tile name is taught to the recogniser.
 

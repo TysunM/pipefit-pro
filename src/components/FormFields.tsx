@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../theme/ThemeProvider';
 import { DimensionInput } from './DimensionInput';
 import { Well } from './metal';
+import { useVoiceTargets } from '../voice/useVoiceTargets';
 import { clockLabel, dayKey, dayLabel, readClock, readDate, shiftDay, usDate } from '../calc/days';
 
 // The fields a paper form has
@@ -133,6 +134,20 @@ export function NoteField({
 }) {
   const t = useTheme();
   const [focused, setFocused] = useState(false);
+  // Said by its name and then the words, which are added to what is there: "note the pump came late". "Clear the note" empties it.
+  useVoiceTargets([
+    {
+      kind: 'field',
+      label,
+      field: 'note',
+      run: (said) => {
+        if (!said) return (onChangeText(''), `${label} cleared.`);
+        const words = said.charAt(0).toUpperCase() + said.slice(1);
+        onChangeText(`${value.trim() ? `${value.trim()} ` : ''}${words}`.slice(0, max));
+        return `${label}: ${words}`;
+      },
+    },
+  ]);
   return (
     <View style={{ paddingHorizontal: t.layout.screenPadding, marginBottom: t.space.lg }}>
       <Text style={[t.type.label, { color: t.colors.textMuted, marginBottom: t.space.sm }]}>{label}</Text>
@@ -157,6 +172,7 @@ export function NoteField({
 /** One line of a checklist: ticked or not. */
 export function CheckRow({ on, text, sub, onPress }: { on: boolean; text: string; sub?: string; onPress: () => void }) {
   const t = useTheme();
+  useVoiceTargets([{ kind: 'press', label: text, on, run: () => (onPress(), `${text}: ${on ? 'off' : 'on'}.`) }]);
   return (
     <Pressable
       onPress={onPress}

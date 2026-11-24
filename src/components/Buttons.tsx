@@ -3,6 +3,7 @@ import { Pressable, Text, View, ViewStyle } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../theme/ThemeProvider';
 import { Plate } from './metal';
+import { useVoiceTargets } from '../voice/useVoiceTargets';
 
 // Buttons are plates. A plain one is bronze-dark metal; the one thing on a
 // screen worth pressing is copper. Pressed, either one sinks — the sheen turns
@@ -17,6 +18,8 @@ type Props = {
 
 function PlateButton({ label, onPress, icon, style, tone }: Props & { tone: 'metal' | 'copper' }) {
   const t = useTheme();
+  // Said by its label, on any screen (voice/onScreen.ts).
+  useVoiceTargets([{ kind: 'press', label, run: () => (onPress(), label) }]);
   const ink = tone === 'copper' ? t.colors.onCopper : t.colors.text;
   return (
     <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={label} style={style}>
@@ -66,6 +69,7 @@ export function SelectorButton({
   style?: ViewStyle;
 }) {
   const t = useTheme();
+  useVoiceTargets([{ kind: 'press', label: primary, run: () => (onPress(), primary) }]);
   return (
     <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={`${primary}${badge ? ` ${badge}` : ''}`} style={style}>
       {({ pressed }) => (

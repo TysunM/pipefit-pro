@@ -2,6 +2,7 @@ import React from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useTheme } from '../theme/ThemeProvider';
 import { Plate } from './metal';
+import { useVoiceTargets } from '../voice/useVoiceTargets';
 
 export type ChipOption<T> = { value: T; label: string };
 
@@ -17,6 +18,8 @@ export function ChipRow<T extends string | number>({
   onSelect: (value: T) => void;
 }) {
   const t = useTheme();
+  // Each chip said by its label, or with its row's: "SMAW", "process SMAW".
+  useVoiceTargets(options.map((o) => ({ kind: 'pick', label: o.label, group: label, on: o.value === selected, run: () => (onSelect(o.value), label ? `${label}: ${o.label}` : o.label) })));
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: t.space.lg }}>
       {label ? (

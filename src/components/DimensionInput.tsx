@@ -10,8 +10,9 @@ import { M_TO_IN } from '../calc/spatial';
 import { Ionicons } from '@expo/vector-icons';
 import { useVoiceMaybe } from '../voice/VoiceProvider';
 import { listenOnce } from '../voice/listen';
-import { spokenValue } from '../voice/intent';
+import { spokenNumber, spokenValue } from '../voice/intent';
 import { figureText } from '../voice/figures';
+import { useVoiceTargets } from '../voice/useVoiceTargets';
 
 export function DimensionInput({
   label,
@@ -69,7 +70,8 @@ export function DimensionInput({
     void listenOnce((partial) => setNote(`“${partial}”`)).then((h) => {
       setListening(false);
       const kind = suffix === '°' ? 'angle' : suffix === u.suffix ? 'length' : 'count';
-      const f = 'text' in h ? spokenValue(h.text, kind) : null;
+      // A box that is not a length or an angle takes any figure: 180 amps, 24.5 volts, 1500 psi.
+      const f = 'text' in h ? (kind === 'count' ? spokenNumber(h.text) : spokenValue(h.text, kind)) : null;
       if (f) {
         onChangeText?.(figureText(f, u.num));
         return setNote(null);
@@ -79,6 +81,33 @@ export function DimensionInput({
       setTimeout(() => setNote(null), 3000);
     });
   };
+  // Said by its name and then the figure, on any screen: "amperage 180", "WPS is WPS-101", "clear the length".
+  const numeric = kb !== 'default';
+  useVoiceTargets(
+    editable && onChangeText
+      ? [
+          {
+            kind: 'field',
+            label,
+            field: numeric ? 'number' : 'text',
+            run: (said) => {
+              if (!said) return (onChangeText(''), `${label} cleared.`);
+              if (numeric) {
+                const kind = suffix === '°' ? 'angle' : suffix === u.suffix ? 'length' : 'count';
+                const f = kind === 'count' ? spokenNumber(said) : spokenValue(said, kind);
+                if (!f) return null;
+                const text = figureText(f, u.num);
+                onChangeText(text);
+                return `${label} ${text}${suffix && suffix !== '"' && suffix !== '°' ? ` ${suffix}` : (suffix ?? '')}.`;
+              }
+              const text = autoCapitalize === 'characters' ? said.toUpperCase() : autoCapitalize === 'words' ? said.replace(/\b\w/g, (c) => c.toUpperCase()) : said;
+              onChangeText(text);
+              return `${label}: ${text}.`;
+            },
+          },
+        ]
+      : null,
+  );
   return (
     <View style={[{ flex: 1, minWidth: 96 }, style]}>
       <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: t.space.sm, gap: 4 }}>

@@ -385,6 +385,20 @@ export function spokenValue(text: string, kind: FigureSpec['kind']): Figure | nu
 }
 
 /**
+ * A plain figure for a box that is not a length or an angle: amps, volts,
+ * psi, a count, a speed. Any number the box can show; the screen checks its
+ * own range. (A tool's count figure keeps its own limits: spokenValue.)
+ */
+export function spokenNumber(text: string): Figure | null {
+  const ws = snapWords(applyLearned(tokens(text), VOCAB), VOCAB);
+  for (let i = 0; i < ws.length; i++) {
+    const n = numberAt(ws, i);
+    if (n && Number.isFinite(n.value) && n.value >= 0 && n.value < 1e7) return { n: n.value, inches: false };
+  }
+  return null;
+}
+
+/**
  * What the recogniser is told to listen for: every tool name, every figure
  * name, the materials and walls a spec is said with, the bolt-up, camera and
  * saw words. A recogniser biased to "bolt" writes "bolt" where it would have
