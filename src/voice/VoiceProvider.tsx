@@ -25,7 +25,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { Platform } from 'react-native';
 import { API_BASE } from '../ai/apiBase';
-import { askVoice, voiceMissWords, type VoiceAnswer } from '../ai/voice';
+import { askVoice, voiceMissShort, voiceMissWords, type VoiceAnswer } from '../ai/voice';
 import { matchScreen, screenHelp, screenPhrases, targetsOn, type Entry, type ScreenMatch } from './onScreen';
 import { recordAnswer } from './records';
 import { say, sayThen } from '../audio/say';
@@ -325,13 +325,13 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
   /**
    * What needs the cloud. `guess`: the phone's own near-miss (a tool, one word
    * not caught), done instead when the cloud cannot be asked or cannot tell,
-   * so nothing is lost with no signal; the cloud gets a short wait for it.
+   * so nothing is lost with no signal, and told why the cloud did not help.
    */
   const runClaude = useCallback(
-    async (heard: string, screen: string | null, guess?: () => void) => {
+    async (heard: string, screen: string | null, guess?: (why: string) => void) => {
       setSheet({ phase: 'thinking', heard, reply: '', tone: 'ok' });
-      const a = await askVoice(API_BASE, { said: heard, screen: screen ?? '' }, guess ? { timeoutMs: 6000 } : {});
-      if (guess && (typeof a === 'string' || a.action === 'none')) return guess();
+      const a = await askVoice(API_BASE, { said: heard, screen: screen ?? '' }, guess ? { timeoutMs: 12_000 } : {});
+      if (guess && (typeof a === 'string' || a.action === 'none')) return guess(voiceMissShort(typeof a === 'string' ? a : 'none'));
       if (typeof a === 'string' || a.action === 'none') lastMiss.current = { heard, route: screen, at: Date.now() };
       if (typeof a === 'string') return finish(heard, voiceMissWords(a), { tone: 'warn' });
       return applyAnswer(heard, a);
@@ -403,7 +403,16 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
         if (a) return applyAnswer(as(t), a);
       }
       // The cloud makes sense of it if it can; a near miss is done as heard if it cannot.
-      void runClaude(heard, screen, nearMiss ? () => doLocal(nearMiss) : undefined);
+      void runClaude(
+        heard,
+        screen,
+        nearMiss
+          ? (why) => {
+              doLocal(nearMiss);
+              setSheet((v) => (v ? { ...v, reply: `${v.reply} Cloud helper: ${why}.` } : v));
+            }
+          : undefined,
+      );
     },
     [finish, runLocal, runClaude, runScreen, applyAnswer, teach],
   );

@@ -1,7 +1,8 @@
 import { handle } from '../../worker/index';
 import { TOOLS } from '../navigation/groups';
-import { VOICE_ROUTES, VOICE_SCHEMA, VOICE_SYSTEM, VOICE_SYSTEM_LITE, askVoice, cleanVoiceBody, readVoice, voiceMessage, voiceMissOf, voiceMissWords } from '../ai/voice';
+import { VOICE_ROUTES, VOICE_SCHEMA, VOICE_SYSTEM, VOICE_SYSTEM_LITE, askVoice, cleanVoiceBody, readVoice, testVoice, voiceMessage, voiceMissOf, voiceMissShort, voiceMissWords } from '../ai/voice';
 import { DEFAULT_AI_MODEL, aiJson } from '../../worker/workersAi';
+import { resetClaudeSkip } from '../../worker/index';
 import { REFERENCE_TABLES } from '../calc/reference';
 
 const ENV = { ANTHROPIC_API_KEY: 'sk-test-secret', CLAUDE_MODEL: 'test-model' };
@@ -186,6 +187,7 @@ describe('the app asking', () => {
 });
 
 describe('the free cloud helper, when Claude is not paid for', () => {
+  beforeEach(() => resetClaudeSkip());
   type Ran = { model: string; inputs: Record<string, unknown> };
   const ai = (answers: unknown[], ran: Ran[] = []) => ({
     run: async (model: string, inputs: Record<string, unknown>) => {
@@ -238,7 +240,7 @@ describe('the free cloud helper, when Claude is not paid for', () => {
   test("the day's free allowance spent says so, and the app says when it comes back", async () => {
     const res = await handle(post({ said: 'x' }), { AI: ai([new Error('4006: you have used up your daily free allocation of 10,000 neurons')]) }, api(200, {}));
     expect(res.status).toBe(429);
-    expect(await res.json()).toEqual({ error: 'daily_limit', engine: 'workers-ai' });
+    expect(await res.json()).toEqual({ error: 'daily_limit', engine: 'workers-ai', detail: '4006: you have used up your daily free allocation of 10,000 neurons' });
     expect(voiceMissOf({ error: 'daily_limit' })).toBe('daily_limit');
     expect(voiceMissWords('daily_limit')).toMatch(/midnight UTC/);
   });
@@ -253,5 +255,59 @@ describe('the free cloud helper, when Claude is not paid for', () => {
     expect(await (await handle(post({ said: 'x' }), { AI: ai([]), WORKERS_AI_MODEL: 'llama please' }, api(200, {}))).json()).toEqual({ error: 'not_configured', missing: ['WORKERS_AI_MODEL'] });
     const shift = await handle(new Request('https://pipefit.test/api/shift-polish', { method: 'POST', body: '{}' }), { AI: ai([{ response: OPEN }]) }, api(200, {}));
     expect(shift.status).toBe(503);
+  });
+});
+
+describe('telling why the cloud did not help, and testing it', () => {
+  beforeEach(() => resetClaudeSkip());
+  const ai = (answers: unknown[], ran: string[] = []) => ({
+    run: async (model: string) => {
+      ran.push(model);
+      const a = answers.shift();
+      if (a instanceof Error) throw a;
+      return a;
+    },
+  });
+  const OPEN = { action: 'open', say: 'Heat input.', route: 'HeatInput' };
+
+  test("Cloudflare's own words come back with a failure, never a key", async () => {
+    const res = await handle(post({ said: 'x' }), { AI: ai([new Error('5035: model requires Workers Paid'), new Error('5035: model requires Workers Paid')]) }, api(200, {}));
+    expect(res.status).toBe(502);
+    expect(await res.json()).toEqual({ error: 'upstream', engine: 'workers-ai', detail: `${DEFAULT_AI_MODEL}: 5035: model requires Workers Paid` });
+  });
+
+  test('once Claude says no for want of credit, voice goes straight to the free helper for a while', async () => {
+    let claudeCalls = 0;
+    const credit = (async () => {
+      claudeCalls += 1;
+      return new Response(JSON.stringify({ type: 'error', error: { type: 'invalid_request_error', message: 'Your credit balance is too low to access the Anthropic API.' } }), { status: 400, headers: { 'content-type': 'application/json' } });
+    }) as unknown as typeof fetch;
+    const env = { ...ENV, AI: ai([{ response: OPEN }, { response: OPEN }]) };
+    expect(await (await handle(post({ said: 'x' }), env, credit)).json()).toEqual({ answer: OPEN, engine: 'workers-ai' });
+    expect(await (await handle(post({ said: 'y' }), env, credit)).json()).toEqual({ answer: OPEN, engine: 'workers-ai' });
+    expect(claudeCalls).toBe(1);
+  });
+
+  test('the app tells a wait that ran out from no signal', async () => {
+    const slow = ((_u: unknown, init?: RequestInit) =>
+      new Promise((_r, reject) => init?.signal?.addEventListener('abort', () => reject(new Error('aborted'))))) as unknown as typeof fetch;
+    expect(await askVoice('', { said: 'x', screen: '' }, { fetchImpl: slow, timeoutMs: 20 })).toBe('timeout');
+    const none = (async () => {
+      throw new Error('offline');
+    }) as unknown as typeof fetch;
+    expect(await askVoice('', { said: 'x', screen: '' }, { fetchImpl: none })).toBe('offline');
+    expect(voiceMissShort('timeout')).toBe('took too long');
+    expect(voiceMissShort('none')).toBe('could not tell');
+  });
+
+  test('Settings → Test the voice helper: who answered, how fast, and what; or the server\'s words', async () => {
+    let t = 0;
+    const now = () => (t += 1200);
+    const ok = (async () => new Response(JSON.stringify({ answer: OPEN, engine: 'workers-ai' }), { status: 200 })) as unknown as typeof fetch;
+    expect(await testVoice('', { fetchImpl: ok, now })).toEqual({ ok: true, engine: "Cloudflare's free model", ms: 1200, said: 'opened HeatInput' });
+    const bad = (async () => new Response(JSON.stringify({ error: 'upstream', engine: 'workers-ai', detail: 'model x: 5035 requires Workers Paid' }), { status: 502 })) as unknown as typeof fetch;
+    expect(await testVoice('', { fetchImpl: bad, now })).toEqual({ ok: false, ms: 1200, why: "502 upstream from Cloudflare's free model. model x: 5035 requires Workers Paid" });
+    const unset = (async () => new Response(JSON.stringify({ error: 'not_configured', missing: ['ANTHROPIC_API_KEY', 'CLAUDE_MODEL'] }), { status: 503 })) as unknown as typeof fetch;
+    expect((await testVoice('', { fetchImpl: unset, now })).ok).toBe(false);
   });
 });

@@ -51,6 +51,23 @@ const claudeUnavailable = (r: { status: number; body: unknown }): boolean => {
   return e === 'not_configured' || e === 'upstream' || e === 'upstream_unreachable';
 };
 
+/**
+ * Claude turned a voice command down for want of credit or a good key: until
+ * then, voice goes straight to the free helper rather than wait on Claude to
+ * say no again. Held for as long as this Worker instance lives, at most ten
+ * minutes, so credit added shows up again on its own.
+ */
+let claudeSkipUntil = 0;
+export const CLAUDE_SKIP_MS = 10 * 60_000;
+const refusedForGood = (r: { body: unknown }): boolean => {
+  const b = r.body && typeof r.body === 'object' ? (r.body as Record<string, unknown>) : {};
+  return b.error === 'upstream' && (b.status === 400 || b.status === 401 || b.status === 403);
+};
+/** For tests. */
+export const resetClaudeSkip = (): void => {
+  claudeSkipUntil = 0;
+};
+
 /** How long Jev gets. It usually answers in well under a second; this is for a bad network day. */
 const UPSTREAM_MS = 8000;
 
@@ -129,7 +146,9 @@ export async function handle(req: Request, env: Env, fetchImpl: typeof fetch = f
     if ((!apiKey || missing.length) && !free) return json(503, { error: 'not_configured', missing });
     if (Number(req.headers.get('content-length') ?? 0) > claude.maxBody) return json(413, { error: 'too_large' });
     const raw = await req.text();
-    const out = apiKey && !missing.length ? await claude.run(raw, apiKey, model, fetchImpl) : { status: 503, body: { error: 'not_configured', missing } };
+    const skip = free !== null && Date.now() < claudeSkipUntil;
+    const out = apiKey && !missing.length && !skip ? await claude.run(raw, apiKey, model, fetchImpl) : { status: 503, body: { error: 'not_configured', missing } };
+    if (free && refusedForGood(out)) claudeSkipUntil = Date.now() + CLAUDE_SKIP_MS;
     if (free && claudeUnavailable(out)) {
       const aiModel = env.WORKERS_AI_MODEL?.trim() || DEFAULT_AI_MODEL;
       if (!AI_MODEL_ID.test(aiModel)) return json(503, { error: 'not_configured', missing: ['WORKERS_AI_MODEL'] });

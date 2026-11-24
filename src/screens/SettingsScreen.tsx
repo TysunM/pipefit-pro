@@ -32,6 +32,7 @@ import type { RootStackParamList } from '../navigation/types';
 import { backupAge, useLastBackup } from '../state/lastBackup';
 import { API_BASE } from '../ai/apiBase';
 import { askClaudeCheck } from '../ai/claudeCheck';
+import { VOICE_TEST_SAID, testVoice } from '../ai/voice';
 
 export function SettingsScreen() {
   const t = useTheme();
@@ -61,6 +62,15 @@ export function SettingsScreen() {
   const [check, setCheck] = React.useState<{ at: 'idle' } | { at: 'busy' } | { at: 'done'; ok: boolean; text: string }>({ at: 'idle' });
   // One word to Claude through the Worker, in the shape every route uses. What
   // comes back is shown as it is, so a wrong model name reads as one.
+  // The voice helper as the mic reaches it: Claude, or Cloudflare's free model when Claude is not paid for. Timed.
+  const [voiceCheck, setVoiceCheck] = React.useState<{ at: 'idle' } | { at: 'busy' } | { at: 'done'; ok: boolean; text: string }>({ at: 'idle' });
+  const testVoiceHelper = async () => {
+    if (voiceCheck.at === 'busy') return;
+    setVoiceCheck({ at: 'busy' });
+    const r = await testVoice(API_BASE);
+    const secs = `${(r.ms / 1000).toFixed(1)} s`;
+    setVoiceCheck(r.ok ? { at: 'done', ok: true, text: `${r.engine} answered in ${secs} and ${r.said}.` } : { at: 'done', ok: false, text: `After ${secs}: ${r.why}` });
+  };
   const testClaude = async () => {
     if (check.at === 'busy') return;
     setCheck({ at: 'busy' });
@@ -184,6 +194,20 @@ export function SettingsScreen() {
           style={[t.type.caption, { color: check.ok ? t.colors.success : t.colors.danger, paddingHorizontal: t.layout.screenPadding, marginTop: -t.space.sm, marginBottom: t.space.lg }]}
         >
           {check.text}
+        </Text>
+      ) : null}
+      <Text style={[t.type.caption, { color: t.colors.textMuted, paddingHorizontal: t.layout.screenPadding, marginBottom: t.space.md }]}>
+        {`What the phone cannot work out by voice goes to Claude, or to Cloudflare's free model when Claude is not paid for. Test the voice helper says "${VOICE_TEST_SAID}" to it and shows which answered, how fast, and what; or why not, in the server's words.`}
+      </Text>
+      <ControlRow>
+        <GhostButton label={voiceCheck.at === 'busy' ? 'Asking the voice helper…' : 'Test the voice helper'} icon="mic-outline" onPress={() => void testVoiceHelper()} style={{ flex: 1 }} />
+      </ControlRow>
+      {voiceCheck.at === 'done' ? (
+        <Text
+          accessibilityRole="text"
+          style={[t.type.caption, { color: voiceCheck.ok ? t.colors.success : t.colors.danger, paddingHorizontal: t.layout.screenPadding, marginTop: -t.space.sm, marginBottom: t.space.lg }]}
+        >
+          {voiceCheck.text}
         </Text>
       ) : null}
 
