@@ -358,7 +358,7 @@ export function readVoice(v: unknown): VoiceAnswer | null {
   }
 }
 
-export type VoiceMiss = 'not_set' | 'key_refused' | 'no_credit' | 'bad_model' | 'declined' | 'daily_limit' | 'down' | 'offline';
+export type VoiceMiss = 'not_set' | 'key_refused' | 'no_credit' | 'bad_model' | 'declined' | 'daily_limit' | 'down' | 'offline' | 'timeout';
 
 export function voiceMissOf(body: unknown): VoiceMiss {
   const e = isRec(body) ? body : {};
@@ -376,6 +376,8 @@ export function voiceMissWords(m: VoiceMiss): string {
   switch (m) {
     case 'offline':
       return 'No signal. Everything on the screen and every tool name still work without it.';
+    case 'timeout':
+      return 'The cloud helper took too long to answer. Everything on the screen and every tool name still work.';
     case 'not_set':
       return 'The cloud helper is not set up on the server yet. Everything on the screen and every tool name still work.';
     case 'daily_limit':
@@ -412,7 +414,7 @@ export async function askVoice(
     });
   } catch {
     clearTimeout(timer);
-    return 'offline';
+    return ctrl.signal.aborted ? 'timeout' : 'offline';
   }
   try {
     const data = (await res.json()) as unknown;
@@ -420,6 +422,66 @@ export async function askVoice(
     return readVoice(isRec(data) ? data.answer : null) ?? 'down';
   } catch {
     return 'down';
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/** Why the cloud did not help, in a few words, for the line under a near miss done as the phone heard it. */
+export function voiceMissShort(m: VoiceMiss | 'none'): string {
+  switch (m) {
+    case 'offline':
+      return 'no signal';
+    case 'timeout':
+      return 'took too long';
+    case 'not_set':
+      return 'not set up on the server';
+    case 'daily_limit':
+      return "today's free allowance is used up";
+    case 'declined':
+    case 'none':
+      return 'could not tell';
+    default:
+      return 'not answering (Settings, Test the voice helper, shows why)';
+  }
+}
+
+/** What Settings → Test the voice helper found: who answered, how fast, and what; or why not, in the server's words. */
+export type VoiceTest = { ok: true; engine: string; ms: number; said: string } | { ok: false; ms: number; why: string };
+
+/** The phrase the test sends: one the phone cannot place on its own, that means Heat input. */
+export const VOICE_TEST_SAID = 'open up the heat welding';
+
+/** Ask the voice route the test phrase, timed, and say what came back as it came back. */
+export async function testVoice(base: string, opts: { fetchImpl?: typeof fetch; timeoutMs?: number; now?: () => number } = {}): Promise<VoiceTest> {
+  const f = opts.fetchImpl ?? fetch;
+  const now = opts.now ?? Date.now;
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), opts.timeoutMs ?? 30_000);
+  const started = now();
+  const took = () => now() - started;
+  let res: Response;
+  try {
+    res = await f(`${base}${VOICE_PATH}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ said: VOICE_TEST_SAID, screen: 'Settings' }), signal: ctrl.signal });
+  } catch {
+    clearTimeout(timer);
+    return { ok: false, ms: took(), why: ctrl.signal.aborted ? `No answer in ${Math.round((opts.timeoutMs ?? 30_000) / 1000)} s.` : 'No signal to reach the server.' };
+  }
+  try {
+    const data = (await res.json()) as unknown;
+    const d = isRec(data) ? data : {};
+    const engine = d.engine === 'workers-ai' ? "Cloudflare's free model" : 'Claude';
+    if (!res.ok) {
+      const detail = typeof d.detail === 'string' && d.detail ? ` ${clean(d.detail, 240)}` : '';
+      const missing = Array.isArray(d.missing) && d.missing.length ? ` Missing: ${d.missing.map(String).join(', ')}.` : '';
+      return { ok: false, ms: took(), why: `${res.status} ${typeof d.error === 'string' ? d.error : 'error'}${d.engine ? ` from ${engine}` : ''}.${detail}${missing}` };
+    }
+    const a = readVoice(d.answer);
+    if (!a) return { ok: false, ms: took(), why: `${engine} answered with something that was not an answer.` };
+    const did = a.action === 'open' ? `opened ${a.route}` : a.action === 'none' ? `could not tell: “${a.say}”` : `${a.action}: “${a.say}”`;
+    return { ok: true, engine, ms: took(), said: did };
+  } catch {
+    return { ok: false, ms: took(), why: `The server answered ${res.status} with something that was not an answer.` };
   } finally {
     clearTimeout(timer);
   }

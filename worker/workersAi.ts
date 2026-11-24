@@ -48,6 +48,9 @@ export function aiJson(r: unknown): unknown {
   }
 }
 
+/** Cloudflare's own words for what went wrong, cut to a line: no key or account in it, there being none. */
+const detail = (e: unknown): string => (e instanceof Error ? e.message : String(e)).replace(/\s+/g, ' ').trim().slice(0, 240);
+
 /** The day's free allowance spent: Cloudflare says so in the error, as code 4006 or in words. */
 const spent = (e: unknown): boolean => /4006|neurons?|daily free allocation|allocation/i.test(e instanceof Error ? e.message : String(e));
 
@@ -88,11 +91,12 @@ export async function voiceByWorkersAi(raw: string, ai: Ai, model: string): Prom
       if (out !== undefined) break;
     } catch (e) {
       lastError = e;
-      if (spent(e)) return { status: 429, body: { error: 'daily_limit', engine: 'workers-ai' } };
-      if (e instanceof Error && e.message === 'timeout') return { status: 504, body: { error: 'upstream_unreachable', engine: 'workers-ai' } };
+      if (spent(e)) return { status: 429, body: { error: 'daily_limit', engine: 'workers-ai', detail: detail(e) } };
+      if (e instanceof Error && e.message === 'timeout') return { status: 504, body: { error: 'upstream_unreachable', engine: 'workers-ai', detail: `${model} gave no answer in ${AI_MS / 1000} s` } };
     }
   }
-  if (out === undefined) return { status: 502, body: lastError ? { error: 'upstream', engine: 'workers-ai' } : { error: 'bad_answer', engine: 'workers-ai' } };
+  if (out === undefined)
+    return { status: 502, body: lastError ? { error: 'upstream', engine: 'workers-ai', detail: `${model}: ${detail(lastError)}` } : { error: 'bad_answer', engine: 'workers-ai', detail: `${model} answered with no JSON` } };
   const answer = readVoice(out);
-  return answer ? { status: 200, body: { answer, engine: 'workers-ai' } } : { status: 502, body: { error: 'bad_answer', engine: 'workers-ai' } };
+  return answer ? { status: 200, body: { answer, engine: 'workers-ai' } } : { status: 502, body: { error: 'bad_answer', engine: 'workers-ai', detail: `${model} answered out of shape` } };
 }
