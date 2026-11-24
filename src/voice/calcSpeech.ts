@@ -147,7 +147,7 @@ function strip(ws: string[]): string[] {
 }
 
 /** A figure and its unit at `i`: "12", "12 and a half", "3 foot 2", "3 foot 2 and 3/8", "350 mil", "2.5 metres". */
-function quantity(ws: readonly string[], i: number): { item: Extract<Item, { k: 'num' }>; next: number } | null {
+export function quantity(ws: readonly string[], i: number): { item: Extract<Item, { k: 'num' }>; next: number } | null {
   const a = numberAt(ws, i);
   if (!a) return null;
   let next = a.next;
@@ -467,6 +467,7 @@ export function speakDisplay(text: string): string {
     .replace(/(\d+)'\s*/g, '$1 foot ')
     .replace(/"/g, ' inches')
     .replace(/\bsq\b/g, 'square')
+    .replace(/°/g, ' degrees')
     .replace(/\s+/g, ' ')
     .trim();
 }

@@ -957,6 +957,12 @@ Tap the mic and say it the way you would say it to the man next to you. The sum 
 | "Convert 3 feet to millimetres", "how many psi in 10 bar", "100 degrees Fahrenheit to Celsius", "50 foot pounds to newton metres" | The converter opens at that figure, with every unit of the category under it; the answer is read out. |
 | "Equals", "clear", "backspace" | Those keys. |
 | "Trade calculator", "standard", "history", "unit converter", "scientific keys", "keypad" | Switches the calculator or its panel. |
+| "Offset 12, run 30, what's the travel?", "travel for a 12 inch offset at 45 degrees", "angle 30 offset 10 run" | The triangle: the two given go in their registers (Offset, Run, Travel, Angle/Slope), the one asked is solved and left on the display, and the other is read out with it. Figures in feet and inches work; an angle is in degrees. |
+| "Store that in 3", "recall 3", "memory plus", "memory minus", "recall memory", "clear memory" | The memory keys: registers 1 to 9, and the accumulator. |
+| "In feet", "show it in inches", "in millimetres" | The answer on the display read in that unit. |
+| "Takeout on a 6 inch 45", "takeout on a 6 inch 90 then minus 3" | The elbow's takeout goes on the display, ready for the next sum (see below). |
+
+**Elbows, on any screen.** "Takeout on a 6 inch 45", "6 inch short radius 90 takeout", "screwed 2 inch 90 takeout", "flanged class 300 4 inch 90 takeout" answer from the same handbook figures Cut Length uses: butt weld 90s and 45s from page 2-42, screwed, street, solder and flanged from their pages. With no joint said, a galvanised job is screwed, plastic and soil pipe come from your fitting library, and the rest is butt weld, at the elbow radius set for the job. An odd angle ("6 inch elbow at 30 degrees") is a cut butt weld elbow, worked from the bend radius and said to be so. **"Cut a 6 inch 90 to 30 degrees"** gives where to mark the heel, the centre line and the throat from one end, and the takeout of the piece left.
 
 Say a sum or a conversion on **any** screen and the Calculator opens and works it. Works with no signal.
 
@@ -1663,6 +1669,7 @@ Whatever you can see, you can say. Every button, chip, switch and box tells the 
 | "What's the takeout on a 45?", "look up the U-bolts" | The handbook opens at the table that holds it, with its page. |
 | "Half inch stainless 40S", "6 inch chrome moly P22 schedule 80 long radius", "4 inch PVC" | Sets the job's pipe: size, material, wall, elbow radius — any of them. Said back with an Undo. A calculator already open follows it straight away (Cut Length also moves to the new material's joints) and shows an amber "Pipe changed to …" bar with a buzz, so it is seen as well as heard; changed from Settings, the bar shows when you go back to the calculator. A saved spool keeps its own pipe. |
 | "What's 12 and a half plus 3 foot 2", "convert 3 feet to millimetres" | The Calculator opens and works it (see Calculator → Say the sum). |
+| "Takeout on a 6 inch 45", "cut a 6 inch 90 to 30 degrees" | Answered where you are, from the handbook and the bend radius (see Calculator → Elbows). |
 | "Back", "cancel" | Goes back a screen, or closes the panel. |
 
 **What runs where.** Everything above is worked out on the phone, at once, with no signal and at no cost: the screen's labels first, then tool names and figures, then the record sentences. Only a sentence none of those make sense of goes to the cloud, which needs signal:

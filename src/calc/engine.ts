@@ -385,9 +385,15 @@ export function press(state: CalcState, action: KeyAction, arg?: string): CalcSt
             return fail(s, `${kindLabel(v.kind)} is not an angle.`);
           }
           const order = [...s.triOrder.filter((f) => f !== field), field].slice(-2);
+          // Only the two typed in last are kept. Whatever was worked out from
+          // the pair before goes: a travel solved from offset and run is not
+          // the travel of the offset and angle typed in after it, and reading
+          // it back would give the old answer as the new one.
+          const tri: Partial<Record<TriField, number>> = {};
+          for (const f of order) tri[f] = f === field ? v.value : s.tri[f];
           return {
             ...s,
-            tri: { ...s.tri, [field]: v.value },
+            tri,
             triOrder: order,
             entry: emptyEntry(),
             acc: dim(v.value, field === 'angle' ? 'angle' : 'linear'),
