@@ -22,6 +22,7 @@ import { useScreenVoice } from '../voice/useScreenVoice';
 import { useVoiceTargets } from '../voice/useVoiceTargets';
 import type { ScreenReply } from '../voice/VoiceProvider';
 import { converted, hasLengths, readCalc, speakDisplay, standardKeys, tradeSteps, worksOut } from '../voice/calcSpeech';
+import { FIELD_NAME, elbowAnswer, jobFamilyOf, memorySteps, readTrade, registerKey, triangleSteps, unknowns } from '../voice/tradeSpeech';
 import { useCalcPrefs } from '../state/calcPrefsStore';
 import type { CalcMode } from '../state/calcPrefs';
 
@@ -119,11 +120,57 @@ export function CalculatorScreen() {
   basicNow.current = basic;
   const modeNow = useRef(mode);
   modeNow.current = mode;
+  const settingsNow = useRef(settings);
+  settingsNow.current = settings;
   const hear = (said: string): ScreenReply | null => {
-    const c = readCalc(said);
-    if (!c) return null;
     const onTrade = modeNow.current === 'trade';
     const fromTrade = (s: CalcState): ScreenReply => (s.error ? { reply: s.error, say: s.error, tone: 'warn' } : { reply: `= ${displayText(s)}`, say: speakDisplay(displayText(s)) });
+    // The trade keys: the triangle, memory, the readout, and elbows (voice/tradeSpeech.ts). Always the trade calculator.
+    const tr = readTrade(said);
+    if (tr) {
+      let s = tradeNow.current;
+      if (s.shift) s = press(s, 'conv');
+      const show = (next: CalcState, reply: ScreenReply): ScreenReply => {
+        setState(next);
+        if (!onTrade) update((p) => ({ ...p, mode: 'trade' }));
+        return reply;
+      };
+      switch (tr.kind) {
+        case 'triangle': {
+          // The two said go in their registers; the one asked for is solved and left on the display, and the other is read out with it.
+          const held = pressMany(s, triangleSteps(tr));
+          if (held.error) return show(held, fromTrade(held));
+          const solved = unknowns(tr).map((f) => ({ f, s: press(held, registerKey(f)) }));
+          const first = solved[0]!;
+          if (first.s.error) return show(first.s, fromTrade(first.s));
+          const parts = solved.filter((x) => !x.s.error).map((x) => ({ name: FIELD_NAME[x.f], shown: displayText(x.s) }));
+          return show(first.s, { reply: parts.map((p) => `${p.name} ${p.shown}`).join(' · '), say: parts.map((p) => `${p.name} ${speakDisplay(p.shown)}`).join('. ') });
+        }
+        case 'memory': {
+          const next = pressMany(s, memorySteps(tr));
+          if (next.error) return show(next, fromTrade(next));
+          const said =
+            tr.op === 'store' ? `Stored in ${tr.register}.` : tr.op === 'plus' ? 'Added to memory.' : tr.op === 'minus' ? 'Taken off memory.' : tr.op === 'clear' ? 'Memory cleared.' : null;
+          return show(next, said ? said : fromTrade(next));
+        }
+        case 'show': {
+          // A figure still being typed is finished first, so the unit key restates the answer rather than marking the figure.
+          if (!isEntryEmpty(s.entry)) s = press(s, 'equals');
+          const next = press(s, tr.unit === 'feet' ? 'feet' : tr.unit === 'inch' ? 'inch' : tr.unit === 'mm' ? 'mm' : 'metre');
+          return show(next, fromTrade(next));
+        }
+        case 'elbow': {
+          const cur = settingsNow.current;
+          const a = elbowAnswer(tr, { radius: cur.defaultKind, jobFamily: jobFamilyOf(cur.material), den: cur.fractionDenominator, system: cur.unitSystem });
+          if (!a.ok) return { reply: a.reply, say: a.say, tone: 'warn' };
+          // The takeout goes on the display, ready for the next sum.
+          const next = pressMany(press(press(s, 'clear'), 'clear'), tradeSteps([{ k: 'num', value: a.takeout, unit: 'in' }]) ?? []);
+          return show(next, { reply: a.reply, say: a.say });
+        }
+      }
+    }
+    const c = readCalc(said);
+    if (!c) return null;
     const fromBasic = (s: BasicState): ScreenReply => {
       if (s.error) return { reply: s.error, say: s.error, tone: 'warn' };
       const shown = exprText(s.toks) || '0';

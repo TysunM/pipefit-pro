@@ -29,6 +29,7 @@ import { askVoice, voiceMissShort, voiceMissWords, type VoiceAnswer } from '../a
 import { matchScreen, screenHelp, screenPhrases, targetsOn, type Entry, type ScreenMatch } from './onScreen';
 import { recordAnswer } from './records';
 import { readCalc, worksOut } from './calcSpeech';
+import { elbowAnswer, jobFamilyOf, readElbow } from './tradeSpeech';
 import { say, sayThen } from '../audio/say';
 import { nav } from '../navigation/navRef';
 import { tool } from '../navigation/groups';
@@ -440,6 +441,14 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
       if (local && !nearMiss) return doLocal(local);
       const part = matchScreen(heard, here, { whole: false });
       if (part) return runScreen(heard, part, here);
+      // An elbow's takeout, or where to cut one, asked on any screen: answered where it was asked.
+      for (const t of alternatives) {
+        const e = readElbow(t);
+        if (!e) continue;
+        const cur = latest.current.settings;
+        const a = elbowAnswer(e, { radius: cur.defaultKind, jobFamily: jobFamilyOf(cur.material), den: cur.fractionDenominator, system: cur.unitSystem });
+        return answerScreen(as(t), { reply: a.reply, say: a.say, tone: a.ok ? 'ok' : 'warn' });
+      }
       // A sum or a conversion, said on any screen: worked on the calculator.
       for (const t of alternatives) {
         const c = readCalc(t);

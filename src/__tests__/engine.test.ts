@@ -628,6 +628,14 @@ describe('the trade registers', () => {
     near(s.tri.angle!, 30, 1e-2);
   });
 
+  test('a new pair is solved, not answered with the travel worked from the pair before', () => {
+    // 12 offset, 30 run, travel; then 45 angle and travel again: offset and angle now, so 12 times root 2.
+    let s = run([...D('12'), ['offset'], ...D('30'), ['run'], ['travel']]);
+    near(s.tri.travel!, Math.hypot(12, 30), 1e-9);
+    s = run([...D('12'), ['offset'], ...D('45'), ['angleSlope'], ['travel']], s);
+    near(s.tri.travel!, 12 * Math.SQRT2, 1e-9);
+  });
+
   test('with fewer than two held it says what it needs', () => {
     expect(show([...D('15'), ['offset'], ['clear'], ['clear'], ['travel']])).toMatch(/two of offset/i);
   });
