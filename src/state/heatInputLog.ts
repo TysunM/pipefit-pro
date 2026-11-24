@@ -12,6 +12,7 @@
 
 import { cleanProject } from './project';
 import type { ArcMode } from '../calc/heatInput';
+import { validVerdict, type Verdict } from './wpsBook';
 
 export const HEAT_INPUT_VERSION = 1;
 /** Enough for a PQR's worth of passes many times over. Past it the oldest goes first. */
@@ -42,6 +43,8 @@ export type HeatInputEntry = {
   travel: number | null;
   /** The job's own fields, as named when it was saved. */
   fields: { name: string; value: string }[];
+  /** The WPS it was checked against and how it came out, as it stood that day; null when it was not. */
+  wps: Verdict | null;
 };
 
 export type HeatInputLog = { entries: HeatInputEntry[]; foreign: boolean; dropped: number };
@@ -105,6 +108,7 @@ export function validEntry(v: unknown): HeatInputEntry | null {
     heatInput,
     travel,
     fields,
+    wps: validVerdict(v.wps),
   };
 }
 
@@ -138,7 +142,7 @@ export function parseHeatInputs(raw: string | null | undefined): HeatInputLog {
 }
 
 /** Keep one. Past the cap the oldest goes, never the new one. */
-export function addHeatInput(log: HeatInputLog, e: Omit<HeatInputEntry, 'id' | 'createdAt'>, now: number): HeatInputLog {
+export function addHeatInput(log: HeatInputLog, e: Omit<HeatInputEntry, 'id' | 'createdAt' | 'wps'> & { wps?: Verdict | null }, now: number): HeatInputLog {
   let id = `hi${now.toString(36)}`;
   for (let n = 2; log.entries.some((x) => x.id === id); n++) id = `hi${now.toString(36)}-${n}`;
   const entry = validEntry({ ...e, id, createdAt: now });

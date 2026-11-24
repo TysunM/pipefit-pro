@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
-import { PROJECT_CARDS, type ToolRoute } from '../navigation/groups';
+import { PROJECT_CARDS, group, type Group, type ToolRoute } from '../navigation/groups';
+import { GroupSections } from './GroupScreen';
 import { Screen } from '../components/Screen';
 import { HintRow } from '../components/HintRow';
 import { TabBar } from '../components/TabBar';
@@ -45,6 +46,11 @@ import { Segmented } from '../components/Segmented';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Projects'>;
 
+type Page = 'jobs' | 'logs';
+/** The tab at the top the page was last left on: a man who lives in the Logs comes back to them. */
+let lastPage: Page = 'jobs';
+const LOGS = group('logs') as Group;
+
 /** How many of each kind a card lists before "see all". */
 const SHOWN = 3;
 
@@ -62,7 +68,7 @@ const self = (r: ToolRoute) => r;
  * active in Settings, and the chips across the top switch to another job, to
  * everything, or to what was saved with no job at all. See state/project.ts.
  */
-export function ProjectsScreen({ navigation }: Props) {
+export function ProjectsScreen({ navigation, route }: Props) {
   const t = useTheme();
   const now = Date.now();
   const { register, hydrated: jIn, apply: applyJoints } = useJoints();
@@ -80,7 +86,16 @@ export function ProjectsScreen({ navigation }: Props) {
   const backup = useBackupNow();
   // The date at the top, kept running: the page is left open on a job all day.
   const clock = useNow(true, 30_000);
-  const go = (route: ToolRoute) => navigation.navigate(route as never);
+  const go = (to: ToolRoute) => navigation.navigate(to as never);
+  // The job's records, or the Logs: a tab at the top of the page. Sent here for the Logs (by voice), it opens on them.
+  const [page, setPageState] = useState<Page>(route.params?.view ?? lastPage);
+  const setPage = (p: Page) => {
+    lastPage = p;
+    setPageState(p);
+  };
+  useEffect(() => {
+    if (route.params?.view) setPage(route.params.view);
+  }, [route.params?.view]);
 
   const everything = [...listed(register), ...book.sketches, ...shelf.spools, ...log.readings, ...testLog.tests, ...cutLog.cuts, ...weldLog.welds];
   const f = useJobFilter(everything);
@@ -297,188 +312,202 @@ export function ProjectsScreen({ navigation }: Props) {
               : 'No Project ID is set, so new work is not tagged to a job. Set one in Settings to keep each job apart.'
           }
         />
-        <JobChips f={f} />
-        <View style={{ paddingTop: t.space.md }}>
-          <Segmented
-            options={[
-              { value: 'today', label: nights ? 'This shift' : 'Today' },
-              { value: 'all', label: 'Everything' },
-            ]}
-            selected={view}
-            onSelect={setView}
-          />
-          <Text style={[t.type.caption, { color: t.colors.textMuted, paddingHorizontal: t.layout.screenPadding, marginTop: -t.space.sm }]}>
-            {onToday
-              ? `${todayTotal ? `${nights ? 'This shift' : 'Today'} on ${f.label || 'all jobs'}: ${countsText(todayCounts)}.` : `Nothing saved ${todayWord} yet.`}${earlier ? ` ${earlier} earlier ${earlier === 1 ? 'record' : 'records'} kept under Everything.` : ''}`
-              : `Everything on ${f.label || 'all jobs'}${doomedCounts.length ? `: ${countsText(doomedCounts)}` : ': nothing saved yet'}.`}
-          </Text>
-        </View>
+        <Segmented
+          options={[
+            { value: 'jobs', label: 'Projects' },
+            { value: 'logs', label: 'Logs' },
+          ]}
+          selected={page}
+          onSelect={setPage}
+        />
+        {page === 'logs' ? (
+          <GroupSections g={LOGS} open={(x) => go(x.route)} />
+        ) : (
+          <>
+          <JobChips f={f} />
+          <View style={{ paddingTop: t.space.md }}>
+            <Segmented
+              options={[
+                { value: 'today', label: nights ? 'This shift' : 'Today' },
+                { value: 'all', label: 'Everything' },
+              ]}
+              selected={view}
+              onSelect={setView}
+            />
+            <Text style={[t.type.caption, { color: t.colors.textMuted, paddingHorizontal: t.layout.screenPadding, marginTop: -t.space.sm }]}>
+              {onToday
+                ? `${todayTotal ? `${nights ? 'This shift' : 'Today'} on ${f.label || 'all jobs'}: ${countsText(todayCounts)}.` : `Nothing saved ${todayWord} yet.`}${earlier ? ` ${earlier} earlier ${earlier === 1 ? 'record' : 'records'} kept under Everything.` : ''}`
+                : `Everything on ${f.label || 'all jobs'}${doomedCounts.length ? `: ${countsText(doomedCounts)}` : ': nothing saved yet'}.`}
+            </Text>
+          </View>
 
-        {active && loose > 0 && filter.kind === 'one' && sameProject(filter.id, active) ? (
-          <View style={{ paddingHorizontal: t.layout.screenPadding, paddingTop: t.space.md }}>
-            <Plate tone="slate" radius={t.radius.lg} style={{ padding: 12, gap: 10 }}>
-              <Text style={[t.type.caption, { color: t.colors.onSlate }]}>
-                {claiming
-                  ? `Put all ${loose} under ${active}? Work already tagged to another job stays where it is.`
-                  : `${loose} saved before jobs were tagged ${loose === 1 ? 'is' : 'are'} under No project.`}
-              </Text>
-              <View style={{ flexDirection: 'row', gap: 8 }}>
-                <SmallButton label={claiming ? `Yes, add to ${active}` : `Add to ${active}`} onPress={claiming ? claim : () => setClaiming(true)} strong />
-                {claiming ? <SmallButton label="Cancel" onPress={() => setClaiming(false)} /> : null}
+          {active && loose > 0 && filter.kind === 'one' && sameProject(filter.id, active) ? (
+            <View style={{ paddingHorizontal: t.layout.screenPadding, paddingTop: t.space.md }}>
+              <Plate tone="slate" radius={t.radius.lg} style={{ padding: 12, gap: 10 }}>
+                <Text style={[t.type.caption, { color: t.colors.onSlate }]}>
+                  {claiming
+                    ? `Put all ${loose} under ${active}? Work already tagged to another job stays where it is.`
+                    : `${loose} saved before jobs were tagged ${loose === 1 ? 'is' : 'are'} under No project.`}
+                </Text>
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  <SmallButton label={claiming ? `Yes, add to ${active}` : `Add to ${active}`} onPress={claiming ? claim : () => setClaiming(true)} strong />
+                  {claiming ? <SmallButton label="Cancel" onPress={() => setClaiming(false)} /> : null}
+                </View>
+              </Plate>
+            </View>
+          ) : null}
+
+          <View style={{ paddingHorizontal: t.layout.screenPadding, paddingTop: t.space.lg, gap: 16 }}>
+            <Plate radius={t.radius.xl} style={{ padding: 14, gap: 10 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                <Ionicons name="document-text-outline" size={30} color={t.colors.accent} />
+                <View style={{ flex: 1 }}>
+                  <Text style={[t.type.tileTitle, { color: t.colors.text }]} accessibilityRole="header">
+                    Turnover package
+                  </Text>
+                  <Text style={[t.type.caption, { color: tpOpen ? t.colors.warnText : t.colors.textMuted }]}>
+                    {tpEmpty
+                      ? 'Nothing saved on this job yet.'
+                      : tpOpen
+                        ? `${f.label || 'All jobs'} · ${tpOpen} open ${tpOpen === 1 ? 'item' : 'items'} to clear before sign-off`
+                        : `${f.label || 'All jobs'} · nothing open, ready to sign`}
+                  </Text>
+                </View>
               </View>
+              <Text style={[t.type.caption, { color: t.colors.textMuted }]}>
+                One PDF for QC: open items first, the pressure tests, the bolt-up record, re-torque checks, material traceability, level readings, spools and every iso, with sign-off lines.
+              </Text>
+              <Pressable
+                onPress={shareTurnover}
+                disabled={tpBusy || tpEmpty}
+                accessibilityRole="button"
+                accessibilityLabel="Share turnover package"
+                accessibilityState={{ disabled: tpBusy || tpEmpty }}
+              >
+                {({ pressed }) => (
+                  <Plate
+                    tone="copper"
+                    sunk={pressed}
+                    radius={t.radius.md}
+                    style={{ height: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, opacity: tpBusy || tpEmpty ? 0.5 : 1 }}
+                  >
+                    <Ionicons name="share-outline" size={19} color={t.colors.onCopper} />
+                    <Text style={[t.type.captionStrong, { color: t.colors.onCopper, fontSize: 15 }]}>
+                      {tpBusy ? 'Making the PDF…' : 'Share turnover PDF'}
+                    </Text>
+                  </Plate>
+                )}
+              </Pressable>
+              {tpNote ? <Text style={[t.type.caption, { color: t.colors.danger }]}>{tpNote}</Text> : null}
+            </Plate>
+
+            <ReorderZone
+              items={cards.items}
+              idOf={self}
+              layout="stack"
+              gap={16}
+              onMove={cards.move}
+              render={(art, hold) => {
+                const card = {
+                  FlangeBoltUp: (
+                    <Card
+                      art="FlangeBoltUp"
+                      title="Flange bolt-ups"
+                      count={jIn ? shown.joints.length : null}
+                      rows={jointRows}
+                      empty={onToday ? nothingToday('bolted', joints.length) : 'No joints logged yet. Name a bolt-up to keep it here.'}
+                      today={onToday ? todayWord : undefined}
+                      onNew={() => go('FlangeBoltUp')}
+                      more={{ label: 'Joint log', onPress: () => go('Joints') }}
+                      hold={hold}
+                    />
+                  ),
+                  IsoSketch: (
+                    <Card
+                      art="IsoSketch"
+                      title="Iso drawings"
+                      count={kIn ? shown.sketches.length : null}
+                      rows={sketchRows}
+                      empty={onToday ? nothingToday('drawn', sketches.length) : 'No isos yet. Start one on iso paper.'}
+                      today={onToday ? todayWord : undefined}
+                      onNew={() => go('IsoSketch')}
+                      more={{ label: 'Sketch book', onPress: () => go('IsoSketch') }}
+                      hold={hold}
+                    />
+                  ),
+                  SpoolBuilder: (
+                    <Card
+                      art="SpoolBuilder"
+                      title="3D spools"
+                      count={sIn ? shown.spools.length : null}
+                      rows={spoolRows}
+                      empty={onToday ? nothingToday('built', spools.length) : 'No spools saved yet. Build one and save it by its mark.'}
+                      today={onToday ? todayWord : undefined}
+                      onNew={() => go('SpoolBuilder')}
+                      more={{ label: 'Order sheet', onPress: () => go('OrderSheet') }}
+                      hold={hold}
+                    />
+                  ),
+                  CutList: (
+                    <Card
+                      art="CutList"
+                      title="Cut list"
+                      count={cIn ? cutsHere.length : null}
+                      rows={cutRows}
+                      empty={onToday ? nothingToday('listed to cut', mine(cutLog.cuts).length) : 'No cuts listed yet. Work one in Cut Length and add it to the list.'}
+                      today={onToday ? todayWord : undefined}
+                      onNew={() => go('CutLength')}
+                      more={{ label: cutsToGo ? `Cut list · ${cutsToGo} to cut` : 'Cut list', onPress: () => go('CutList') }}
+                      hold={hold}
+                    />
+                  ),
+                  Level: (
+                    <Card
+                      art="Level"
+                      title="Level readings"
+                      count={lIn ? shown.readings.length : null}
+                      rows={levelRows}
+                      empty={onToday ? nothingToday('read', readings.length) : 'No readings saved yet. Lay the phone on a pipe and save it by tag.'}
+                      today={onToday ? todayWord : undefined}
+                      onNew={() => go('Level')}
+                      more={{ label: 'All readings', onPress: () => go('Level') }}
+                      hold={hold}
+                    />
+                  ),
+                } as const;
+                return card[art as keyof typeof card] ?? null;
+              }}
+            />
+
+            <Plate radius={t.radius.xl} style={{ padding: 14, gap: 10, borderColor: clearStep === 'idle' ? undefined : t.colors.danger }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                <Ionicons name="refresh-circle-outline" size={30} color={t.colors.textMuted} />
+                <View style={{ flex: 1 }}>
+                  <Text style={[t.type.tileTitle, { color: t.colors.text }]}>Clear for a new start</Text>
+                  <Text style={[t.type.caption, { color: t.colors.textMuted }]}>
+                    {doomedCounts.length ? `${f.label || 'All jobs'}: ${countsText(doomedCounts)}` : `Nothing saved under ${f.label || 'any job'}.`}
+                  </Text>
+                </View>
+              </View>
+              {clearStep === 'idle' ? (
+                doomedCounts.length ? <SmallButton label={`Clear ${f.label || 'all jobs'}`} onPress={() => setClearStep('ask')} /> : null
+              ) : (
+                <>
+                  <Text style={[t.type.caption, { color: t.colors.text }]}>
+                    {`Takes ${countsText(doomedCounts)} off this phone, every day's, not only ${todayWord === 'today' ? "today's" : "this shift's"}.${tpOpen ? ` ${tpOpen} open ${tpOpen === 1 ? 'item goes' : 'items go'} with them.` : ''} Kept: the heat book, welder roster, calibration register, fitting library, skills passport, orientation and settings. A backup file first means any of it can be read back in.`}
+                  </Text>
+                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                    <SmallButton label={backup.busy ? 'Backing up…' : 'Back up, then clear'} onPress={() => void backUpThenClear()} strong />
+                    <SmallButton label={clearStep === 'sure' ? 'Tap again: clear with no backup' : 'Clear with no backup'} onPress={() => (clearStep === 'sure' ? clearNow() : setClearStep('sure'))} />
+                    <SmallButton label="Keep it all" onPress={() => setClearStep('idle')} />
+                  </View>
+                </>
+              )}
+              {clearNote ? <Text style={[t.type.caption, { color: clearNote.startsWith('Nothing') ? t.colors.danger : t.colors.success }]}>{clearNote}</Text> : null}
             </Plate>
           </View>
-        ) : null}
-
-        <View style={{ paddingHorizontal: t.layout.screenPadding, paddingTop: t.space.lg, gap: 16 }}>
-          <Plate radius={t.radius.xl} style={{ padding: 14, gap: 10 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-              <Ionicons name="document-text-outline" size={30} color={t.colors.accent} />
-              <View style={{ flex: 1 }}>
-                <Text style={[t.type.tileTitle, { color: t.colors.text }]} accessibilityRole="header">
-                  Turnover package
-                </Text>
-                <Text style={[t.type.caption, { color: tpOpen ? t.colors.warnText : t.colors.textMuted }]}>
-                  {tpEmpty
-                    ? 'Nothing saved on this job yet.'
-                    : tpOpen
-                      ? `${f.label || 'All jobs'} · ${tpOpen} open ${tpOpen === 1 ? 'item' : 'items'} to clear before sign-off`
-                      : `${f.label || 'All jobs'} · nothing open, ready to sign`}
-                </Text>
-              </View>
-            </View>
-            <Text style={[t.type.caption, { color: t.colors.textMuted }]}>
-              One PDF for QC: open items first, the pressure tests, the bolt-up record, re-torque checks, material traceability, level readings, spools and every iso, with sign-off lines.
-            </Text>
-            <Pressable
-              onPress={shareTurnover}
-              disabled={tpBusy || tpEmpty}
-              accessibilityRole="button"
-              accessibilityLabel="Share turnover package"
-              accessibilityState={{ disabled: tpBusy || tpEmpty }}
-            >
-              {({ pressed }) => (
-                <Plate
-                  tone="copper"
-                  sunk={pressed}
-                  radius={t.radius.md}
-                  style={{ height: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, opacity: tpBusy || tpEmpty ? 0.5 : 1 }}
-                >
-                  <Ionicons name="share-outline" size={19} color={t.colors.onCopper} />
-                  <Text style={[t.type.captionStrong, { color: t.colors.onCopper, fontSize: 15 }]}>
-                    {tpBusy ? 'Making the PDF…' : 'Share turnover PDF'}
-                  </Text>
-                </Plate>
-              )}
-            </Pressable>
-            {tpNote ? <Text style={[t.type.caption, { color: t.colors.danger }]}>{tpNote}</Text> : null}
-          </Plate>
-
-          <ReorderZone
-            items={cards.items}
-            idOf={self}
-            layout="stack"
-            gap={16}
-            onMove={cards.move}
-            render={(art, hold) => {
-              const card = {
-                FlangeBoltUp: (
-                  <Card
-                    art="FlangeBoltUp"
-                    title="Flange bolt-ups"
-                    count={jIn ? shown.joints.length : null}
-                    rows={jointRows}
-                    empty={onToday ? nothingToday('bolted', joints.length) : 'No joints logged yet. Name a bolt-up to keep it here.'}
-                    today={onToday ? todayWord : undefined}
-                    onNew={() => go('FlangeBoltUp')}
-                    more={{ label: 'Joint log', onPress: () => go('Joints') }}
-                    hold={hold}
-                  />
-                ),
-                IsoSketch: (
-                  <Card
-                    art="IsoSketch"
-                    title="Iso drawings"
-                    count={kIn ? shown.sketches.length : null}
-                    rows={sketchRows}
-                    empty={onToday ? nothingToday('drawn', sketches.length) : 'No isos yet. Start one on iso paper.'}
-                    today={onToday ? todayWord : undefined}
-                    onNew={() => go('IsoSketch')}
-                    more={{ label: 'Sketch book', onPress: () => go('IsoSketch') }}
-                    hold={hold}
-                  />
-                ),
-                SpoolBuilder: (
-                  <Card
-                    art="SpoolBuilder"
-                    title="3D spools"
-                    count={sIn ? shown.spools.length : null}
-                    rows={spoolRows}
-                    empty={onToday ? nothingToday('built', spools.length) : 'No spools saved yet. Build one and save it by its mark.'}
-                    today={onToday ? todayWord : undefined}
-                    onNew={() => go('SpoolBuilder')}
-                    more={{ label: 'Order sheet', onPress: () => go('OrderSheet') }}
-                    hold={hold}
-                  />
-                ),
-                CutList: (
-                  <Card
-                    art="CutList"
-                    title="Cut list"
-                    count={cIn ? cutsHere.length : null}
-                    rows={cutRows}
-                    empty={onToday ? nothingToday('listed to cut', mine(cutLog.cuts).length) : 'No cuts listed yet. Work one in Cut Length and add it to the list.'}
-                    today={onToday ? todayWord : undefined}
-                    onNew={() => go('CutLength')}
-                    more={{ label: cutsToGo ? `Cut list · ${cutsToGo} to cut` : 'Cut list', onPress: () => go('CutList') }}
-                    hold={hold}
-                  />
-                ),
-                Level: (
-                  <Card
-                    art="Level"
-                    title="Level readings"
-                    count={lIn ? shown.readings.length : null}
-                    rows={levelRows}
-                    empty={onToday ? nothingToday('read', readings.length) : 'No readings saved yet. Lay the phone on a pipe and save it by tag.'}
-                    today={onToday ? todayWord : undefined}
-                    onNew={() => go('Level')}
-                    more={{ label: 'All readings', onPress: () => go('Level') }}
-                    hold={hold}
-                  />
-                ),
-              } as const;
-              return card[art as keyof typeof card] ?? null;
-            }}
-          />
-
-          <Plate radius={t.radius.xl} style={{ padding: 14, gap: 10, borderColor: clearStep === 'idle' ? undefined : t.colors.danger }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-              <Ionicons name="refresh-circle-outline" size={30} color={t.colors.textMuted} />
-              <View style={{ flex: 1 }}>
-                <Text style={[t.type.tileTitle, { color: t.colors.text }]}>Clear for a new start</Text>
-                <Text style={[t.type.caption, { color: t.colors.textMuted }]}>
-                  {doomedCounts.length ? `${f.label || 'All jobs'}: ${countsText(doomedCounts)}` : `Nothing saved under ${f.label || 'any job'}.`}
-                </Text>
-              </View>
-            </View>
-            {clearStep === 'idle' ? (
-              doomedCounts.length ? <SmallButton label={`Clear ${f.label || 'all jobs'}`} onPress={() => setClearStep('ask')} /> : null
-            ) : (
-              <>
-                <Text style={[t.type.caption, { color: t.colors.text }]}>
-                  {`Takes ${countsText(doomedCounts)} off this phone, every day's, not only ${todayWord === 'today' ? "today's" : "this shift's"}.${tpOpen ? ` ${tpOpen} open ${tpOpen === 1 ? 'item goes' : 'items go'} with them.` : ''} Kept: the heat book, welder roster, calibration register, fitting library, skills passport, orientation and settings. A backup file first means any of it can be read back in.`}
-                </Text>
-                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-                  <SmallButton label={backup.busy ? 'Backing up…' : 'Back up, then clear'} onPress={() => void backUpThenClear()} strong />
-                  <SmallButton label={clearStep === 'sure' ? 'Tap again: clear with no backup' : 'Clear with no backup'} onPress={() => (clearStep === 'sure' ? clearNow() : setClearStep('sure'))} />
-                  <SmallButton label="Keep it all" onPress={() => setClearStep('idle')} />
-                </View>
-              </>
-            )}
-            {clearNote ? <Text style={[t.type.caption, { color: clearNote.startsWith('Nothing') ? t.colors.danger : t.colors.success }]}>{clearNote}</Text> : null}
-          </Plate>
-        </View>
+          </>
+        )}
       </Screen>
       <TabBar active="projects" />
     </View>

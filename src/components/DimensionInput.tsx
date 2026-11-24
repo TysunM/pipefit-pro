@@ -225,7 +225,8 @@ export function FieldRow({ children }: { children: React.ReactNode }) {
   );
 }
 
-const WEB_INPUT_RESET = (Platform.OS === 'web' ? { outlineStyle: 'none' } : null) as TextStyle | null;
+// minWidth 0: a web <input> will not shrink below its default size, and pushes the unit out of the box.
+const WEB_INPUT_RESET = (Platform.OS === 'web' ? { outlineStyle: 'none', minWidth: 0 } : null) as TextStyle | null;
 
 const styles = StyleSheet.create({
   box: { flexDirection: 'row', alignItems: 'center', borderWidth: 1 },

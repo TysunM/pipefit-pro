@@ -19,7 +19,8 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Group'>;
 const routeOf = (x: Tool) => x.route;
 
 /**
- * The Tools tab, the Logs tab or the Edu tab.
+ * The PipeFit tab, the Weld tab or the Edu tab; the Logs, which are a tab on
+ * the Projects page, draw their tiles with GroupSections.
  *
  * The same tiles as the front page, drawing and all, in the sections
  * groups.ts gives: big pictures for the instruments and the books, small
@@ -34,13 +35,22 @@ export function GroupScreen({ route, navigation }: Props) {
   return (
     <View style={{ flex: 1, backgroundColor: t.colors.bg }}>
       <Screen tabbed>
-        <HintRow text={`${g.subtitle} Hold a tile to move it.`} />
-        {g.sections.map((s) => (
-          <SectionTiles key={s.id} g={g} s={s} open={(x) => navigation.navigate(x.route as never)} />
-        ))}
+        <GroupSections g={g} open={(x) => navigation.navigate(x.route as never)} />
       </Screen>
-      <TabBar active={g.id} />
+      <TabBar active={g.id === 'logs' ? 'projects' : g.id} />
     </View>
+  );
+}
+
+/** A group's hint and its sections of tiles, each section one zone a tile can be carried about in. */
+export function GroupSections({ g, open }: { g: Group; open: (x: Tool) => void }) {
+  return (
+    <>
+      <HintRow text={`${g.subtitle} Hold a tile to move it.`} />
+      {g.sections.map((s) => (
+        <SectionTiles key={s.id} g={g} s={s} open={open} />
+      ))}
+    </>
   );
 }
 

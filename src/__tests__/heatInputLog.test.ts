@@ -69,12 +69,19 @@ describe('the spreadsheet', () => {
   const csv = heatInputCsv(l.entries, { heat: 'kJ/in', speed: 'in/min', imperial: true, fieldNames: ['WPS', 'Welder'] });
   const rows = csv.trim().split('\r\n');
   test('a header in the reader\'s units, the job\'s fields as columns, then one row each', () => {
-    expect(rows[0]).toBe('Date,Time,Project,Method,Process,Efficiency k,Amps (A),Volts (V),Energy (kJ),Length (in),Round pipe,Arc time (s),Travel speed (in/min),Arc energy (kJ/in),Heat input (kJ/in),WPS,Welder,Pass');
+    expect(rows[0]).toBe('Date,Time,Project,Method,Process,Efficiency k,Amps (A),Volts (V),Energy (kJ),Length (in),Round pipe,Arc time (s),Travel speed (in/min),Arc energy (kJ/in),Heat input (kJ/in),Checked against,WPS check,WPS,Welder,Pass');
     expect(rows).toHaveLength(3);
   });
   test('the figures in the reader\'s units', () => {
     const va = rows[2]!.split(',');
-    expect(va.slice(3, 16)).toEqual(['Volts and amps', 'SMAW stick', '0.8', '180', '24', '', '11.811', 'No', '60', '11.8', '21.9', '17.6', 'WPS-101']);
+    expect(va.slice(3, 18)).toEqual(['Volts and amps', 'SMAW stick', '0.8', '180', '24', '', '11.811', 'No', '60', '11.8', '21.9', '17.6', '', '', 'WPS-101']);
+  });
+  test('the WPS it was checked against, and how it came out', () => {
+    const verdict = { name: 'WPS-101', checked: ['amps' as const, 'heat' as const], out: [{ param: 'heat' as const, side: 'high' as const, limit: 787.4, value: 864 }] };
+    const out = heatInputCsv(addHeatInput(emptyHeatInputs(), { ...base, wps: verdict }, T).entries, { heat: 'kJ/in', speed: 'in/min', imperial: true, fieldNames: [] });
+    expect(out.split('\r\n')[1]).toContain(',WPS-101,"Out of range: Heat input 21.9 kJ/in, over the 20 max"');
+    const ok = heatInputCsv(addHeatInput(emptyHeatInputs(), { ...base, wps: { ...verdict, out: [] } }, T).entries, { heat: 'kJ/in', speed: 'in/min', imperial: true, fieldNames: [] });
+    expect(ok.split('\r\n')[1]).toContain(',WPS-101,In range');
   });
   test('typed text cannot be taken for a formula, and quotes are doubled', () => {
     expect(rows[1]).toContain(`"'=HYPERLINK(""x"")"`);

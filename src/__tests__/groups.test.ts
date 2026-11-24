@@ -2,7 +2,7 @@ import { GROUPS, PROJECT_TOOLS, RECORDABLE, START, TAB_TOOLS, TOOLS, group, grou
 
 // The tabs, held honest
 // ---------------------
-// Twenty tools are spread over the Tools tab, the Logs tab, the Projects page
+// Twenty tools are spread over the PipeFit tab, the Logs (a tab on the Projects page), the Projects page
 // and the Calculator tab. The thing that goes wrong with that is quiet — a
 // tool is added to the list and forgotten, or moved and left in two places —
 // and nobody notices because every screen still looks right. Every one of
