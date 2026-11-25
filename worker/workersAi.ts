@@ -22,6 +22,7 @@ import { MAX_VOICE_BODY, VOICE_SCHEMA, VOICE_SYSTEM_LITE, cleanVoiceBody, readVo
 import { MAX_SHEET_BODY, SHEET_SCHEMA, SHEET_SYSTEM, cleanSheetBody, readSheet, sheetPrompt } from '../src/ai/fittingSheet';
 import { MAX_POLISH_BODY, POLISH_SCHEMA, POLISH_SYSTEM, checkPolish, cleanPolishBody, polishMessage, readPolish } from '../src/ai/shiftPolish';
 import { MAX_ORIENTATION_BODY, ORIENTATION_SCHEMA, ORIENTATION_SYSTEM, cleanOrientationBody, orientationMessage, readCourse } from '../src/ai/orientation';
+import { MAX_MILL_BODY, MILL_PROMPT, MILL_SCHEMA, MILL_SYSTEM, cleanMillBody, readMill } from '../src/ai/millCert';
 import type { Reply } from './claude';
 
 /** The Workers AI binding, as far as these routes use it. */
@@ -174,6 +175,33 @@ export async function sheetByWorkersAi(raw: string, ai: Ai, model: string): Prom
     tokens: 2_500,
     ms: FREE_MS.sheet,
     refuse: (s) => (s.rows.length ? null : `read nothing off the picture${s.unread ? ` (${s.unread})` : ''}`),
+  });
+}
+
+/**
+ * A mill cert's heats and their sulphur, read by the vision model. A cert
+ * with no heat read is no read: Claude is asked instead (index.ts).
+ */
+export async function millByWorkersAi(raw: string, ai: Ai, model: string): Promise<Reply> {
+  const body = parseBody(raw, MAX_MILL_BODY, cleanMillBody, 'not_image');
+  if (isReply(body)) return body;
+  return ask(ai, model, {
+    messages: [
+      { role: 'system', content: MILL_SYSTEM },
+      {
+        role: 'user',
+        content: [
+          { type: 'text', text: MILL_PROMPT },
+          { type: 'image_url', image_url: { url: `data:${body.media};base64,${body.image}` } },
+        ],
+      },
+    ],
+    schema: MILL_SCHEMA,
+    read: readMill,
+    key: 'cert',
+    tokens: 2_000,
+    ms: FREE_MS.sheet,
+    refuse: (c) => (c.heats.length ? null : `read no heat off the picture${c.unread ? ` (${c.unread})` : ''}`),
   });
 }
 

@@ -16,9 +16,10 @@
 import { HEAT_FILL_PATH, MAX_TEXT, heatRequest } from '../src/ai/heatFill';
 import { HANDBOOK_PICK_PATH, MAX_QUERY, cleanQuery, handbookRequest, readHandbookAnswer } from '../src/ai/handbookPick';
 import { SHIFT_POLISH_PATH } from '../src/ai/shiftPolish';
-import { MODEL_ID, claudeCheck, fittingSheet, orientationCourse, shiftPolish, voiceCommand, type Reply } from './claude';
+import { MODEL_ID, claudeCheck, fittingSheet, millCert, orientationCourse, shiftPolish, voiceCommand, type Reply } from './claude';
 import { VOICE_PATH } from '../src/ai/voice';
-import { AI_MODEL_ID, DEFAULT_AI_MODEL, DEFAULT_AI_VISION_MODEL, courseByWorkersAi, polishByWorkersAi, sheetByWorkersAi, voiceByWorkersAi, type Ai } from './workersAi';
+import { AI_MODEL_ID, DEFAULT_AI_MODEL, DEFAULT_AI_VISION_MODEL, courseByWorkersAi, millByWorkersAi, polishByWorkersAi, sheetByWorkersAi, voiceByWorkersAi, type Ai } from './workersAi';
+import { MAX_MILL_BODY, MILL_CERT_PATH } from '../src/ai/millCert';
 import { FITTING_SHEET_PATH, MAX_SHEET_BODY } from '../src/ai/fittingSheet';
 import { MAX_ORIENTATION_BODY, ORIENTATION_PATH } from '../src/ai/orientation';
 import { CLAUDE_CHECK_PATH, MAX_CHECK_BODY } from '../src/ai/claudeCheck';
@@ -114,6 +115,7 @@ const CLAUDE: Record<string, { run: ClaudeRoute; maxBody: number }> = {
   [VOICE_PATH]: { run: voiceCommand, maxBody: Infinity },
   // A photograph: refused on its stated length before a byte of it is read.
   [FITTING_SHEET_PATH]: { run: fittingSheet, maxBody: MAX_SHEET_BODY },
+  [MILL_CERT_PATH]: { run: millCert, maxBody: MAX_MILL_BODY },
   // A module of rules, refused on its stated length before a byte is read.
   [ORIENTATION_PATH]: { run: orientationCourse, maxBody: MAX_ORIENTATION_BODY },
   // Is Claude answering? Asked from Settings; the body is empty.
@@ -124,6 +126,7 @@ const CLAUDE: Record<string, { run: ClaudeRoute; maxBody: number }> = {
 const FREE: Record<string, { run: (raw: string, ai: Ai, model: string) => Promise<Reply>; vision: boolean }> = {
   [VOICE_PATH]: { run: voiceByWorkersAi, vision: false },
   [FITTING_SHEET_PATH]: { run: sheetByWorkersAi, vision: true },
+  [MILL_CERT_PATH]: { run: millByWorkersAi, vision: true },
   [SHIFT_POLISH_PATH]: { run: polishByWorkersAi, vision: false },
   [ORIENTATION_PATH]: { run: courseByWorkersAi, vision: false },
 };

@@ -1648,6 +1648,23 @@ Two heats welded together with different sulphur pull the puddle toward the **lo
 
 **How far apart is too far:** no code sets it, so the crew does, in **Settings → Welding → Sulphur apart, warn at**. The app starts at **0.005%**.
 
+**Reading it off the mill cert.** Open it from either place:
+- **Heat book:** tap **Read a mill cert**.
+- **A weld with a heat that has no sulphur:** tap **Read the mill cert**. The reader opens looking for that heat.
+
+Then:
+1. **Photograph** the heat numbers and the chemistry table, flat and square, filling the frame.
+2. **Reading:** the free reader goes first and Claude only if that can't read it. The picture is not kept.
+3. **Review:** each heat comes back set against the heat book.
+   - **Ticked to start:** a heat not in the book, which gets added, and a heat in it with no sulphur, which gets filled in.
+   - **Left for you to tick:**
+     - a sulphur that would replace one already kept;
+     - one heat read twice with two figures;
+     - a figure higher than any pipe or tube cert prints (check the scale on the cert);
+     - a heat with no sulphur read.
+   - **Scaled figures:** a cert printing chemistry scaled (×1000, ppm) is converted to weight per cent and shows what was printed.
+4. **Check each** against the paper, then **Save**. The spec, the mill and the cert number go only into boxes still empty. Nothing you typed is written over.
+
 ### Where people go wrong
 - **Welding production on a development program.** Coupons only until it is qualified. The run sheet says so in red.
 - **Purging by the clock.** The purge time is a guide. Strike only when the outlet reads under the program's oxygen limit.
