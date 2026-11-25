@@ -35,15 +35,35 @@ import type { UnitSystem } from '../calc/units';
 type Step = [KeyAction, string?];
 type Given = { field: TriField; item: Extract<Item, { k: 'num' }> };
 
+type Num = Extract<Item, { k: 'num' }>;
+
 export type TradeSpeech =
-  | { kind: 'triangle'; given: Given[]; ask: TriField | null }
+  /** Two of the triangle, and a roll for a rolling offset; the cut between the elbows when it is asked for. */
+  | { kind: 'triangle'; given: Given[]; ask: TriField | null; roll: Num | null; cut: boolean }
+  /** Keys pressed for a readout, the last of them `times` over to step through what it shows. */
+  | { kind: 'keys'; steps: Step[]; repeat: { key: KeyAction; times: number } | null; fresh: boolean }
   | { kind: 'memory'; op: 'store' | 'recall' | 'plus' | 'minus' | 'clear' | 'recallMemory'; register?: string }
   | { kind: 'show'; unit: 'feet' | 'inch' | 'mm' | 'metre' }
   | { kind: 'elbow'; nps: number; angle: number; from: number | null; cut: boolean; radius: ElbowRadius | null; family: JointKind | 'street' | null; flangeClass: FlangeClass | null };
 
 // ------------------------------------------------------------ the triangle
 
-const FIELDS: [string[], TriField][] = [
+/** What a word in a triangle names: a field, the roll, or a thing asked for. */
+type Named = TriField | 'roll' | 'rolling' | 'cut' | 'true';
+const FIELDS: [string[], Named][] = [
+  // Longest first: "rolling offset" and "true offset" are not the offset.
+  [['rolling', 'offset'], 'rolling'],
+  [['roll', 'offset'], 'rolling'],
+  [['rolling'], 'rolling'],
+  [['true', 'offset'], 'true'],
+  [['cut', 'length'], 'cut'],
+  [['pipe', 'cut'], 'cut'],
+  [['cut'], 'cut'],
+  [['roll'], 'roll'],
+  [['spread'], 'roll'],
+  [['horizontal'], 'roll'],
+  [['vertical'], 'offset'],
+  [['height'], 'offset'],
   [['offset'], 'offset'],
   [['set'], 'offset'],
   [['rise'], 'offset'],
@@ -57,7 +77,7 @@ const FIELDS: [string[], TriField][] = [
 const TRI_FILLER = new Set(['whats', 'what', 'is', 'the', 'find', 'solve', 'for', 'and', 'with', 'a', 'an', 'of', 'give', 'me', 'work', 'out', 'calculate', 'question', 'please', 'my', 'i', 'have', 'got', 'need', 'to', 'it', 'at', 'by', 'inch', 'inches']);
 const DEG = new Set(['degree', 'degrees', 'deg']);
 
-const fieldAt = (ws: readonly string[], i: number): { field: TriField; next: number } | null => {
+const fieldAt = (ws: readonly string[], i: number): { field: Named; next: number } | null => {
   for (const [p, field] of FIELDS) if (p.every((w, j) => ws[i + j] === w)) return { field, next: i + p.length };
   return null;
 };
@@ -76,9 +96,17 @@ export function readTriangle(said: string): Extract<TradeSpeech, { kind: 'triang
   const ws = tokens(said.replace(/['’]/g, '').replace(/\?/g, ' '));
   const given: Given[] = [];
   let ask: TriField | null = null;
-  let loose: { item: Extract<Item, { k: 'num' }>; degrees: boolean } | null = null;
+  let loose: { item: Num; degrees: boolean } | null = null;
   let named = false;
-  const put = (field: TriField, item: Extract<Item, { k: 'num' }>, degrees: boolean): boolean => {
+  let roll: Num | null = null;
+  let rolling = false;
+  let cut = false;
+  const put = (field: TriField | 'roll', item: Num, degrees: boolean): boolean => {
+    if (field === 'roll') {
+      if (roll || degrees) return false;
+      roll = item;
+      return true;
+    }
     // An angle is a plain figure in degrees; a length is never one.
     if (field === 'angle' && item.unit !== null) return false;
     if (field !== 'angle' && degrees) return false;
@@ -89,31 +117,39 @@ export function readTriangle(said: string): Extract<TradeSpeech, { kind: 'triang
   for (let i = 0; i < ws.length; ) {
     const f = fieldAt(ws, i);
     if (f) {
-      named = true;
-      const v = valueAt(ws, f.next);
-      // "12 inch offset at 45 degrees": the degrees after a length field are the angle's, not the field's.
-      if (v && !(v.degrees && f.field !== 'angle' && loose)) {
-        if (!put(f.field, v.item, v.degrees)) return null;
-        i = v.next;
+      // Words that say what is wanted, with no figure of their own.
+      if (f.field === 'rolling' || f.field === 'cut' || f.field === 'true') {
+        if (f.field === 'rolling') rolling = true;
+        else if (f.field === 'cut') cut = true;
+        i = f.next;
         continue;
       }
-      // "12 inch offset": the figure said before the name.
+      const field = f.field;
+      named = true;
+      // "12 inch rise, 8 inch roll": a figure said before the name is that name's, whatever follows it.
       if (loose) {
-        if (!put(f.field, loose.item, loose.degrees)) return null;
+        if (!put(field, loose.item, loose.degrees)) return null;
         loose = null;
         i = f.next;
         continue;
       }
-      if (ask && ask !== f.field) return null;
-      ask = f.field;
+      const v = valueAt(ws, f.next);
+      if (v) {
+        if (!put(field, v.item, v.degrees)) return null;
+        i = v.next;
+        continue;
+      }
+      if (field === 'roll') return null;
+      if (ask && ask !== field) return null;
+      ask = field;
       i = f.next;
       continue;
     }
     const v = valueAt(ws, i);
     if (v) {
       if (loose) return null;
-      // "At 45 degrees": a figure in degrees is the angle, named or not.
-      if (v.degrees) {
+      // "At 45 degrees", or "at 45": a figure in degrees, or a plain one after "at", is the angle, named or not.
+      if (v.degrees || (ws[i] === 'at' && v.item.unit === null)) {
         if (!put('angle', v.item, true)) return null;
       } else loose = { item: v.item, degrees: false };
       i = v.next;
@@ -126,7 +162,9 @@ export function readTriangle(said: string): Extract<TradeSpeech, { kind: 'triang
     return null;
   }
   if (!named || loose || given.length !== 2 || (ask && given.some((g) => g.field === ask))) return null;
-  return { kind: 'triangle', given, ask };
+  // "Rolling offset" with no roll said is the rolling offset screen's to take.
+  if (rolling && !roll) return null;
+  return { kind: 'triangle', given, ask, roll, cut };
 }
 
 const REGISTER: Record<TriField, KeyAction> = { offset: 'offset', run: 'run', travel: 'travel', angle: 'angleSlope' };
@@ -139,6 +177,8 @@ export const FIELD_NAME: Record<TriField, string> = { offset: 'Offset', run: 'Ru
  */
 export function triangleSteps(t: Extract<TradeSpeech, { kind: 'triangle' }>): Step[] {
   const out: Step[] = [['clear'], ['clear']];
+  // The roll said, or 0 Roll to let go of one held from before.
+  out.push(...(t.roll ? (tradeSteps([{ ...t.roll, unit: t.roll.unit ?? 'in' }]) ?? []) : [['digit', '0'] as Step]), ['roll']);
   for (const g of t.given) {
     const keys = g.field === 'angle' ? tradeSteps([{ ...g.item, unit: null }]) : tradeSteps([{ ...g.item, unit: g.item.unit ?? 'in' }]);
     out.push(...(keys ?? []), [REGISTER[g.field]]);
@@ -344,7 +384,99 @@ export function elbowAnswer(
 /** The joint a job's pipe is made up with, when an elbow is asked about without one: plastic and soil pipe are the fitting library's, galvanised is screwed, the rest butt welded. */
 export const jobFamilyOf = (material: string): JointKind | 'library' => (LIBRARY_FAMILY[material] ? 'library' : material === 'galv' ? 'screwed' : 'welded');
 
+// ------------------------------------------------------------ the other trade keys
+
+/** The figure at the end of what was said: "6", "2 and a half", "an eighth". Null with anything after it. */
+function lastFigure(ws: readonly string[], from: number): { item: Num; at: number } | null {
+  for (let j = from; j < ws.length; j++) {
+    const q = quantity(ws, j);
+    if (q && q.next === ws.length) return { item: q.item, at: j };
+  }
+  return null;
+}
+
+const keyed = (item: Num, unit: 'in' | null): Step[] => tradeSteps([{ ...item, unit: item.unit ?? unit }]) ?? [];
+
+const FACT: [RegExp, number][] = [
+  [/^(?:the )?(?:od|o d|outside diameter|outside)$/, 0],
+  [/^(?:the )?(?:id|i d|inside diameter|bore|inside)$/, 1],
+  [/^(?:the )?(?:wall|wall thickness|thickness)$/, 2],
+  [/^(?:the )?(?:weight|weight per foot|pounds per foot)$/, 3],
+  [/^(?:the )?(?:weight full|full weight|filled weight|weight filled|weight with water)$/, 4],
+  [/^(?:the )?(?:capacity|gallons per foot)$/, 5],
+];
+
+/**
+ * The trade keys said by name, worked on the pipe the calculator is set to:
+ * "pipe size 6", "gap an eighth", "what's the gap", "what's the cut", "true
+ * offset", "takeout at 30" (and its arcs), "the OD", "cutback for a 6 inch
+ * spread", "area of a 10 inch circle", "force at 150 psi", "velocity at 10
+ * gpm", "read the tape".
+ */
+export function readKeys(said: string): Extract<TradeSpeech, { kind: 'keys' }> | null {
+  const s = spoken(said.toLowerCase().replace(/['’]/g, '').replace(/\?/g, ' '))
+    .replace(/\btake ?offs?\b|\btake ?outs?\b/g, 'takeout')
+    .replace(/^(?:whats|what is|give me|find|tell me|show me|read|work out|set|change|make)\s+/, '')
+    .replace(/^(?:the|my)\s+/, '')
+    .replace(/\s+(?:please|now)$/, '')
+    .trim();
+  const ws = tokens(s);
+  const k = (steps: Step[], repeat: { key: KeyAction; times: number } | null = null, fresh = false) => ({ kind: 'keys' as const, steps, repeat, fresh });
+
+  // The pipe set: "pipe size 6", "pipe size to 2 and a half".
+  let m = s.match(/^(?:pipe size|nps)(?: (?:is|to|of))? (.+)$/);
+  if (m) {
+    const f = lastFigure(ws, 2);
+    if (!f || (f.item.unit !== null && f.item.unit !== 'in')) return null;
+    return k([...keyed({ ...f.item, unit: null }, null), ['pipeSize']], null, true);
+  }
+  if (/^(?:pipe size|nps)$/.test(s)) return k([['pipeSize']]);
+  // The welder's gap: "gap an eighth", "welders gap 3/32", "gap to 1/8 inch".
+  m = s.match(/^(?:welders |root )?gap(?: (?:is|to|of|at))? (.+)$/);
+  if (m) {
+    const f = lastFigure(ws, ws.indexOf('gap') + 1);
+    if (!f) return null;
+    return k([...keyed(f.item, 'in'), ['welders']], null, true);
+  }
+  if (/^(?:welders |root )?gap$/.test(s)) return k([['welders']]);
+  // After a triangle: the cut between the elbows, and a rolling offset's true offset and roll angle.
+  if (/^(?:cut|cut length|pipe cut|the cut)$/.test(s)) return k([], { key: 'travel', times: 2 });
+  if (s === 'true offset') return k([], { key: 'roll', times: 1 });
+  if (s === 'roll angle') return k([], { key: 'roll', times: 2 });
+  // T.O./Arc on the pipe set: "takeout", "takeout at 30", "arcs for a 45".
+  m = s.match(/^(?:takeout|arcs?|takeout and arcs?|cut marks)(?: (?:at|on|for|of))?(?: an?)?(?: (.+?))?(?: (?:degrees?|elbow|ell))?$/);
+  if (m) {
+    const angle = m[1] ? numberAt(tokens(m[1]), 0) : null;
+    if (m[1] && (!angle || angle.next !== tokens(m[1]).length)) return null;
+    return k(angle ? keyed({ k: 'num', value: angle.value, unit: null }, null) : [], { key: 'takeoutArc', times: 4 }, !!angle);
+  }
+  // Pipe: one of the pipe's figures by name, a press of the key for each step to it.
+  for (const [re, step] of FACT) if (re.test(s)) return k([], { key: 'pipe', times: step + 1 });
+  // Cutback: "cutback for a 6 inch spread", "cutback 6 inch spread".
+  m = s.match(/^cutback(?: (?:for|on|at|with))?(?: an?)? (.+?) spread$/);
+  if (m) {
+    const f = lastFigure(tokens(m[1]!), 0);
+    return f ? k([...keyed(f.item, 'in'), ['cutback']], null, true) : null;
+  }
+  // Circle: "area of a 10 inch circle", "circumference of 10 inch".
+  m = s.match(/^(area|circumference)(?: of)?(?: an?)? (.+?)(?: circle| pipe| diameter)?$/);
+  if (m) {
+    const f = lastFigure(tokens(m[2]!), 0);
+    if (!f) return null;
+    return k(keyed(f.item, 'in'), { key: 'circle', times: m[1] === 'area' ? 1 : 2 }, true);
+  }
+  // On the pipe's bore: "force at 150 psi", "velocity at 10 gpm", "flow at 5 feet a second".
+  m = s.match(/^(force|push|thrust)(?: (?:at|on|for|of))? (\d+(?:\.\d+)?) ?(?:psi|pounds)$/);
+  if (m) return k([...[...m[2]!].map((c): Step => (c === '.' ? ['dot'] : ['digit', c])), ['pressure'], ['force']], null, true);
+  m = s.match(/^velocity(?: (?:at|for|of))? (\d+(?:\.\d+)?) ?(?:gpm|gallons a minute|gallons per minute)$/);
+  if (m) return k([...[...m[1]!].map((c): Step => (c === '.' ? ['dot'] : ['digit', c])), ['flow'], ['velocity']], null, true);
+  m = s.match(/^flow(?: (?:at|for|of))? (\d+(?:\.\d+)?) ?(?:fps|feet a second|feet per second)$/);
+  if (m) return k([...[...m[1]!].map((c): Step => (c === '.' ? ['dot'] : ['digit', c])), ['velocity'], ['flow']], null, true);
+  if (/^(?:tape|the tape|read the tape|tape back)$/.test(s)) return k([], { key: 'tape', times: 1 });
+  return null;
+}
+
 /** What the trade calculator, or any screen for an elbow, makes of a thing said. */
 export function readTrade(said: string): TradeSpeech | null {
-  return readElbow(said) ?? readMemory(said) ?? readShow(said) ?? readTriangle(said);
+  return readElbow(said) ?? readMemory(said) ?? readShow(said) ?? readTriangle(said) ?? readKeys(said);
 }

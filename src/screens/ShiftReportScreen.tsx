@@ -58,6 +58,7 @@ import { API_BASE } from '../ai/apiBase';
 import { shareSheet } from '../print/share';
 import { shiftSheetHtml } from '../print/shiftSheet';
 import { day as printDay } from '../print/turnover';
+import { VoicePressable } from '../voice/VoicePressable';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ShiftReport'>;
 
@@ -72,7 +73,7 @@ const NOTE_FIELDS: { key: keyof ShiftNotes; label: string; hint: string }[] = [
 /** A weld size with a count and two big buttons: the welds screen, one row per size in use. */
 function WeldRow({ t, nps, count, onChange }: { t: Theme; nps: number; count: number; onChange: (n: number) => void }) {
   const step = (by: number) => (
-    <Pressable
+    <VoicePressable voiceLabel={`${by > 0 ? 'One more' : 'One fewer'} ${sizeLabel(nps).replace(/"$/, '')} inch weld`}
       onPress={() => {
         onChange(Math.max(0, Math.min(999, count + by)));
         void Haptics.selectionAsync();
@@ -92,7 +93,7 @@ function WeldRow({ t, nps, count, onChange }: { t: Theme; nps: number; count: nu
       })}
     >
       <Ionicons name={by > 0 ? 'add' : 'remove'} size={22} color={t.colors.text} />
-    </Pressable>
+    </VoicePressable>
   );
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.md, paddingHorizontal: t.layout.screenPadding, paddingVertical: t.space.sm }}>
@@ -267,9 +268,9 @@ export function ShiftReportScreen({ navigation }: Props) {
           <Text style={[t.type.body, { color: t.colors.text, flex: 1 }]} numberOfLines={1}>
             {x.note ? `${x.id} — ${x.note}` : x.id}
           </Text>
-          <Pressable onPress={() => change((r) => ({ ...r, rejects: r.rejects.filter((y) => y.id !== x.id) }))} hitSlop={10} accessibilityRole="button" accessibilityLabel={`Remove reject ${x.id}`}>
+          <VoicePressable onPress={() => change((r) => ({ ...r, rejects: r.rejects.filter((y) => y.id !== x.id) }))} hitSlop={10} accessibilityRole="button" accessibilityLabel={`Remove reject ${x.id}`}>
             <Ionicons name="close" size={18} color={t.colors.textFaint} />
-          </Pressable>
+          </VoicePressable>
         </View>
       ))}
       <FieldRow>

@@ -10,7 +10,14 @@ import {
 } from './ftin';
 import type { KeyAction } from './keys';
 import { CLEAR_ALL_DEFAULTS } from './defaults';
-import { solveTriangle, type TriField } from './triangle';
+import { deg } from './units';
+import { solveTriangle, type TriField, type TriSolution } from './triangle';
+import { equalSpreadAdvance } from './offsetBend';
+import {
+  DEFAULT_PIPE, arcsAt, boreArea, cutBetween, elbowName, jointOf, materialName, nextMaterial, pipeFacts, pipeName,
+  takeoutAt, withSize, withWall, type PipeContext,
+} from './pipeKeys';
+import { sizeLabel, wallLabel } from './materials';
 
 export type BinaryOp = 'add' | 'subtract' | 'multiply' | 'divide' | 'power' | 'nthRoot';
 
@@ -45,12 +52,27 @@ export type CalcState = {
   tri: Partial<Record<TriField, number>>;
   triOrder: TriField[];
   accFromTrade: boolean;
+  /** The pipe the take-outs, arcs and cut lengths are worked for (calc/pipeKeys.ts). */
+  pipe: PipeContext;
+  /** The roll of a rolling offset, held by Roll; the Offset register is then its rise. */
+  roll: number | null;
+  /** Flow or velocity, and two of pressure, force and area, as typed into their keys. */
+  hyd: Partial<Record<HydField, number>>;
+  hydOrder: HydField[];
+  /** What the figure on the readout is ("T.O.", "OD", "TRUE OFFSET"), shown under it. */
+  label: string | null;
+  /** A readout that is words, not a figure: a material, an elbow, a tape line. */
+  text: string | null;
+  /** A key pressed again steps through what it shows: T.O. then the arcs, OD then ID. */
+  cycle: { key: KeyAction; step: number; arg?: number } | null;
 };
+
+export type HydField = 'flow' | 'velocity' | 'pressure' | 'force' | 'area';
 
 /** Linear readout the calculator opens on. Inches, unless it is asked otherwise. */
 export type LinearReadout = 'in' | 'ft';
 
-export const initialState = (den: FracDen = 16, linear: LinearReadout = 'in'): CalcState => ({
+export const initialState = (den: FracDen = 16, linear: LinearReadout = 'in', pipe: PipeContext = DEFAULT_PIPE): CalcState => ({
   entry: emptyEntry(),
   acc: null,
   operands: [],
@@ -70,6 +92,13 @@ export const initialState = (den: FracDen = 16, linear: LinearReadout = 'in'): C
   tri: {},
   triOrder: [],
   accFromTrade: false,
+  pipe,
+  roll: null,
+  hyd: {},
+  hydOrder: [],
+  label: null,
+  text: null,
+  cycle: null,
 });
 
 const UNIT_KEY: Partial<Record<KeyAction, string>> = {
@@ -161,6 +190,11 @@ const cleared = (s: CalcState, all = false): CalcState => ({
         tri: {},
         triOrder: [],
         accFromTrade: false,
+        // The pipe is the job's, set in Settings as much as here: Clear All
+        // leaves it. The roll and the hydraulic figures go with the sum.
+        roll: null,
+        hyd: {},
+        hydOrder: [],
       }
     : {}),
 });
@@ -173,17 +207,82 @@ function fail(s: CalcState, message: string): CalcState {
   return { ...s, shift: false, error: message };
 }
 
+/** A figure on the readout from a trade key: read back, not typed, so a register key after it reads its own. */
+function readout(s: CalcState, value: Dim | null, label: string, more: Partial<CalcState> = {}): CalcState {
+  return { ...s, entry: emptyEntry(), acc: value, accFromTrade: true, shift: false, error: null, label, text: null, cycle: null, ...more };
+}
+
+/** What was keyed for a trade key: a figure being typed, or the answer to a sum. Null when nothing was. */
+function typedValue(s: CalcState): Dim | null {
+  const typed = !isEntryEmpty(s.entry) || (s.acc !== null && !s.accFromTrade);
+  return typed ? current(s) : null;
+}
+
+/** The triangle's registers with only the two typed in kept. */
+function typedOnly(s: CalcState): Partial<Record<TriField, number>> {
+  const tri: Partial<Record<TriField, number>> = {};
+  for (const f of s.triOrder) tri[f] = s.tri[f];
+  return tri;
+}
+
+/**
+ * The triangle from the two held. With a roll held, the offset typed is the
+ * rise: the triangle is worked on the true offset over rise and roll, and
+ * the offset it gives back is the rise again.
+ */
+function solvePair(s: CalcState): TriSolution | string {
+  const [a, b] = s.triOrder;
+  if (!a || !b) return 'Enter two of offset, run, travel or angle.';
+  const roll = s.roll ?? 0;
+  const known = (f: TriField) => (f === 'offset' && roll ? Math.hypot(s.tri.offset!, roll) : s.tri[f]!);
+  const sol = solveTriangle({ field: a, value: known(a) }, { field: b, value: known(b) });
+  if (!sol.valid) return sol.error ?? 'Cannot solve.';
+  if (!roll) return sol;
+  if (a === 'offset' || b === 'offset') return { ...sol, offset: s.tri.offset! };
+  if (sol.offset < roll) return 'The roll is more than the true offset: there is no rise under it.';
+  return { ...sol, offset: Math.sqrt(sol.offset * sol.offset - roll * roll) };
+}
+
+/** The triangle's angle: held, or worked from the pair. Null when there is none. */
+function triangleAngle(s: CalcState): number | null {
+  if (s.tri.angle !== undefined) return s.tri.angle;
+  const sol = solvePair(s);
+  return typeof sol === 'string' ? null : sol.angle;
+}
+
+const triLabel = (f: TriField, s: CalcState): string =>
+  f === 'offset' ? (s.roll !== null ? 'RISE' : 'OFFSET') : f === 'angle' ? 'ANGLE' : f.toUpperCase();
+
+const angleWord = (a: number): string => `${Number(a.toFixed(2))}°`;
+
+/** "2\" LR 45°", "1\" SCREWED 90°": the elbow a figure is for. */
+function elbowWords(p: PipeContext, angle: number): string {
+  const j = jointOf(p.material);
+  return `${sizeLabel(p.nps)} ${j === 'welded' ? p.radius : j === 'screwed' ? 'SCREWED' : 'LIBRARY'} ${angleWord(angle)}`;
+}
+
+/** US gallons a minute in a cubic foot a second. */
+const GPM_PER_CFS = (1728 / 231) * 60;
+
+/** The fractions Prefs steps through, as Settings offers them. */
+const FRACTIONS: FracDen[] = [16, 32, 64, 8];
+
 export function press(state: CalcState, action: KeyAction, arg?: string): CalcState {
   const shifted = state.shift;
-  const s: CalcState = state.error && action !== 'clear' && action !== 'clearAll'
-    ? { ...state, error: null }
-    : state;
+  // Conv only arms the next key: what is on the readout stays as it is.
+  if (action === 'conv') return { ...state, shift: !state.shift, error: null };
+  // Any other key takes the readout's words with it; only the key that showed
+  // them steps on through what it shows.
+  const s: CalcState = {
+    ...state,
+    error: state.error && action !== 'clear' && action !== 'clearAll' ? null : state.error,
+    label: null,
+    text: null,
+    cycle: state.cycle && state.cycle.key === action ? state.cycle : null,
+  };
 
   try {
     switch (action) {
-      case 'conv':
-        return { ...s, shift: !s.shift, error: null };
-
       case 'digit': {
         const d = arg ?? '0';
         if (s.pending && d >= '1' && d <= '9') {
@@ -251,8 +350,11 @@ export function press(state: CalcState, action: KeyAction, arg?: string): CalcSt
       case 'backspace':
         return { ...s, entry: pressBackspace(s.entry), shift: false, error: null };
 
+      // The keypad sends % as its own key (Conv Clear); Clear pressed with
+      // Conv armed is the same key.
+      case 'percent':
       case 'clear':
-        if (shifted) {
+        if (shifted || action === 'percent') {
           const v = current(s);
           if (!v) return fail(s, 'Enter a value first.');
           const base = s.operands[s.operands.length - 1];
@@ -365,9 +467,6 @@ export function press(state: CalcState, action: KeyAction, arg?: string): CalcSt
         return { ...withValue(s, dim(total, 'scalar')), costTotal: total };
       }
 
-      case 'tape':
-        return { ...s, shift: false, error: null };
-
       // The four keys along the top are registers, not functions. Enter a
       // value and press one to hold it; press one with nothing entered and it
       // solves from the two most recently held.
@@ -376,6 +475,7 @@ export function press(state: CalcState, action: KeyAction, arg?: string): CalcSt
       case 'run':
       case 'travel': {
         const field: TriField = action === 'angleSlope' ? 'angle' : action;
+        const kind: UnitKind = field === 'angle' ? 'angle' : 'linear';
         const typed = !isEntryEmpty(s.entry) || (s.acc !== null && !s.accFromTrade);
 
         if (typed) {
@@ -391,34 +491,239 @@ export function press(state: CalcState, action: KeyAction, arg?: string): CalcSt
           // it back would give the old answer as the new one.
           const tri: Partial<Record<TriField, number>> = {};
           for (const f of order) tri[f] = f === field ? v.value : s.tri[f];
-          return {
-            ...s,
-            tri,
-            triOrder: order,
-            entry: emptyEntry(),
-            acc: dim(v.value, field === 'angle' ? 'angle' : 'linear'),
-            accFromTrade: true,
-            shift: false,
-            error: null,
-          };
+          return readout({ ...s, tri, triOrder: order }, dim(v.value, kind), triLabel(field, s));
         }
+
+        // Pressed again on its own answer, Travel gives the pipe to cut
+        // between the two elbows: a take-out off each end and a gap at each weld.
+        if (field === 'travel' && s.cycle?.step === 0) {
+          const sol = solvePair(s);
+          if (typeof sol === 'string') return fail(s, sol);
+          const c = cutBetween(s.pipe, sol.travel, sol.angle);
+          if (typeof c === 'string') return fail(s, c);
+          return readout(s, dim(c.cut, 'linear'), `CUT · ${elbowWords(s.pipe, sol.angle)}`, { cycle: { key: 'travel', step: 1 } });
+        }
+        const again = field === 'travel' ? { cycle: { key: 'travel' as const, step: 0 } } : {};
 
         const held = s.tri[field];
-        if (held !== undefined) {
-          return { ...withValue(s, dim(held, field === 'angle' ? 'angle' : 'linear')), accFromTrade: true };
+        if (held !== undefined) return readout(s, dim(held, kind), triLabel(field, s), again);
+
+        const solved = solvePair(s);
+        if (typeof solved === 'string') return fail(s, solved);
+        return readout({ ...s, tri: { ...s.tri, [field]: solved[field] } }, dim(solved[field], kind), triLabel(field, s), again);
+      }
+
+      // Roll holds the roll of a rolling offset; Offset is then its rise, and
+      // the triangle is worked on the true offset over the two. With nothing
+      // keyed it reads the true offset, then the roll angle. 0 Roll lets it go.
+      case 'roll': {
+        const v = typedValue(s);
+        if (v) {
+          if (v.kind !== 'scalar' && v.kind !== 'linear') return fail(s, `${kindLabel(v.kind)} is not a roll.`);
+          if (!(v.value >= 0)) return fail(s, 'A roll is zero or more.');
+          // What was worked out without the roll is not the rolling offset's.
+          const tri = typedOnly(s);
+          if (v.value === 0) return readout({ ...s, roll: null, tri }, null, 'ROLL', { text: 'Roll off' });
+          return readout({ ...s, roll: v.value, tri }, dim(v.value, 'linear'), 'ROLL');
         }
+        if (s.roll === null) return fail(s, 'Key the roll, then Roll.');
+        const sol = s.tri.offset === undefined ? solvePair(s) : null;
+        const rise = s.tri.offset ?? (sol && typeof sol !== 'string' ? sol.offset : undefined);
+        if (rise === undefined) return readout(s, dim(s.roll, 'linear'), 'ROLL');
+        const rows: [string, Dim][] = [
+          ['TRUE OFFSET', dim(Math.hypot(rise, s.roll), 'linear')],
+          ['ROLL ANGLE', dim(deg(Math.atan2(s.roll, rise)), 'angle')],
+        ];
+        const k = s.cycle ? (s.cycle.step + 1) % rows.length : 0;
+        return readout(s, rows[k]![1], rows[k]![0], { cycle: { key: 'roll', step: k } });
+      }
 
-        const [a, b] = s.triOrder;
-        if (!a || !b) return fail(s, 'Enter two of offset, run, travel or angle.');
+      // T.O./Arc: the take-out of the pipe's elbow at the angle keyed, or the
+      // triangle's angle, or a 90; again for where to mark the throat, the
+      // centre line and the heel when it is cut to that angle.
+      case 'takeoutArc': {
+        const v = typedValue(s);
+        let angle: number;
+        let step = 0;
+        if (v) {
+          if (v.kind !== 'scalar' && v.kind !== 'angle') return fail(s, `${kindLabel(v.kind)} is not an angle.`);
+          angle = v.value;
+        } else if (s.cycle?.arg !== undefined) {
+          angle = s.cycle.arg;
+          step = s.cycle.step + 1;
+        } else angle = triangleAngle(s) ?? 90;
+        const t = takeoutAt(s.pipe, angle);
+        if (typeof t === 'string') return fail(s, t);
+        const arcs = arcsAt(s.pipe, angle);
+        const rows: [string, number][] = [['T.O.', t.value]];
+        if (typeof arcs !== 'string') rows.push(['ARC IN', arcs.inner], ['ARC CTR', arcs.centre], ['ARC OUT', arcs.outer]);
+        const k = step % rows.length;
+        return readout(s, dim(rows[k]![1], 'linear'), `${rows[k]![0]} · ${elbowWords(s.pipe, angle)}`, { cycle: { key: 'takeoutArc', step: k, arg: angle } });
+      }
 
-        const solved = solveTriangle({ field: a, value: s.tri[a]! }, { field: b, value: s.tri[b]! });
-        if (!solved.valid) return fail(s, solved.error ?? 'Cannot solve.');
+      // Cutback: pipes running together at a spread, turning through the
+      // triangle's angle (a 90 with none): how far along each next pipe's
+      // bend or elbow is set from the one inside it.
+      case 'cutback': {
+        const v = typedValue(s);
+        if (!v) return fail(s, 'Key the spread between the pipes, then Cutback.');
+        if (v.kind !== 'scalar' && v.kind !== 'linear') return fail(s, `${kindLabel(v.kind)} is not a spread.`);
+        const angle = triangleAngle(s) ?? 90;
+        const c = equalSpreadAdvance(v.value, angle);
+        if (!Number.isFinite(c)) return fail(s, 'Key a spread of zero or more.');
+        return readout(s, dim(c, 'linear'), `CUTBACK · ${angleWord(angle)}`);
+      }
 
-        return {
-          ...withValue(s, dim(solved[field], field === 'angle' ? 'angle' : 'linear')),
-          tri: { ...s.tri, [field]: solved[field] },
-          accFromTrade: true,
-        };
+      case 'welders': {
+        const v = typedValue(s);
+        if (v) {
+          if (v.kind !== 'scalar' && v.kind !== 'linear') return fail(s, `${kindLabel(v.kind)} is not a gap.`);
+          if (!(v.value >= 0 && v.value <= 0.5)) return fail(s, "A welder's gap is 0 to 1/2 inch.");
+          const pipe = { ...s.pipe, gap: v.value };
+          return readout({ ...s, pipe }, dim(v.value, 'linear'), "WELDER'S GAP", { text: formatInches(v.value, 64) });
+        }
+        return readout(s, dim(s.pipe.gap, 'linear'), "WELDER'S GAP", { text: formatInches(s.pipe.gap, 64) });
+      }
+
+      case 'pipeSize': {
+        const v = typedValue(s);
+        let pipe = s.pipe;
+        if (v) {
+          if (v.kind !== 'scalar' && v.kind !== 'linear') return fail(s, `${kindLabel(v.kind)} is not a pipe size.`);
+          const next = withSize(s.pipe, v.value);
+          if (typeof next === 'string') return fail(s, next);
+          pipe = next;
+        }
+        return readout({ ...s, pipe }, null, `PIPE SIZE · ${wallLabel(pipe.wall)}`, { text: sizeLabel(pipe.nps) });
+      }
+
+      // Pipe: the figures of the pipe set, a press at a time.
+      case 'pipe': {
+        const facts = pipeFacts(s.pipe);
+        if (typeof facts === 'string') return fail(s, facts);
+        const k = s.cycle ? (s.cycle.step + 1) % facts.length : 0;
+        const f = facts[k]!;
+        // OD, ID and wall as the tables print them, in thousandths; the figure stays an inch to work with.
+        const value = f.unit === 'in' ? dim(f.value, 'linear') : dim(Number(f.value.toFixed(f.unit === 'galft' ? 4 : 3)), 'scalar');
+        const text = f.unit === 'in' ? `${Number(f.value.toFixed(3))}"` : null;
+        return readout(s, value, `${f.label} · ${pipeName(s.pipe)}`, { text, cycle: { key: 'pipe', step: k } });
+      }
+
+      // Pipe Mat'l: the material, and the next at each press. A number keyed
+      // first is the wall: 80 for SCH 80, 40 on stainless for 40S.
+      case 'pipeMaterial': {
+        const v = typedValue(s);
+        if (v) {
+          if (v.kind !== 'scalar') return fail(s, 'Key the wall as its number: 80 for SCH 80.');
+          const next = withWall(s.pipe, v.value);
+          if (typeof next === 'string') return fail(s, next);
+          return readout({ ...s, pipe: next }, null, `MATERIAL · ${pipeName(next)}`, { text: materialName(next) });
+        }
+        const pipe = s.cycle ? nextMaterial(s.pipe) : s.pipe;
+        return readout({ ...s, pipe }, null, `MATERIAL · ${pipeName(pipe)}`, { text: materialName(pipe), cycle: { key: 'pipeMaterial', step: 1 } });
+      }
+
+      // Elbow: long or short radius, changed at each press after the first.
+      // A screwed or plastic pipe's elbows are set by the material.
+      case 'elbow': {
+        const welded = jointOf(s.pipe.material) === 'welded';
+        const pipe: PipeContext = s.cycle && welded ? { ...s.pipe, radius: s.pipe.radius === 'LR' ? 'SR' : 'LR' } : s.pipe;
+        const label = welded ? `ELBOW · AGAIN FOR ${pipe.radius === 'LR' ? 'SHORT' : 'LONG'}` : 'ELBOW · SET BY THE MATERIAL';
+        return readout({ ...s, pipe }, null, label, { text: elbowName(pipe), cycle: { key: 'elbow', step: 1 } });
+      }
+
+      // Circle: area of the diameter keyed (or on the readout), then its circumference.
+      case 'circle': {
+        let d: number;
+        let step = 0;
+        if (isEntryEmpty(s.entry) && s.cycle?.arg !== undefined) {
+          d = s.cycle.arg;
+          step = s.cycle.step + 1;
+        } else {
+          const v = current(s);
+          if (!v) return fail(s, 'Key a diameter, then Circle.');
+          if (v.kind !== 'scalar' && v.kind !== 'linear') return fail(s, `${kindLabel(v.kind)} is not a diameter.`);
+          d = v.value;
+        }
+        if (!(d > 0)) return fail(s, 'A diameter is more than zero.');
+        const rows: [string, Dim][] = [
+          ['AREA', dim((Math.PI * d * d) / 4, 'area')],
+          ['CIRCUMFERENCE', dim(Math.PI * d, 'linear')],
+        ];
+        const k = step % rows.length;
+        return readout(s, rows[k]![1], `${rows[k]![0]} · ${Number(d.toFixed(4))}" DIA`, { cycle: { key: 'circle', step: k, arg: d } });
+      }
+
+      // Flow and Velocity: one keyed, the other through the bore of the pipe set.
+      case 'flow':
+      case 'velocity': {
+        const kind: UnitKind = action;
+        const other: HydField = action === 'flow' ? 'velocity' : 'flow';
+        const name = action === 'flow' ? 'FLOW' : 'VELOCITY';
+        const v = typedValue(s);
+        if (v) {
+          if (v.kind !== 'scalar' && v.kind !== kind) return fail(s, `${kindLabel(v.kind)} is not a ${action}.`);
+          if (!(v.value > 0)) return fail(s, `A ${action} is more than zero.`);
+          const hyd = { ...s.hyd, [action]: v.value };
+          delete hyd[other];
+          return readout({ ...s, hyd }, dim(v.value, kind), name);
+        }
+        const held = s.hyd[action];
+        if (held !== undefined) return readout(s, dim(held, kind), name);
+        const o = s.hyd[other];
+        if (o === undefined) return fail(s, action === 'flow' ? 'Key a velocity and press Velocity first.' : 'Key a flow and press Flow first.');
+        const a = boreArea(s.pipe);
+        if (!Number.isFinite(a)) return fail(s, `No ${pipeName(s.pipe)} in the tables.`);
+        // Gallons a minute through a square foot at a foot a second.
+        const perFps = (a / 144) * GPM_PER_CFS;
+        return readout(s, dim(action === 'flow' ? o * perFps : o / perFps, kind), `${name} · ${pipeName(s.pipe)} BORE`);
+      }
+
+      // Pressure, Force and Area: any two keyed give the third. With no area
+      // keyed it is the bore of the pipe set: the push on a cap or a blind.
+      case 'pressure':
+      case 'force':
+      case 'area': {
+        const kind: UnitKind = action;
+        const v = typedValue(s);
+        if (v) {
+          if (v.kind !== 'scalar' && v.kind !== kind) return fail(s, `${kindLabel(v.kind)} is not ${action === 'area' ? 'an area' : `a ${action}`}.`);
+          if (!(v.value > 0)) return fail(s, `${action === 'area' ? 'An area' : `A ${action}`} is more than zero.`);
+          const order = [...s.hydOrder.filter((f) => f !== action), action].slice(-2);
+          const hyd: Partial<Record<HydField, number>> = { flow: s.hyd.flow, velocity: s.hyd.velocity };
+          for (const f of order) hyd[f] = f === action ? v.value : s.hyd[f];
+          return readout({ ...s, hyd, hydOrder: order }, dim(v.value, kind), action.toUpperCase());
+        }
+        const has = (f: HydField) => s.hydOrder.includes(f) && s.hyd[f] !== undefined;
+        if (has(action)) return readout(s, dim(s.hyd[action]!, kind), action.toUpperCase());
+        const onBore = !has('area');
+        const area = has('area') ? s.hyd.area! : boreArea(s.pipe);
+        const where = onBore ? ` · ON ${sizeLabel(s.pipe.nps)} BORE` : '';
+        if (action === 'force') {
+          if (!has('pressure')) return fail(s, 'Key a pressure and press Pressure first.');
+          if (!Number.isFinite(area)) return fail(s, `No ${pipeName(s.pipe)} in the tables.`);
+          return readout(s, dim(s.hyd.pressure! * area, 'force'), `FORCE${where}`);
+        }
+        if (action === 'pressure') {
+          if (!has('force')) return fail(s, 'Key a force and press Force first.');
+          if (!Number.isFinite(area)) return fail(s, `No ${pipeName(s.pipe)} in the tables.`);
+          return readout(s, dim(s.hyd.force! / area, 'pressure'), `PRESSURE${where}`);
+        }
+        if (!has('force') || !has('pressure')) return fail(s, 'Key a force and a pressure first.');
+        return readout(s, dim(s.hyd.force! / s.hyd.pressure!, 'area'), 'AREA');
+      }
+
+      // Prefs: the fraction answers are read to, a step at each press after the first.
+      case 'prefs': {
+        const den = s.cycle ? FRACTIONS[(Math.max(0, FRACTIONS.indexOf(s.den)) + 1) % FRACTIONS.length]! : s.den;
+        return readout({ ...s, den }, null, 'FRACTION · AGAIN TO CHANGE', { text: `1/${den}`, cycle: { key: 'prefs', step: 1 } });
+      }
+
+      // Tape: the answers before, newest first, a press at a time.
+      case 'tape': {
+        if (!s.tape.length) return fail(s, 'The tape is empty. It keeps the last 30 answers.');
+        const k = s.cycle ? (s.cycle.step + 1) % s.tape.length : 0;
+        return readout(s, null, `TAPE ${k + 1} OF ${s.tape.length}`, { text: s.tape[s.tape.length - 1 - k]!, cycle: { key: 'tape', step: k } });
       }
 
       case 'recall':
@@ -546,8 +851,15 @@ const DEFAULT_LABEL: Record<UnitKind, string> = {
 export function displayText(state: CalcState): string {
   if (state.error) return state.error;
   if (!isEntryEmpty(state.entry)) return entryDisplay(state.entry, state.den);
+  if (state.text !== null) return state.text;
   if (state.acc) return formatDim(state.acc, state);
   return '0';
+}
+
+/** What the figure on the readout is, for the line under it: "T.O. · 2\" LR 45°". Empty while a figure is typed. */
+export function displayLabel(state: CalcState): string {
+  if (state.error || !isEntryEmpty(state.entry)) return '';
+  return state.label ?? '';
 }
 
 export function pressMany(state: CalcState, steps: [KeyAction, string?][]): CalcState {

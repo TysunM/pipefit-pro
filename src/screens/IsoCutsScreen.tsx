@@ -39,6 +39,7 @@ import { LIBRARY_FAMILY } from '../calc/takeoffCatalog';
 import { sizeLabel } from '../calc/materials';
 import { toFraction } from '../calc/format';
 import { useCutAdder } from '../voice/useCutAdder';
+import { VoicePressable } from '../voice/VoicePressable';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'IsoCuts'>;
 
@@ -216,7 +217,7 @@ export function IsoCutsScreen({ navigation, route }: Props) {
 
       {cuts.length ? <SectionHeader title="Pieces" meta={`${ready.length} of ${cuts.length} ready${missing ? ` · ${missing} to dimension` : ''}`} /> : null}
       {cuts.map((c) => (
-        <Pressable
+        <VoicePressable voiceLabel={`Piece ${c.piece.n}`}
           key={c.piece.key}
           onPress={() => askFor(c.piece.key)}
           accessibilityRole="button"
@@ -246,7 +247,7 @@ export function IsoCutsScreen({ navigation, route }: Props) {
               {`${c.c2c ? `C-C ${iso.dimText(c.c2c)} · ` : ''}${c.ends[0].label} × ${c.ends[1].label}`}
             </Text>
           </View>
-        </Pressable>
+        </VoicePressable>
       ))}
 
       {needsLibrary ? (

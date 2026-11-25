@@ -13,6 +13,7 @@ import { useSketches } from '../state/sketches';
 import { useSettings } from '../state/settings';
 import { SavedSketch, deleteSketch, newSketch, renameSketch, saveSketch } from '../state/sketchStore';
 import { stamp } from '../components/stamp';
+import { VoicePressable } from '../voice/VoicePressable';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'IsoSketch'>;
 
@@ -80,7 +81,7 @@ export function IsoSketchScreen({ navigation }: Props) {
 
       {book.sketches.map((s) => (
         <View key={s.id} style={{ marginHorizontal: t.layout.screenPadding, marginBottom: t.space.md }}>
-          <Pressable onPress={() => open(s.id)} accessibilityRole="button" accessibilityLabel={`Open ${s.name}`}>
+          <VoicePressable onPress={() => open(s.id)} accessibilityRole="button" accessibilityLabel={`Open ${s.name}`}>
             {({ pressed }) => (
               <Plate sunk={pressed} radius={t.radius.lg} style={{ padding: t.space.lg, gap: 4 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.md }}>
@@ -95,7 +96,7 @@ export function IsoSketchScreen({ navigation }: Props) {
                 </Text>
               </Plate>
             )}
-          </Pressable>
+          </VoicePressable>
           {confirm === s.id ? (
             <View style={{ flexDirection: 'row', gap: t.space.md, marginTop: t.space.sm }}>
               <GhostButton label="Keep" style={{ flex: 1 }} onPress={() => setConfirm(null)} />

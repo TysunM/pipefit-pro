@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../theme/ThemeProvider';
 import { Flip } from '../../calc/iso';
 import { flipWords } from '../../state/sketchStore';
+import { VoicePressable } from '../../voice/VoicePressable';
 
 /** A key in the paper's own strip, beside the drawing and never over it. */
 export function PaperKey({
@@ -19,7 +20,7 @@ export function PaperKey({
 }) {
   const t = useTheme();
   return (
-    <Pressable
+    <VoicePressable
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={label}
@@ -37,7 +38,7 @@ export function PaperKey({
       })}
     >
       {({ pressed }) => <Ionicons name={icon} size={20} color={pressed ? t.colors.onPrimary : on ? t.colors.accent : t.colors.text} />}
-    </Pressable>
+    </VoicePressable>
   );
 }
 

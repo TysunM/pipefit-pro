@@ -43,6 +43,7 @@ import { builtinCourse } from '../state/orientationCourses';
 import { CourseMiss, askOrientation, courseMissWords } from '../ai/orientation';
 import { API_BASE } from '../ai/apiBase';
 import { hush, say } from '../audio/say';
+import { VoicePressable } from '../voice/VoicePressable';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'OrientationCourse'>;
 
@@ -180,9 +181,9 @@ export function OrientationCourseScreen({ route, navigation }: Props) {
             <Text style={[t.type.tileTitle, { color: t.colors.text, flex: 1 }]} accessibilityRole="header">
               {sec.heading}
             </Text>
-            <Pressable onPress={() => speak(i, `${sec.heading}. ${sec.points.join(' ')}`)} hitSlop={8} accessibilityRole="button" accessibilityLabel={reading === i ? 'Stop reading' : `Read ${sec.heading} aloud`}>
+            <VoicePressable onPress={() => speak(i, `${sec.heading}. ${sec.points.join(' ')}`)} hitSlop={8} accessibilityRole="button" accessibilityLabel={reading === i ? 'Stop reading' : `Read ${sec.heading} aloud`}>
               <Ionicons name={reading === i ? 'stop-circle' : 'volume-high-outline'} size={26} color={reading === i ? t.colors.accent : t.colors.textMuted} />
-            </Pressable>
+            </VoicePressable>
           </View>
           {sec.points.map((p, j) => (
             <View key={j} style={{ flexDirection: 'row', gap: t.space.sm }}>

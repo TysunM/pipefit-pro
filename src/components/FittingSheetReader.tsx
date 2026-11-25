@@ -34,6 +34,7 @@ import { setTakeout } from '../state/fittingLibrary';
 import { canListen, listenOn, stopListening } from '../voice/listen';
 import { cameraWordOf } from '../voice/cameraWords';
 import { say } from '../audio/say';
+import { VoicePressable } from '../voice/VoicePressable';
 
 type Stage =
   | { at: 'camera' }
@@ -241,7 +242,7 @@ export function FittingSheetReader({
         <>
           <View style={{ height: 340, borderRadius: t.radius.lg, overflow: 'hidden', backgroundColor: '#000' }}>
             <CameraView ref={cam} style={{ flex: 1 }} facing="back" enableTorch={torch} pictureSize={pictureSize} onCameraReady={() => void ready()} />
-            <Pressable
+            <VoicePressable voiceLabel={torch ? 'Light off' : 'Light on'}
               onPress={() => setTorch((on) => !on)}
               accessibilityRole="switch"
               accessibilityState={{ checked: torch }}
@@ -260,7 +261,7 @@ export function FittingSheetReader({
               }}
             >
               <Ionicons name={torch ? 'flashlight' : 'flashlight-outline'} size={24} color={torch ? t.colors.onPrimary : '#fff'} />
-            </Pressable>
+            </VoicePressable>
           </View>
           <Text style={[t.type.caption, { color: t.colors.textFaint }]}>
             {`The dimension table for ${lineName} ${family === 'socket' ? 'socket' : 'no-hub'} fittings, flat and square, filling the frame. One table per photo; a long sheet goes in halves.`}
@@ -389,9 +390,9 @@ export function FittingSheetReader({
           }}
         >
           <Text style={[t.type.sectionTitle, { color: t.colors.text, flex: 1 }]}>{`Read a ${family === 'socket' ? 'socket' : 'no-hub'} sheet`}</Text>
-          <Pressable onPress={close} accessibilityRole="button" accessibilityLabel="Close" hitSlop={10}>
+          <VoicePressable onPress={close} accessibilityRole="button" accessibilityLabel="Close" hitSlop={10}>
             <Ionicons name="close" size={24} color={t.colors.textMuted} />
-          </Pressable>
+          </VoicePressable>
         </View>
         <ScrollView contentContainerStyle={{ padding: t.layout.screenPadding, gap: t.space.lg }}>{body()}</ScrollView>
       </View>

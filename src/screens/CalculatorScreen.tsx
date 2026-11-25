@@ -10,7 +10,10 @@ import { KEYPAD } from '../calc/keys';
 import { TabBar } from '../components/TabBar';
 import { useTheme } from '../theme/ThemeProvider';
 import { useSettings } from '../state/settings';
-import { displayText, initialState, press, pressMany, type CalcState } from '../calc/engine';
+import { displayLabel, displayText, initialState, press, pressMany, type CalcState } from '../calc/engine';
+import { samePipe, type PipeContext } from '../calc/pipeKeys';
+import { calcSchedule } from '../calc/materials';
+import type { Settings } from '../state/settings';
 import { entryUnitWord, isEntryEmpty } from '../calc/ftin';
 import type { KeyAction } from '../calc/keys';
 import type { FracDen } from '../calc/ftin';
@@ -63,14 +66,46 @@ function ModeSwitch({ mode, onChange }: { mode: CalcMode; onChange: (m: CalcMode
   );
 }
 
+/** A readout's label as it is said: "T.O." is the takeout, "ARC OUT" the heel. */
+const SPOKEN_LABEL: Record<string, string> = {
+  'T.O.': 'Takeout', 'ARC IN': 'Throat', 'ARC CTR': 'Centre line', 'ARC OUT': 'Heel', 'TRUE OFFSET': 'True offset', 'ROLL ANGLE': 'Roll angle',
+  CUT: 'Cut', OD: 'O D', ID: 'I D', 'LB/FT': 'Pounds a foot', 'LB/FT FULL': 'Pounds a foot full', 'GAL/FT': 'Gallons a foot',
+  "WELDER'S GAP": "Welder's gap", 'PIPE SIZE': 'Pipe size',
+};
+const spokenLabel = (label: string): string => SPOKEN_LABEL[label] ?? label.charAt(0) + label.slice(1).toLowerCase();
+
+/** The pipe the trade keys work on is the one the app is set to. */
+const pipeOf = (s: Settings): PipeContext => ({ material: s.material, nps: s.defaultNps, wall: s.wall, radius: s.defaultKind, gap: s.defaultGap });
+
 export function CalculatorScreen() {
   const t = useTheme();
-  const { settings } = useSettings();
+  const { settings, update: updateSettings } = useSettings();
   const den = (settings.fractionDenominator || 16) as FracDen;
 
   const [state, setState] = useState<CalcState>(() =>
-    initialState(den, settings.lengthReadout === 'feetInches' ? 'ft' : 'in')
+    initialState(den, settings.lengthReadout === 'feetInches' ? 'ft' : 'in', pipeOf(settings))
   );
+  // Pipe Size, Pipe Mat'l, Elbow, Welder's Gap and Prefs set what Settings
+  // holds, and Settings (or "6 inch schedule 80" said anywhere) sets the
+  // keys: one pipe and one fraction for the whole app, never two.
+  const fromSettings = pipeOf(settings);
+  useEffect(() => {
+    setState((s) => (samePipe(s.pipe, fromSettings) && (s.den === den || !settings.fractionDenominator) ? s : { ...s, pipe: fromSettings, den: settings.fractionDenominator ? den : s.den }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fromSettings.material, fromSettings.nps, fromSettings.wall, fromSettings.radius, fromSettings.gap, den]);
+  const keyed = useRef({ pipe: state.pipe, den: state.den });
+  useEffect(() => {
+    const was = keyed.current;
+    keyed.current = { pipe: state.pipe, den: state.den };
+    if (!samePipe(was.pipe, state.pipe) && !samePipe(state.pipe, pipeOf(settings))) {
+      const p = state.pipe;
+      updateSettings({ material: p.material as Settings['material'], defaultNps: p.nps, wall: p.wall, defaultSchedule: calcSchedule(p.wall), defaultKind: p.radius, defaultGap: p.gap });
+    }
+    if (was.den !== state.den && state.den !== settings.fractionDenominator && (state.den === 8 || state.den === 16 || state.den === 32 || state.den === 64)) {
+      updateSettings({ fractionDenominator: state.den });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.pipe, state.den]);
   const { prefs, hydrated, update } = useCalcPrefs();
   const [basic, setBasic] = useState<BasicState>(() => initialBasic(prefs.angle));
   const [convInput, setConvInput] = useState('1');
@@ -86,7 +121,8 @@ export function CalculatorScreen() {
   useFocusEffect(useCallback(() => hideFloatingMic(), []));
 
   const shown = displayText(state);
-  const unitWord = isEntryEmpty(state.entry) ? '' : entryUnitWord(state.entry);
+  // Under the figure: the unit being typed, or what the figure is ("T.O. · 2\" LR 45°").
+  const unitWord = isEntryEmpty(state.entry) ? displayLabel(state) : entryUnitWord(state.entry);
 
   const annunciators = useMemo(() => {
     const out: string[] = [];
@@ -96,6 +132,8 @@ export function CalculatorScreen() {
     if (state.pending === 'store') out.push('STO');
     if (state.pending === 'recall') out.push('RCL');
     if (state.memory.value !== 0) out.push('M');
+    // A roll held makes every offset a rolling one: never a surprise.
+    if (state.roll !== null) out.push('ROLL');
     if (state.frames.length) out.push('( '.repeat(state.frames.length).trim());
     if (state.dmsMode) out.push('DMS');
     if (state.costTotal !== null) out.push('TTL$');
@@ -137,14 +175,49 @@ export function CalculatorScreen() {
       };
       switch (tr.kind) {
         case 'triangle': {
-          // The two said go in their registers; the one asked for is solved and left on the display, and the other is read out with it.
+          // The two said go in their registers (and the roll in Roll); the one asked for is solved and left on the display, and the others are read out with it.
           const held = pressMany(s, triangleSteps(tr));
           if (held.error) return show(held, fromTrade(held));
           const solved = unknowns(tr).map((f) => ({ f, s: press(held, registerKey(f)) }));
           const first = solved[0]!;
           if (first.s.error) return show(first.s, fromTrade(first.s));
           const parts = solved.filter((x) => !x.s.error).map((x) => ({ name: FIELD_NAME[x.f], shown: displayText(x.s) }));
-          return show(first.s, { reply: parts.map((p) => `${p.name} ${p.shown}`).join(' · '), say: parts.map((p) => `${p.name} ${speakDisplay(p.shown)}`).join('. ') });
+          // A rolling offset leads with its true offset.
+          if (tr.roll) {
+            const t = press(held, 'roll');
+            if (!t.error) parts.unshift({ name: 'True offset', shown: displayText(t) });
+          }
+          // And ends with the pipe to cut between the elbows, worked for the pipe set; a plain triangle only when it is asked for.
+          let end = first.s;
+          if (tr.roll || tr.cut) {
+            const c = press(press(held, 'travel'), 'travel');
+            if (!c.error) {
+              parts.push({ name: 'Cut', shown: `${displayText(c)} (${displayLabel(c).split(' · ')[1] ?? ''})` });
+              if (tr.cut) end = c;
+            } else if (tr.cut) return show(c, fromTrade(c));
+          }
+          return show(end, { reply: parts.map((p) => `${p.name} ${p.shown}`).join(' · '), say: parts.map((p) => `${p.name} ${speakDisplay(p.shown.replace(/ \(.*\)$/, ''))}`).join('. ') });
+        }
+        case 'keys': {
+          // A trade key by name: pressed as it would be, and stepped through when it shows more than one figure.
+          let next = pressMany(tr.fresh ? press(press(s, 'clear'), 'clear') : { ...s, cycle: null }, tr.steps);
+          const rows: CalcState[] = [];
+          if (tr.repeat) {
+            for (let i = 0; i < tr.repeat.times && !next.error; i++) {
+              next = press(next, tr.repeat.key);
+              rows.push(next);
+            }
+            // T.O. and its arcs, or a figure of the pipe: all of them read, the first left showing. The cut, the OD: the one asked for.
+            if (tr.repeat.key !== 'takeoutArc') rows.splice(0, rows.length - 1);
+          } else rows.push(next);
+          const bad = rows.find((r) => r.error) ?? (next.error ? next : null);
+          if (bad) return show(bad, fromTrade(bad));
+          const what = displayLabel(rows[0]!).split(' · ')[1];
+          const line = (r: CalcState) => `${displayLabel(r).split(' · ')[0]} ${displayText(r)}`;
+          return show(rows[0]!, {
+            reply: `${rows.map(line).join(' · ')}${what ? ` (${what})` : ''}`,
+            say: rows.map((r) => `${spokenLabel(displayLabel(r).split(' · ')[0]!)} ${speakDisplay(displayText(r))}`).join('. '),
+          });
         }
         case 'memory': {
           const next = pressMany(s, memorySteps(tr));
@@ -288,14 +361,15 @@ export function CalculatorScreen() {
               {
                 color: state.error ? t.colors.danger : t.mode === 'dark' ? '#DCF0E2' : '#16231B',
                 fontFamily: t.font.mono,
-                fontSize: state.error ? 17 : 40,
+                // Words on the readout ("Galvanized steel") and long decimals step down, as the web does not shrink to fit.
+                fontSize: state.error ? 17 : shown.length > 14 ? 24 : shown.length > 10 ? 30 : 40,
               },
             ]}
           >
             {shown}
           </Text>
 
-          <Text style={[styles.unitWord, t.weight('700'), { fontFamily: t.font.sans, color: t.mode === 'dark' ? '#7FA890' : '#4A5A44' }]}>
+          <Text numberOfLines={1} adjustsFontSizeToFit style={[styles.unitWord, t.weight('700'), { fontFamily: t.font.sans, color: t.mode === 'dark' ? '#7FA890' : '#4A5A44' }]}>
             {unitWord || ' '}
           </Text>
         </View>

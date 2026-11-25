@@ -18,6 +18,7 @@ import { OrderGroup, OrderSheet, planOrder } from '../calc/orderSheet';
 import { findSize } from '../calc/pipe';
 import { orderSheetHtml } from '../print/orderSheetHtml';
 import { shareSheet } from '../print/share';
+import { VoicePressable } from '../voice/VoicePressable';
 
 /**
  * The order for a whole job.
@@ -236,7 +237,7 @@ export function OrderSheetScreen() {
         const mark = sheet.groups.flatMap((g) => g.lines).find((l) => l.spoolId === s.id)?.mark;
         const skipped = sheet.skipped.find((k) => k.id === s.id);
         return (
-          <Pressable
+          <VoicePressable voiceLabel={s.name}
             key={s.id}
             onPress={() => toggle(s.id)}
             accessibilityRole="checkbox"
@@ -281,7 +282,7 @@ export function OrderSheetScreen() {
                   : `${s.place ? `${s.place} · ` : ''}${s.legs.length} leg${s.legs.length === 1 ? '' : 's'} · ${findLabel(s.nps)} SCH ${s.schedule} · ${sinceLabel(s.updatedAt, Date.now())}`}
               </Text>
             </View>
-          </Pressable>
+          </VoicePressable>
         );
       })}
 

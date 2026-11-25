@@ -6,6 +6,7 @@ import { useTheme } from '../theme/ThemeProvider';
 import { useSettings } from '../state/settings';
 import { useJobPick } from '../state/jobPick';
 import { ALL, ProjectCount, ProjectFilter, cleanProject, defaultFilter, inProject, only, projectsIn, sameProject, withPicked } from '../state/project';
+import { VoicePressable } from '../voice/VoicePressable';
 
 export type JobFilter = {
   /** The Project ID set in Settings, cleaned; '' when none is. */
@@ -98,7 +99,7 @@ export function Chip({
   const c = t.colors;
   const ink = on ? c.onCopper : c.text;
   return (
-    <Pressable
+    <VoicePressable voiceLabel={label}
       onPress={onPress}
       accessibilityRole="button"
       accessibilityState={{ selected: on }}
@@ -126,6 +127,6 @@ export function Chip({
           {count !== undefined ? <Text style={[t.type.caption, { color: on ? c.onCopper : c.textFaint, fontSize: 13 }]}>{count}</Text> : null}
         </View>
       )}
-    </Pressable>
+    </VoicePressable>
   );
 }

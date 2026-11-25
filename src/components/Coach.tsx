@@ -17,6 +17,7 @@ import { listed } from '../state/register';
 import { evidence, skill, standingOf } from '../state/passport';
 import { COACH, CoachHidden, CoachScreen, coachShows, emptyHidden, hide, nextStep, parseHidden, serialiseHidden } from '../state/coach';
 import { createPersistedStore } from '../state/persisted';
+import { VoicePressable } from '../voice/VoicePressable';
 
 const store = createPersistedStore<CoachHidden>({ key: 'pipefit.coach.v1', name: 'useCoachHidden', empty: emptyHidden, parse: parseHidden, serialise: serialiseHidden });
 export const CoachProvider = store.Provider;
@@ -78,9 +79,9 @@ export function Coach({ screen, done }: { screen: CoachScreen; done: readonly bo
         })}
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
           <Text style={[t.type.caption, { color: t.colors.onSlate, opacity: 0.7, flex: 1 }]}>{`Fades at ${c.needs} on record or a foreman's sign-off.`}</Text>
-          <Pressable onPress={c.dismiss} hitSlop={8} accessibilityRole="button" accessibilityLabel="Hide the coaching on this screen">
+          <VoicePressable onPress={c.dismiss} hitSlop={8} accessibilityRole="button" accessibilityLabel="Hide the coaching on this screen">
             <Text style={[t.type.captionStrong, { color: t.colors.onSlate }]}>Hide</Text>
-          </Pressable>
+          </VoicePressable>
         </View>
       </Plate>
     </View>

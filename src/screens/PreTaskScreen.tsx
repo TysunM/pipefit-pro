@@ -25,6 +25,7 @@ import { HAZARDS, PERMITS, PPE_EXTRA, Plan, addCrew, deletePlan, isClosed, newPl
 import { workDay, usDate, dayKey } from '../calc/days';
 import { shareSheet } from '../print/share';
 import { pretaskHtml } from '../print/pretask';
+import { VoicePressable } from '../voice/VoicePressable';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'PreTask'>;
 
@@ -101,9 +102,9 @@ export function PreTaskScreen({ navigation }: Props) {
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
               <Ionicons name="warning-outline" size={18} color={t.colors.warnText} />
               <Text style={[t.type.bodyStrong, { color: t.colors.text, flex: 1 }]}>{h.label}</Text>
-              <Pressable onPress={() => change((p) => toggleHazard(p, h.id))} hitSlop={8} accessibilityRole="button" accessibilityLabel={`Take ${h.label} off`}>
+              <VoicePressable onPress={() => change((p) => toggleHazard(p, h.id))} hitSlop={8} accessibilityRole="button" accessibilityLabel={`Take ${h.label} off`}>
                 <Ionicons name="close-circle-outline" size={22} color={t.colors.textFaint} />
-              </Pressable>
+              </VoicePressable>
             </View>
             <NoteField label="Control" value={h.control} onChangeText={(v) => change((p) => setControl(p, h.id, v))} placeholder="What we do about it" max={400} />
           </Plate>
@@ -166,9 +167,9 @@ export function PreTaskScreen({ navigation }: Props) {
         <View key={c.name} style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.md, paddingHorizontal: t.layout.screenPadding, paddingVertical: 6 }}>
           {c.sig ? <SignatureView sig={c.sig} height={32} /> : <GhostButton label="Sign" icon="create-outline" onPress={() => setSigning({ who: 'crew', name: c.name })} />}
           <Text style={[t.type.bodyStrong, { color: t.colors.text, flex: 1 }]}>{c.name}</Text>
-          <Pressable onPress={() => change((p) => removeCrew(p, c.name))} hitSlop={8} accessibilityRole="button" accessibilityLabel={`Take ${c.name} off the crew`}>
+          <VoicePressable onPress={() => change((p) => removeCrew(p, c.name))} hitSlop={8} accessibilityRole="button" accessibilityLabel={`Take ${c.name} off the crew`}>
             <Ionicons name="close-circle-outline" size={22} color={t.colors.textFaint} />
-          </Pressable>
+          </VoicePressable>
         </View>
       ))}
       <FieldRow>

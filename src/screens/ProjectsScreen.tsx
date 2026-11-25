@@ -44,6 +44,7 @@ import { useSettings } from '../state/settings';
 import { workedOn } from '../state/today';
 import { Segmented } from '../components/Segmented';
 import { useVoiceTargets } from '../voice/useVoiceTargets';
+import { VoicePressable } from '../voice/VoicePressable';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Projects'>;
 
@@ -378,7 +379,7 @@ export function ProjectsScreen({ navigation, route }: Props) {
               <Text style={[t.type.caption, { color: t.colors.textMuted }]}>
                 One PDF for QC: open items first, the pressure tests, the bolt-up record, re-torque checks, material traceability, level readings, spools and every iso, with sign-off lines.
               </Text>
-              <Pressable
+              <VoicePressable
                 onPress={shareTurnover}
                 disabled={tpBusy || tpEmpty}
                 accessibilityRole="button"
@@ -398,7 +399,7 @@ export function ProjectsScreen({ navigation, route }: Props) {
                     </Text>
                   </Plate>
                 )}
-              </Pressable>
+              </VoicePressable>
               {tpNote ? <Text style={[t.type.caption, { color: t.colors.danger }]}>{tpNote}</Text> : null}
             </Plate>
 
@@ -566,21 +567,21 @@ function Card({
             {count === null ? ' ' : count === 0 ? (today ? `Nothing ${today}` : 'Nothing saved') : `${count} ${today ?? 'saved'}`}
           </Text>
         </View>
-        <Pressable onPress={onNew} {...hold} accessibilityRole="button" accessibilityLabel={`New in ${title}`} hitSlop={6}>
+        <VoicePressable onPress={onNew} {...hold} accessibilityRole="button" accessibilityLabel={`New in ${title}`} hitSlop={6}>
           {({ pressed }) => (
             <Plate tone="copper" sunk={pressed} radius={t.radius.sm} style={{ height: 40, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
               <Ionicons name="add" size={18} color={c.onCopper} />
               <Text style={[t.type.labelSmall, { color: c.onCopper, fontFamily: t.font.sans, fontSize: 13 }]}>New</Text>
             </Plate>
           )}
-        </Pressable>
+        </VoicePressable>
       </View>
 
       {rows.length === 0 ? (
         <Text style={[t.type.caption, { color: c.textFaint, paddingHorizontal: 14, paddingBottom: 14 }]}>{count === null ? ' ' : empty}</Text>
       ) : (
         rows.map((r) => (
-          <Pressable
+          <VoicePressable
             key={r.key}
             onPress={r.onPress}
             {...hold}
@@ -615,11 +616,11 @@ function Card({
               <Text style={[t.type.caption, { color: c.textFaint }]}>{r.when}</Text>
             </View>
             <Ionicons name="chevron-forward" size={17} color={c.textFaint} />
-          </Pressable>
+          </VoicePressable>
         ))
       )}
 
-      <Pressable
+      <VoicePressable
         onPress={more.onPress}
         {...hold}
         accessibilityRole="button"
@@ -639,7 +640,7 @@ function Card({
           {count !== null && count > SHOWN ? `${more.label} · all ${count}` : more.label}
         </Text>
         <Ionicons name="arrow-forward" size={17} color={c.accent} />
-      </Pressable>
+      </VoicePressable>
     </Plate>
     </Pressable>
   );

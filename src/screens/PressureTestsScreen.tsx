@@ -21,6 +21,7 @@ import { usePressureTests } from '../state/pressureTests';
 import { MAX_TESTS, PressureTest, canAdd, deleteTest, freshId, holding, newTest, putTest, retested, testName } from '../state/pressureLog';
 import { checkTest, holdState, problems } from '../calc/pressureTest';
 import { dayLabel, stopwatch } from '../calc/days';
+import { VoicePressable } from '../voice/VoicePressable';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'PressureTests'>;
 
@@ -44,7 +45,7 @@ function TestRow({ t, test, now, job, onOpen, onDelete, superseded }: { t: Theme
             : 'Not started';
   return (
     <Plate style={[{ marginHorizontal: t.layout.screenPadding, marginBottom: t.space.md }, confirming ? { borderColor: t.colors.danger } : {}]}>
-      <Pressable
+      <VoicePressable voiceLabel={`Open ${testName(test)}`}
         onPress={onOpen}
         accessibilityRole="button"
         accessibilityLabel={`Open ${testName(test)}, ${state}`}
@@ -84,21 +85,21 @@ function TestRow({ t, test, now, job, onOpen, onDelete, superseded }: { t: Theme
           ) : null}
         </View>
         <Ionicons name="chevron-forward" size={18} color={t.colors.textFaint} />
-      </Pressable>
+      </VoicePressable>
       {confirming ? (
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.md, paddingHorizontal: t.space.lg, paddingBottom: t.space.lg }}>
           <Text style={[t.type.captionStrong, { color: t.colors.danger, flex: 1 }]}>Delete this test record?</Text>
           <Pressable onPress={() => setConfirming(false)} hitSlop={10} accessibilityRole="button">
             <Text style={[t.type.labelSmall, { color: t.colors.textMuted }]}>Keep</Text>
           </Pressable>
-          <Pressable onPress={onDelete} hitSlop={10} accessibilityRole="button" accessibilityLabel={`Confirm delete ${testName(test)}`}>
+          <VoicePressable onPress={onDelete} hitSlop={10} accessibilityRole="button" accessibilityLabel={`Confirm delete ${testName(test)}`}>
             <Text style={[t.type.labelSmall, { color: t.colors.danger }]}>Delete</Text>
-          </Pressable>
+          </VoicePressable>
         </View>
       ) : (
-        <Pressable onPress={() => setConfirming(true)} hitSlop={8} accessibilityRole="button" accessibilityLabel={`Delete ${testName(test)}`} style={{ position: 'absolute', top: 0, right: 0, padding: t.space.md }}>
+        <VoicePressable onPress={() => setConfirming(true)} hitSlop={8} accessibilityRole="button" accessibilityLabel={`Delete ${testName(test)}`} style={{ position: 'absolute', top: 0, right: 0, padding: t.space.md }}>
           <Ionicons name="trash-outline" size={16} color={t.colors.textFaint} />
-        </Pressable>
+        </VoicePressable>
       )}
     </Plate>
   );

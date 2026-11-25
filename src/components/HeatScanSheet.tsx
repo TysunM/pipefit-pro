@@ -30,6 +30,7 @@ import { Heat } from '../calc/heat';
 import { Candidate, scanForHeats, whyLabel } from '../calc/heatScan';
 import { FillMiss, HeatDetails, HeatFill, Marking, askHeatFill, describeDetails, detailsOf, missWords, readMarking, withMarking } from '../ai/heatFill';
 import { API_BASE } from '../ai/apiBase';
+import { VoicePressable } from '../voice/VoicePressable';
 
 /** Loaded lazily so a device with no OCR module still opens the sheet. */
 type Ocr = { recognizeText: (uri: string) => Promise<{ text: string }> };
@@ -180,7 +181,7 @@ export function HeatScanSheet({
             }}
           >
             <CameraView ref={cam} style={{ flex: 1 }} facing="back" enableTorch={torch} />
-            <Pressable
+            <VoicePressable voiceLabel={torch ? 'Light off' : 'Light on'}
               onPress={() => {
                 void Haptics.selectionAsync();
                 setTorch((on) => !on);
@@ -204,7 +205,7 @@ export function HeatScanSheet({
               })}
             >
               <Ionicons name={torch ? 'flashlight' : 'flashlight-outline'} size={24} color={torch ? t.colors.onPrimary : '#fff'} />
-            </Pressable>
+            </VoicePressable>
           </View>
           <Text style={[t.type.caption, { color: t.colors.textFaint }]}>
             {torch
@@ -395,9 +396,9 @@ export function HeatScanSheet({
           }}
         >
           <Text style={[t.type.sectionTitle, { color: t.colors.text, flex: 1 }]}>Read a heat number</Text>
-          <Pressable onPress={close} accessibilityRole="button" accessibilityLabel="Close">
+          <VoicePressable onPress={close} accessibilityRole="button" accessibilityLabel="Close">
             <Ionicons name="close" size={24} color={t.colors.textMuted} />
-          </Pressable>
+          </VoicePressable>
         </View>
         <ScrollView keyboardShouldPersistTaps="handled">{body()}</ScrollView>
       </View>
@@ -478,7 +479,7 @@ function ReadText({ t, raw }: { t: ReturnType<typeof useTheme>; raw: string }) {
   if (!text) return null;
   return (
     <View style={{ marginHorizontal: t.layout.screenPadding, marginTop: t.space.md }}>
-      <Pressable
+      <VoicePressable
         onPress={() => setOpen((o) => !o)}
         accessibilityRole="button"
         accessibilityState={{ expanded: open }}
@@ -488,7 +489,7 @@ function ReadText({ t, raw }: { t: ReturnType<typeof useTheme>; raw: string }) {
       >
         <Ionicons name={open ? 'chevron-down' : 'chevron-forward'} size={16} color={t.colors.textMuted} />
         <Text style={[t.type.captionStrong, { color: t.colors.textMuted }]}>What the camera read</Text>
-      </Pressable>
+      </VoicePressable>
       {open ? (
         <Text
           selectable

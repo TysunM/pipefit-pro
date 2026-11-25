@@ -32,6 +32,7 @@ import {
   sightDir,
   steadyDir,
 } from '../calc/sight';
+import { VoicePressable } from '../voice/VoicePressable';
 
 /** How long a reading is gathered over, and how fast the sensor is polled. */
 const BURST_MS = 1200;
@@ -208,9 +209,9 @@ export function SightSheet({
           }}
         >
           <Text style={[t.type.sectionTitle, { color: t.colors.text, flex: 1 }]}>{`Sight leg ${legNumber}`}</Text>
-          <Pressable onPress={onClose} accessibilityRole="button" accessibilityLabel="Close">
+          <VoicePressable onPress={onClose} accessibilityRole="button" accessibilityLabel="Close">
             <Ionicons name="close" size={24} color={t.colors.textMuted} />
-          </Pressable>
+          </VoicePressable>
         </View>
 
         {unavailable ? (

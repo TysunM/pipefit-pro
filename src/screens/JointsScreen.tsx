@@ -33,6 +33,7 @@ import { JointHeatsSheet } from '../components/JointHeatsSheet';
 import { putJoint, withHeat, withoutHeat } from '../state/register';
 import { normaliseHeat } from '../calc/heat';
 import { JobChips, useJobFilter } from '../components/JobChips';
+import { VoicePressable } from '../voice/VoicePressable';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Joints'>;
 
@@ -104,7 +105,7 @@ function JointRow({
         confirming ? { borderColor: t.colors.danger } : {},
       ]}
     >
-      <Pressable
+      <VoicePressable voiceLabel={`Open ${joint.tag || 'untitled joint'}`}
         onPress={onOpen}
         accessibilityRole="button"
         accessibilityLabel={`Open ${joint.tag || 'untitled joint'}, ${jointProgress(joint)}`}
@@ -174,11 +175,11 @@ function JointRow({
           </Text>
         </View>
         <Ionicons name="chevron-forward" size={18} color={t.colors.textFaint} />
-      </Pressable>
+      </VoicePressable>
 
       {/* What this joint is made of, which is the half of a turnover package
           the register could not answer before. */}
-      <Pressable
+      <VoicePressable
         onPress={onHeats}
         accessibilityRole="button"
         accessibilityLabel={`Heats in ${joint.tag || 'untitled joint'}`}
@@ -221,7 +222,7 @@ function JointRow({
               : joint.heats.join(', ')}
         </Text>
         <Ionicons name="chevron-forward" size={15} color={t.colors.textFaint} />
-      </Pressable>
+      </VoicePressable>
 
       {confirming ? (
         <View
@@ -239,12 +240,12 @@ function JointRow({
           <Pressable onPress={() => setConfirming(false)} hitSlop={10} accessibilityRole="button">
             <Text style={[t.type.labelSmall, { color: t.colors.textMuted }]}>Keep</Text>
           </Pressable>
-          <Pressable onPress={onDelete} hitSlop={10} accessibilityRole="button" accessibilityLabel={`Confirm delete ${joint.tag || 'untitled joint'}`}>
+          <VoicePressable onPress={onDelete} hitSlop={10} accessibilityRole="button" accessibilityLabel={`Confirm delete ${joint.tag || 'untitled joint'}`}>
             <Text style={[t.type.labelSmall, { color: t.colors.danger }]}>Delete</Text>
-          </Pressable>
+          </VoicePressable>
         </View>
       ) : (
-        <Pressable
+        <VoicePressable
           onPress={() => setConfirming(true)}
           hitSlop={8}
           accessibilityRole="button"
@@ -252,7 +253,7 @@ function JointRow({
           style={{ position: 'absolute', top: 0, right: 0, padding: t.space.md }}
         >
           <Ionicons name="trash-outline" size={16} color={t.colors.textFaint} />
-        </Pressable>
+        </VoicePressable>
       )}
     </Plate>
   );

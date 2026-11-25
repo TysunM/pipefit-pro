@@ -72,6 +72,7 @@ import { ISO_GRID } from '../calc/iso';
 import { shareSheet } from '../print/share';
 import { testRecordHtml } from '../print/testRecord';
 import { day as printDay } from '../print/turnover';
+import { VoicePressable } from '../voice/VoicePressable';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'PressureTest'>;
 
@@ -313,9 +314,9 @@ export function PressureTestScreen({ route, navigation }: Props) {
         >
           <Ionicons name="speedometer-outline" size={17} color={t.colors.textMuted} />
           <Text style={[t.type.body, { color: t.colors.text, flex: 1 }]}>{`${clockLabel(r.at)}  ·  ${fig(r.psi)} psi`}</Text>
-          <Pressable onPress={() => change((x) => ({ ...x, readings: x.readings.filter((_, k) => k !== i) }))} hitSlop={10} accessibilityRole="button" accessibilityLabel={`Remove the ${clockLabel(r.at)} reading`}>
+          <VoicePressable onPress={() => change((x) => ({ ...x, readings: x.readings.filter((_, k) => k !== i) }))} hitSlop={10} accessibilityRole="button" accessibilityLabel={`Remove the ${clockLabel(r.at)} reading`}>
             <Ionicons name="close" size={18} color={t.colors.textFaint} />
-          </Pressable>
+          </VoicePressable>
         </View>
       ))}
 
@@ -525,9 +526,9 @@ export function PressureTestScreen({ route, navigation }: Props) {
                 <>
                   <SignatureView sig={s.sig} />
                   <Text style={[t.type.caption, { color: t.colors.textMuted, flex: 1 }]}>{s.signedAt !== null ? `Signed ${clockLabel(s.signedAt)} ${new Date(s.signedAt).toLocaleDateString()}` : 'Signed'}</Text>
-                  <Pressable onPress={() => change((x) => ({ ...x, people: { ...x.people, [role]: { ...x.people[role], sig: '', signedAt: null } } }))} hitSlop={10} accessibilityRole="button" accessibilityLabel={`Clear the ${ROLE_LABEL[role]} signature`}>
+                  <VoicePressable onPress={() => change((x) => ({ ...x, people: { ...x.people, [role]: { ...x.people[role], sig: '', signedAt: null } } }))} hitSlop={10} accessibilityRole="button" accessibilityLabel={`Clear the ${ROLE_LABEL[role]} signature`}>
                     <Text style={[t.type.labelSmall, { color: t.colors.textMuted }]}>Clear</Text>
-                  </Pressable>
+                  </VoicePressable>
                 </>
               ) : (
                 <GhostButton

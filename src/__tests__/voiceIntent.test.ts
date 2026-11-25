@@ -310,3 +310,19 @@ describe('heard the way a fitter hears it', () => {
     expect(readFigures(tokens('12 bolt giraffe'), 'FlangeBoltUp', true)).toEqual({ figures: { bolts: bare(12) }, ignored: ['giraffe'] });
   });
 });
+
+describe('"at 45" is the angle', () => {
+  test('on a rolling offset, a simple offset and a saddle', () => {
+    expect(localIntent('rolling offset rise 12 roll 8 at 45', null)).toEqual({
+      kind: 'open',
+      route: 'RollingOffset',
+      figures: { rise: { n: 12, inches: false }, roll: { n: 8, inches: false }, angle: { n: 45, inches: false } },
+    });
+    expect(localIntent('rise 12 roll 8 at 22 and a half rolling offset', null)).toMatchObject({ route: 'RollingOffset', figures: { angle: { n: 22.5, inches: false } } });
+    expect(localIntent('simple offset 14 at 45', null)).toEqual({ kind: 'open', route: 'SimpleOffset', figures: { offset: { n: 14, inches: false }, angle: { n: 45, inches: false } } });
+    expect(localIntent('saddle 4 inch depth at 30', null)).toMatchObject({ route: 'SaddleBend', figures: { angle: { n: 30, inches: false } } });
+  });
+  test('but not a figure no angle could be', () => {
+    expect(localIntent('rolling offset rise 12 at 400', null)).toBeNull();
+  });
+});

@@ -7,6 +7,7 @@ import { useSettings } from '../state/settings';
 import { spokenAngle, spokenLength, spokenResult } from '../calc/spoken';
 import { say } from '../audio/say';
 import { GlowBar, Well } from './metal';
+import { VoicePressable } from '../voice/VoicePressable';
 
 /** What a result reads aloud: a length in inches, or an angle in degrees. */
 export type Speak = { inches: number } | { degrees: number };
@@ -73,7 +74,7 @@ export function ResultBanner({
           />
           <Text style={[t.type.label, { color: t.colors.textMuted, flex: 1 }]}>{label}</Text>
           {phrase ? (
-            <Pressable
+            <VoicePressable voiceLabel={'Read aloud'}
               onPress={() => {
                 lastSaid.current = phrase;
                 say(phrase);
@@ -92,7 +93,7 @@ export function ResultBanner({
               })}
             >
               {({ pressed }) => <Ionicons name="volume-high-outline" size={22} color={pressed ? t.colors.onPrimary : t.colors.data} />}
-            </Pressable>
+            </VoicePressable>
           ) : null}
         </View>
         <Text

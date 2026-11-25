@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../theme/ThemeProvider';
 import { ElbowRadius, PIPE_SIZES, Schedule } from '../calc/pipe';
 import { JOINING_LABEL, MATERIALS, MaterialGroup, MaterialId, material as materialOf, sizeLabel, sizesFor, wallLabel, wallsAt } from '../calc/materials';
+import { VoicePressable } from '../voice/VoicePressable';
 
 const GROUPS: MaterialGroup[] = ['Steels', 'Chrome-moly', 'Iron', 'Plastics & lined'];
 /** What a material is called on its chip, where its short name is too short to read. */
@@ -66,9 +67,9 @@ export function PipeSheet({
           <Text style={[t.type.sectionTitle, { color: t.colors.text, flex: 1 }]}>
             Pipe &amp; fitting
           </Text>
-          <Pressable onPress={onClose} hitSlop={12} accessibilityRole="button" accessibilityLabel="Close">
+          <VoicePressable onPress={onClose} hitSlop={12} accessibilityRole="button" accessibilityLabel="Close">
             <Ionicons name="close" size={24} color={t.colors.textMuted} />
-          </Pressable>
+          </VoicePressable>
         </View>
 
         <ScrollView contentContainerStyle={{ paddingBottom: t.space.xl }}>

@@ -348,6 +348,20 @@ export function readFigures(ws: readonly string[], route: FigureRoute, lenient =
     take(i, end); // a name with no value is just a word
   }
 
+  // "At 45": a plain figure after "at" is the angle, on a tool that has one.
+  // "Rise 12, roll 8, at 45" is a 45 degree rolling offset.
+  const angleKey = Object.keys(specs).find((k) => specs[k]!.kind === 'angle');
+  if (angleKey && out[angleKey] === undefined) {
+    for (let i = 0; i + 1 < ws.length; i++) {
+      if (used[i] || used[i + 1] || ws[i] !== 'at') continue;
+      const v = valueAt(ws, i + 1, 'angle');
+      if (!v || !plausible(specs[angleKey]!, v.f)) continue;
+      out[angleKey] = v.f;
+      take(i, v.next);
+      break;
+    }
+  }
+
   // A value with no name: the tool's first field, if nothing else filled it.
   // "Simple offset, 14 at 45 degrees" is an offset of 14.
   {

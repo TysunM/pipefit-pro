@@ -21,6 +21,7 @@ import { CalState, INSTRUMENT_KINDS, Instrument, InstrumentKind, STATE_WORDS, by
 import { dayKey, usDate } from '../calc/days';
 import { shareSheet } from '../print/share';
 import { calibrationHtml } from '../print/calibration';
+import { VoicePressable } from '../voice/VoicePressable';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Calibration'>;
 
@@ -88,7 +89,7 @@ export function CalibrationScreen(_: Props) {
               const s = calState(i, today);
               const k = kindOf(i.kind);
               return (
-                <Pressable
+                <VoicePressable voiceLabel={i.tag}
                   key={i.id}
                   onPress={() => setOpen(i)}
                   accessibilityRole="button"
@@ -116,7 +117,7 @@ export function CalibrationScreen(_: Props) {
                     {s.daysLeft !== null && s.state === 'soon' ? `\n${s.daysLeft} day${s.daysLeft === 1 ? '' : 's'}` : ''}
                   </Text>
                   <Ionicons name="chevron-forward" size={18} color={t.colors.textFaint} />
-                </Pressable>
+                </VoicePressable>
               );
             })}
           </View>

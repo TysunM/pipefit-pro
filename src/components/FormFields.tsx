@@ -248,6 +248,18 @@ export function DayStepper({ day, onChange, now = Date.now(), today: given }: { 
   const today = given ?? dayKey(now);
   const atToday = day >= today;
   const rel = day === today ? 'Today' : day === shiftDay(today, -1) ? 'Yesterday' : '';
+  // "Day before", "next day", "yesterday", "today": the arrows by voice, never past today.
+  const go = (to: string, said: string) => (onChange(to), `${said}: ${dayLabel(to)}.`);
+  useVoiceTargets([
+    { kind: 'press', label: 'Day before', run: () => go(shiftDay(day, -1), 'Day before') },
+    { kind: 'press', label: 'Previous day', run: () => go(shiftDay(day, -1), 'Day before') },
+    ...(atToday ? [] : [
+      { kind: 'press' as const, label: 'Day after', run: () => go(shiftDay(day, 1), 'Day after') },
+      { kind: 'press' as const, label: 'Next day', run: () => go(shiftDay(day, 1), 'Day after') },
+    ]),
+    { kind: 'press', label: 'Today', on: day === today, run: () => go(today, 'Today') },
+    { kind: 'press', label: 'Yesterday', on: day === shiftDay(today, -1), run: () => go(shiftDay(today, -1), 'Yesterday') },
+  ]);
   const arrow = (dir: -1 | 1, off: boolean) => (
     <Pressable
       onPress={() => !off && onChange(shiftDay(day, dir))}

@@ -34,7 +34,7 @@ export function spoken(said: string): string {
   for (let i = 0; i < ws.length; ) {
     const n = numberAt(ws, i);
     if (n && n.next > i) {
-      out.push(String(Number(n.value.toFixed(4))));
+      out.push(String(Number(n.value.toFixed(6))));
       i = n.next;
     } else out.push(ws[i++]!);
   }

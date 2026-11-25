@@ -24,6 +24,7 @@ import { LANGS, Lang, MAX_QUESTIONS, Module, ModuleView, Question, TEXT_MAX, del
 import { backupFileName } from '../state/backup';
 import { shareBackup } from '../state/backupFile';
 import { dayKey, usDate } from '../calc/days';
+import { VoicePressable } from '../voice/VoicePressable';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Orientation'>;
 
@@ -45,7 +46,7 @@ export function OrientationScreen({ navigation }: Props) {
   };
 
   const Row = ({ r }: { r: ModuleView }) => (
-    <Pressable
+    <VoicePressable voiceLabel={r.module.title}
       onPress={() => navigation.navigate('OrientationCourse', { id: r.module.id, lang })}
       accessibilityRole="button"
       accessibilityLabel={`${r.module.title}, ${r.pass ? 'passed' : r.off ? 'not required' : 'not yet'}`}
@@ -74,16 +75,16 @@ export function OrientationScreen({ navigation }: Props) {
         </Text>
       </View>
       {r.builtin ? (
-        <Pressable onPress={() => apply((s) => setOff(s, r.module.id, !r.off))} hitSlop={8} accessibilityRole="button" accessibilityLabel={r.off ? 'Require this module' : 'Do not require this module'}>
+        <VoicePressable voiceLabel={`${r.off ? 'Require' : 'Do not require'} ${r.module.title}`} onPress={() => apply((s) => setOff(s, r.module.id, !r.off))} hitSlop={8} accessibilityRole="button" accessibilityLabel={r.off ? 'Require this module' : 'Do not require this module'}>
           <Ionicons name={r.off ? 'add-circle-outline' : 'eye-off-outline'} size={20} color={t.colors.textFaint} />
-        </Pressable>
+        </VoicePressable>
       ) : (
-        <Pressable onPress={() => setOpen(r.module)} hitSlop={8} accessibilityRole="button" accessibilityLabel={`Edit ${r.module.title}`}>
+        <VoicePressable onPress={() => setOpen(r.module)} hitSlop={8} accessibilityRole="button" accessibilityLabel={`Edit ${r.module.title}`}>
           <Ionicons name="create-outline" size={20} color={t.colors.textFaint} />
-        </Pressable>
+        </VoicePressable>
       )}
       <Ionicons name="chevron-forward" size={18} color={t.colors.textFaint} />
-    </Pressable>
+    </VoicePressable>
   );
 
   return (
@@ -189,10 +190,10 @@ function ModuleSheet({ module, store, onClose, apply }: { module: Module | 'new'
               Three or more and they are the check, 80% to pass. Fewer, and a read-through signed off is the pass until Claude writes questions.
             </Text>
             {questions.map((qu, i) => (
-              <Pressable key={i} onPress={() => setEditing(i)} accessibilityRole="button" accessibilityLabel={`Edit question ${i + 1}`} style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.md, paddingHorizontal: t.layout.screenPadding, paddingVertical: t.space.sm }}>
+              <VoicePressable key={i} onPress={() => setEditing(i)} accessibilityRole="button" accessibilityLabel={`Edit question ${i + 1}`} style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.md, paddingHorizontal: t.layout.screenPadding, paddingVertical: t.space.sm }}>
                 <Text style={[t.type.body, { color: t.colors.text, flex: 1 }]} numberOfLines={2}>{`${i + 1}. ${qu.q}`}</Text>
                 <Ionicons name="create-outline" size={18} color={t.colors.textFaint} />
-              </Pressable>
+              </VoicePressable>
             ))}
             {questions.length < MAX_QUESTIONS ? (
               <View style={{ paddingHorizontal: t.layout.screenPadding, paddingTop: t.space.sm }}>

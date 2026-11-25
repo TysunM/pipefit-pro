@@ -9,6 +9,7 @@ import { Plate, Well } from './metal';
 import { CalcKey } from './CalcKey';
 import { CATEGORIES, categoryById, convert, formatConverted, inputText, inputValue, pressConv, unitIn, type ConvKey } from '../calc/convert';
 import { formatFeetInch, formatInches, type FracDen } from '../calc/ftin';
+import { VoicePressable } from '../voice/VoicePressable';
 
 // The converter
 // -------------
@@ -70,14 +71,14 @@ export function UnitConverter({ input, setInput }: { input: string; setInput: (f
         {CATEGORIES.map((c) => {
           const on = c.id === cat.id;
           return (
-            <Pressable key={c.id} onPress={() => pick(c.id)} accessibilityRole="button" accessibilityLabel={c.name} accessibilityState={{ selected: on }}>
+            <VoicePressable key={c.id} onPress={() => pick(c.id)} accessibilityRole="button" accessibilityLabel={c.name} accessibilityState={{ selected: on }}>
               {({ pressed }) => (
                 <Plate tone={on ? 'copper' : 'metal'} sunk={pressed} radius={t.radius.pill} style={{ height: 38, paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                   <Ionicons name={c.icon} size={16} color={on ? t.colors.onCopper : t.colors.textMuted} />
                   <Text style={[t.type.button, { fontSize: 14, color: on ? t.colors.onCopper : t.colors.text }]}>{c.name}</Text>
                 </Plate>
               )}
-            </Pressable>
+            </VoicePressable>
           );
         })}
       </ScrollView>
