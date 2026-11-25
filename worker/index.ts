@@ -18,7 +18,7 @@ import { HANDBOOK_PICK_PATH, MAX_QUERY, cleanQuery, handbookRequest, readHandboo
 import { SHIFT_POLISH_PATH } from '../src/ai/shiftPolish';
 import { MODEL_ID, claudeCheck, fittingSheet, orientationCourse, shiftPolish, voiceCommand, type Reply } from './claude';
 import { VOICE_PATH } from '../src/ai/voice';
-import { AI_MODEL_ID, DEFAULT_AI_MODEL, voiceByWorkersAi, type Ai } from './workersAi';
+import { AI_MODEL_ID, DEFAULT_AI_MODEL, DEFAULT_AI_VISION_MODEL, sheetByWorkersAi, voiceByWorkersAi, type Ai } from './workersAi';
 import { FITTING_SHEET_PATH, MAX_SHEET_BODY } from '../src/ai/fittingSheet';
 import { MAX_ORIENTATION_BODY, ORIENTATION_PATH } from '../src/ai/orientation';
 import { CLAUDE_CHECK_PATH, MAX_CHECK_BODY } from '../src/ai/claudeCheck';
@@ -38,6 +38,8 @@ export interface Env {
   AI?: Ai;
   /** Which Workers AI model; DEFAULT_AI_MODEL when unset. A plain variable, set in the dashboard. */
   WORKERS_AI_MODEL?: string;
+  /** Which Workers AI model reads a box label or a maker's sheet; DEFAULT_AI_VISION_MODEL when unset. */
+  WORKERS_AI_VISION_MODEL?: string;
 }
 
 /**
@@ -141,8 +143,9 @@ export async function handle(req: Request, env: Env, fetchImpl: typeof fetch = f
     const apiKey = env.ANTHROPIC_API_KEY?.trim();
     const model = env.CLAUDE_MODEL?.trim() ?? '';
     const missing = [!apiKey && 'ANTHROPIC_API_KEY', !MODEL_ID.test(model) && 'CLAUDE_MODEL'].filter(Boolean);
-    // Voice has a second helper: Cloudflare's free model, when Claude is not set up or not paid for.
-    const free = url.pathname === VOICE_PATH && env.AI ? env.AI : null;
+    // Voice and the box reader have a second helper: Cloudflare's free models, when Claude is not set up or not paid for.
+    const sheet = url.pathname === FITTING_SHEET_PATH;
+    const free = (url.pathname === VOICE_PATH || sheet) && env.AI ? env.AI : null;
     if ((!apiKey || missing.length) && !free) return json(503, { error: 'not_configured', missing });
     if (Number(req.headers.get('content-length') ?? 0) > claude.maxBody) return json(413, { error: 'too_large' });
     const raw = await req.text();
@@ -150,9 +153,10 @@ export async function handle(req: Request, env: Env, fetchImpl: typeof fetch = f
     const out = apiKey && !missing.length && !skip ? await claude.run(raw, apiKey, model, fetchImpl) : { status: 503, body: { error: 'not_configured', missing } };
     if (free && refusedForGood(out)) claudeSkipUntil = Date.now() + CLAUDE_SKIP_MS;
     if (free && claudeUnavailable(out)) {
-      const aiModel = env.WORKERS_AI_MODEL?.trim() || DEFAULT_AI_MODEL;
-      if (!AI_MODEL_ID.test(aiModel)) return json(503, { error: 'not_configured', missing: ['WORKERS_AI_MODEL'] });
-      const viaAi = await voiceByWorkersAi(raw, free, aiModel);
+      const name = sheet ? 'WORKERS_AI_VISION_MODEL' : 'WORKERS_AI_MODEL';
+      const aiModel = (sheet ? env.WORKERS_AI_VISION_MODEL : env.WORKERS_AI_MODEL)?.trim() || (sheet ? DEFAULT_AI_VISION_MODEL : DEFAULT_AI_MODEL);
+      if (!AI_MODEL_ID.test(aiModel)) return json(503, { error: 'not_configured', missing: [name] });
+      const viaAi = sheet ? await sheetByWorkersAi(raw, free, aiModel) : await voiceByWorkersAi(raw, free, aiModel);
       return json(viaAi.status, viaAi.body);
     }
     return json(out.status, out.body);

@@ -1,10 +1,10 @@
 import { useMemo } from 'react';
 import { useSettings } from '../state/settings';
 import { useFittings } from '../state/fittings';
-import { lookup } from '../state/fittingLibrary';
+import { clearTakeout, lookup, setTakeout } from '../state/fittingLibrary';
 import { FITTING_ANGLES, type ElbowRadius } from '../calc/pipe';
 import { LIBRARY_FITTINGS } from '../calc/takeoffCatalog';
-import { material, pipeSpec, wallLabel } from '../calc/materials';
+import { material, pipeSpec, sizesFor, wallLabel } from '../calc/materials';
 import { JOINT_ANGLES, JOINT_NAME, jointHasGap, offsetElbow, offsetJoint, type OffsetJoint } from '../calc/offsetFitting';
 
 const LIBRARY_ELBOW_NAME: Record<'socket' | 'nohub', Record<number, string>> = {
@@ -36,8 +36,23 @@ export function useOffsetJoint(nps: number, radius: ElbowRadius) {
     const label = LIBRARY_FITTINGS.find((f) => f.id === id)?.label ?? `${a}°`;
     return joint === 'socket' ? `PVC ${label}` : `No-hub ${label}`;
   };
+  /** The library fitting an elbow at this angle is, for a socket or no-hub joint; null for any other, or an angle none is made at. */
+  const libraryFittingAt = (angle: number): string | null => {
+    if (joint !== 'socket' && joint !== 'nohub') return null;
+    const a = Number(angle.toFixed(2));
+    return LIBRARY_ELBOW_NAME[joint][a] ?? null;
+  };
   return {
     joint,
+    libraryFittingAt,
+    /** The fitting library for the job's line: what it holds, and setting or clearing a figure at the size on screen. */
+    library: {
+      value: (id: string) => lookup(fittings.library, line, id, nps),
+      save: (id: string, inches: number) => fittings.apply((l) => setTakeout(l, line, id, nps, inches, Date.now())),
+      clear: (id: string) => fittings.apply((l) => clearTakeout(l, line, id, nps)),
+      sizes: sizesFor(material(settings.material)),
+      wall: settings.wall,
+    },
     welded,
     elbow,
     line,

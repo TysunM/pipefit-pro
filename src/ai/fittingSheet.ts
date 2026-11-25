@@ -309,7 +309,7 @@ export function bestPictureSize(sizes: readonly string[]): string | undefined {
 }
 
 
-export type SheetMiss = 'not_set' | 'key_refused' | 'no_credit' | 'bad_model' | 'declined' | 'too_big' | 'not_image' | 'down' | 'offline';
+export type SheetMiss = 'not_set' | 'key_refused' | 'no_credit' | 'bad_model' | 'declined' | 'too_big' | 'not_image' | 'down' | 'offline' | 'daily_limit' | 'unread';
 
 export function sheetMissWords(m: SheetMiss): string {
   const then = 'Type the takeout in instead — it works the same.';
@@ -329,9 +329,13 @@ export function sheetMissWords(m: SheetMiss): string {
     case 'not_image':
       return 'That picture could not be sent as a JPEG or PNG. Try again.';
     case 'down':
-      return `Claude is not answering right now. ${then}`;
+      return `The reader is not answering right now. ${then}`;
     case 'offline':
-      return `No signal to reach Claude. ${then}`;
+      return `No signal to reach the reader. ${then}`;
+    case 'daily_limit':
+      return `Today's free reading allowance is used up; it comes back at midnight UTC. ${then}`;
+    case 'unread':
+      return 'That picture could not be read. Fill the frame with the label, square on and in good light, and try again.';
   }
 }
 
@@ -344,6 +348,9 @@ export function sheetMissOf(status: number, body: unknown): SheetMiss {
   if (outOfCredit(e)) return 'no_credit';
   if (e.error === 'upstream' && e.status === 404) return 'bad_model';
   if (e.error === 'declined') return 'declined';
+  // The free reader (Workers AI): its day's allowance spent, or an answer it could not shape.
+  if (status === 429 || e.error === 'daily_limit') return 'daily_limit';
+  if (e.error === 'bad_answer') return 'unread';
   return 'down';
 }
 

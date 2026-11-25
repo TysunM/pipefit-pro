@@ -398,12 +398,15 @@ Socket and no-hub makeups differ by maker (Charlotte, Spears, Tyler, AB&I…), s
 | PVC socket | Centre to the bottom of the socket (pipe bottoms out) | None |
 | No-hub | Centre to the end of the fitting | Coupling centre stop, usually 0 |
 
-**Faster: photograph the maker's sheet.** In the takeout box, tap **Photograph the maker's sheet** and shoot the dimension table (or the box label) flat and square. Claude reads every fitting and size on it at once, and you get a list to check against the paper:
+**Faster: photograph the box or the maker's sheet.** In the takeout box, tap **Photograph the box or sheet** and shoot the box label (or the dimension table) flat and square. Claude reads every fitting and size on it at once; with no paid Claude key, Cloudflare's free vision model reads it instead, from the same daily allowance as the free voice helper. Either way you get a list to check against the paper:
 
 - **Ticked** rows are new or change a saved figure. Only ticked rows are saved, and only when you tap **Save**.
 - **Unticked, in orange**: two figures for one fitting (tick the right one), a figure too long for the size (usually millimetres read as inches), a size the line doesn't come in, or a sheet for another schedule than the job's.
 - Where a sheet gives centre-to-face and socket depth instead of the takeout, the app does the subtraction and shows it.
 - Millimetre sheets are converted. The photo is read and not kept. Needs signal.
+- The free model reads a clear, square-on label well and small print less well: check its figures against the box before you save, as you would any.
+
+The same takeout box comes up on **Simple offset** and **Rolling offset** for a PVC or soil pipe job, under the answer, when the offset waits on a fitting's figure: photograph it there and the offset works as soon as it is saved. Say **"read the box"** with it on screen and the camera comes up right there.
 
 **Hands-free: "read this box".** Say **"read this box"** (or "scan the label", "photograph the sheet") and the camera comes up for the job's line, with the mic left open:
 

@@ -16,14 +16,14 @@ import { usePipeConfig } from '../hooks/usePipeConfig';
 import { useSettings } from '../state/settings';
 import { StockNote } from '../components/StockNote';
 import { END_FITTINGS, EndFitting, FITTING_SOURCE, endHasGap, solveCutLength } from '../calc/cutLength';
-import { JointKind, LIBRARY_FAMILY, LIBRARY_FITTINGS, familyAfterMaterial, TAKEOFF_FAMILIES, isLibraryFitting, optionsForFamily } from '../calc/takeoffCatalog';
-import { MaterialId, material, pipeSpec, sizeLabel, sizesFor, wallLabel } from '../calc/materials';
+import { JointKind, LIBRARY_FAMILY, familyAfterMaterial, TAKEOFF_FAMILIES, isLibraryFitting, optionsForFamily } from '../calc/takeoffCatalog';
+import { MaterialId, material, pipeSpec, sizesFor, wallLabel } from '../calc/materials';
 import { useCuts } from '../state/cuts';
 import { addCut, nextMark, pipeLine } from '../state/cutLog';
 import { sameProject } from '../state/project';
 import { useCutAdder } from '../voice/useCutAdder';
 import * as Haptics from 'expo-haptics';
-import { FittingSheetReader } from '../components/FittingSheetReader';
+import { SetTakeout } from '../components/SetTakeout';
 import { useFittings } from '../state/fittings';
 import { clearTakeout, lookup, setTakeout } from '../state/fittingLibrary';
 import { useTheme } from '../theme/ThemeProvider';
@@ -34,7 +34,6 @@ const FAMILY_FOR: Partial<Record<MaterialId, JointKind>> = LIBRARY_FAMILY;
 const firstOf = (family: JointKind): string =>
   optionsForFamily(family).find((o) => o.id !== 'none' && o.id !== 'custom')?.id ?? 'custom';
 import { FlangeClass, flangedClasses } from '../calc/flangedFitting';
-import { VoicePressable } from '../voice/VoicePressable';
 
 export function CutLengthScreen() {
   const t = useTheme();
@@ -300,155 +299,5 @@ export function CutLengthScreen() {
         onChange={pipe.change}
       />
     </Screen>
-  );
-}
-
-/**
- * Setting a socket or no-hub fitting's takeout, once, for the line and size on
- * screen. A socket fitting can be measured: centre to the face, less the
- * socket depth. Saved on the phone and used every time after.
- */
-function SetTakeout({
-  fitting,
-  nps,
-  lineName,
-  line,
-  wall,
-  sizes,
-  value,
-  onSave,
-  onClear,
-}: {
-  fitting: string;
-  nps: number;
-  lineName: string;
-  line: string;
-  wall: string;
-  sizes: readonly number[];
-  value: number | undefined;
-  onSave: (inches: number) => void;
-  onClear: () => void;
-}) {
-  const t = useTheme();
-  const u = useUnits();
-  const f = LIBRARY_FITTINGS.find((x) => x.id === fitting)!;
-  const [editing, setEditing] = useState(false);
-  const [reading, setReading] = useState(false);
-  const navigation = useNavigation();
-  const [takeout, setTake] = useState('');
-  const [face, setFace] = useState('');
-  const [depth, setDepth] = useState('');
-  const socket = f.family === 'socket' && f.id !== 'sockStreet90';
-  const fromFace = u.parse(face) - u.parse(depth);
-  const typed = u.parse(takeout);
-  const next = Number.isFinite(typed) ? typed : Number.isFinite(fromFace) && fromFace > 0 ? fromFace : NaN;
-  const title = `${sizeLabel(nps)} ${lineName} ${f.label}`;
-  // 1 1/8" in inches; the decimal with its unit otherwise.
-  const len = (v: number) => u.frac(v) || u.full(v);
-
-  // Ahead of both views, so it stays put when saving from it folds the panel away.
-  const reader = (
-    <FittingSheetReader
-      visible={reading}
-      onClose={() => {
-        setReading(false);
-        setEditing(false);
-      }}
-      family={f.family}
-      line={line}
-      lineName={lineName}
-      wall={wall}
-      sizes={sizes}
-    />
-  );
-
-  if (value !== undefined && !editing) {
-    return (
-      <>
-        {reader}
-        <View style={{ marginHorizontal: t.layout.screenPadding, marginBottom: t.space.md, flexDirection: 'row', alignItems: 'center', gap: t.space.sm }}>
-          <Text style={[t.type.caption, { color: t.colors.textMuted, flex: 1 }]}>
-            {`${title}: takeout ${len(value)}, from your fitting library.`}
-          </Text>
-          <VoicePressable onPress={() => setEditing(true)} hitSlop={10} accessibilityRole="button" accessibilityLabel={`Change the ${title} takeout`}>
-            <Text style={[t.type.captionStrong, { color: t.colors.data }]}>Change</Text>
-          </VoicePressable>
-        </View>
-      </>
-    );
-  }
-
-  return (
-    <>
-      {reader}
-      <View
-        style={{
-          marginHorizontal: t.layout.screenPadding,
-          marginBottom: t.space.lg,
-          padding: t.space.md,
-          borderRadius: t.radius.md,
-          borderWidth: 1,
-          borderColor: t.colors.warnText,
-          gap: t.space.sm,
-        }}
-      >
-        <Text style={[t.type.bodyStrong, { color: t.colors.text }]}>{`Set the ${title} takeout`}</Text>
-        <Text style={[t.type.caption, { color: t.colors.textMuted }]}>
-          {`Makers differ, so this is set once for this size and kept: ${f.how}. From the maker’s sheet or the box, or measured off the fitting.`}
-        </Text>
-        <GhostButton label="Photograph the maker’s sheet" icon="camera-outline" onPress={() => setReading(true)} />
-        <Pressable onPress={() => navigation.navigate('FittingLibrary', { line })} accessibilityRole="link" hitSlop={8}>
-        <Text style={[t.type.captionStrong, { color: t.colors.data }]}>{`Every saved ${lineName} takeout, and a table at a time →`}</Text>
-      </Pressable>
-      <Text style={[t.type.caption, { color: t.colors.textMuted }]}>Or type it:</Text>
-        <FieldRow>
-          <DimensionInput label="Takeout" value={takeout} onChangeText={setTake} suffix={u.suffix} placeholder="0" readout={u.frac(typed)} />
-        </FieldRow>
-        {socket ? (
-          <>
-            <Text style={[t.type.caption, { color: t.colors.textMuted }]}>Or measure it: centre to the face of the socket, and how deep the socket is.</Text>
-            <FieldRow>
-              <DimensionInput label="Centre to face" value={face} onChangeText={setFace} suffix={u.suffix} placeholder="0" />
-              <DimensionInput
-                label="Socket depth"
-                value={depth}
-                onChangeText={setDepth}
-                suffix={u.suffix}
-                placeholder="0"
-                readout={Number.isFinite(fromFace) && fromFace > 0 ? `Takeout ${len(fromFace)}` : undefined}
-              />
-            </FieldRow>
-          </>
-        ) : null}
-        <View style={{ flexDirection: 'row', gap: t.space.md }}>
-          <View style={{ flex: 1 }}>
-            <AccentButton
-              label={Number.isFinite(next) ? `Save ${len(next)}` : 'Save'}
-              icon="bookmark-outline"
-              onPress={() => {
-                if (!Number.isFinite(next) || next < 0) return;
-                onSave(next);
-                setEditing(false);
-                setTake('');
-                setFace('');
-                setDepth('');
-              }}
-            />
-          </View>
-          {value !== undefined ? (
-            <View style={{ flex: 1 }}>
-              <GhostButton
-                label="Remove"
-                icon="trash-outline"
-                onPress={() => {
-                  onClear();
-                  setEditing(false);
-                }}
-              />
-            </View>
-          ) : null}
-        </View>
-      </View>
-    </>
   );
 }

@@ -469,6 +469,7 @@ still works; the two features simply say the server is not set up.
 | `ANTHROPIC_API_KEY` | Secret | Claude: the shift report summary, spoken commands, fitting sheets and orientation courses |
 | `CLAUDE_MODEL` | Variable (plain text) | Which Claude model does it: a current model id such as `claude-opus-5-5`. Changing it needs no build and no deploy. |
 | `WORKERS_AI_MODEL` | Variable (plain text), optional | The free voice helper's model, when Claude is not set up or not paid for. Defaults to `@cf/meta/llama-3.3-70b-instruct-fp8-fast`; `@cf/meta/llama-3.1-8b-instruct-fast` costs about a sixth as much of the daily allowance. |
+| `WORKERS_AI_VISION_MODEL` | Variable (plain text), optional | The free box and sheet reader's model, when Claude is not set up or not paid for. Defaults to `@cf/meta/llama-4-scout-17b-16e-instruct`. It must take a picture as the chat format's `image_url` part. |
 
 The free voice helper needs no key: `wrangler.jsonc` binds Cloudflare Workers
 AI as `AI`, and a deploy sets it up. Spoken commands the phone cannot work out
