@@ -1635,6 +1635,19 @@ An answer feeds the next equation by its own name, so IPM and Iavg give the heat
 - Tungsten length 0.750 − 0.250 − 0.035 = **0.465"**.
 - Purging 240" of 0.370" ID tube 7 times at 20 CFH takes about **19 s**. The oxygen meter, not the clock, says when it is clean.
 
+### Sulphur between heats
+Two heats welded together with different sulphur pull the puddle toward the **lower-sulphur** heat. The further apart they are, the further it goes: the bead walks off the joint and the root on the other side can go short. It's the classic orbital failure that no change at the power supply explains, because it's in the steel.
+
+**Where it is checked:**
+- **Heat book:** open a heat and type its **Sulphur (S)** off the MTR, in weight per cent. A 316 heat outside **0.005–0.017%** is flagged; that is the band ASME BPE gives 316L made to be orbital welded. Check the edition the job is built to.
+- **Run sheet and weld log:** the two heats on a weld are checked against each other.
+  - **Apart:** a warning names the low heat the puddle will pull toward, and says to match the heats or weld a coupon on that pair first.
+  - **Matched:** a quiet line.
+  - **A heat missing from the book, or missing its sulphur:** says which.
+- **Print / PDF:** the run sheet carries the result.
+
+**How far apart is too far:** no code sets it, so the crew does, in **Settings → Welding → Sulphur apart, warn at**. The app starts at **0.005%**.
+
 ### Where people go wrong
 - **Welding production on a development program.** Coupons only until it is qualified. The run sheet says so in red.
 - **Purging by the clock.** The purge time is a guide. Strike only when the outlet reads under the program's oxygen limit.
@@ -1678,7 +1691,7 @@ C 0.20, Mn 1.20, Si 0.30, Cr 0.10, Ni 0.10, Mo 0.05, Cu 0.15, V 0.02, N 0.008, B
 ### Logging welds
 1. **Log a weld.** Line or iso, weld number (the next one on the line is filled in), the day, size, joint (butt, socket, fillet, branch), process and WPS.
 2. **Welders:** tap the stamps from the roster, or type one. A stamp not on the roster, without the process, or lapsed is named under it before you save.
-3. **Heats:** the heat numbers either side. One not in the heat book is named, so the MTR gets filed.
+3. **Heats:** the heat numbers either side. One not in the heat book is named, so the MTR gets filed. With sulphur entered on both heats in the heat book, they are checked against each other (see **Sulphur between heats** under Orbital welding).
 4. **NDE:** the line class's percentage (Visual, 5%, 10%, 20%, 100%) and method (RT, UT, MT, PT). The last weld's values carry over.
 5. **Log weld 14.** It saves and the form stays up on 15, so a run of welds goes in one after another.
 

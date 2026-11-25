@@ -30,6 +30,7 @@ import { FAULTS, INSPECT, faultOf, runFigures, runProblem, runSteps } from '../c
 import { clock } from '../calc/orbitalProgram';
 import { shareSheet } from '../print/share';
 import { runHtml } from '../print/orbital';
+import { SulphurNote, useSulphurWords } from '../components/SulphurNote';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'OrbitalRun'>;
 
@@ -50,6 +51,7 @@ export function OrbitalRunScreen({ navigation, route }: Props) {
   const [armed, setArmed] = useState(false);
   const [note, setNote] = useState<string | null>(null);
 
+  const sulphur = useSulphurWords([draft?.heatA ?? '', draft?.heatB ?? '']);
   const key = params.id ?? `${params.programId}|${params.kind}`;
   if (formFor !== key && runs.hydrated && programs.hydrated) {
     setFormFor(key);
@@ -104,7 +106,7 @@ export function OrbitalRunScreen({ navigation, route }: Props) {
   const share = async () => {
     if (!program) return;
     setNote(null);
-    const out = await shareSheet(runHtml(r, program, head, supply, eqs), `${r.kind === 'coupon' ? 'Coupon' : 'Weld'} ${r.weld}`);
+    const out = await shareSheet(runHtml(r, program, head, supply, eqs, sulphur?.text), `${r.kind === 'coupon' ? 'Coupon' : 'Weld'} ${r.weld}`);
     if (!out.ok) setNote(out.why);
   };
 
@@ -135,6 +137,7 @@ export function OrbitalRunScreen({ navigation, route }: Props) {
         {text('Heat, side A', r.heatA, (v) => patch({ heatA: v }), 'Heat no.')}
         {text('Heat, side B', r.heatB, (v) => patch({ heatB: v }), 'Heat no.')}
       </FieldRow>
+      <SulphurNote heats={[r.heatA, r.heatB]} />
       <FieldRow>{text('Operator', r.operator, (v) => patch({ operator: v }), 'Name or stamp', 'words')}</FieldRow>
 
       <SectionHeader title="Purge" />

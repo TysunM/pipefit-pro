@@ -2,6 +2,7 @@ import type { Settings } from './settings';
 import { calcSchedule, resolveSpec } from '../calc/materials';
 import { HEAT_UNITS, SPEED_UNITS } from '../calc/heatInput';
 import { cleanFieldNames } from './heatInputLog';
+import { SULPHUR_GAP_RANGE } from '../calc/sulphur';
 
 /**
  * Which look the stored settings were written under.
@@ -55,6 +56,8 @@ export function readSettings(
   merged.speedUnit = stored.speedUnit === 'auto' || (SPEED_UNITS as readonly string[]).includes(String(stored.speedUnit)) ? (stored.speedUnit as Settings['speedUnit']) : defaults.speedUnit;
   merged.arcMode = stored.arcMode === 'energy' || stored.arcMode === 'va' ? stored.arcMode : defaults.arcMode;
   merged.weldFields = stored.weldFields === undefined ? defaults.weldFields : cleanFieldNames(stored.weldFields);
+  merged.sulphurGap =
+    typeof stored.sulphurGap === 'number' && stored.sulphurGap >= SULPHUR_GAP_RANGE.min && stored.sulphurGap <= SULPHUR_GAP_RANGE.max ? stored.sulphurGap : defaults.sulphurGap;
   // Material, size and wall are kept as a set that exists. Settings from before
   // materials are carbon steel at the schedule they already had.
   const spec = resolveSpec(stored.material ?? 'cs', merged.defaultNps, stored.wall ?? merged.defaultSchedule);

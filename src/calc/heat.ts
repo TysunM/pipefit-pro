@@ -50,6 +50,12 @@ export type Heat = {
   mtr: string;
   /** Whether the cert is actually in hand. Nothing else here can prove it. */
   certified: boolean;
+  /**
+   * Sulphur off the MTR, weight per cent, or null when not entered. Two heats
+   * welded together with different sulphur pull the puddle toward the lower
+   * one (calc/sulphur.ts): the one figure on the cert that moves an orbital weld.
+   */
+  sulphur: number | null;
   note: string;
   createdAt: number;
   updatedAt: number;
@@ -190,6 +196,7 @@ export function newHeat(heat: string, now: number): Heat {
     mill: '',
     mtr: '',
     certified: false,
+    sulphur: null,
     note: '',
     createdAt: now,
     updatedAt: now,

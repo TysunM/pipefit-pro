@@ -1,3 +1,4 @@
+import { isToolName } from '../voice/intent';
 import { addTarget, clearTargets, matchScreen, sameWord, screenHelp, screenPhrases, targetsOn, type Entry, type Target } from '../voice/onScreen';
 
 const ran: string[] = [];
@@ -109,5 +110,18 @@ describe('help and listening', () => {
   });
   test('the recogniser is told the labels', () => {
     expect(screenPhrases(here)).toEqual(expect.arrayContaining(['Save', 'Amperage', 'SMAW', 'Process SMAW']));
+  });
+});
+
+describe('a tool named whole is never a field and its value', () => {
+  test('"heat book" on the weld form opens the heat book; "heats A1 B2" still fills the box', () => {
+    const here = screen(field('Heats', 'text'), field('Note', 'note'));
+    expect(matchScreen('heat book', here, { whole: true, reserved: isToolName })).toBeNull();
+    expect(matchScreen('weld log', here, { whole: false, reserved: isToolName })).toBeNull();
+    const m = matchScreen('heats A1 B2', here, { whole: true, reserved: isToolName });
+    expect(m && m.kind === 'run' && m.target.label).toBe('Heats');
+    expect(isToolName('Heat Book')).toBe(true);
+    expect(isToolName('orbital welding')).toBe(true);
+    expect(isToolName('heats a1')).toBe(false);
   });
 });

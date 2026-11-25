@@ -34,6 +34,8 @@ import { HeatScanSheet } from '../components/HeatScanSheet';
 import { useSettings } from '../state/settings';
 import { HeatDetails, describeHeatDetails } from '../ai/heatFill';
 import { VoicePressable } from '../voice/VoicePressable';
+import { MAX_SULPHUR, bpeSulphurNote, pct } from '../calc/sulphur';
+import { NumField } from '../components/FormFields';
 
 export function HeatsScreen() {
   const t = useTheme();
@@ -243,6 +245,7 @@ export function HeatsScreen() {
                     h.material || 'material not set',
                     HEAT_FORMS.find((f) => f.id === h.form)?.label,
                     h.certified ? 'cert in hand' : 'cert owed',
+                    h.sulphur !== null ? `S ${pct(h.sulphur)}%` : '',
                     `${joints.length} joint${joints.length === 1 ? '' : 's'}`,
                   ]
                     .filter(Boolean)
@@ -288,6 +291,18 @@ export function HeatsScreen() {
                   selected={h.form}
                   onSelect={(f) => edit(h, { form: f })}
                 />
+                <FieldRow>
+                  <NumField
+                    label="Sulphur (S)"
+                    value={h.sulphur}
+                    onChange={(v) => edit(h, { sulphur: v !== null && v >= 0 && v <= MAX_SULPHUR ? v : null })}
+                    suffix="%"
+                    placeholder="0.012"
+                  />
+                </FieldRow>
+                <Text style={[t.type.caption, { color: bpeSulphurNote(h.material, h.sulphur) ? t.colors.warnText : t.colors.textMuted, paddingHorizontal: t.layout.screenPadding, marginTop: -t.space.sm, marginBottom: t.space.md }]}>
+                  {bpeSulphurNote(h.material, h.sulphur) ?? 'Off the MTR\'s chemistry, in weight per cent. Two heats welded together are checked against each other on the weld and orbital screens.'}
+                </Text>
                 <ControlRow>
                   <GhostButton
                     label={h.certified ? 'Cert in hand' : 'Mark cert in hand'}

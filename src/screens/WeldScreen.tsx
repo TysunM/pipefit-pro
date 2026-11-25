@@ -54,6 +54,7 @@ import {
 } from '../state/weldLog';
 import { dayKey, usDate } from '../calc/days';
 import { sizeLabel } from '../calc/materials';
+import { SulphurNote } from '../components/SulphurNote';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Weld'>;
 
@@ -209,6 +210,8 @@ export function WeldScreen({ navigation, route }: Props) {
           {`Not in the heat book: ${unknownHeats.join(', ')}. Add ${unknownHeats.length === 1 ? 'it' : 'them'} there with the MTR for traceability.`}
         </Text>
       ) : null}
+      {/* Heats not in the book are named just above; the sulphur check speaks for the rest. */}
+      <SulphurNote heats={heatList} quietMissing />
 
       <ChipRow label="NDE" options={NDE_PERCENTS.map((p) => ({ value: p, label: p ? `${p}%` : 'Visual' }))} selected={pct} onSelect={setPct} />
       {pct ? <ChipRow label="Method" options={NDE_METHODS.filter((m) => m !== 'VT').map((m) => ({ value: m, label: m }))} selected={method} onSelect={setMethod} /> : null}

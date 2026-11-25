@@ -137,7 +137,16 @@ const HELP: string[][] = [['what', 'can', 'i', 'say'], ['help'], ['what', 'can',
  * the app-wide commands). Without it, part of a label too (tried after them).
  * `said` keeps its own capitals and punctuation for a text field's value.
  */
-export function matchScreen(said: string, targets: readonly Entry[], opts: { whole: boolean; fields?: boolean }): ScreenMatch | null {
+export function matchScreen(
+  said: string,
+  targets: readonly Entry[],
+  opts: {
+    whole: boolean;
+    fields?: boolean;
+    /** What said whole is a command of its own, never a field's name and value: "heat book" is the heat book, not "BOOK" in Heats. */
+    reserved?: (said: string) => boolean;
+  },
+): ScreenMatch | null {
   const ws = trim(words(said));
   if (!ws.length || !targets.length) return null;
   if (opts.whole && HELP.some((h) => exactly(ws, h))) return { kind: 'help' };
@@ -165,7 +174,7 @@ export function matchScreen(said: string, targets: readonly Entry[], opts: { who
 
   // A field: its name, then what goes in it. "Clear the note" empties one.
   // (Not on a tool whose figures the app-wide matcher fills, with its own checks, until that has had its turn.)
-  const fields = opts.fields === false ? [] : targets.filter((t) => t.kind === 'field');
+  const fields = opts.fields === false || opts.reserved?.(said) ? [] : targets.filter((t) => t.kind === 'field');
   if (CLEAR.has(ws[0]!) || CLEAR.has(ws[ws.length - 1]!)) {
     const named = CLEAR.has(ws[0]!) ? trim(ws.slice(1)) : ws.slice(0, -1);
     const hit = fields.find((t) => exactly(named, words(t.label)));
