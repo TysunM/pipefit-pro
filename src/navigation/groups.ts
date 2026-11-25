@@ -47,6 +47,7 @@ export type ToolRoute =
   | 'WeldLog'
   | 'HeatInput'
   | 'Weldability'
+  | 'Orbital'
   | 'Calibration'
   | 'Passport'
   | 'Orientation'
@@ -76,6 +77,7 @@ export const TOOLS: Tool[] = [
   { route: 'WeldLog', title: 'Weld log', subtitle: 'Welds, welders, NDE and continuity', icon: 'flame-outline' },
   { route: 'HeatInput', title: 'Heat input', subtitle: 'kJ per inch from volts, amps and travel', icon: 'thermometer-outline' },
   { route: 'Weldability', title: 'Weldability', subtitle: 'Carbon equivalents and PREN', icon: 'flask-outline' },
+  { route: 'Orbital', title: 'Orbital welding', subtitle: 'Programs, heads, equations and coupons', icon: 'aperture-outline' },
   { route: 'Calibration', title: 'Calibration', subtitle: 'Gauges and wrenches, and when due', icon: 'build-outline' },
   { route: 'Passport', title: 'Skills passport', subtitle: 'What you can do, proved and signed', icon: 'ribbon-outline' },
   { route: 'Orientation', title: 'Orientation', subtitle: 'Site rules, taught and checked', icon: 'school-outline' },
@@ -127,9 +129,9 @@ export const GROUPS: Group[] = [
   {
     id: 'weld',
     title: 'Weld',
-    subtitle: 'Heat input for the WPS and PQR, the carbon equivalents off a mill cert, and the weld log with its NDE.',
+    subtitle: 'Orbital programs and their coupons, heat input for the WPS and PQR, the carbon equivalents off a mill cert, and the weld log with its NDE.',
     sections: [
-      { id: 'welding', title: 'Welding', size: 'big', tools: pick(['HeatInput', 'Weldability', 'WeldLog']) },
+      { id: 'welding', title: 'Welding', size: 'big', tools: pick(['Orbital', 'HeatInput', 'Weldability', 'WeldLog']) },
     ],
   },
   {

@@ -36,6 +36,11 @@ import { CutListScreen } from '../screens/CutListScreen';
 import { WeldLogScreen } from '../screens/WeldLogScreen';
 import { WeldScreen } from '../screens/WeldScreen';
 import { HeatInputScreen } from '../screens/HeatInputScreen';
+import { OrbitalScreen } from '../screens/OrbitalScreen';
+import { OrbitalProgramScreen } from '../screens/OrbitalProgramScreen';
+import { OrbitalGearScreen } from '../screens/OrbitalGearScreen';
+import { OrbitalEquationScreen } from '../screens/OrbitalEquationScreen';
+import { OrbitalRunScreen } from '../screens/OrbitalRunScreen';
 import { WeldabilityScreen } from '../screens/WeldabilityScreen';
 import { CalibrationScreen } from '../screens/CalibrationScreen';
 import { BackupScreen } from '../screens/BackupScreen';
@@ -136,6 +141,11 @@ export function RootNavigator() {
         <Stack.Screen name="WeldLog" component={WeldLogScreen} options={{ title: 'Weld log' }} />
         <Stack.Screen name="HeatInput" component={HeatInputScreen} options={{ title: 'Heat input' }} />
         <Stack.Screen name="Weldability" component={WeldabilityScreen} options={{ title: 'Weldability' }} />
+        <Stack.Screen name="Orbital" component={OrbitalScreen} options={{ title: 'Orbital welding' }} />
+        <Stack.Screen name="OrbitalProgram" component={OrbitalProgramScreen} options={{ title: 'Program' }} />
+        <Stack.Screen name="OrbitalGear" component={OrbitalGearScreen} options={{ title: 'Equipment' }} />
+        <Stack.Screen name="OrbitalEquation" component={OrbitalEquationScreen} options={{ title: 'Equation' }} />
+        <Stack.Screen name="OrbitalRun" component={OrbitalRunScreen} options={{ title: 'Weld' }} />
         <Stack.Screen name="Weld" component={WeldScreen} options={{ title: 'Weld' }} />
         <Stack.Screen name="Calibration" component={CalibrationScreen} options={{ title: 'Calibration' }} />
         <Stack.Screen name="Backup" component={BackupScreen} options={{ title: 'Backup' }} />
