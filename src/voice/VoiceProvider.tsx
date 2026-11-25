@@ -39,7 +39,7 @@ import { useShifts } from '../state/shifts';
 import { usePreTasks } from '../state/pretasks';
 import { testName } from '../state/pressureLog';
 import { applyPretask, applyShift, applyTest } from './apply';
-import { VOCAB, VoiceCommand, bestLocal, localIntent, othersOf, routeWords } from './intent';
+import { VOCAB, VoiceCommand, bestLocal, isToolName, localIntent, othersOf, routeWords } from './intent';
 import { alignToWords, alignTranscripts, learn, learnedMap, setLearnedWords } from './learned';
 import { useLearnedWords } from '../state/learnedWords';
 import { MATERIALS } from '../calc/materials';
@@ -427,7 +427,7 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
       // On a bend, offset or bolt-up, figures go through the tool's own matcher first, which has its checks (a flange refused once bolts are logged).
       const toolFigures = screen !== null && isFigureRoute(screen);
       for (const t of alternatives) {
-        const m = matchScreen(t, here, { whole: true, fields: !toolFigures });
+        const m = matchScreen(t, here, { whole: true, fields: !toolFigures, reserved: isToolName });
         if (m) return runScreen(as(t), m, here);
       }
       const local = bestLocal(alternatives, screen);
@@ -439,7 +439,7 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
         runLocal(as(l.heard), l.cmd);
       };
       if (local && !nearMiss) return doLocal(local);
-      const part = matchScreen(heard, here, { whole: false });
+      const part = matchScreen(heard, here, { whole: false, reserved: isToolName });
       if (part) return runScreen(heard, part, here);
       // An elbow's takeout, or where to cut one, asked on any screen: answered where it was asked.
       for (const t of alternatives) {

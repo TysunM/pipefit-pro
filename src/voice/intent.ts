@@ -160,6 +160,10 @@ const figureWords = (route: string | null): ReadonlySet<string> =>
 const phrased = (text: string): string[] => snapPhrases(splitGlued(applyLearned(tokens(text), VOCAB), VOCAB), PHRASES, VOCAB);
 
 /** The recogniser's other transcripts, for the panel's "Not that?": the ones after the first, blanks and repeats dropped, three at most. */
+const TOOL_NAMES: ReadonlySet<string> = new Set(Object.values(TOOL_WORDS).flatMap((ws) => ws.map((w) => tokens(w).join(' '))));
+/** Whether what was said is, whole, the name of a tool or a tab: "heat book", "weld log", "orbital welding". */
+export const isToolName = (text: string): boolean => TOOL_NAMES.has(tokens(text).join(' '));
+
 export const othersOf = (alternatives: readonly string[]): string[] => [...new Set(alternatives.slice(1).map((t) => t.trim()).filter(Boolean))].slice(0, 3);
 
 /** The words a screen is called and takes by voice: what a mishearing in a sentence that opened it would have been (learned.ts). */
