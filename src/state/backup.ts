@@ -37,6 +37,7 @@ import { parseLayout, serialiseLayout, type Layout } from './layout';
 import { emptyLearned, parseLearned, serialiseLearned } from '../voice/learned';
 import { emptyHeatInputs, parseHeatInputs, serialiseHeatInputs } from './heatInputLog';
 import { emptyWpsBook, parseWpsBook, serialiseWpsBook } from './wpsBook';
+import { emptyEquations, emptyGear, emptyPrograms, emptyRuns, parseEquations, parseGear, parsePrograms, parseRuns, serialiseEquations, serialiseGear, serialisePrograms, serialiseRuns } from './orbitalBook';
 
 export const BACKUP_VERSION = 1;
 export const BACKUP_APP = 'PipeFit Pro';
@@ -86,6 +87,11 @@ export const STORES: readonly Spec[] = [
   { key: 'pipefit.heatinput.v1', label: 'heat inputs', field: 'entries', idOf: (x) => x.id, empty: emptyHeatInputs, parse: parseHeatInputs, serialise: serialiseHeatInputs },
   // The WPS ranges heat inputs are checked against: carried from the QC phone to the crew like the bolting specs.
   { key: 'pipefit.wps.v1', label: 'WPS ranges', field: 'wps', idOf: (x) => x.id, empty: emptyWpsBook, parse: parseWpsBook, serialise: serialiseWpsBook },
+  // The orbital book: the equipment and its programs carried to the crew, the equations the crew wrote, the coupons and welds made.
+  { key: 'pipefit.orbital.gear.v1', label: 'orbital equipment', field: 'gear', idOf: (x) => x.id, empty: emptyGear, parse: parseGear, serialise: serialiseGear },
+  { key: 'pipefit.orbital.programs.v1', label: 'orbital programs', field: 'programs', idOf: (x) => x.id, empty: emptyPrograms, parse: parsePrograms, serialise: serialisePrograms },
+  { key: 'pipefit.orbital.equations.v1', label: 'orbital equations', field: 'equations', idOf: (x) => x.id, empty: emptyEquations, parse: parseEquations, serialise: serialiseEquations },
+  { key: 'pipefit.orbital.runs.v1', label: 'orbital welds', field: 'runs', idOf: (x) => x.id, empty: emptyRuns, parse: parseRuns, serialise: serialiseRuns },
 ];
 
 export const specOf = (key: string): Spec | undefined => STORES.find((s) => s.key === key);

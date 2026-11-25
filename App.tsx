@@ -25,6 +25,7 @@ import { CutsProvider } from "./src/state/cuts";
 import { RecentsProvider } from "./src/state/recents";
 import { CalcPrefsProvider } from "./src/state/calcPrefsStore";
 import { HeatInputsProvider, WpsBookProvider } from "./src/state/heatInputs";
+import { OrbitalProvider } from "./src/state/orbital";
 import { LayoutProvider } from "./src/state/layouts";
 import { LearnedWordsProvider } from "./src/state/learnedWords";
 import { JobPickProvider } from "./src/state/jobPick";
@@ -98,6 +99,7 @@ export default function App() {
                       <CalcPrefsProvider>
                       <HeatInputsProvider>
                       <WpsBookProvider>
+                      <OrbitalProvider>
                       <LayoutProvider>
                         <JobPickProvider>
                           <LaserProvider>
@@ -111,6 +113,7 @@ export default function App() {
                           </LaserProvider>
                         </JobPickProvider>
                       </LayoutProvider>
+                      </OrbitalProvider>
                       </WpsBookProvider>
                       </HeatInputsProvider>
                       </CalcPrefsProvider>
