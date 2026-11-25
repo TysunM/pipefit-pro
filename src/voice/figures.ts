@@ -2,52 +2,32 @@
 // --------------------------------------------
 // A spoken "rise 12" has to reach the rolling offset whether the screen is
 // already open (it fills in place) or is being opened by the same command
-// (it fills on arrival). So the figures are published here by tool, and the
-// screen takes them: at once if it is listening, or when it mounts if they
-// arrived first.
+// (it fills on arrival). So the figures are published by tool (figureBus.ts),
+// and the screen in front takes them: at once if it is already in front, or
+// when it comes in front if they arrived first.
 
 import { useEffect, useRef } from 'react';
-import type { FigureRoute, Figures } from './toolFigures';
+import { useIsFocused } from '@react-navigation/native';
+import type { FigureRoute } from './toolFigures';
+import { listenForFigures, takeWaitingFigures, type Take } from './figureBus';
 
-/** A screen takes the figures, or says why it will not. */
-type Take = (f: Figures) => string | void;
+export { publishFigures } from './figureBus';
 
-const listening = new Map<FigureRoute, Set<Take>>();
-const waiting = new Map<FigureRoute, { f: Figures; at: number }>();
-
-/** How long figures wait for their screen to open. */
-const WAIT_MS = 10_000;
-
-/** Hand figures to a tool's screen. What comes back is the screen's reason for refusing them, if it did. */
-export function publishFigures(route: FigureRoute, f: Figures, now = Date.now()): string | undefined {
-  const subs = listening.get(route);
-  if (!subs?.size) {
-    waiting.set(route, { f, at: now });
-    return undefined;
-  }
-  let refused: string | undefined;
-  subs.forEach((take) => {
-    refused = take(f) || refused;
-  });
-  return refused;
-}
-
-/** On a tool's screen: take any figures said for it. */
+/** On a tool's screen: take any figures said for it, while it is the screen in front. */
 export function useSpokenFigures(route: FigureRoute, take: Take): void {
   const ref = useRef(take);
   ref.current = take;
+  const focused = useIsFocused();
+  const front = useRef(focused);
+  front.current = focused;
+  useEffect(
+    () => listenForFigures(route, (f) => ref.current(f), () => front.current),
+    [route],
+  );
+  // Coming in front, by being opened or gone back to, it takes what was said for it on the way.
   useEffect(() => {
-    const w = waiting.get(route);
-    waiting.delete(route);
-    if (w && Date.now() - w.at < WAIT_MS) ref.current(w.f);
-    const fn: Take = (f) => ref.current(f);
-    let subs = listening.get(route);
-    if (!subs) listening.set(route, (subs = new Set()));
-    subs.add(fn);
-    return () => {
-      subs!.delete(fn);
-    };
-  }, [route]);
+    if (focused) takeWaitingFigures(route, (f) => ref.current(f));
+  }, [route, focused]);
 }
 
 /** A figure as text for its field: a length said with a unit goes into the reader's units; a bare number goes in as said. */

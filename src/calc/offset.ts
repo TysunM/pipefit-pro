@@ -1,5 +1,5 @@
 import { ElbowRadius, Schedule, backArc, centerlineArc, findSize, spoolWeight, throatArc } from './pipe';
-import { elbowTakeout } from './takeoffCatalog';
+import { weldedElbow, type ElbowPick } from './offsetFitting';
 import { offsetAngleError, offsetAngleFromRun, offsetRun } from './angle';
 
 export type OffsetInput = {
@@ -10,6 +10,8 @@ export type OffsetInput = {
   nps: number;
   kind: ElbowRadius;
   schedule: Schedule;
+  /** What an elbow takes out at an angle, by the job's joint (offsetFitting.ts). A butt weld elbow when not given. */
+  elbow?: (angleDeg: number) => ElbowPick;
   lockRun: boolean;
 };
 
@@ -25,6 +27,10 @@ export type OffsetResult = {
   setback: number;
   /** The setback is the handbook's figure for a bought elbow (90° and 45°), not one worked from the bend radius for an elbow cut to the angle. */
   setbackFromTable: boolean;
+  /** Where the setback came from, as the screen says it: "Handbook 2-42", "Your fitting library: 45° elbow". */
+  setbackNote: string;
+  /** The fitting library entry the cut is waiting on, when the line holds no figure for it yet. */
+  needsLibrary: string | null;
   centerlineArc: number;
   throatArc: number;
   backArc: number;
@@ -44,6 +50,8 @@ const EMPTY: OffsetResult = {
   pipeCut: NaN,
   setback: NaN,
   setbackFromTable: false,
+  setbackNote: '',
+  needsLibrary: null,
   centerlineArc: NaN,
   throatArc: NaN,
   backArc: NaN,
@@ -74,12 +82,13 @@ export function solveOffset(input: OffsetInput): OffsetResult {
 
   const travel = Math.hypot(offset, run);
   const shrink = travel - run;
-  // The elbows are bought fittings welded either end, so they take out what
-  // the handbook says a bought elbow does: at 90° and 45° its own figure,
-  // at any other angle an elbow cut down to it, worked from the bend radius.
-  // The same figure Cut Length and the calculator use. (A pipe that is bent,
-  // not welded, is the Pipe bend tool's.)
-  const elbow = elbowTakeout(nps, kind, cutAngle);
+  // The elbows are bought fittings, so they take out what the handbook (or,
+  // for PVC and no-hub, the fitting library) says that fitting does: a butt
+  // weld elbow its own figure at 90° and 45° and the bend radius when cut to
+  // any other angle. The same figures Cut Length and the calculator use. (A
+  // pipe that is bent, not jointed, is the Pipe bend tool's.)
+  const elbow = (input.elbow ?? weldedElbow(nps, kind))(cutAngle);
+  if (!elbow.ok) return { ...EMPTY, offset, run, travel, shrink, cutAngle, error: elbow.error, needsLibrary: elbow.fitting ?? null };
   const setback = elbow.value;
   const pipeCut = travel - 2 * setback - 2 * (Number.isFinite(gap) ? gap : 0);
   const size = findSize(nps);
@@ -104,6 +113,8 @@ export function solveOffset(input: OffsetInput): OffsetResult {
     pipeCut,
     setback,
     setbackFromTable: elbow.fromTable,
+    setbackNote: elbow.note,
+    needsLibrary: null,
     centerlineArc: centerlineArc(nps, kind, cutAngle),
     throatArc: throatArc(nps, kind, cutAngle, size.od),
     backArc: backArc(nps, kind, cutAngle, size.od),
