@@ -34,7 +34,8 @@ export function DimSheet({
 
   return (
     <Modal visible={ask !== null} transparent animationType="fade" onRequestClose={onCancel}>
-      <Pressable style={{ flex: 1, backgroundColor: t.colors.overlay, justifyContent: 'center' }} onPress={onCancel}>
+      {/* A tap off the card puts it away only while nothing has been typed. */}
+      <Pressable style={{ flex: 1, backgroundColor: t.colors.overlay, justifyContent: 'center' }} onPress={() => (text.trim() === '' ? onCancel() : undefined)}>
         <Pressable onPress={(e) => e.stopPropagation()} style={{ margin: t.space.xl, paddingVertical: t.space.xl, borderRadius: t.radius.xl, backgroundColor: t.colors.bg, gap: t.space.md }}>
           <Text style={[t.type.sectionTitle, { color: t.colors.text, paddingHorizontal: t.space.xl }]}>
             {ask ? `Piece ${ask.n}${ask.current ? ` · now ${dimText(ask.current)}` : ''}` : ''}

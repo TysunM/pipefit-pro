@@ -67,7 +67,7 @@ describe('the offset screens with each joint', () => {
     const none = solveOffset({ ...BASE, offset: 12, fittingAngle: 90, lockRun: false, elbow: pick('pvc') });
     expect(none.valid).toBe(false);
     expect(none.needsLibrary).toBe('sock90');
-    expect(none.error).toMatch(/fitting library/);
+    expect(none.error).toMatch(/takeout below/);
   });
   test('a galvanised offset solved from a run lands on an angle no screwed elbow is made at, and says so', () => {
     const r = solveOffset({ ...BASE, offset: 12, run: 30, fittingAngle: NaN, lockRun: true, elbow: pick('galv') });

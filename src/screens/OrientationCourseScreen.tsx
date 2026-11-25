@@ -162,12 +162,12 @@ export function OrientationCourseScreen({ route, navigation }: Props) {
     <Banner tone="ok" icon="checkmark-circle" text={`${pass.acknowledged ? 'Read and signed off' : `Passed ${pass.score} of ${pass.of}`} on ${new Date(pass.at).toLocaleDateString()}. Take it again any time.`} />
   ) : null;
 
-  /** Where the course came from, and what Claude would add. */
+  /** Where the course came from, and what the cloud helper would add. */
   const sourceLine = (() => {
     if (built) return null;
     if (shipped) return null;
-    if (building) return `Claude is reading the rules and writing the course${lang === 'es' ? ' in Spanish' : ''}. A minute, usually less. The rules as written are below in the meantime.`;
-    const own = module.questions.length >= 3 ? `The check is the ${module.questions.length} questions the company wrote.` : course ? '' : 'No questions are written for this module, so a read-through signed off is the pass. Add questions in the editor, or let Claude write them.';
+    if (building) return `Reading the rules and writing the course${lang === 'es' ? ' in Spanish' : ''}. A minute or two at most. The rules as written are below in the meantime.`;
+    const own = module.questions.length >= 3 ? `The check is the ${module.questions.length} questions the company wrote.` : course ? '' : 'No questions are written for this module, so a read-through signed off is the pass. Add questions in the editor, or build a course to have them written.';
     const es = lang === 'es' && module.lang !== 'es' ? ' Shown in English: there is no Spanish course on this phone for it.' : '';
     const why = miss ? `${courseMissWords(miss).split('.')[0]}. ` : '';
     return `${why}Taught from the rules as written, cut into sections.${es} ${own}`.trim();
@@ -205,7 +205,7 @@ export function OrientationCourseScreen({ route, navigation }: Props) {
         {sectionCards(rulesOnly.sections)}
         <View style={{ padding: t.layout.screenPadding, paddingTop: t.space.xl, gap: t.space.md }}>
           <AccentButton label="I have read and understood these rules" icon="checkmark-done-outline" onPress={acknowledge} />
-          {miss ? <GhostButton label="Ask Claude for a course" icon="refresh-outline" onPress={() => void build()} /> : null}
+          {miss ? <GhostButton label="Build the course" icon="refresh-outline" onPress={() => void build()} /> : null}
         </View>
       </Screen>
     );
@@ -221,9 +221,9 @@ export function OrientationCourseScreen({ route, navigation }: Props) {
         {sectionCards(course.sections)}
         <View style={{ padding: t.layout.screenPadding, paddingTop: t.space.xl, gap: t.space.md }}>
           <AccentButton label={`Take the check · ${course.questions.length} questions`} icon="checkmark-done-outline" onPress={() => setStage({ at: 'check', answers: course.questions.map(() => null) })} />
-          {miss ? <GhostButton label="Ask Claude for a course" icon="refresh-outline" onPress={() => void build()} /> : null}
+          {miss ? <GhostButton label="Build the course" icon="refresh-outline" onPress={() => void build()} /> : null}
           {!fixedLang && lang === 'en' && !shipped ? (
-            <Text style={[t.type.caption, { color: t.colors.textFaint }]}>Need it in Spanish? Tap Español: Claude builds it once where the server has a key, and it stays on the phone. Or add the company's Spanish version as its own module, written in Spanish.</Text>
+            <Text style={[t.type.caption, { color: t.colors.textFaint }]}>Need it in Spanish? Tap Español: it is built once where there is signal, and it stays on the phone. Or add the company's Spanish version as its own module, written in Spanish.</Text>
           ) : null}
         </View>
       </Screen>

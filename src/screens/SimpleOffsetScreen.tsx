@@ -16,15 +16,14 @@ import { useSettings } from '../state/settings';
 import { StockNote } from '../components/StockNote';
 import { solveOffset } from '../calc/offset';
 import { parseNumber } from '../calc/format';
-import { useNavigation } from '@react-navigation/native';
 import { useOffsetJoint } from '../hooks/useOffsetJoint';
+import { SetTakeout } from '../components/SetTakeout';
 
 export function SimpleOffsetScreen() {
   const [readAngle, setReadAngle] = useState(false);
   const u = useUnits();
   const pipe = usePipeConfig();
   const { settings } = useSettings();
-  const navigation = useNavigation();
   // Butt weld, screwed, PVC socket or no-hub, by what the job's pipe is.
   const fit = useOffsetJoint(pipe.nps, pipe.kind);
 
@@ -66,6 +65,8 @@ export function SimpleOffsetScreen() {
     [offset, runOverride, gapInches, fittingAngle, lockRun, pipe.nps, pipe.kind, pipe.schedule, fit.elbow, u]
   );
 
+  // The library elbow this offset turns through, once there are figures to turn it.
+  const libraryFitting = Number.isFinite(result.cutAngle) ? fit.libraryFittingAt(result.cutAngle) : null;
   const pristine = !offset.trim();
 
   const clear = () => {
@@ -209,10 +210,20 @@ export function SimpleOffsetScreen() {
         tone={pristine ? 'idle' : result.error ? 'error' : 'default'}
       />
 
-      {result.needsLibrary ? (
-        <ControlRow>
-          <AccentButton label="Open the fitting library" icon="library-outline" onPress={() => navigation.navigate('FittingLibrary', { line: fit.line })} style={{ flex: 1 }} />
-        </ControlRow>
+      {/* PVC and no-hub: the maker's figure for this elbow, set here (off the box with the camera, typed, or measured) or shown with a Change. */}
+      {libraryFitting ? (
+        <SetTakeout
+          key={`${libraryFitting}-${pipe.nps}`}
+          fitting={libraryFitting}
+          nps={pipe.nps}
+          lineName={fit.pipeName}
+          line={fit.line}
+          wall={fit.library.wall}
+          sizes={fit.library.sizes}
+          value={fit.library.value(libraryFitting)}
+          onSave={(v) => fit.library.save(libraryFitting, v)}
+          onClear={() => fit.library.clear(libraryFitting)}
+        />
       ) : null}
 
       <MetaBar

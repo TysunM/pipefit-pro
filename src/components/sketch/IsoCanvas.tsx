@@ -24,6 +24,7 @@ import {
 } from '../../calc/iso';
 import { Placed, Stroke, dimSpot, flipPlaced, place, runNodes, storedStroke } from '../../state/sketchStore';
 import { onEdge, startsTwoFingers } from '../../calc/palm';
+import { endTouch } from '../endTouch';
 
 export type SketchMode = 'run' | 'pen' | 'note' | 'dim' | 'weld' | 'move';
 
@@ -321,7 +322,9 @@ export function IsoCanvas({
             moved.current = true;
           }
         },
-        onPanResponderRelease: () => {
+        onPanResponderRelease: (e) => {
+          // Whatever the lift opens (a note, a dimension, a weld), the browser's own click must not land on it.
+          endTouch(e, Platform.OS);
           const { mode: m, strokes: ss, corner: c, viewport: v, onStroke: commit, onNote: note } = live.current;
           const drew = drawId.current !== null;
           drawId.current = null;

@@ -76,7 +76,7 @@ export function offsetElbow(
   const v = library?.(id, nps);
   const label = LIBRARY_FITTINGS.find((f) => f.id === id)?.label ?? id;
   if (v === undefined || !Number.isFinite(v))
-    return { ok: false, fitting: id, error: `Set the ${sizeLabel(nps)} ${label} takeout for this line in the fitting library: it is the maker's figure.` };
+    return { ok: false, fitting: id, error: `Set the ${sizeLabel(nps)} ${label} takeout below: it is the maker's figure.` };
   return { ok: true, value: v, fromTable: false, note: `Your fitting library: ${label}` };
 }
 

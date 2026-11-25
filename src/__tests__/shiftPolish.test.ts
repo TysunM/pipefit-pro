@@ -114,18 +114,18 @@ describe('checking it against the record', () => {
   });
 
   test('a figure that is not in the record fails it, in digits or in words', () => {
-    expect(checkPolish(body(), good({ summary: good().summary + ' 9 welders were on site.' }))).toEqual({ ok: false, why: 'Claude’s version has a figure that is not in your log (9).' });
+    expect(checkPolish(body(), good({ summary: good().summary + ' 9 welders were on site.' }))).toEqual({ ok: false, why: 'The polished version has a figure that is not in your log (9).' });
     expect(checkPolish(body(), good({ issues: 'The crane was three hours late.' })).ok).toBe(false);
   });
 
   test('a rejected weld or a failed test left out of the summary fails it', () => {
-    expect(checkPolish(body(), good({ summary: 'The crew of 4 made 8 welds. Pressure test TP-15 failed.' }))).toEqual({ ok: false, why: 'Claude’s summary left out W-14.' });
+    expect(checkPolish(body(), good({ summary: 'The crew of 4 made 8 welds. Pressure test TP-15 failed.' }))).toEqual({ ok: false, why: 'The summary left out W-14.' });
     expect(checkPolish(body(), good({ summary: 'The crew of 4 made 8 welds; W-14 was rejected.' })).ok).toBe(false);
   });
 
   test('a note dropped, a note invented, or a note blown up fails it', () => {
-    expect(checkPolish(body(), good({ tomorrow: '' }))).toEqual({ ok: false, why: 'Claude dropped your tomorrow note.' });
-    expect(checkPolish(body(), good({ safety: 'Everyone worked safely.' }))).toEqual({ ok: false, why: 'Claude wrote a safety note you did not write.' });
+    expect(checkPolish(body(), good({ tomorrow: '' }))).toEqual({ ok: false, why: 'The polished version dropped your tomorrow note.' });
+    expect(checkPolish(body(), good({ safety: 'Everyone worked safely.' }))).toEqual({ ok: false, why: 'The polished version has a safety note you did not write.' });
     expect(checkPolish(body(), good({ issues: 'The crane was late. '.repeat(40) })).ok).toBe(false);
   });
 

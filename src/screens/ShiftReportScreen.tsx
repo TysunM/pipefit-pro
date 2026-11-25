@@ -189,7 +189,7 @@ export function ShiftReportScreen({ navigation }: Props) {
       return setNotice({ tone: 'warn', text: `${check.why} The plain version is in its place.` });
     }
     edit({ text: reportText(facts, out.summary, { issues: out.issues, safety: out.safety, tomorrow: out.tomorrow, notes: out.notes }), polished: true });
-    setNotice({ tone: 'ok', text: 'Claude wrote the summary and tidied the notes; the app checked every figure and name against the log. Read it over before it goes.' });
+    setNotice({ tone: 'ok', text: 'The summary is written and the notes tidied; the app checked every figure and name against the log. Read it over before it goes.' });
     void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   };
 
@@ -327,15 +327,15 @@ export function ShiftReportScreen({ navigation }: Props) {
       ))}
       {settings.gloveMode ? null : (
         <Text style={[t.type.caption, { color: t.colors.textFaint, paddingHorizontal: t.layout.screenPadding, marginTop: -t.space.sm, marginBottom: t.space.lg }]}>
-          Shorthand is fine. Claude turns it into sentences; the plain report keeps it as typed.
+          Shorthand is fine. Polish turns it into sentences; the plain report keeps it as typed.
         </Text>
       )}
 
-      <SectionHeader title="The report" meta={text ? (report.polished ? 'CLAUDE · CHECKED' : 'PLAIN') : undefined} />
+      <SectionHeader title="The report" meta={text ? (report.polished ? 'POLISHED · CHECKED' : 'PLAIN') : undefined} />
       {notice ? <Banner tone={notice.tone} icon={notice.tone === 'ok' ? 'checkmark-circle-outline' : 'information-circle-outline'} text={notice.text} action="OK" onAction={() => setNotice(null)} /> : null}
       <ControlRow>
         <GhostButton label="Build the report" icon="construct-outline" style={{ flex: 1 }} onPress={build} />
-        <AccentButton label={busy === 'polish' ? 'Asking Claude…' : 'Polish with Claude'} icon="sparkles-outline" style={{ flex: 1 }} onPress={() => void polish()} />
+        <AccentButton label={busy === 'polish' ? 'Polishing…' : 'Polish the wording'} icon="sparkles-outline" style={{ flex: 1 }} onPress={() => void polish()} />
       </ControlRow>
       {text ? (
         <>
@@ -353,7 +353,7 @@ export function ShiftReportScreen({ navigation }: Props) {
             </Well>
             <Text style={[t.type.caption, { color: t.colors.textMuted, marginTop: t.space.sm }]}>
               {report.polished
-                ? 'Claude’s version. Every figure and name in it was checked against the log; the words are yours to change.'
+                ? 'The polished version. Every figure and name in it was checked against the log; the words are yours to change.'
                 : 'Built by the app from the records and your notes, word for word. Change anything, then share it.'}
             </Text>
           </View>
@@ -363,9 +363,9 @@ export function ShiftReportScreen({ navigation }: Props) {
           </ControlRow>
         </>
       ) : (
-        <FooterNote text="Nothing built yet. Log the day above, then build the report, or have Claude write it from the same facts." />
+        <FooterNote text="Nothing built yet. Log the day above, then build the report, or polish the wording of it from the same facts." />
       )}
-      <FooterNote text="Every figure in the report comes from a record on this phone. Claude writes only the summary and tidies your notes, and the app refuses its version if it adds a figure, drops a rejected weld or a failed test, or changes a note you did not write." />
+      <FooterNote text="Every figure in the report comes from a record on this phone. Polish writes only the summary and tidies your notes, and the app refuses the polished version if it adds a figure, drops a rejected weld or a failed test, or changes a note you did not write." />
     </Screen>
   );
 }

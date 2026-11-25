@@ -138,7 +138,7 @@ describe('the voice route', () => {
     );
     expect(res.status).toBe(200);
     const text = await res.text();
-    expect(JSON.parse(text)).toEqual({ answer: { action: 'answer', say: 'See the bolt-up table.', table: 'bolt-up-125' } });
+    expect(JSON.parse(text)).toEqual({ answer: { action: 'answer', say: 'See the bolt-up table.', table: 'bolt-up-125' }, engine: 'claude' });
     expect(text).not.toContain('sk-test-secret');
     expect(seen).toHaveLength(1);
     expect(seen[0]!.body).toMatchObject({
@@ -222,11 +222,45 @@ describe('the free cloud helper, when Claude is not paid for', () => {
     }
   });
 
-  test('Claude answering is used, and the free helper is never asked', async () => {
+  test('the free helper answers first, and Claude, paid for, is never asked', async () => {
     const ran: Ran[] = [];
-    const res = await handle(post({ said: 'x' }), { ...ENV, AI: ai([{ response: OPEN }], ran) }, api(200, message({ action: 'none', say: 'Say that again?' })));
-    expect(await res.json()).toEqual({ answer: { action: 'none', say: 'Say that again?' } });
-    expect(ran).toHaveLength(0);
+    const seen: Seen[] = [];
+    const res = await handle(post({ said: 'x' }), { ...ENV, AI: ai([{ response: OPEN }], ran) }, api(200, message({ action: 'none', say: 'Say that again?' }), seen));
+    expect(await res.json()).toEqual({ answer: OPEN, engine: 'workers-ai' });
+    expect(ran).toHaveLength(1);
+    expect(seen).toHaveLength(0);
+  });
+
+  test('Claude is the last resort: asked when the free helper is spent, fails, or answers out of shape', async () => {
+    const CLAUDE = { action: 'open', say: 'Bolt up.', route: 'FlangeBoltUp' };
+    const failures: unknown[][] = [
+      [new Error('4006: you have used up your daily free allocation of 10,000 neurons')],
+      [new Error('5035: model requires Workers Paid'), new Error('5035: model requires Workers Paid')],
+      [{ response: 'no json here' }, { response: 'still none' }],
+    ];
+    for (const answers of failures) {
+      const seen: Seen[] = [];
+      const res = await handle(post({ said: 'x' }), { ...ENV, AI: ai(answers) }, api(200, message(CLAUDE), seen));
+      expect(await res.json()).toEqual({ answer: CLAUDE, engine: 'claude' });
+      expect(seen).toHaveLength(1);
+    }
+  });
+
+  test('a bad request is turned away without asking Claude to pay for it', async () => {
+    const seen: Seen[] = [];
+    const res = await handle(post({ said: '' }), { ...ENV, AI: ai([]) }, api(200, message(OPEN), seen));
+    expect(res.status).toBe(400);
+    expect(seen).toHaveLength(0);
+  });
+
+  test('both failing: the free helper\'s reason when Claude could not be used at all', async () => {
+    const res = await handle(
+      post({ said: 'x' }),
+      { ...ENV, AI: ai([new Error('4006: you have used up your daily free allocation of 10,000 neurons')]) },
+      api(400, { type: 'error', error: { type: 'invalid_request_error', message: 'Your credit balance is too low to access the Anthropic API.' } }),
+    );
+    expect(res.status).toBe(429);
+    expect(await res.json()).toMatchObject({ error: 'daily_limit', engine: 'workers-ai' });
   });
 
   test('a model that cannot meet the schema is asked once more for plain JSON; a string answer is read', async () => {
@@ -251,10 +285,12 @@ describe('the free cloud helper, when Claude is not paid for', () => {
     expect(aiJson({ response: 'no json here' })).toBeUndefined();
   });
 
-  test('a model id that is not one is said to be wrong; the other Claude routes never use the free helper', async () => {
+  test('a model id that is not one is said to be wrong; the Claude check never goes to the free helper', async () => {
     expect(await (await handle(post({ said: 'x' }), { AI: ai([]), WORKERS_AI_MODEL: 'llama please' }, api(200, {}))).json()).toEqual({ error: 'not_configured', missing: ['WORKERS_AI_MODEL'] });
-    const shift = await handle(new Request('https://pipefit.test/api/shift-polish', { method: 'POST', body: '{}' }), { AI: ai([{ response: OPEN }]) }, api(200, {}));
-    expect(shift.status).toBe(503);
+    const ran: Ran[] = [];
+    const check = await handle(new Request('https://pipefit.test/api/claude-check', { method: 'POST', body: '' }), { AI: ai([{ response: OPEN }], ran) }, api(200, {}));
+    expect(check.status).toBe(503);
+    expect(ran).toHaveLength(0);
   });
 });
 
@@ -276,15 +312,16 @@ describe('telling why the cloud did not help, and testing it', () => {
     expect(await res.json()).toEqual({ error: 'upstream', engine: 'workers-ai', detail: `${DEFAULT_AI_MODEL}: 5035: model requires Workers Paid` });
   });
 
-  test('once Claude says no for want of credit, voice goes straight to the free helper for a while', async () => {
+  test('once Claude, the last resort, says no for want of credit, it is not asked again for a while', async () => {
     let claudeCalls = 0;
     const credit = (async () => {
       claudeCalls += 1;
       return new Response(JSON.stringify({ type: 'error', error: { type: 'invalid_request_error', message: 'Your credit balance is too low to access the Anthropic API.' } }), { status: 400, headers: { 'content-type': 'application/json' } });
     }) as unknown as typeof fetch;
-    const env = { ...ENV, AI: ai([{ response: OPEN }, { response: OPEN }]) };
-    expect(await (await handle(post({ said: 'x' }), env, credit)).json()).toEqual({ answer: OPEN, engine: 'workers-ai' });
-    expect(await (await handle(post({ said: 'y' }), env, credit)).json()).toEqual({ answer: OPEN, engine: 'workers-ai' });
+    const busy = () => new Error('3040: capacity temporarily exceeded');
+    const env = { ...ENV, AI: ai([busy(), busy(), busy(), busy()]) };
+    expect((await handle(post({ said: 'x' }), env, credit)).status).toBe(502);
+    expect((await handle(post({ said: 'y' }), env, credit)).status).toBe(502);
     expect(claudeCalls).toBe(1);
   });
 

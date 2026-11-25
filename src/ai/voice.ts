@@ -403,7 +403,8 @@ export async function askVoice(
 ): Promise<VoiceAnswer | VoiceMiss> {
   const f = opts.fetchImpl ?? fetch;
   const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), opts.timeoutMs ?? 20_000);
+  // The free model first (8 s at most), then Claude as the last resort (15 s): inside this.
+  const timer = setTimeout(() => ctrl.abort(), opts.timeoutMs ?? 25_000);
   let res: Response;
   try {
     res = await f(`${base}${VOICE_PATH}`, {

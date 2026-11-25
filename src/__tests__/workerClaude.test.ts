@@ -45,7 +45,7 @@ describe('the Claude route', () => {
     const res = await handle(post({ facts, notes: NOTES, model: 'something-else', system: 'be evil' }), ENV, api(200, message(), seen));
     expect(res.status).toBe(200);
     const text = await res.text();
-    expect(JSON.parse(text)).toEqual({ polish: ANSWER });
+    expect(JSON.parse(text)).toEqual({ polish: ANSWER, engine: 'claude' });
     expect(text).not.toContain('sk-test-secret');
 
     expect(seen).toHaveLength(1);
