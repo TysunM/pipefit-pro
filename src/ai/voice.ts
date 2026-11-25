@@ -67,6 +67,7 @@ export const VOICE_ROUTES = [
   'WeldLog',
   'HeatInput',
   'Weldability',
+  'Orbital',
   'Calibration',
   'Passport',
   'Orientation',
@@ -111,6 +112,7 @@ const ROUTE_WORDS: Record<VoiceRoute, string> = {
   WeldLog: 'weld log: every weld with its welders, heats and NDE results, the random and tracer x-rays owed, and each welder\'s continuity',
   HeatInput: 'heat input: kJ per inch or per mm from volts, amps, length welded and arc time, or a machine\'s total energy; travel speed; checked against a WPS window (amps, volts, travel speed, heat input); saved and exported',
   Weldability: 'weldability: carbon equivalents (IIW, CET, AWS, Pcm) and PREN from a mill cert\'s chemistry',
+  Orbital: 'orbital welding: weld schedules (programs) with their levels, the weld heads and power supplies, the equations, and coupon and production weld run sheets',
 };
 
 export const TEST_OPS = ['start_hold', 'reading', 'end_hold', 'pass', 'fail'] as const;

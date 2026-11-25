@@ -43,6 +43,16 @@ export type RootStackParamList = {
   HeatInput: undefined;
   /** Carbon equivalents and PREN from a mill cert's chemistry. */
   Weldability: undefined;
+  /** Orbital welding: the programs, the equipment, the equations and the welds made, by tab. */
+  Orbital: { tab?: 'programs' | 'gear' | 'equations' | 'runs' } | undefined;
+  /** One weld schedule: 'new', or a saved one's id; `copy` starts a new one off a saved one. */
+  OrbitalProgram: { id: string; copy?: string };
+  /** One power supply, head or module: 'new', or a saved one's id. */
+  OrbitalGear: { id: string };
+  /** One equation: 'new', a built-in's id, or one of the crew's own. */
+  OrbitalEquation: { id: string };
+  /** One weld off a program: a saved one's id, or a new coupon or production weld. */
+  OrbitalRun: { id: string; programId?: undefined; kind?: undefined } | { id?: undefined; programId: string; kind: 'coupon' | 'production' };
   Calibration: undefined;
   /** The skills passport: what this hand can do, proved by the records and signed off. */
   Passport: undefined;

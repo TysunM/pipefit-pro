@@ -282,6 +282,24 @@ const art: Partial<Record<ToolRoute, (k: Ink) => React.ReactNode>> = {
     </G>
   ),
 
+  // A tube end-on in an orbital head: the levels round it as arcs, the arc at the top going clockwise.
+  Orbital: (k) => (
+    <G fill="none" strokeLinecap="round" strokeLinejoin="round">
+      <Circle cx={30} cy={32} r={13} stroke={k.line} strokeWidth={2.2} />
+      <Circle cx={30} cy={32} r={9} stroke={k.soft} strokeWidth={1.4} />
+      <Path d="M30 12 A20 20 0 0 1 50 32" stroke={k.accent} strokeWidth={3.2} />
+      <Path d="M50 32 A20 20 0 0 1 30 52" stroke={k.accent} strokeWidth={3.2} strokeOpacity={0.75} />
+      <Path d="M30 52 A20 20 0 0 1 10 32" stroke={k.accent} strokeWidth={3.2} strokeOpacity={0.55} />
+      <Path d="M10 32 A20 20 0 0 1 30 12" stroke={k.accent} strokeWidth={3.2} strokeOpacity={0.4} />
+      <Path d="M30 7 l-3 -4 h6 z" stroke={k.line} strokeWidth={1.6} />
+      <Rect x={56} y={14} width={20} height={36} rx={3} stroke={k.line} strokeWidth={2} />
+      <SvgText x={66} y={26} fill={k.accent} stroke="none" fontSize={7} fontWeight={k.bold} fontFamily={k.font} textAnchor="middle">
+        L1
+      </SvgText>
+      <Path d="M60 34 h12 M60 40 h9 M60 46 h11" stroke={k.soft} strokeWidth={1.6} />
+    </G>
+  ),
+
   // A pipe with a weld at the joint, and the arc still going.
   WeldLog: (k) => (
     <G fill="none" strokeLinecap="round" strokeLinejoin="round">

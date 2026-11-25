@@ -27,6 +27,7 @@ const EXPECTED: ToolRoute[] = [
   'CutLength',
   'SaddleBend',
   'MiterBend',
+  'Orbital',
   'HandBender',
   'FittingLibrary',
   'CutList',
@@ -76,8 +77,8 @@ describe('the tabs reach every tool, once', () => {
     expect(routes(g?.sections[1]?.tools ?? [])).toEqual(['SimpleOffset', 'RollingOffset', 'CutLength', 'SaddleBend', 'MiterBend', 'HandBender']);
   });
 
-  test('weld: heat input, weldability and the weld log, under the Weld tab', () => {
-    expect(routes(groupTools(group('weld')!))).toEqual(['HeatInput', 'Weldability', 'WeldLog']);
+  test('weld: orbital, heat input, weldability and the weld log, under the Weld tab', () => {
+    expect(routes(groupTools(group('weld')!))).toEqual(['Orbital', 'HeatInput', 'Weldability', 'WeldLog']);
     expect(group('tools')!.title).toBe('PipeFit');
   });
 

@@ -24,6 +24,7 @@ import { useBoltingSpecs } from './boltingSpecs';
 import { useLayout } from './layouts';
 import { useLearnedWords } from './learnedWords';
 import { useHeatInputs, useWpsBook } from './heatInputs';
+import { useOrbitalEquations, useOrbitalGear, useOrbitalPrograms, useOrbitalRuns } from './orbital';
 import { STORES, backupFileName, backupSummary, makeBackup } from './backup';
 import { shareBackup, type FileOutcome } from './backupFile';
 import { useLastBackup } from './lastBackup';
@@ -54,6 +55,10 @@ export function useBackupNow() {
   const learned = useLearnedWords();
   const heatInputs = useHeatInputs();
   const wpsBook = useWpsBook();
+  const orbitalGear = useOrbitalGear();
+  const orbitalPrograms = useOrbitalPrograms();
+  const orbitalEquations = useOrbitalEquations();
+  const orbitalRuns = useOrbitalRuns();
   const layout = useLayout();
   const last = useLastBackup();
   const [busy, setBusy] = useState(false);
@@ -80,6 +85,10 @@ export function useBackupNow() {
     'pipefit.heard.v1': { value: learned.book, apply: learned.apply as any },
     'pipefit.heatinput.v1': { value: heatInputs.log, apply: heatInputs.apply as any },
     'pipefit.wps.v1': { value: wpsBook.book, apply: wpsBook.apply as any },
+    'pipefit.orbital.gear.v1': { value: orbitalGear.value, apply: orbitalGear.apply as any },
+    'pipefit.orbital.programs.v1': { value: orbitalPrograms.value, apply: orbitalPrograms.apply as any },
+    'pipefit.orbital.equations.v1': { value: orbitalEquations.value, apply: orbitalEquations.apply as any },
+    'pipefit.orbital.runs.v1': { value: orbitalRuns.value, apply: orbitalRuns.apply as any },
   };
   // Every store the backup knows is here, or the file would carry it empty
   // and a restore would find nothing to add. Loud in development, so a store

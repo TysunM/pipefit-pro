@@ -1533,6 +1533,116 @@ The check reads each figure as the screen shows it: 21.946 kJ/in shows as 21.9, 
 
 ---
 
+## Orbital welding
+
+**Weld schedules you can see, the equipment they run on, the maths behind every figure, and a run sheet for every coupon and weld.** Weld tab → **Orbital welding**, or say "orbital welding". Written for high-purity fusion work: thin-wall tube in a closed head, no filler.
+
+The strip at the top is the order the work goes in: **1 Equipment → 2 Programs → 3 Welds**. Tap a step to open it. **Equations** is the fourth tab.
+
+### 1. Equipment
+**Add equipment**, then pick the kind. Each kind asks only for what it needs:
+
+| Kind | What it asks for |
+|---|---|
+| Closed (cartridge / chamber) head | OD range, fastest rotor, electrode constant C, water cooled |
+| Open head | The same, plus filler wire, oscillation, AVC |
+| Track-mounted head | Smallest OD, fastest carriage, wire, OSC, AVC |
+| Specialty / low-clearance head | OD range, rotor, C, the room it needs |
+| Precision tube / heavy-duty power supply | Most amps, levels it holds, calibration due |
+| Modules | Water cooler, switch box, AVC / OSC unit, camera |
+
+The figures come off **your** manual. The app ships no maker's figures. **C** sets the tungsten length (C − OD ÷ 2 − arc gap). If the manual doesn't give it, measure it once off a good setup: that electrode's length + OD ÷ 2 + its gap.
+
+### 2. Programs
+**New program.** The top of the page is the program as a picture:
+- **Weld clock:** the tube end-on, each level an arc from the start at the top, clockwise. The overlap runs on round the outer ring, and a deeper colour means more current. Tap an arc, or an **L1 L2…** button, to edit that level.
+- **Current against time:** gas on to gas off. Purges, upslope, rotation delay, each level from background to peak with its average, then downslope.
+- **Underneath:** the times (round, arc on, gas on to off) and whether the levels add up to 360° plus the overlap. **Spread the degrees evenly** fixes it in one tap.
+
+Then the level being edited (degrees, RPM, peak, background, pulse times), a table of all the levels, the tube and head, the sequence, and the tungsten and gas.
+
+**Worked out** lists every equation the program has the figures for: the tungsten length, the ID, the travel speed, the average current, the heat input and the rest, updated as you type. A level's own figures sit under its editor.
+
+**Checks against the equipment:**
+- an OD outside the head's range;
+- a rotor faster than the head's limit;
+- amps over the power supply's limit;
+- more levels than the power supply holds;
+- calibration past due.
+
+**From development to qualified:**
+- A program in development saves itself as it changes. Weld coupons on it.
+- A coupon that passes is named on the program. Name the WPS, then **Mark it qualified**.
+- A qualified program is **locked**. **Revise** opens the next version in development and keeps the qualified one under Earlier versions.
+- **Print / PDF** gives a one-page program sheet to check against the power supply.
+
+### 3. Welds
+**Weld a coupon** (or **Weld**, on a qualified program) opens the run sheet:
+- **The weld:** number, line, both heats, operator.
+- **Purge:** length purged and volume changes give the purge time. The oxygen reading is checked against the program's limit.
+- **Steps**, ticked off as you go, with this weld's figures in them:
+  1. head and power supply;
+  2. cut, face and clean;
+  3. tungsten, with its length worked out;
+  4. fit-up;
+  5. purge;
+  6. shield gas;
+  7. the program on the supply;
+  8. weld.
+- **The look:**
+  - penetration;
+  - bead width and position;
+  - convexity and concavity;
+  - misalignment;
+  - heat tint;
+  - defects;
+  - tie-in.
+
+  How much is too much comes from your spec (ASME BPE or the client's).
+- **Fail:** pick what the coupon shows and the usual first moves come up. Change one thing, weld another coupon, and note what changed.
+
+### Equations
+Every figure comes from an equation anyone can open, test, change or write. A formula uses names (`pi * OD * RPM`) and + − × ÷ ^, brackets and sqrt, sin and the like, with angles in degrees.
+
+**Names a program supplies:**
+- OD, wall, gap, C, overlap, V (arc volts), CFH (purge flow);
+- for each level: deg, RPM, Ip, Ib, tp, tb.
+
+An answer feeds the next equation by its own name, so IPM and Iavg give the heat input. Give a program its own figure (say `k`) under **This program's own figures** and any equation that uses `k` is worked out on it.
+
+**Guardrails:**
+- An equation is kept only once its sample values give a number.
+- A changed built-in shows **changed**, and **Put back** restores it as shipped.
+- Two starting points, the starting amps and the step-down, show only on programs in development.
+
+| Built in | Formula |
+|---|---|
+| Travel speed | IPM = π × OD × RPM |
+| Rotor speed | RPM = IPM ÷ (π × OD) |
+| Level time | deg ÷ 360 × 60 ÷ RPM |
+| Average current | (Ip × tp + Ib × tb) ÷ (tp + tb) |
+| Time at peak, pulse rate | tp ÷ (tp + tb) × 100; 1 ÷ (tp + tb) |
+| Travel per pulse | IPM ÷ 60 × (tp + tb) |
+| Heat input | V × Iavg × 60 ÷ IPM (ASME IX QW-409.1(a), pulse averaged) |
+| Tungsten length | C − OD ÷ 2 − gap |
+| Purge time | N × (π ÷ 4 × ID² × length ÷ 1728) × 60 ÷ CFH |
+| Starting amps (development) | about 1 A per 0.001" of wall |
+
+### Worked example
+0.500" × 0.065" 316L in a closed head with C = 0.750". Four pulsed levels at 4 RPM: peaks 70, 67, 64 and 61 A, background 20 A, 0.1 s / 0.1 s, with 15° of overlap.
+- The levels spread to 93.7° / 93.7° / 93.7° / 93.9°. The weld goes round in **15.6 s**.
+- Travel speed π × 0.5 × 4 = **6.283 in/min**. Level 1 averages **45 A**. At 9.5 V its heat input is 9.5 × 45 × 60 ÷ 6.283 = **4,082 J/in**.
+- Tungsten length 0.750 − 0.250 − 0.035 = **0.465"**.
+- Purging 240" of 0.370" ID tube 7 times at 20 CFH takes about **19 s**. The oxygen meter, not the clock, says when it is clean.
+
+### Where people go wrong
+- **Welding production on a development program.** Coupons only until it is qualified. The run sheet says so in red.
+- **Purging by the clock.** The purge time is a guide. Strike only when the outlet reads under the program's oxygen limit.
+- **A formula in the wrong units.** The built-ins take inches, seconds and CFH. An equation of your own works in whatever units its samples were typed in, so keep its inputs in the units the program holds.
+- **Copying a maker's chart into the app.** Put the figures you weld to into your own program. Keep the maker's sheet as the maker's.
+
+---
+
 ## Weldability
 
 **The carbon equivalents off a mill cert, in one place.** Weld tab → **Weldability**, or say "carbon equivalent".
