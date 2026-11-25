@@ -7,7 +7,7 @@
 // Undo on anything written to a record.
 
 import React, { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
-import { PanResponder, Pressable, Text, View, useWindowDimensions, type PanResponderGestureState } from 'react-native';
+import { PanResponder, Platform, Pressable, Text, View, useWindowDimensions, type PanResponderGestureState } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -17,6 +17,7 @@ import { floatingMicHidden, subscribeMicSpot } from '../voice/micSpot';
 import { clampPoint, isTap, micArea, placeToPoint, pointToPlace, type Point } from '../voice/micPlace';
 import { getMicPlace, loadMicPlace, setMicPlace, subscribeMicPlace } from '../voice/micPlaceStore';
 import { TAB_BAR_HEIGHT } from './TabBar';
+import { endTouch } from './endTouch';
 
 const SIZE = 64;
 
@@ -74,7 +75,11 @@ export function VoiceButton() {
         }
         setDrag(to(g));
       },
-      onPanResponderRelease: (_, g) => end(g, true),
+      onPanResponderRelease: (e, g) => {
+        // The sheet the tap opens sits where the finger was: the browser's own click must not land on it.
+        endTouch(e, Platform.OS);
+        end(g, true);
+      },
       onPanResponderTerminate: (_, g) => end(g, false),
       onPanResponderTerminationRequest: () => !moved.current,
     });

@@ -414,7 +414,8 @@ function NoteSheet({
 
   return (
     <Modal visible={open !== null} transparent animationType="fade" onRequestClose={onCancel}>
-      <Pressable style={{ flex: 1, backgroundColor: t.colors.overlay, justifyContent: 'center' }} onPress={onCancel}>
+      {/* A tap off the card puts it away only while nothing has been typed: words half written are not thrown away by a stray finger. */}
+      <Pressable style={{ flex: 1, backgroundColor: t.colors.overlay, justifyContent: 'center' }} onPress={() => (text === existing ? onCancel() : undefined)}>
         <Pressable
           onPress={(e) => e.stopPropagation()}
           style={{ margin: t.space.xxl, padding: t.space.xxl, borderRadius: t.radius.xl, backgroundColor: t.colors.bg, gap: t.space.md }}
