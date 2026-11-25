@@ -199,9 +199,9 @@ They agree at 90° and disagree everywhere else.
 | Pipe you bent | 1.2426" |
 | **Elbow you bought** | **1-3/8"** |
 
-A run of bought fittings worked to the bend formula cuts **every piece an eighth of an inch long**.
+A run of bought fittings worked to the bend formula cuts **every piece between two 45s about a quarter of an inch long** on 2" pipe: an eighth at each end.
 
-**The app keeps them separate on purpose.** **Cut length** offers both, labelled. **Simple offset**, **Rolling offset** and **Pipe bend** work the bend, because that is what a bender does.
+**The app keeps them separate.** Anything made up from bought elbows — **Cut length**, **Simple offset**, **Rolling offset**, the **Spool builder** and the **Calculator** — takes out the handbook figure at 90° and 45°. Any other angle is an elbow cut down from a 90, which does take out the bend figure, and the screen says which it used under **Setback**. **Pipe bend** works the bend, because that is what a bender does; Cut length still offers a bend in the pipe, labelled.
 
 ---
 
@@ -236,7 +236,7 @@ A run of bought fittings worked to the bend formula cuts **every piece an eighth
 | **Shrink** | Travel − run | What the offset costs you in overall length |
 | **Setback** | Takeout per fitting | What comes off each end |
 | **Cut angle** | The angle the fittings turn through | Confirms the preset took |
-| **Inside arc / Outside arc** | Throat and back of the bend | Marks for bending, not for buying |
+| **Inside arc / Outside arc** | Throat and back of the elbow | Where to mark an elbow cut down to an odd angle |
 
 ### Worked example
 
@@ -247,10 +247,10 @@ A run of bought fittings worked to the bend formula cuts **every piece an eighth
 | Run | 12.0000" |
 | Travel | 16.9706" |
 | Shrink | 4.9706" |
-| Setback (each end) | 1.2426" |
-| **PIPE CUT** | **14.2978"** |
+| Setback (each end) | 1.3750" (1-3/8, handbook 2-42) |
+| **PIPE CUT** | **14.0331"** |
 
-**Check it in your head:** 12 × 1.414 = 16.97 travel ✓. Two takeouts of 1.24 = 2.49. 16.97 − 2.49 = 14.48, less two 3/32" gaps (0.19) = **14.29** ✓
+**Check it in your head:** 12 × 1.414 = 16.97 travel ✓. Two takeouts of 1-3/8 = 2.75. 16.97 − 2.75 = 14.22, less two 3/32" gaps (0.19) = **14.03** ✓
 
 ### The square jog — 90°
 
@@ -268,7 +268,7 @@ Use this when the space along the line is what is tight, not the angle.
 
 - **Measuring the offset to the pipe surface instead of the centre.** Everything in this app is centre to centre.
 - **Forgetting the gap is already off.** PIPE CUT is ready to cut. Do not deduct again.
-- **Using a 45° preset while installing bought 45° elbows.** This screen works a *bend*. For bought fittings use **Cut length**, which has both.
+- **Bending the pipe instead of welding elbows.** This screen takes out bought elbows, the same figures as Cut length. For an offset bent into the pipe, use **Pipe bend**, which lays out the bend marks.
 
 ---
 
@@ -322,8 +322,8 @@ Then the **true offset** and the **run** form a second right triangle whose hypo
 | Roll angle | 36.87° |
 | Run | 15.0000" |
 | Travel C2C | 21.2132" |
-| Setback | 1.2426" |
-| **PIPE CUT** | **18.5404"** |
+| Setback | 1.3750" (1-3/8, handbook 2-42) |
+| **PIPE CUT** | **18.2757"** |
 
 **Check it:** 12 and 9 is a 3-4-5 triangle scaled by three — true offset **15** ✓. At 45° the run equals the true offset, 15 ✓. Travel = 15 × 1.414 = **21.21** ✓
 

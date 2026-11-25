@@ -243,7 +243,7 @@ export function RollingOffsetScreen({ route }: Props) {
         stats={[
           { label: 'Cut angle', value: result.valid ? u.angle(result.cutAngle) : '—' },
           { label: 'Inside arc', note: 'Primary — throat', value: result.valid ? u.num(result.throatArc) : '—' },
-          { label: 'Setback', value: result.valid ? u.dual(result.setback) : '—' },
+          { label: 'Setback', note: result.setbackFromTable ? 'Handbook 2-42' : 'Cut elbow, bend radius', value: result.valid ? u.dual(result.setback) : '—' },
           { label: 'Outside arc', note: 'Alternative', value: result.valid ? u.num(result.backArc) : '—' },
         ]}
       />
@@ -262,7 +262,7 @@ export function RollingOffsetScreen({ route }: Props) {
         }
       />
 
-      <FooterNote text="Centre-to-centre (C2C) geometry. Non-standard cut angles require rolling-offset elbows or mitred fabrication." />
+      <FooterNote text="Centre-to-centre (C2C) geometry. Bought elbows take out the handbook figure (2-42) at 90° and 45°, the same as Cut Length; any other angle is an elbow cut down to it, worked from the bend radius. Non-standard cut angles require rolling-offset elbows or mitred fabrication." />
 
       <PipeSheet
         visible={pipe.sheetOpen}

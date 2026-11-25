@@ -1,4 +1,5 @@
-import { ElbowRadius, Schedule, backArc, centerlineArc, findSize, spoolWeight, takeoff, throatArc } from './pipe';
+import { ElbowRadius, Schedule, backArc, centerlineArc, findSize, spoolWeight, throatArc } from './pipe';
+import { elbowTakeout } from './takeoffCatalog';
 import { offsetAngleError, offsetAngleFromRun, offsetRun } from './angle';
 import { deg } from './units';
 
@@ -24,6 +25,8 @@ export type RollingResult = {
   cutAngle: number;
   pipeCut: number;
   setback: number;
+  /** The setback is the handbook's figure for a bought elbow (90° and 45°), not one worked from the bend radius for an elbow cut to the angle. */
+  setbackFromTable: boolean;
   shrink: number;
   centerlineArc: number;
   throatArc: number;
@@ -43,6 +46,7 @@ const EMPTY: RollingResult = {
   cutAngle: NaN,
   pipeCut: NaN,
   setback: NaN,
+  setbackFromTable: false,
   shrink: NaN,
   centerlineArc: NaN,
   throatArc: NaN,
@@ -78,7 +82,13 @@ export function solveRolling(input: RollingInput): RollingResult {
   }
 
   const travel = Math.hypot(run, trueOffset);
-  const setback = takeoff(nps, kind, cutAngle);
+  // The elbows are bought fittings welded either end, so they take out what
+  // the handbook says a bought elbow does: at 90° and 45° its own figure,
+  // at any other angle an elbow cut down to it, worked from the bend radius.
+  // The same figure Cut Length and the calculator use. (A pipe that is bent,
+  // not welded, is the Pipe bend tool's.)
+  const elbow = elbowTakeout(nps, kind, cutAngle);
+  const setback = elbow.value;
   const pipeCut = travel - 2 * setback - 2 * (Number.isFinite(gap) ? gap : 0);
   const size = findSize(nps);
   const spool = spoolWeight({
@@ -101,6 +111,7 @@ export function solveRolling(input: RollingInput): RollingResult {
     cutAngle,
     pipeCut,
     setback,
+    setbackFromTable: elbow.fromTable,
     shrink: travel - run,
     centerlineArc: centerlineArc(nps, kind, cutAngle),
     throatArc: throatArc(nps, kind, cutAngle, size.od),

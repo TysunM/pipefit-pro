@@ -35,12 +35,19 @@ const MULTIPLIERS: [number, number, number, number][] = [
 describe('the offset multipliers off the toolbox lid', () => {
   test.each(MULTIPLIERS)('%s degrees: travel %s, run %s, shrink %s', (angle, travel, run, shrink) => {
     for (const offset of [6, 10, 12, 18, 24, 36]) {
+      // The triangle, whether or not there is pipe left between the elbows (see below).
       const r = solveOffset({ ...BASE, offset, fittingAngle: angle, lockRun: false });
-      expect(r.error).toBeUndefined();
       near(r.travel / offset, travel, 5e-4);
       near(r.run / offset, run, 5e-4);
       near(r.shrink / offset, shrink, 5e-4);
     }
+  });
+
+  test('a 6 inch square jog with two 2 inch 90s is fitting to fitting: no pipe, and the app says so', () => {
+    const r = solveOffset({ ...BASE, offset: 6, fittingAngle: 90, lockRun: false });
+    near(r.pipeCut, 0, 1e-12);
+    expect(r.valid).toBe(false);
+    expect(r.error).toMatch(/no pipe between elbows/);
   });
 
   test('travel over run over offset is a right triangle, every time', () => {
@@ -79,11 +86,22 @@ describe('the cut is the travel less what the fittings take out', () => {
     expect(bought.value - takeoff(2, 'LR', 45)).toBeGreaterThan(0.13);
   });
 
-  test('a 45 offset of 12 inch on 2 inch pipe cuts to the inch it should', () => {
+  test('a 45 offset of 12 inch on 2 inch pipe cuts to the inch it should, with bought 45s', () => {
     const r = solveOffset({ ...BASE, offset: 12, fittingAngle: 45, lockRun: false, gap: 0 });
     near(r.travel, 16.9706, 1e-4);
-    near(r.setback, 1.2426, 1e-4);
-    near(r.pipeCut, 16.9706 - 2 * 1.2426, 2e-4);
+    near(r.setback, 1.375, 1e-9);
+    near(r.pipeCut, 16.9706 - 2 * 1.375, 2e-4);
+  });
+
+  test('the offset screens take out what Cut Length does, at every size, 90 and 45', () => {
+    for (const nps of [0.75, 1, 1.5, 2, 3, 4, 6, 12, 24])
+      for (const angle of [45, 90]) {
+        const offset = solveOffset({ ...BASE, nps, offset: 48, fittingAngle: angle, lockRun: false });
+        const rolling = solveRolling({ ...BASE, nps, rise: 30, roll: 20, useFittingAngle: true, fittingAngle: angle });
+        const want = elbowTakeout(nps, 'LR', angle).value;
+        near(offset.setback, want, 1e-12);
+        near(rolling.setback, want, 1e-12);
+      }
   });
 
   test('two 90s on a 24 inch centre to centre leave 18 inch of pipe', () => {

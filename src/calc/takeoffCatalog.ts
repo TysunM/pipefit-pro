@@ -83,9 +83,11 @@ export const DEFAULT_TAKEOFF_OPTIONS: TakeoffOptions = {
  *
  * A bend and a bought fitting are not the same thing and do not take out the
  * same amount. One and a half diameters times the tangent of half the angle is
- * what a pipe does when it is bent, and it is what the offset and bender
- * screens work to. A bought elbow is made to its own published figures: a two
- * inch long radius 45 takes out 1-3/8 where the bend takes out 1.2426. Working
+ * what a pipe does when it is bent, and it is what the bender works to. A
+ * bought elbow is made to its own published figures: a two inch long radius
+ * 45 takes out 1-3/8 where the bend takes out 1.2426. The offset screens, the
+ * spool builder, Cut Length and the calculator weld bought elbows, so all of
+ * them take out this. Working
  * a run of fittings to the bend figure cuts every piece a quarter of an inch
  * long.
  *

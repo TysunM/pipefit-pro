@@ -214,7 +214,7 @@ export function SimpleOffsetScreen() {
         stats={[
           { label: 'Cut angle', value: result.valid ? u.angle(result.cutAngle) : '—' },
           { label: 'Inside arc', note: 'Primary — throat', value: result.valid ? u.num(result.throatArc) : '—' },
-          { label: 'Setback', value: result.valid ? u.dual(result.setback) : '—' },
+          { label: 'Setback', note: result.setbackFromTable ? 'Handbook 2-42' : 'Cut elbow, bend radius', value: result.valid ? u.dual(result.setback) : '—' },
           { label: 'Outside arc', note: 'Alternative', value: result.valid ? u.num(result.backArc) : '—' },
           { label: 'Travel', value: result.valid ? u.dual(result.travel) : '—' },
           { label: 'Shrink', value: result.valid ? u.dual(result.shrink) : '—' },
@@ -235,7 +235,7 @@ export function SimpleOffsetScreen() {
         }
       />
 
-      <FooterNote text="Centre-to-centre (C2C) geometry. Elbow takeouts from ASME B16.9 bend radii. Fitting weights are estimates." />
+      <FooterNote text="Centre-to-centre (C2C) geometry. Bought elbows take out the handbook figure (2-42) at 90° and 45°, the same as Cut Length; any other angle is an elbow cut down to it, worked from the bend radius. Bending the pipe instead? Use Pipe bend. Fitting weights are estimates." />
 
       <PipeSheet
         visible={pipe.sheetOpen}
