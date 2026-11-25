@@ -27,17 +27,18 @@ import { CHECK_MESSAGE, CHECK_SCHEMA, CHECK_SYSTEM, DETAIL_MAX, readCheck } from
 
 /**
  * How long Claude gets. A summary usually comes back in seconds; this is for
- * a slow day, and stays inside the minute the app waits.
+ * a slow day, and with the free model's 20 s before it stays inside the
+ * minute the app waits.
  */
-const UPSTREAM_MS = 50_000;
+const UPSTREAM_MS = 35_000;
 
-/** How long a spoken command waits: inside the twenty seconds the app gives it. */
+/** How long a spoken command waits: after the free model's 8 s, inside the 25 seconds the app gives it. */
 const VOICE_MS = 15_000;
 
-/** How long a sheet read gets: a page of small print is read carefully, inside the app's 75 seconds. */
-const SHEET_MS = 60_000;
+/** How long a sheet read gets: a page of small print is read carefully, after the free reader's 30 s, inside the app's 85 seconds. */
+const SHEET_MS = 45_000;
 
-/** How long a course gets: a few pages read and written in another language, inside the app's 75 seconds. */
+/** How long a course gets: a few pages read and written in another language, after the free model's 40 s, inside the app's 115 seconds. */
 const COURSE_MS = 65_000;
 
 export type Reply = { status: number; body: unknown };

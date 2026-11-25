@@ -187,7 +187,7 @@ function ModuleSheet({ module, store, onClose, apply }: { module: Module | 'new'
             </View>
             <SectionHeader title="The check" meta={questions.length ? `${questions.length} of ${MAX_QUESTIONS}` : 'none yet'} />
             <Text style={[t.type.caption, { color: t.colors.textMuted, paddingHorizontal: t.layout.screenPadding }]}>
-              Three or more and they are the check, 80% to pass. Fewer, and a read-through signed off is the pass until Claude writes questions.
+              Three or more and they are the check, 80% to pass. Fewer, and a read-through signed off is the pass until a course is built with questions.
             </Text>
             {questions.map((qu, i) => (
               <VoicePressable key={i} onPress={() => setEditing(i)} accessibilityRole="button" accessibilityLabel={`Edit question ${i + 1}`} style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.md, paddingHorizontal: t.layout.screenPadding, paddingVertical: t.space.sm }}>

@@ -466,15 +466,20 @@ still works; the two features simply say the server is not set up.
 | Name | Kind | For |
 |---|---|---|
 | `TYPESAFE_API_KEY` | Secret | Jev: smart fill on a heat scan, and the handbook search |
-| `ANTHROPIC_API_KEY` | Secret | Claude: the shift report summary, spoken commands, fitting sheets and orientation courses |
+| `ANTHROPIC_API_KEY` | Secret | Claude, the last resort for the shift report summary, spoken commands, fitting sheets and orientation courses: asked only when the free Workers AI models cannot be used |
 | `CLAUDE_MODEL` | Variable (plain text) | Which Claude model does it: a current model id such as `claude-opus-5-5`. Changing it needs no build and no deploy. |
-| `WORKERS_AI_MODEL` | Variable (plain text), optional | The free voice helper's model, when Claude is not set up or not paid for. Defaults to `@cf/meta/llama-3.3-70b-instruct-fp8-fast`; `@cf/meta/llama-3.1-8b-instruct-fast` costs about a sixth as much of the daily allowance. |
-| `WORKERS_AI_VISION_MODEL` | Variable (plain text), optional | The free box and sheet reader's model, when Claude is not set up or not paid for. Defaults to `@cf/meta/llama-4-scout-17b-16e-instruct`. It must take a picture as the chat format's `image_url` part. |
+| `WORKERS_AI_MODEL` | Variable (plain text), optional | The free text model, asked first for voice, the shift report summary and orientation courses. Defaults to `@cf/meta/llama-3.3-70b-instruct-fp8-fast`; `@cf/meta/llama-3.1-8b-instruct-fast` costs about a sixth as much of the daily allowance. |
+| `WORKERS_AI_VISION_MODEL` | Variable (plain text), optional | The free box and sheet reader's model, asked first. Defaults to `@cf/meta/llama-4-scout-17b-16e-instruct`. It must take a picture as the chat format's `image_url` part. |
 
-The free voice helper needs no key: `wrangler.jsonc` binds Cloudflare Workers
-AI as `AI`, and a deploy sets it up. Spoken commands the phone cannot work out
-go to Claude when `ANTHROPIC_API_KEY` works, and to Workers AI when it is
-missing, refused or out of credit. The account's free allowance is 10,000
+The free helpers need no key: `wrangler.jsonc` binds Cloudflare Workers AI as
+`AI`, and a deploy sets it up. Every cloud job (spoken commands the phone
+cannot work out, box and sheet photos, the shift report polish, orientation
+courses) goes to Workers AI first. Claude is the last resort: asked only when
+the free model is not set up, has used the day's allowance, errors or times
+out, or answers in a way the app's own checks turn down (out of shape, a
+summary with a figure not in the log, a photo of a label it read nothing off).
+A bad request (too big, not a picture) goes to neither. Each reply says which
+answered, as `engine`. The account's free allowance is 10,000
 Neurons a day, reset at 00:00 UTC; past it the call fails and nothing is
 billed. Its prompt is the voice rules and the handbook's index, about 3,600
 tokens, so on the default model a free day holds roughly 70 to 80 cloud

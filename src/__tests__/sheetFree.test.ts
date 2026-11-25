@@ -26,6 +26,8 @@ const anthropic = (status: number, data: unknown, calls: { n: number } = { n: 0 
   }) as unknown as typeof fetch;
 
 beforeEach(() => resetClaudeSkip());
+/** Claude's answer to the same label, as the Messages API gives it. */
+const CLAUDE_READ = { id: 'msg_1', type: 'message', role: 'assistant', model: 'test-model', content: [{ type: 'text', text: JSON.stringify(READ) }], stop_reason: 'end_turn', stop_sequence: null, usage: { input_tokens: 1500, output_tokens: 90 } };
 
 describe('a box label read by the free helper, when Claude is not paid for', () => {
   test('with no Claude key the picture goes to the vision model, as the chat format\'s image part, held to the sheet schema', async () => {
@@ -84,16 +86,19 @@ describe('a box label read by the free helper, when Claude is not paid for', () 
     expect(ran).toHaveLength(0);
   });
 
-  test('Claude answering is used, and the free helper is never asked', async () => {
+  test('with both, the free reader goes first and Claude, paid for, is never asked', async () => {
     const ran: Ran[] = [];
     const calls = { n: 0 };
-    const res = await handle(
-      post({ image: JPEG, family: 'socket' }),
-      { ...ENV, AI: ai([{ response: READ }], ran) },
-      anthropic(200, { id: 'msg_1', type: 'message', role: 'assistant', model: 'test-model', content: [{ type: 'text', text: JSON.stringify(READ) }], stop_reason: 'end_turn', stop_sequence: null, usage: { input_tokens: 1500, output_tokens: 90 } }, calls),
-    );
-    expect(await res.json()).toEqual({ sheet: readSheet(READ, 'socket') });
+    const res = await handle(post({ image: JPEG, family: 'socket' }), { ...ENV, AI: ai([{ response: READ }], ran) }, anthropic(200, CLAUDE_READ, calls));
+    expect(await res.json()).toEqual({ sheet: readSheet(READ, 'socket'), engine: 'workers-ai' });
+    expect(ran).toHaveLength(1);
+    expect(calls.n).toBe(0);
+  });
+
+  test('a label the free reader reads nothing off goes to Claude, the last resort', async () => {
+    const calls = { n: 0 };
+    const res = await handle(post({ image: JPEG, family: 'socket' }), { ...ENV, AI: ai([{ response: { ...READ, rows: [], unread: 'Too small to read.' } }]) }, anthropic(200, CLAUDE_READ, calls));
+    expect(await res.json()).toEqual({ sheet: readSheet(READ, 'socket'), engine: 'claude' });
     expect(calls.n).toBe(1);
-    expect(ran).toHaveLength(0);
   });
 });

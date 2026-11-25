@@ -1,7 +1,7 @@
 // Photographing a maker's sheet into the fitting library
 // ------------------------------------------------------
-// One photo of a dimension sheet or a box label, read by Claude (or, with no
-// paid Claude key, Cloudflare's free vision model), laid out to
+// One photo of a dimension sheet or a box label, read by Cloudflare's free
+// vision model (Claude only as the last resort), laid out to
 // be checked against the paper and saved. What is doubtful arrives unticked
 // and says why; nothing is saved until Save is tapped. The rules are in
 // ai/fittingSheet.ts, where they are tested.
@@ -232,7 +232,7 @@ export function FittingSheetReader({
     if (!permission.granted) {
       return (
         <>
-          {note(`The photo goes through the app's server to Claude, or Cloudflare's free reader when Claude is not paid for, is read, and is not kept. Nothing is saved until you check it and tap Save.`)}
+          {note(`The photo goes through the app's server to Cloudflare's free reader (Claude only if that cannot read it), is read, and is not kept. Nothing is saved until you check it and tap Save.`)}
           {button('Allow the camera', () => void requestPermission(), { primary: true })}
         </>
       );

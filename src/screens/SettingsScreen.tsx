@@ -182,8 +182,10 @@ export function SettingsScreen() {
         entered until you add the heat. Off, or with no signal, both stay on this phone and work as before.
       </Text>
       <Text style={[t.type.caption, { color: t.colors.textMuted, paddingHorizontal: t.layout.screenPadding, marginTop: -t.space.sm, marginBottom: t.space.md }]}>
-        Claude, on the same server, writes the shift summary, places spoken commands, reads fitting sheets and builds
-        orientation courses. Test Claude asks it one word and shows what came back, in Anthropic's own words when it is a no.
+        The shift summary, spoken commands the phone cannot place, fitting sheets and box labels, and orientation courses go
+        to Cloudflare's free models on the same server first. Claude is the last resort: asked only when those cannot be
+        reached, have used up the day's free allowance, or give back an answer the app's own checks turn down. Test Claude asks
+        it one word and shows what came back, in Anthropic's own words when it is a no.
       </Text>
       <ControlRow>
         <GhostButton label={check.at === 'busy' ? 'Asking Claude…' : 'Test Claude'} icon="pulse-outline" onPress={testClaude} style={{ flex: 1 }} />
@@ -197,7 +199,7 @@ export function SettingsScreen() {
         </Text>
       ) : null}
       <Text style={[t.type.caption, { color: t.colors.textMuted, paddingHorizontal: t.layout.screenPadding, marginBottom: t.space.md }]}>
-        {`What the phone cannot work out by voice goes to Claude, or to Cloudflare's free model when Claude is not paid for. Test the voice helper says "${VOICE_TEST_SAID}" to it and shows which answered, how fast, and what; or why not, in the server's words.`}
+        {`What the phone cannot work out by voice goes to Cloudflare's free model, and to Claude only when that cannot answer. Test the voice helper says "${VOICE_TEST_SAID}" to it and shows which answered, how fast, and what; or why not, in the server's words.`}
       </Text>
       <ControlRow>
         <GhostButton label={voiceCheck.at === 'busy' ? 'Asking the voice helper…' : 'Test the voice helper'} icon="mic-outline" onPress={() => void testVoiceHelper()} style={{ flex: 1 }} />
@@ -264,7 +266,7 @@ export function SettingsScreen() {
       <Text style={[t.type.caption, { color: t.colors.textMuted, paddingHorizontal: t.layout.screenPadding, marginTop: -t.space.sm, marginBottom: t.space.lg }]}>
         Tap the mic on any screen and say it: a tool ("bolt up", "rolling offset, rise 12, roll 8, run 30"), a weld ("two 6 inch welds,
         weld 14 rejected for porosity"), a test reading ("hold started at 225") or a handbook question. Tool names work on the phone
-        with no signal; the rest is read by Claude, said back, and kept on screen with an Undo. Drag the mic anywhere on the screen and
+        with no signal; the rest is read by the free cloud model (Claude only as a last resort), said back, and kept on screen with an Undo. Drag the mic anywhere on the screen and
         it stays where you leave it, on every page.
       </Text>
       {settings.voice && micMoved ? (

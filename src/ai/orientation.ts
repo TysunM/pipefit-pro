@@ -78,7 +78,7 @@ export function orientationMessage(b: OrientationBody): string {
 /** The answer, read again: a course or nothing. */
 export const readCourse = (v: unknown): Course | null => validCourse(v);
 
-export type CourseMiss = 'not_set' | 'key_refused' | 'no_credit' | 'bad_model' | 'declined' | 'down' | 'offline';
+export type CourseMiss = 'not_set' | 'key_refused' | 'no_credit' | 'bad_model' | 'declined' | 'down' | 'offline' | 'daily_limit';
 
 export function courseMissWords(m: CourseMiss): string {
   switch (m) {
@@ -93,9 +93,11 @@ export function courseMissWords(m: CourseMiss): string {
     case 'declined':
       return 'Claude declined to write this course. The rules can still be read as written.';
     case 'down':
-      return 'Claude is not answering right now. Try again in a minute, or read the rules as written.';
+      return 'The course writer is not answering right now. Try again in a minute, or read the rules as written.';
     case 'offline':
-      return 'No signal to reach Claude. A course built once is kept on the phone; build it where there is signal.';
+      return 'No signal to reach the course writer. A course built once is kept on the phone; build it where there is signal.';
+    case 'daily_limit':
+      return "Today's free allowance is used up and Claude could not be used either; it comes back at midnight UTC. The rules can still be read as written.";
   }
 }
 
@@ -106,14 +108,15 @@ export function courseMissOf(body: unknown): CourseMiss {
   if (outOfCredit(e)) return 'no_credit';
   if (e.error === 'upstream' && (e.status === 400 || e.status === 404)) return 'bad_model';
   if (e.error === 'declined') return 'declined';
+  if (e.error === 'daily_limit') return 'daily_limit';
   return 'down';
 }
 
-/** Ask the Worker for the course. A whole module is read and written: give it a minute. */
+/** Ask the Worker for the course. A whole module is read and written, by the free model first (40 s at most) and Claude last (65 s): give it two minutes. */
 export async function askOrientation(base: string, body: OrientationBody, opts: { fetchImpl?: typeof fetch; timeoutMs?: number } = {}): Promise<Course | CourseMiss> {
   const f = opts.fetchImpl ?? fetch;
   const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), opts.timeoutMs ?? 75_000);
+  const timer = setTimeout(() => ctrl.abort(), opts.timeoutMs ?? 115_000);
   let res: Response;
   try {
     res = await f(`${base}${ORIENTATION_PATH}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body), signal: ctrl.signal });

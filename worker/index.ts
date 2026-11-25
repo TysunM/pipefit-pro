@@ -18,7 +18,7 @@ import { HANDBOOK_PICK_PATH, MAX_QUERY, cleanQuery, handbookRequest, readHandboo
 import { SHIFT_POLISH_PATH } from '../src/ai/shiftPolish';
 import { MODEL_ID, claudeCheck, fittingSheet, orientationCourse, shiftPolish, voiceCommand, type Reply } from './claude';
 import { VOICE_PATH } from '../src/ai/voice';
-import { AI_MODEL_ID, DEFAULT_AI_MODEL, DEFAULT_AI_VISION_MODEL, sheetByWorkersAi, voiceByWorkersAi, type Ai } from './workersAi';
+import { AI_MODEL_ID, DEFAULT_AI_MODEL, DEFAULT_AI_VISION_MODEL, courseByWorkersAi, polishByWorkersAi, sheetByWorkersAi, voiceByWorkersAi, type Ai } from './workersAi';
 import { FITTING_SHEET_PATH, MAX_SHEET_BODY } from '../src/ai/fittingSheet';
 import { MAX_ORIENTATION_BODY, ORIENTATION_PATH } from '../src/ai/orientation';
 import { CLAUDE_CHECK_PATH, MAX_CHECK_BODY } from '../src/ai/claudeCheck';
@@ -34,7 +34,7 @@ export interface Env {
   CLAUDE_MODEL?: string;
   /** The web app's static files. */
   ASSETS?: { fetch: (req: Request) => Promise<Response> };
-  /** Cloudflare Workers AI, bound in wrangler.jsonc: the free cloud helper for voice when Claude is not paid for (workersAi.ts). */
+  /** Cloudflare Workers AI, bound in wrangler.jsonc: the free cloud helpers, asked before Claude (workersAi.ts). */
   AI?: Ai;
   /** Which Workers AI model; DEFAULT_AI_MODEL when unset. A plain variable, set in the dashboard. */
   WORKERS_AI_MODEL?: string;
@@ -43,20 +43,18 @@ export interface Env {
 }
 
 /**
- * Why Claude did not answer, when the free helper should be asked instead:
- * not set up, a key turned down, out of credit, or not reached. Not when
- * Claude declined, or the request itself was bad: the free model would only
- * be asked the same bad thing.
+ * The free model's answer will not do and Claude, the last resort, is asked:
+ * it was not set up, its day's allowance is spent, it errored or gave no
+ * answer in time, or its answer failed the app's own checks. Not when the
+ * request itself was bad (too big, not a picture, nothing in it): Claude
+ * would only be asked the same bad thing, and charged for it.
  */
-const claudeUnavailable = (r: { status: number; body: unknown }): boolean => {
-  const e = r.body && typeof r.body === 'object' ? (r.body as Record<string, unknown>).error : undefined;
-  return e === 'not_configured' || e === 'upstream' || e === 'upstream_unreachable';
-};
+const freeFailed = (r: { status: number }): boolean => r.status !== 200 && r.status !== 400 && r.status !== 413;
 
 /**
- * Claude turned a voice command down for want of credit or a good key: until
- * then, voice goes straight to the free helper rather than wait on Claude to
- * say no again. Held for as long as this Worker instance lives, at most ten
+ * Claude, asked as the last resort, turned the key down or found no credit:
+ * until then it is not asked again, rather than wait on it to say no on every
+ * request. Held for as long as this Worker instance lives, at most ten
  * minutes, so credit added shows up again on its own.
  */
 let claudeSkipUntil = 0;
@@ -64,6 +62,11 @@ export const CLAUDE_SKIP_MS = 10 * 60_000;
 const refusedForGood = (r: { body: unknown }): boolean => {
   const b = r.body && typeof r.body === 'object' ? (r.body as Record<string, unknown>) : {};
   return b.error === 'upstream' && (b.status === 400 || b.status === 401 || b.status === 403);
+};
+/** Claude could not be reached or used at all, as opposed to answering badly. */
+const claudeUnavailable = (r: { body: unknown }): boolean => {
+  const e = r.body && typeof r.body === 'object' ? (r.body as Record<string, unknown>).error : undefined;
+  return e === 'not_configured' || e === 'upstream' || e === 'upstream_unreachable';
 };
 /** For tests. */
 export const resetClaudeSkip = (): void => {
@@ -117,6 +120,14 @@ const CLAUDE: Record<string, { run: ClaudeRoute; maxBody: number }> = {
   [CLAUDE_CHECK_PATH]: { run: claudeCheck, maxBody: MAX_CHECK_BODY },
 };
 
+/** The free helper for each Claude route, and which model variable it reads. The check has none: it is there to test Claude. */
+const FREE: Record<string, { run: (raw: string, ai: Ai, model: string) => Promise<Reply>; vision: boolean }> = {
+  [VOICE_PATH]: { run: voiceByWorkersAi, vision: false },
+  [FITTING_SHEET_PATH]: { run: sheetByWorkersAi, vision: true },
+  [SHIFT_POLISH_PATH]: { run: polishByWorkersAi, vision: false },
+  [ORIENTATION_PATH]: { run: courseByWorkersAi, vision: false },
+};
+
 const CORS = {
   'access-control-allow-origin': '*',
   'access-control-allow-methods': 'POST, OPTIONS',
@@ -138,27 +149,35 @@ export async function handle(req: Request, env: Env, fetchImpl: typeof fetch = f
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
   if (req.method !== 'POST') return json(405, { error: 'method_not_allowed' });
 
-  // Claude's route has its own key and model, and never needs TypeSafe's.
+  // Claude's routes have their own key and model, and never need TypeSafe's.
+  // The free model is asked first; Claude only when it cannot be used.
   if (claude) {
     const apiKey = env.ANTHROPIC_API_KEY?.trim();
     const model = env.CLAUDE_MODEL?.trim() ?? '';
     const missing = [!apiKey && 'ANTHROPIC_API_KEY', !MODEL_ID.test(model) && 'CLAUDE_MODEL'].filter(Boolean);
-    // Voice and the box reader have a second helper: Cloudflare's free models, when Claude is not set up or not paid for.
-    const sheet = url.pathname === FITTING_SHEET_PATH;
-    const free = (url.pathname === VOICE_PATH || sheet) && env.AI ? env.AI : null;
-    if ((!apiKey || missing.length) && !free) return json(503, { error: 'not_configured', missing });
+    const free = FREE[url.pathname] && env.AI ? { ...FREE[url.pathname]!, ai: env.AI } : null;
+    const claudeReady = !!apiKey && !missing.length;
+    if (!claudeReady && !free) return json(503, { error: 'not_configured', missing });
     if (Number(req.headers.get('content-length') ?? 0) > claude.maxBody) return json(413, { error: 'too_large' });
     const raw = await req.text();
-    const skip = free !== null && Date.now() < claudeSkipUntil;
-    const out = apiKey && !missing.length && !skip ? await claude.run(raw, apiKey, model, fetchImpl) : { status: 503, body: { error: 'not_configured', missing } };
-    if (free && refusedForGood(out)) claudeSkipUntil = Date.now() + CLAUDE_SKIP_MS;
-    if (free && claudeUnavailable(out)) {
-      const name = sheet ? 'WORKERS_AI_VISION_MODEL' : 'WORKERS_AI_MODEL';
-      const aiModel = (sheet ? env.WORKERS_AI_VISION_MODEL : env.WORKERS_AI_MODEL)?.trim() || (sheet ? DEFAULT_AI_VISION_MODEL : DEFAULT_AI_MODEL);
-      if (!AI_MODEL_ID.test(aiModel)) return json(503, { error: 'not_configured', missing: [name] });
-      const viaAi = sheet ? await sheetByWorkersAi(raw, free, aiModel) : await voiceByWorkersAi(raw, free, aiModel);
-      return json(viaAi.status, viaAi.body);
+
+    let freeOut: Reply | null = null;
+    if (free) {
+      const name = free.vision ? 'WORKERS_AI_VISION_MODEL' : 'WORKERS_AI_MODEL';
+      const aiModel = (free.vision ? env.WORKERS_AI_VISION_MODEL : env.WORKERS_AI_MODEL)?.trim() || (free.vision ? DEFAULT_AI_VISION_MODEL : DEFAULT_AI_MODEL);
+      freeOut = AI_MODEL_ID.test(aiModel) ? await free.run(raw, free.ai, aiModel) : { status: 503, body: { error: 'not_configured', missing: [name] } };
+      if (!freeFailed(freeOut)) return json(freeOut.status, freeOut.body);
     }
+
+    // Claude, the last resort: only when it is set up, and (where the free model was there to ask) has not just turned the key down.
+    if (!claudeReady) return freeOut ? json(freeOut.status, freeOut.body) : json(503, { error: 'not_configured', missing });
+    if (freeOut && Date.now() < claudeSkipUntil) return json(freeOut.status, freeOut.body);
+    const out = await claude.run(raw, apiKey!, model, fetchImpl);
+    if (freeOut && refusedForGood(out)) claudeSkipUntil = Date.now() + CLAUDE_SKIP_MS;
+    // Said which answered where there is a choice; the check is only ever Claude.
+    if (out.status === 200) return json(200, FREE[url.pathname] ? { ...(out.body as Record<string, unknown>), engine: 'claude' } : out.body);
+    // Both failed: the free model's reason when Claude could not be reached at all (the allowance spent says more than "no credit"), Claude's otherwise.
+    if (freeOut && claudeUnavailable(out)) return json(freeOut.status, freeOut.body);
     return json(out.status, out.body);
   }
   if (!route) return json(404, { error: 'not_found' });

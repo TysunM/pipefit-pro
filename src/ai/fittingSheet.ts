@@ -366,7 +366,8 @@ export async function askFittingSheet(
   if (!mediaOf(b64)) return 'not_image';
   const f = opts.fetchImpl ?? fetch;
   const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), opts.timeoutMs ?? 75_000);
+  // The free reader first (30 s at most), then Claude as the last resort (45 s): inside this.
+  const timer = setTimeout(() => ctrl.abort(), opts.timeoutMs ?? 85_000);
   let res: Response;
   try {
     res = await f(`${base}${FITTING_SHEET_PATH}`, {

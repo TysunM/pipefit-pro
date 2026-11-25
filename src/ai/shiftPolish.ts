@@ -241,23 +241,23 @@ export type PolishCheck = { ok: true } | { ok: false; why: string };
  * plain version.
  */
 export function checkPolish(b: PolishBody, p: Polish): PolishCheck {
-  if (!p.summary) return { ok: false, why: 'Claude sent back no summary.' };
-  if (p.summary.length > SUMMARY_MAX) return { ok: false, why: 'Claude’s summary ran far longer than a summary.' };
+  if (!p.summary) return { ok: false, why: 'No summary came back.' };
+  if (p.summary.length > SUMMARY_MAX) return { ok: false, why: 'The summary ran far longer than a summary.' };
 
   const allowed = figuresIn([JSON.stringify(b.facts), ...NOTE_KEYS.map((k) => b.notes[k])].join(' '));
   const written = [p.summary, ...NOTE_KEYS.map((k) => p[k])].join(' ');
   for (const n of figuresIn(written))
-    if (!allowed.has(n)) return { ok: false, why: `Claude’s version has a figure that is not in your log (${n}).` };
+    if (!allowed.has(n)) return { ok: false, why: `The polished version has a figure that is not in your log (${n}).` };
 
   for (const name of mustMention(b.facts))
-    if (!mentions(p.summary, name)) return { ok: false, why: `Claude’s summary left out ${name}.` };
+    if (!mentions(p.summary, name)) return { ok: false, why: `The summary left out ${name}.` };
 
   for (const k of NOTE_KEYS) {
     const sent = b.notes[k].trim();
     const got = p[k].trim();
-    if (sent && !got) return { ok: false, why: `Claude dropped your ${k} note.` };
-    if (!sent && got) return { ok: false, why: `Claude wrote a ${k} note you did not write.` };
-    if (got.length > Math.max(600, sent.length * 3)) return { ok: false, why: `Claude’s ${k} note ran far longer than yours.` };
+    if (sent && !got) return { ok: false, why: `The polished version dropped your ${k} note.` };
+    if (!sent && got) return { ok: false, why: `The polished version has a ${k} note you did not write.` };
+    if (got.length > Math.max(600, sent.length * 3)) return { ok: false, why: `The polished ${k} note ran far longer than yours.` };
   }
   return { ok: true };
 }
@@ -265,7 +265,7 @@ export function checkPolish(b: PolishBody, p: Polish): PolishCheck {
 // --------------------------------------------------------- asking from the app
 
 /** Why there is no polished version: each has a different fix, so the screen says which. */
-export type PolishMiss = 'not_set' | 'key_refused' | 'no_credit' | 'bad_model' | 'declined' | 'down' | 'offline';
+export type PolishMiss = 'not_set' | 'key_refused' | 'no_credit' | 'bad_model' | 'declined' | 'down' | 'offline' | 'daily_limit';
 
 export function polishMissWords(m: PolishMiss): string {
   const then = 'The plain report is still here, and right.';
@@ -281,9 +281,11 @@ export function polishMissWords(m: PolishMiss): string {
     case 'declined':
       return `Claude declined to write this one. ${then}`;
     case 'down':
-      return `Claude is not answering right now. ${then}`;
+      return `The writer is not answering right now. ${then}`;
     case 'offline':
-      return `No signal to reach Claude. ${then}`;
+      return `No signal to reach the writer. ${then}`;
+    case 'daily_limit':
+      return `Today's free allowance is used up and Claude could not be used either; it comes back at midnight UTC. ${then}`;
   }
 }
 
@@ -296,11 +298,12 @@ export function polishMissOf(body: unknown): PolishMiss {
   // The request is fixed and tested, so a 400 or a 404 is the model it was sent to.
   if (e.error === 'upstream' && (e.status === 400 || e.status === 404)) return 'bad_model';
   if (e.error === 'declined') return 'declined';
+  if (e.error === 'daily_limit') return 'daily_limit';
   return 'down';
 }
 
 /**
- * Ask the Worker for Claude's version. The answer is checked for shape here;
+ * Ask the Worker for the polished version. The answer is checked for shape here;
  * whether it is true to the record is checkPolish's job, done by the caller
  * so it can say why.
  */

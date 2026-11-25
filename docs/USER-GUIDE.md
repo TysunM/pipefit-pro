@@ -137,10 +137,10 @@ The first bolt-ups, pressure tests and cut lengths come with a card at the top o
 
 - **Nine modules are built in, in English and Spanish,** and work with no signal and no server: your first day on site, PPE, working at height, lockout/tagout and stored energy, hot work and fire, confined spaces and excavations, chemicals and the SDS, hands, tools, lifting and rigging, and heat, cold, weather and fatigue. They say general practice as OSHA and the trade hold it. **Your site's rules come first**, and the first module says so. Tap the eye to drop a module your site does not need.
 - **The company's own rules go beside them.** **Add the company's rules**: a title, then paste or type the text, or **Read a page with the camera** to lift it off the printed sheet (the reading is done on the phone). One module is one subject. Say which language it is **written in**. The module is taught from exactly those words, cut into sections by paragraph (a short line above a paragraph becomes its heading).
-- **The check is yours to write.** **Add a question** under the module: the question, two to four choices, which is right, and why. Three or more questions and they are the check, 80% to pass. Fewer, and the module is a read-through: the new hire reads it and signs off **I have read and understood these rules**, which is recorded as the pass. Where the server has a Claude key, Claude writes a course and questions from the words and a Spanish one too, built once and kept on the phone; the company's own questions still win.
+- **The check is yours to write.** **Add a question** under the module: the question, two to four choices, which is right, and why. Three or more questions and they are the check, 80% to pass. Fewer, and the module is a read-through: the new hire reads it and signs off **I have read and understood these rules**, which is recorded as the pass. With signal, the server writes a course and questions from the words, and a Spanish one too, built once and kept on the phone: Cloudflare's free model first, Claude only if that cannot do it. The company's own questions still win.
 - **Share pack** makes a file of the company's modules. On a new hire's phone: **Settings → Back up and restore → Restore from a backup file**. Nothing else on their phone is touched.
-- **Taking a module:** read each section or tap the speaker to hear it; **Español** switches a built-in module to its Spanish course on the spot, and asks Claude for a company module's (needs the server key and signal once); then **Take the check**. **80% passes.** A fail shows what was missed, with the rule, and can be taken again at once.
-- **"Settings → Smart help → Test Claude shows why":** the Spanish course is written by Claude on the server, and the server said no. Press Test Claude: it shows the reason in Anthropic's words. The usual ones are an Anthropic account with no credit, and the `CLAUDE_MODEL` variable naming a model that is gone. The English course and the rules as written never need it.
+- **Taking a module:** read each section or tap the speaker to hear it; **Español** switches a built-in module to its Spanish course on the spot, and builds a company module's on the server (needs signal once); then **Take the check**. **80% passes.** A fail shows what was missed, with the rule, and can be taken again at once.
+- **"Settings → Smart help → Test Claude shows why":** the free model could not write the Spanish course and Claude, asked last, said no. Press Test Claude: it shows the reason in Anthropic's words. The usual ones are an Anthropic account with no credit, and the `CLAUDE_MODEL` variable naming a model that is gone. The English course and the rules as written never need it.
 - **"The Anthropic account behind the key is out of credit":** the company's Anthropic account needs credit (Plans & Billing on the Anthropic console). Until then every module is still taught from its rules as written with the company's questions, the nine built-in modules keep their English and Spanish courses and checks, and nothing else in the app is affected.
 - **A pass goes into the skills passport** as a record under Site orientation and prints on the passport PDF with its date and job. If a module's rules are changed, it has to be passed again.
 
@@ -1643,19 +1643,19 @@ Most of the figures the app already has, because they were logged as they happen
 4. Add any rejected weld by its number and why. Tick the spools finished, or type a mark.
 5. Crew and hours each.
 6. Write the notes in whatever shorthand you use.
-7. **Build the report**: the plain version, from the records and your notes word for word. Or **Polish with Claude**: the same facts go to Claude, which writes the summary as sentences and tidies your notes into sentences a GC can read.
+7. **Build the report**: the plain version, from the records and your notes word for word. Or **Polish the wording**: the same facts go to the server, which writes the summary as sentences and tidies your notes into sentences a GC can read. Cloudflare's free model writes it; Claude only when the free one cannot, or writes something the app's checks turn down.
 8. Read it over and change anything, then **Send as text** to a chat or email, or **Share as PDF**.
 
-### What Claude is and is not allowed to do
+### What the polish is and is not allowed to do
 
-Claude writes only the summary and rewrites the four notes. Every figure under them is the app's own, laid out by code. And the app checks Claude's version before showing it: every number in it must be a number in the facts or your notes; every rejected weld, failed or open test, joint that took up and heat without a cert must be named in the summary; a note you left empty stays empty and one you filled stays filled. If any of that fails, the plain version is used and the screen says why. Either way you read it before it goes.
+It writes only the summary and rewrites the four notes. Every figure under them is the app's own, laid out by code. And the app checks the polished version before showing it (the server checks the free model's the same way, and asks Claude instead if it fails): every number in it must be a number in the facts or your notes; every rejected weld, failed or open test, joint that took up and heat without a cert must be named in the summary; a note you left empty stays empty and one you filled stays filled. If any of that fails, the plain version is used and the screen says why. Either way you read it before it goes.
 
-With no signal, or with Claude not switched on at the server, the plain report is there and is right.
+With no signal, or with neither model able to write it, the plain report is there and is right.
 
 ### Where people go wrong
 
 - **Logging the welds once at the end of the week.** One report per day; the figures are what the shift did.
-- **Sending it without reading it.** Claude's version is checked against the record, not against what you meant. A note it misread is yours to fix.
+- **Sending it without reading it.** The polished version is checked against the record, not against what you meant. A note it misread is yours to fix.
 
 ---
 
@@ -1714,8 +1714,10 @@ Whatever you can see, you can say. Every button, chip, switch and box tells the 
 
 **What runs where.** Everything above is worked out on the phone, at once, with no signal and at no cost: the screen's labels first, then tool names and figures, then the record sentences. Only a sentence none of those make sense of goes to the cloud, which needs signal:
 
-- **Claude**, when the server has a paid Anthropic key. Claude also reads a figure out of the handbook aloud.
-- **Cloudflare's free model** otherwise: no key, no bill. It works out what was meant the same way, and points to the handbook table rather than reading a figure from it. It has a free allowance of 10,000 Neurons a day for the whole account, which comes back at midnight UTC; past it the panel says so, and everything on the phone carries on.
+1. **Cloudflare's free model** first: no key, no bill. It works out what was meant, and points to the handbook table rather than reading a figure from it. It has a free allowance of 10,000 Neurons a day for the whole account, which comes back at midnight UTC.
+2. **Claude**, the last resort, only when the free model cannot be reached, has used up the day's allowance, errors, or gives back an answer the app's checks turn down. Claude, when it answers, also reads a figure out of the handbook aloud.
+
+The same order holds for every cloud job: the box and sheet reader, the shift report polish and orientation courses.
 
 The app never writes a record from a cloud answer it has not checked against the same rules, whichever one answered.
 
@@ -1747,7 +1749,7 @@ A value is matched to the name next to it: "4 inch depth, 30 to obstruction" and
 
 Anything that goes into a record is **said back and left on screen with an Undo** for 15 seconds. Listen for the number. A loud shop will get one wrong sooner or later; Undo puts the record back exactly as it was. **Report** or **Test** on the panel opens what was written.
 
-Claude only answers handbook questions from the handbook. If the book does not cover it, it says so rather than guess.
+The cloud answers handbook questions only from the handbook. If the book does not cover it, it says so rather than guess.
 
 ### Hands-free bolt-up
 
