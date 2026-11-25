@@ -18,6 +18,7 @@
 // device.
 
 import { Heat, HeatForm, normaliseHeat } from '../calc/heat';
+import { MAX_SULPHUR } from '../calc/sulphur';
 
 /**
  * Bumped only when the stored shape changes in a way an older app would read
@@ -77,6 +78,8 @@ export function validHeat(v: unknown): Heat | null {
     mill: str(v.mill),
     mtr: str(v.mtr),
     certified: v.certified === true,
+    // Added later: a heat kept before it, or one with a figure no MTR could print, has none.
+    sulphur: typeof v.sulphur === 'number' && Number.isFinite(v.sulphur) && v.sulphur >= 0 && v.sulphur <= MAX_SULPHUR ? v.sulphur : null,
     note: str(v.note),
     createdAt,
     updatedAt: isInt(v.updatedAt) ? v.updatedAt : createdAt,

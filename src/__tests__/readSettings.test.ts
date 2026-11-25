@@ -26,6 +26,7 @@ const DEFAULTS: Settings = {
   speedUnit: 'auto',
   arcMode: 'va',
   weldFields: [],
+  sulphurGap: 0.005,
   look: LOOK,
 };
 
@@ -161,5 +162,15 @@ describe('the welding settings', () => {
   });
   test('field names are trimmed, deduplicated and kept to four', () => {
     expect(read({ weldFields: [' WPS ', 'wps', '', 3, 'Welder', 'Pass', 'Joint', 'Heat'] }).weldFields).toEqual(['WPS', 'Welder', 'Pass', 'Joint']);
+  });
+});
+
+describe("the crew's sulphur line", () => {
+  const gap = (sulphurGap: unknown) => readSettings(JSON.stringify({ sulphurGap, look: LOOK }), DEFAULTS).settings.sulphurGap;
+  test('is kept in reason: a slip of 5 for 0.005, or a word, is not taken', () => {
+    expect(gap(0.003)).toBe(0.003);
+    expect(gap(5)).toBe(0.005);
+    expect(gap('0.003')).toBe(0.005);
+    expect(gap(undefined)).toBe(0.005);
   });
 });

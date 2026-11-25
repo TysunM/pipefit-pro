@@ -33,6 +33,8 @@ import { backupAge, useLastBackup } from '../state/lastBackup';
 import { API_BASE } from '../ai/apiBase';
 import { askClaudeCheck } from '../ai/claudeCheck';
 import { VOICE_TEST_SAID, testVoice } from '../ai/voice';
+import { DEFAULT_SULPHUR_GAP, SULPHUR_GAP_RANGE, pct } from '../calc/sulphur';
+import { NumField } from '../components/FormFields';
 
 export function SettingsScreen() {
   const t = useTheme();
@@ -587,6 +589,19 @@ function WeldingSettings() {
       />
       <Text style={[t.type.caption, { color: t.colors.textMuted, paddingHorizontal: t.layout.screenPadding, marginTop: -t.space.sm, marginBottom: t.space.lg }]}>
         Auto follows Units: kJ per inch and inches per minute in imperial, kJ per mm and mm per minute in metric. The length welded goes in in the same units.
+      </Text>
+      <FieldRow>
+        <NumField
+          label="Sulphur apart, warn at"
+          value={settings.sulphurGap}
+          onChange={(v) => {
+            if (v !== null && v >= SULPHUR_GAP_RANGE.min && v <= SULPHUR_GAP_RANGE.max) update({ sulphurGap: v });
+          }}
+          suffix="%"
+        />
+      </FieldRow>
+      <Text style={[t.type.caption, { color: t.colors.textMuted, paddingHorizontal: t.layout.screenPadding, marginTop: -t.space.sm, marginBottom: t.space.lg }]}>
+        {`Two heats welded together whose sulphur is further apart than this are flagged on the weld and orbital screens: the puddle pulls toward the lower one. No code sets it; ${pct(DEFAULT_SULPHUR_GAP)}% is the app's start. Between ${pct(SULPHUR_GAP_RANGE.min)} and ${pct(SULPHUR_GAP_RANGE.max)}.`}
       </Text>
       <Text style={[t.type.label, { color: t.colors.textMuted, paddingHorizontal: t.layout.screenPadding, marginBottom: t.space.sm }]}>FIELDS SAVED WITH EACH HEAT INPUT</Text>
       {[0, 2].map((i) => (

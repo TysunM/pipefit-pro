@@ -68,7 +68,7 @@ export function programHtml(p: Program, head: Gear | undefined, supply: Gear | u
   );
 }
 
-export function runHtml(r: Run, p: Program, head: Gear | undefined, supply: Gear | undefined, equations: readonly Equation[]): string {
+export function runHtml(r: Run, p: Program, head: Gear | undefined, supply: Gear | undefined, equations: readonly Equation[], sulphur?: string): string {
   const steps = runSteps(p, supply, head, equations, r);
   const done = new Set(r.checks);
   const rows = steps.map((s) => [done.has(s.id) ? '✓' : '☐', s.title, s.detail]);
@@ -78,6 +78,7 @@ export function runHtml(r: Run, p: Program, head: Gear | undefined, supply: Gear
     ['Weld', `${r.kind === 'coupon' ? 'Coupon' : 'Production weld'} ${r.weld || '—'}`],
     ['Job / line', [r.project, r.line].filter(Boolean).join(' / ') || '—'],
     ['Heats', [r.heatA, r.heatB].filter(Boolean).join(' to ') || '—'],
+    ...(sulphur ? [['Sulphur', sulphur]] : []),
     ['Operator', r.operator || '—'],
     ['Oxygen read', plain(r.o2, 'ppm')],
     ['Result', r.result ? r.result.toUpperCase() : 'Not recorded'],

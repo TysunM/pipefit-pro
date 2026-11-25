@@ -7,6 +7,7 @@ import { ElbowRadius, Schedule } from '../calc/pipe';
 import { LOOK, readSettings } from './readSettings';
 import type { Shift } from '../calc/days';
 import type { ArcMode, HeatUnitSetting, SpeedUnitSetting } from '../calc/heatInput';
+import { DEFAULT_SULPHUR_GAP } from '../calc/sulphur';
 
 export type ThemePreference = 'light' | 'dark' | 'system';
 
@@ -97,6 +98,12 @@ export type Settings = {
   speedUnit: SpeedUnitSetting;
   arcMode: ArcMode;
   weldFields: string[];
+  /**
+   * How far apart, in weight per cent of sulphur, two heats welded together
+   * may be before the weld screens warn (calc/sulphur.ts). No code sets it;
+   * the crew does.
+   */
+  sulphurGap: number;
   /** Which look these were written under — see readSettings. */
   look: number;
 };
@@ -126,6 +133,7 @@ export const DEFAULT_SETTINGS: Settings = {
   coach: 'on',
   heatUnit: 'auto',
   speedUnit: 'auto',
+  sulphurGap: DEFAULT_SULPHUR_GAP,
   arcMode: 'va',
   weldFields: [],
   look: LOOK,
