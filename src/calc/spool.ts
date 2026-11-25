@@ -1,4 +1,5 @@
-import { ElbowRadius, Schedule, backArc, centerlineArc, findSize, pipeWeight, takeoff, throatArc } from './pipe';
+import { ElbowRadius, Schedule, backArc, centerlineArc, findSize, pipeWeight, throatArc } from './pipe';
+import { elbowTakeout } from './takeoffCatalog';
 import { deg, rad } from './units';
 
 export type Vec3 = { x: number; y: number; z: number };
@@ -160,7 +161,8 @@ export function solveSpool(input: SpoolInput): SpoolResult {
           at: points[i]!,
           angle: leg.bend,
           roll: ((leg.roll % 360) + 360) % 360,
-          takeoff: takeoff(nps, kind, leg.bend),
+          // A bought elbow at 90° and 45°, an elbow cut to the angle otherwise: as Cut Length.
+          takeoff: elbowTakeout(nps, kind, leg.bend).value,
           centerlineArc: centerlineArc(nps, kind, leg.bend),
           throatArc: throatArc(nps, kind, leg.bend, size.od),
           backArc: backArc(nps, kind, leg.bend, size.od),

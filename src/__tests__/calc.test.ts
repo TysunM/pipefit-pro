@@ -128,18 +128,24 @@ describe('elbow geometry identities across every size and angle', () => {
   });
 });
 
-describe('simple offset — reference screenshot 10 x 10 at 45 degrees', () => {
+// The reference screenshot this was first checked against worked the elbows
+// to the bend radius (setback 1.2426, cut 11.6569). The elbows here are bought
+// and welded, so they take out the handbook's 1-3/8 (2-42), as Cut Length does.
+describe('simple offset — 10 x 10 at 45 degrees, bought elbows', () => {
   const r = solveOffset({ offset: 10, fittingAngle: 45, gap: 0, nps: 2, kind: 'LR', schedule: '40', lockRun: false });
 
   test('solves', () => expect(r.valid).toBe(true));
   test('run 10.00', () => near(r.run, 10));
   test('travel 14.14', () => near(r.travel, 14.1421));
-  test('pipe cut 11.66', () => near(r.pipeCut, 11.6569));
-  test('setback 1.24', () => near(r.setback, 1.2426));
+  test('pipe cut 11.39', () => near(r.pipeCut, 10 * Math.SQRT2 - 2 * 1.375));
+  test('setback 1-3/8, from the handbook', () => {
+    near(r.setback, 1.375);
+    expect(r.setbackFromTable).toBe(true);
+  });
   test('throat 1.42', () => near(r.throatArc, 1.4235));
   test('back 3.29', () => near(r.backArc, 3.2887));
   test('centreline arc 2.36', () => near(r.centerlineArc, 2.3562));
-  test('pipe weight 3.55 lb', () => near(r.spoolPipe, 3.548, 0.02));
+  test('pipe weight 3.47 lb', () => near(r.spoolPipe, 3.548 * (11.3921 / 11.6569), 0.02));
   test('shrink 4.14', () => near(r.shrink, 4.1421));
 });
 
@@ -828,7 +834,7 @@ describe('unit conversion', () => {
       lockRun: false,
     });
     near(metric.pipeCut, imperial.pipeCut, 1e-9);
-    near(fromInches(metric.pipeCut, 'metric'), 296.09, 0.01);
+    near(fromInches(metric.pipeCut, 'metric'), 289.36, 0.01);
   });
 });
 
@@ -884,12 +890,12 @@ describe('input parsing', () => {
 });
 
 describe('cross-solver consistency', () => {
-  test('a 45 degree simple offset agrees with the cut length solver', () => {
+  test('a 45 degree simple offset agrees with the cut length solver, bought elbow for bought elbow', () => {
     const offset = solveOffset({ offset: 10, fittingAngle: 45, gap: 0, nps: 2, kind: 'LR', schedule: '40', lockRun: false });
     const cut = solveCutLength({
       centerToCenter: offset.travel,
-      endA: 'bend45',
-      endB: 'bend45',
+      endA: 'weld45',
+      endB: 'weld45',
       customA: NaN,
       customB: NaN,
       gap: 0,
@@ -900,11 +906,18 @@ describe('cross-solver consistency', () => {
     near(cut.pipeCut, offset.pipeCut, 1e-9);
   });
 
-  test('a bender at the elbow radius reproduces the elbow setback', () => {
-    const offset = solveOffset({ offset: 10, fittingAngle: 45, gap: 0, nps: 2, kind: 'LR', schedule: '40', lockRun: false });
-    const bend = solveBender({ angle: 45, radius: bendRadius(2, 'LR'), springback: 0, legLength: NaN, legLengthB: NaN, stockLength: NaN });
-    near(bend.setback, offset.setback, 1e-9);
-    near(bend.arcLength, offset.centerlineArc, 1e-9);
+  test('a bender at the elbow radius reproduces an elbow cut to the angle, and not a bought 45', () => {
+    // At 30 degrees the elbow is a 90 cut down, so it takes out what the bend does.
+    const cut30 = solveOffset({ offset: 10, fittingAngle: 30, gap: 0, nps: 2, kind: 'LR', schedule: '40', lockRun: false });
+    const bend30 = solveBender({ angle: 30, radius: bendRadius(2, 'LR'), springback: 0, legLength: NaN, legLengthB: NaN, stockLength: NaN });
+    expect(cut30.setbackFromTable).toBe(false);
+    near(bend30.setback, cut30.setback, 1e-9);
+    near(bend30.arcLength, cut30.centerlineArc, 1e-9);
+    // A bought 45 is made to its own figure, longer than the bend's by about an eighth on 2 inch.
+    const bought45 = solveOffset({ offset: 10, fittingAngle: 45, gap: 0, nps: 2, kind: 'LR', schedule: '40', lockRun: false });
+    const bend45 = solveBender({ angle: 45, radius: bendRadius(2, 'LR'), springback: 0, legLength: NaN, legLengthB: NaN, stockLength: NaN });
+    near(bought45.setback - bend45.setback, 1.375 - 3 * Math.tan(Math.PI / 8), 1e-9);
+    near(bend45.arcLength, bought45.centerlineArc, 1e-9);
   });
 
   test('a four point saddle at 45 degrees uses the simple offset multiplier', () => {

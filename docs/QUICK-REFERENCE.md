@@ -126,9 +126,9 @@ They are the same at 90° and different everywhere else.
 | Bent pipe | 1.2426" |
 | **Bought elbow** | **1-3/8"** |
 
-A run of bought fittings worked to the bend formula cuts **every piece an eighth long**.
+A run of bought fittings worked to the bend formula cuts **every piece between two 45s a quarter long** on 2": an eighth at each end.
 
-The **Cut length** screen offers both, labelled. The **Simple offset**, **Rolling offset** and **Pipe bend** screens work the bend, which is what a bender does.
+**Cut length**, **Simple offset**, **Rolling offset**, the **Spool builder** and the **Calculator** take out the bought elbow at 90° and 45°, and an elbow cut down to the angle at any other. **Pipe bend** works the bend, which is what a bender does.
 
 ---
 

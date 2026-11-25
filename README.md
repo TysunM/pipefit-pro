@@ -598,7 +598,7 @@ npm test
 
 **Pinned regressions** — values read directly off the reference design:
 
-- 10" offset at 45° on 2" LR → travel 14.1421, pipe cut 11.6569, setback 1.2426, throat 1.4235, back 3.2887, arc 2.3562
+- 10" offset at 45° on 2" LR → travel 14.1421, pipe cut 11.3921, setback 1.375 (a bought 45, handbook 2-42; the reference design worked the bend's 1.2426 and cut 11.6569), throat 1.4235, back 3.2887, arc 2.3562
 - Rise 12 / roll 5 / run 36 on 2" LR → true offset 13.00, travel 38.2753, elbow 19.86°, roll 22.62°, pipe cut 37.2249
 
 **Invariants swept across every size, schedule and angle** — these catch a whole class of error that spot values cannot:
