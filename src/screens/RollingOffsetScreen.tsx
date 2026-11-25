@@ -15,9 +15,10 @@ import { figureText, useSpokenFigures } from '../voice/figures';
 import { usePipeConfig } from '../hooks/usePipeConfig';
 import { useSettings } from '../state/settings';
 import { StockNote } from '../components/StockNote';
-import { FITTING_ANGLES } from '../calc/pipe';
 import { solveRolling } from '../calc/rolling';
 import { parseNumber } from '../calc/format';
+import { useNavigation } from '@react-navigation/native';
+import { useOffsetJoint } from '../hooks/useOffsetJoint';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'RollingOffset'>;
 
@@ -28,13 +29,18 @@ export function RollingOffsetScreen({ route }: Props) {
   const start = (inches: number | undefined) => (inches !== undefined && Number.isFinite(inches) ? u.num(inches) : '');
   const pipe = usePipeConfig();
   const { settings } = useSettings();
+  const navigation = useNavigation();
+  // Butt weld, screwed, PVC socket or no-hub, by what the job's pipe is.
+  const fit = useOffsetJoint(pipe.nps, pipe.kind);
 
   const [rise, setRise] = useState(() => start(given?.rise));
   const [roll, setRoll] = useState(() => start(given?.roll));
   const [run, setRun] = useState(() => start(given?.run));
   const [gap, setGap] = useState('');
   const [angleText, setAngleText] = useState('45');
-  const [useFittingAngle, setUseFittingAngle] = useState(false);
+  // Screwed, socket and no-hub fittings come in set angles, so those open on the angle, not a run.
+  const startOnAngle = !fit.welded && given?.run === undefined;
+  const [useFittingAngle, setUseFittingAngle] = useState(startOnAngle);
   const [mode, setMode] = useState<'pipe' | 'elbow'>('pipe');
 
   const fittingAngle = parseNumber(angleText);
@@ -54,7 +60,8 @@ export function RollingOffsetScreen({ route }: Props) {
     }
   });
 
-  const gapInches = Number.isFinite(u.parse(gap)) ? u.parse(gap) : settings.defaultGap;
+  // A gap comes off only where the joint leaves one: a weld's root gap, a no-hub coupling's stop.
+  const gapInches = fit.hasGap ? (Number.isFinite(u.parse(gap)) ? u.parse(gap) : fit.gapDefault) : 0;
 
   const result = useMemo(
     () =>
@@ -68,8 +75,9 @@ export function RollingOffsetScreen({ route }: Props) {
         nps: pipe.nps,
         kind: pipe.kind,
         schedule: pipe.schedule,
+        elbow: fit.elbow,
       }),
-    [rise, roll, run, fittingAngle, useFittingAngle, gapInches, pipe.nps, pipe.kind, pipe.schedule, u]
+    [rise, roll, run, fittingAngle, useFittingAngle, gapInches, pipe.nps, pipe.kind, pipe.schedule, fit.elbow, u]
   );
 
   const pristine = !rise.trim() && !roll.trim();
@@ -79,12 +87,13 @@ export function RollingOffsetScreen({ route }: Props) {
     setRoll('');
     setRun('');
     setGap('');
-    setUseFittingAngle(false);
+    setUseFittingAngle(!fit.welded);
     setAngleText('45');
   };
 
+  // The throat and heel marks are for a butt weld elbow cut to the angle; nothing else is cut.
   const banner =
-    mode === 'elbow'
+    mode === 'elbow' && fit.welded
       ? {
           label: 'Elbow cut — throat arc',
           value: result.valid ? `${u.num(result.throatArc)} ${u.unitName}` : '—',
@@ -120,13 +129,15 @@ export function RollingOffsetScreen({ route }: Props) {
           placeholder="0"
           readout={u.frac(u.parse(roll))}
         />
-        <DimensionInput
-          label="Gap/joint"
-          value={gap}
-          onChangeText={setGap}
-          suffix={u.suffix}
-          placeholder={u.num(settings.defaultGap)}
-        />
+        {fit.hasGap ? (
+          <DimensionInput
+            label={fit.gapLabel}
+            value={gap}
+            onChangeText={setGap}
+            suffix={u.suffix}
+            placeholder={u.num(fit.gapDefault)}
+          />
+        ) : null}
       </FieldRow>
 
       <FieldRow>
@@ -165,7 +176,7 @@ export function RollingOffsetScreen({ route }: Props) {
 
       <ChipRow
         label="Preset"
-        options={FITTING_ANGLES.map((a) => ({ value: a, label: `${a}°` }))}
+        options={fit.presets.map((a) => ({ value: a, label: `${a}°` }))}
         selected={useFittingAngle ? fittingAngle : null}
         onSelect={(a) => {
           setUseFittingAngle(true);
@@ -185,12 +196,14 @@ export function RollingOffsetScreen({ route }: Props) {
 
       <ControlRow>
         <SelectorButton primary={pipe.label} badge={pipe.kind} onPress={pipe.openSheet} style={{ flex: 1 }} />
-        <AccentButton
-          label={mode === 'pipe' ? 'Elbow cut' : 'Pipe cut'}
-          icon="cut-outline"
-          onPress={() => setMode((m) => (m === 'pipe' ? 'elbow' : 'pipe'))}
-          style={{ flex: 1 }}
-        />
+        {fit.welded ? (
+          <AccentButton
+            label={mode === 'pipe' ? 'Elbow cut' : 'Pipe cut'}
+            icon="cut-outline"
+            onPress={() => setMode((m) => (m === 'pipe' ? 'elbow' : 'pipe'))}
+            style={{ flex: 1 }}
+          />
+        ) : null}
       </ControlRow>
 
       {result.valid ? (
@@ -214,7 +227,19 @@ export function RollingOffsetScreen({ route }: Props) {
         tone={pristine ? 'idle' : result.error ? 'error' : 'default'}
       />
 
-      <MetaBar text={`${pipe.label} ${pipe.kind} · SCH ${pipe.schedule} · Stock ${u.num(settings.stockLength)} ${u.unitName}`} />
+      {result.needsLibrary ? (
+        <ControlRow>
+          <AccentButton label="Open the fitting library" icon="library-outline" onPress={() => navigation.navigate('FittingLibrary', { line: fit.line })} style={{ flex: 1 }} />
+        </ControlRow>
+      ) : null}
+
+      <MetaBar
+        text={
+          fit.welded
+            ? `${pipe.label} ${pipe.kind} · SCH ${pipe.schedule} · Stock ${u.num(settings.stockLength)} ${u.unitName}`
+            : `${pipe.label} ${fit.pipeName} · ${fit.jointName} · Stock ${u.num(settings.stockLength)} ${u.unitName}`
+        }
+      />
       {result.valid ? (
         <StockNote
           cut={result.pipeCut}
@@ -237,32 +262,51 @@ export function RollingOffsetScreen({ route }: Props) {
         ]}
       />
 
-      {gapInches <= 0 ? <WarningBanner text={`No weld gap set (0 ${u.unitName}). Cut length assumes zero root opening.`} /> : null}
+      {fit.welded && gapInches <= 0 ? <WarningBanner text={`No weld gap set (0 ${u.unitName}). Cut length assumes zero root opening.`} /> : null}
 
       <StatGrid
-        stats={[
-          { label: 'Cut angle', value: result.valid ? u.angle(result.cutAngle) : '—' },
-          { label: 'Inside arc', note: 'Primary — throat', value: result.valid ? u.num(result.throatArc) : '—' },
-          { label: 'Setback', note: result.setbackFromTable ? 'Handbook 2-42' : 'Cut elbow, bend radius', value: result.valid ? u.dual(result.setback) : '—' },
-          { label: 'Outside arc', note: 'Alternative', value: result.valid ? u.num(result.backArc) : '—' },
-        ]}
-      />
-
-      <MetaBar text={`Centreline arc ${result.valid ? u.num(result.centerlineArc) : '—'} ${u.unitName}`} />
-
-      <SpoolBar
-        badge={`SCH ${pipe.schedule}`}
-        text={
-          result.valid
-            ? `Spool weight ${u.weight(result.spoolTotal, 2)} · pipe ${u.weight(result.spoolPipe, 2)} + 2× elbow ${u.weight(
-                result.spoolElbows / 2,
-                2
-              )} + 2 welds ${u.weight(result.spoolWelds, 2)}`
-            : 'Spool weight unavailable'
+        stats={
+          fit.welded
+            ? [
+                { label: 'Cut angle', value: result.valid ? u.angle(result.cutAngle) : '—' },
+                { label: 'Inside arc', note: 'Primary — throat', value: result.valid ? u.num(result.throatArc) : '—' },
+                { label: 'Setback', note: result.setbackNote, value: result.valid ? u.dual(result.setback) : '—' },
+                { label: 'Outside arc', note: 'Alternative', value: result.valid ? u.num(result.backArc) : '—' },
+              ]
+            : [
+                { label: 'Fitting', note: fit.jointName, value: fit.presets.some((x) => Math.abs(x - result.cutAngle) < 1e-6) ? fit.fittingName(result.cutAngle) : '—' },
+                { label: 'Setback', note: result.setbackNote || undefined, value: result.valid ? u.dual(result.setback) : '—' },
+              ]
         }
       />
 
-      <FooterNote text="Centre-to-centre (C2C) geometry. Bought elbows take out the handbook figure (2-42) at 90° and 45°, the same as Cut Length; any other angle is an elbow cut down to it, worked from the bend radius. Non-standard cut angles require rolling-offset elbows or mitred fabrication." />
+      {fit.welded ? <MetaBar text={`Centreline arc ${result.valid ? u.num(result.centerlineArc) : '—'} ${u.unitName}`} /> : null}
+
+      <SpoolBar
+        badge={fit.welded ? `SCH ${pipe.schedule}` : fit.pipeName}
+        text={
+          !result.valid
+            ? 'Spool weight unavailable'
+            : fit.welded
+              ? `Spool weight ${u.weight(result.spoolTotal, 2)} · pipe ${u.weight(result.spoolPipe, 2)} + 2× elbow ${u.weight(
+                  result.spoolElbows / 2,
+                  2
+                )} + 2 welds ${u.weight(result.spoolWelds, 2)}`
+              : Number.isFinite(fit.lbPerFt)
+                ? `Pipe ${u.weight((result.pipeCut / 12) * fit.lbPerFt, 2)} in ${fit.pipeName} · fittings not counted`
+                : 'Pipe weight unavailable for this material and size'
+        }
+      />
+
+      <FooterNote
+        text={
+          fit.welded
+            ? 'Centre-to-centre (C2C) geometry. Bought elbows take out the handbook figure (2-42) at 90° and 45°, the same as Cut Length; any other angle is an elbow cut down to it, worked from the bend radius. Non-standard cut angles require rolling-offset elbows or mitred fabrication.'
+            : fit.joint === 'screwed'
+              ? 'Centre-to-centre (C2C) geometry. Galvanised is made up with screwed elbows: the takeout is the handbook\'s, centre to the end of the pipe made up tight (4-37, 4-39), so no gap comes off. Screwed elbows are made at 90° and 45°: set the elbow angle to one of them.'
+              : `Centre-to-centre (C2C) geometry. ${fit.joint === 'socket' ? 'PVC and CPVC are made up with socket elbows: the pipe bottoms in the socket, so no gap comes off' : 'Cast iron soil pipe is made up with no-hub bends: the centre stop of each coupling comes off if you enter it'}. The takeouts are the maker's, from your fitting library for this line, the same ones Cut Length uses. Set the elbow angle to one the fittings are made in.`
+        }
+      />
 
       <PipeSheet
         visible={pipe.sheetOpen}

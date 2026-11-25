@@ -201,7 +201,7 @@ They agree at 90° and disagree everywhere else.
 
 A run of bought fittings worked to the bend formula cuts **every piece between two 45s about a quarter of an inch long** on 2" pipe: an eighth at each end.
 
-**The app keeps them separate.** Anything made up from bought elbows — **Cut length**, **Simple offset**, **Rolling offset**, the **Spool builder** and the **Calculator** — takes out the handbook figure at 90° and 45°. Any other angle is an elbow cut down from a 90, which does take out the bend figure, and the screen says which it used under **Setback**. **Pipe bend** works the bend, because that is what a bender does; Cut length still offers a bend in the pipe, labelled.
+**The app keeps them separate.** Anything made up from bought elbows — **Cut length**, **Simple offset**, **Rolling offset**, the **Spool builder** and the **Calculator** — takes out the handbook figure at 90° and 45°. The offsets and the Calculator also follow the job's material: screwed elbows for galvanised, the fitting library's socket elbows and no-hub bends for PVC and soil pipe (see Simple offset → Galvanised, PVC and soil pipe). The Spool builder is butt weld. Any other angle is an elbow cut down from a 90, which does take out the bend figure, and the screen says which it used under **Setback**. **Pipe bend** works the bend, because that is what a bender does; Cut length still offers a bend in the pipe, labelled.
 
 ---
 
@@ -263,6 +263,19 @@ Preset **90°**. The pipe goes straight across and advances nothing. **Run = 0, 
 Tap **Set run** and type the run. The angle falls out of it and shows as **Cut angle**. A run of **0** gives you the square jog.
 
 Use this when the space along the line is what is tight, not the angle.
+
+### Galvanised, PVC and soil pipe
+
+The screen works the elbows the job's pipe is made up with, set by the material (Settings, or "4 inch PVC" said anywhere):
+
+| Material | Elbows | Takeout from | Gap |
+|---|---|---|---|
+| Steel, stainless, chrome-moly | Butt weld | Handbook 2-42; any other angle is an elbow cut down from a 90 | Your weld gap, at each weld |
+| Galvanised | Screwed, 90° and 45° | Handbook 4-37 and 4-39, centre to the end of the pipe made up tight | None |
+| PVC, CPVC | Socket, 90° and 45° | **Your fitting library**, for the line and size | None: the pipe bottoms in the socket |
+| Cast iron soil | No-hub 1/4, 1/8 and 1/16 bends (90°, 45°, 22.5°) | **Your fitting library**, for the line and size | The coupling's **centre stop**, if you enter it |
+
+The presets show only the angles those fittings are made in, and an angle they are not made in (or one a fixed run lands on) is refused with the reason. With a library figure not yet set, the screen says which one and **Open the fitting library** takes you to it. The throat and heel marks are for a butt weld elbow cut down, so they show for butt weld only; the weight is the pipe's own in the job's material, fittings not counted. **Rolling offset** works the same way.
 
 ### Where people go wrong
 

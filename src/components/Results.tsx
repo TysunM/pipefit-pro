@@ -96,17 +96,21 @@ export function ResultBanner({
             </VoicePressable>
           ) : null}
         </View>
-        <Text
-          style={[
-            isError ? t.type.displaySmall : t.type.display,
-            { color: isError ? t.colors.danger : isIdle ? t.colors.textMuted : t.colors.text, marginTop: t.space.xs },
-          ]}
-          numberOfLines={2}
-          adjustsFontSizeToFit
-          minimumFontScale={0.6}
-        >
-          {value}
-        </Text>
+        {isError ? (
+          // A reason is a sentence, not a figure: read in full, never shrunk or cut off at "…".
+          <Text style={[t.type.bodyStrong, { fontSize: 18, lineHeight: 24, color: t.colors.danger, marginTop: t.space.xs }]} numberOfLines={5}>
+            {value}
+          </Text>
+        ) : (
+          <Text
+            style={[t.type.display, { color: isIdle ? t.colors.textMuted : t.colors.text, marginTop: t.space.xs }]}
+            numberOfLines={2}
+            adjustsFontSizeToFit
+            minimumFontScale={0.6}
+          >
+            {value}
+          </Text>
+        )}
         {hint ? (
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.sm, marginTop: t.space.sm }}>
             <Ionicons name="resize-outline" size={16} color={isIdle ? t.colors.textMuted : t.colors.data} />

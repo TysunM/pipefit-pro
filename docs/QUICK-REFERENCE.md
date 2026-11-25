@@ -128,7 +128,7 @@ They are the same at 90° and different everywhere else.
 
 A run of bought fittings worked to the bend formula cuts **every piece between two 45s a quarter long** on 2": an eighth at each end.
 
-**Cut length**, **Simple offset**, **Rolling offset**, the **Spool builder** and the **Calculator** take out the bought elbow at 90° and 45°, and an elbow cut down to the angle at any other. **Pipe bend** works the bend, which is what a bender does.
+**Cut length**, **Simple offset**, **Rolling offset**, the **Spool builder** and the **Calculator** take out the bought elbow at 90° and 45°, and an elbow cut down to the angle at any other. **Pipe bend** works the bend, which is what a bender does. The offsets and the Calculator follow the job's material: screwed for galvanised, the fitting library for PVC and soil pipe.
 
 ---
 
