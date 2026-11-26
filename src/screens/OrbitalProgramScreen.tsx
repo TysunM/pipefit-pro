@@ -52,6 +52,7 @@ import { dayKey, usDate } from '../calc/days';
 import { shareSheet } from '../print/share';
 import { programHtml } from '../print/orbital';
 import { VoicePressable } from '../voice/VoicePressable';
+import { ShareProgramSheet } from '../components/orbital/ProgramShare';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'OrbitalProgram'>;
 
@@ -79,6 +80,7 @@ export function OrbitalProgramScreen({ navigation, route }: Props) {
   const [note, setNote] = useState<string | null>(null);
   const [extraKey, setExtraKey] = useState('');
   const [extraVal, setExtraVal] = useState<number | null>(null);
+  const [sharing, setSharing] = useState(false);
 
   // The form is built once per program opened, from the book or afresh.
   const key = `${id}|${copy ?? ''}|${programs.hydrated}`;
@@ -421,9 +423,13 @@ export function OrbitalProgramScreen({ navigation, route }: Props) {
             </ControlRow>
           ) : null}
           <ControlRow>
+            <GhostButton label="Share by QR" icon="qr-code-outline" style={{ flex: 1 }} onPress={() => setSharing(true)} />
             <GhostButton label="Print / PDF" icon="print-outline" style={{ flex: 1 }} onPress={() => void share()} />
+          </ControlRow>
+          <ControlRow>
             <GhostButton label="Copy to a new one" icon="copy-outline" style={{ flex: 1 }} onPress={() => navigation.push('OrbitalProgram', { id: 'new', copy: p.id })} />
           </ControlRow>
+          <ShareProgramSheet visible={sharing} onClose={() => setSharing(false)} program={p} />
           {note ? <Text style={[t.type.caption, { color: c.danger, paddingHorizontal: t.layout.screenPadding }]}>{note}</Text> : null}
           {p.history.length ? (
             <>

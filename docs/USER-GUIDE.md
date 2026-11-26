@@ -1576,6 +1576,14 @@ Then the level being edited (degrees, RPM, peak, background, pulse times), a tab
 - A qualified program is **locked**. **Revise** opens the next version in development and keeps the qualified one under Earlier versions.
 - **Print / PDF** gives a one-page program sheet to check against the power supply.
 
+**Sharing a program, phone to phone (no account, no server):**
+- On the phone with the program: open it, tap **Share by QR**. The QR carries the program, the head and power supply it names, and any equations of your own that work on it.
+- On the other phone: **Orbital welding → Programs → Receive a program**, and point the camera at the QR.
+- Not side by side? **Send as text** puts the code in a message. On the other phone, paste it into **Receive a program** and tap **Read the code**.
+- Before anything changes, it says what it would do: **new**, **update** an older version (the phone's own copy goes under Earlier versions), **already here**, or **this phone's is newer** (nothing taken).
+- Equipment and equations already on the phone are kept as they are. Only missing ones are added.
+- The code is checked for a misread or a message cut short, and every record is checked as if typed in. It is not a signature: it doesn't prove who made it. Take programs from your own QC.
+
 ### 3. Welds
 **Weld a coupon** (or **Weld**, on a qualified program) opens the run sheet:
 - **The weld:** number, line, both heats, operator.
