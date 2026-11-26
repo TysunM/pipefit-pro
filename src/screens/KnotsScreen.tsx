@@ -6,7 +6,7 @@ import type { RootStackParamList } from '../navigation/types';
 import { Screen } from '../components/Screen';
 import { SectionHeader } from '../components/SectionHeader';
 import { Banner } from '../components/FormFields';
-import { AccentButton, ControlRow } from '../components/Buttons';
+import { AccentButton, ControlRow, GhostButton } from '../components/Buttons';
 import { KnotView } from '../components/knots/KnotView';
 import { Stars, seconds } from '../components/knots/TieGame';
 import { laidOf } from '../components/knots/laid';
@@ -14,6 +14,7 @@ import { lengthsAt } from '../components/knots/useStepPlayer';
 import { useTheme } from '../theme/ThemeProvider';
 import { useKnotBook } from '../state/knots';
 import { KNOTS, reachAfter, type Knot } from '../calc/knots/knots';
+import { TIERS, clock, tierOf } from '../calc/knots/cert';
 import { ListRow, Pill } from './OrbitalScreen';
 
 // The knots a fitter uses on tag lines and hand lines: watch each tied, tie it
@@ -33,6 +34,7 @@ export function KnotsScreen({ navigation }: Props) {
   const tied = KNOTS.filter((k) => book.tied[k.id]).length;
   const checked = KNOTS.filter((k) => book.checked[k.id]?.best === k.faults.length).length;
   const remembered = KNOTS.filter((k) => book.memory[k.id]).length;
+  const cert = book.cert.best;
 
   return (
     <Screen>
@@ -43,12 +45,16 @@ export function KnotsScreen({ navigation }: Props) {
         <Text style={[t.type.sectionTitle, { color: c.text }]}>{`Tied by hand: ${tied} of ${KNOTS.length}`}</Text>
         <Text style={[t.type.body, { color: c.text }]}>{`Tied from memory: ${remembered} of ${KNOTS.length}`}</Text>
         <Text style={[t.type.body, { color: c.text }]}>{`Every fault spotted: ${checked} of ${KNOTS.length}`}</Text>
+        <Text style={[t.type.body, { color: c.text }]}>{cert ? `Knot Certified: ${TIERS[tierOf(cert)].title}, ${clock(cert.ms)}` : 'Knot Certified: not yet run'}</Text>
         <Text style={[t.type.caption, { color: c.textMuted }]}>
           {book.test.taken ? `Knot test: best ${book.test.best} of ${book.test.of}, last ${book.test.last} of ${book.test.of}` : 'Watch each one tied, tie it on screen with a finger, tie it again from memory, check it, then take the test.'}
         </Text>
       </View>
       <ControlRow>
         <AccentButton label="Take the knot test" icon="school-outline" style={{ flex: 1 }} onPress={() => navigation.navigate('KnotTest')} />
+      </ControlRow>
+      <ControlRow>
+        <GhostButton label="Get Knot Certified" icon="ribbon-outline" style={{ flex: 1 }} onPress={() => navigation.navigate('KnotCert')} />
       </ControlRow>
       <SectionHeader title="Knots" meta={`${KNOTS.length}`} />
       {KNOTS.map((k) => {

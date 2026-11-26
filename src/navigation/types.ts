@@ -61,6 +61,8 @@ export type RootStackParamList = {
   Knot: { id: string; mode?: 'learn' | 'tie' | 'memory' | 'check' };
   /** Ten questions on the knots: which knot, which for the job, what next, safe or not. */
   KnotTest: undefined;
+  /** Every knot from memory, back to back, and a certificate that certifies nothing. */
+  KnotCert: undefined;
   Calibration: undefined;
   /** The skills passport: what this hand can do, proved by the records and signed off. */
   Passport: undefined;

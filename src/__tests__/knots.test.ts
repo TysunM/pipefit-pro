@@ -4,14 +4,18 @@ import { jones, polyText, type Closure } from '../calc/knots/jones';
 import { laidFault, laidSet, pairFrame } from '../components/knots/laid';
 import { HOLD, PULL_DRAG, TRACE, callsFor, missesFor, move, nearest, pulled, starsFor } from '../calc/knots/trace';
 import { SAFETY, faultRound, makeTest, seeded } from '../calc/knots/quiz';
-import { emptyKnots, parseKnots, recordCheck, recordTest, recordTie, serialiseKnots } from '../state/knotProgress';
+import { emptyKnots, parseKnots, recordCert, recordCheck, recordTest, recordTie, serialiseKnots } from '../state/knotProgress';
+import { CERTIFIED_UP_TO, FINE_PRINT, QUITE_UP_TO, TIERS, beats, certOrder, certTotals, clock, tierOf, type CertKnot } from '../calc/knots/cert';
 
 describe('every knot draws and ties right', () => {
   test.each(KNOTS.map((k) => [k.name, k] as const))('%s: its crossings are the ones it says, its steps run the rope to its end', (_, k) => {
     expect(knotProblems(k)).toEqual([]);
   });
   test('the knots asked for are here, each once', () => {
-    expect(KNOTS.map((k) => k.id)).toEqual(expect.arrayContaining(['bowline', 'clove', 'slip', 'figure8']));
+    expect(KNOTS.map((k) => k.id)).toEqual(expect.arrayContaining(['bowline', 'clove', 'slip', 'slipknot', 'figure8']));
+    // The slip knot as the trade ties it: a sliding loop, wraps round both parts. The one that lets go with a pull is the quick-release knot.
+    expect(knotById('slipknot')?.name).toBe('Slip knot');
+    expect(knotById('slip')?.name).toBe('Quick-release knot');
     expect(new Set(KNOTS.map((k) => k.id)).size).toBe(KNOTS.length);
     expect(knotById('bowline')?.name).toBe('Bowline');
   });
@@ -273,7 +277,7 @@ describe('dress and check', () => {
     // The same knot drawn as tied and pulled tight.
     expect(polyText(jones(tightRopes(k), k.cross, ONE))).toBe(polyText(jones(k.ropes, k.cross, ONE)));
   });
-  test('the figure eight is a figure eight, the square knot a square knot and not a granny, the slip knot no knot at all', () => {
+  test('the figure eight is a figure eight, the square knot a square knot and not a granny, the quick-release knot no knot at all', () => {
     const f8 = knotById('figure8')!;
     const sq = knotById('square')!;
     const slip = knotById('slip')!;
@@ -374,5 +378,78 @@ describe('dress and check', () => {
     }
     // The sheet bend's tail is drawn inside the bight, too short to show cut shorter: its warning is said.
     expect(knotById('sheetbend')!.watch).toMatch(/Leave long tails/);
+  });
+});
+
+describe('Knot Certified', () => {
+  const clean = (ms = 20_000): CertKnot[] => KNOTS.map((k) => ({ id: k.id, ms, slips: 0, wrong: 0 }));
+  test('every knot once, in an order that changes run to run, the same for the same seed', () => {
+    const ids = KNOTS.map((k) => k.id).sort();
+    const orders = new Set<string>();
+    for (let seed = 1; seed < 30; seed += 1) {
+      const o = certOrder(seeded(seed));
+      expect([...o].sort()).toEqual(ids);
+      orders.add(o.join());
+    }
+    expect(orders.size).toBeGreaterThan(20);
+    expect(certOrder(seeded(5))).toEqual(certOrder(seeded(5)));
+  });
+  test('scored on misses, a wrong call as two; tying time only', () => {
+    const run = clean();
+    run[0] = { ...run[0]!, slips: 1, wrong: 1 };
+    const t = certTotals(run);
+    expect(t).toMatchObject({ ms: 20_000 * KNOTS.length, slips: 1, wrong: 1, misses: 3, tied: KNOTS.length, skipped: 0, of: KNOTS.length });
+  });
+  test('the tiers: clean is a grand master, a few misses certified, more knot quite, many or any skip knot yet', () => {
+    const withMisses = (n: number) => {
+      const run = clean();
+      run[0] = { ...run[0]!, slips: n };
+      return certTotals(run);
+    };
+    expect(tierOf(withMisses(0))).toBe('grand');
+    expect(tierOf(withMisses(1))).toBe('certified');
+    expect(tierOf(withMisses(CERTIFIED_UP_TO))).toBe('certified');
+    expect(tierOf(withMisses(CERTIFIED_UP_TO + 1))).toBe('quite');
+    expect(tierOf(withMisses(QUITE_UP_TO))).toBe('quite');
+    expect(tierOf(withMisses(QUITE_UP_TO + 1))).toBe('yet');
+    const skipped = clean();
+    skipped[3] = { ...skipped[3]!, skipped: true };
+    expect(tierOf(certTotals(skipped))).toBe('yet');
+    // A skipped knot's time and misses don't count, and it can't hide behind them.
+    expect(certTotals(skipped)).toMatchObject({ tied: KNOTS.length - 1, skipped: 1 });
+    expect(tierOf(certTotals(clean().slice(0, 3)))).toBe('yet');
+  });
+  test("it's a joke, and says so: the stamps read KNOT, the fine print certifies nothing", () => {
+    expect(TIERS.grand.stamp).toBe('KNOT CERTIFIED');
+    expect(TIERS.quite.struck).toBe('CERTIFIED');
+    expect(TIERS.yet.stamp).toBe('KNOT YET');
+    expect(FINE_PRINT).toMatch(/certifies absolutely nothing/);
+    expect(FINE_PRINT).toMatch(/fall protection/);
+  });
+  test('the best run is the better tier, then fewer misses, then faster', () => {
+    const fast = certTotals(clean(10_000));
+    const slow = certTotals(clean(30_000));
+    const sloppy = certTotals(clean(5_000).map((r, i) => (i ? r : { ...r, slips: 2 })));
+    expect(beats(fast, slow)).toBe(true);
+    expect(beats(slow, fast)).toBe(false);
+    expect(beats(slow, sloppy)).toBe(true);
+    expect(clock(187_400)).toBe('3:07');
+  });
+  test('the store keeps the best and the last run, and how many', () => {
+    const good = certTotals(clean(10_000));
+    const worse = certTotals(clean(40_000).map((r, i) => (i ? r : { ...r, wrong: 3 })));
+    let b = recordCert(emptyKnots(), worse, 1, beats);
+    b = recordCert(b, good, 2, beats);
+    b = recordCert(b, worse, 3, beats);
+    expect(b.cert.runs).toBe(3);
+    expect(b.cert.best).toEqual({ ...good, at: 2 });
+    expect(b.cert.last).toEqual({ ...worse, at: 3 });
+    expect(parseKnots(serialiseKnots(b))).toEqual(b);
+    const bad = JSON.parse(serialiseKnots(b));
+    bad.cert.best.misses = 99;
+    expect(parseKnots(JSON.stringify(bad)).cert.best).toBeNull();
+    const old = JSON.parse(serialiseKnots(b));
+    delete old.cert;
+    expect(parseKnots(JSON.stringify(old))).toMatchObject({ cert: { best: null, last: null, runs: 0 }, dropped: 0 });
   });
 });
