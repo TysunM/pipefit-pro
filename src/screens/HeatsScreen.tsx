@@ -36,6 +36,7 @@ import { HeatDetails, describeHeatDetails } from '../ai/heatFill';
 import { VoicePressable } from '../voice/VoicePressable';
 import { MAX_SULPHUR, bpeSulphurNote, pct } from '../calc/sulphur';
 import { NumField } from '../components/FormFields';
+import { MillCertReader } from '../components/MillCertReader';
 
 export function HeatsScreen() {
   const t = useTheme();
@@ -51,6 +52,7 @@ export function HeatsScreen() {
   const pending = scanned && sameHeat(scanned.heat, entry) ? scanned : null;
   const [open, setOpen] = useState<string | null>(null);
   const [scanning, setScanning] = useState(false);
+  const [readingCert, setReadingCert] = useState(false);
 
   const clash = useMemo(() => findClash(entry, book.heats), [entry, book.heats]);
   const differs = clash && !clash.identical ? differingAt(entry, clash.existing) : [];
@@ -204,6 +206,13 @@ export function HeatsScreen() {
           style={{ flex: 1 }}
         />
       </ControlRow>
+      <ControlRow>
+        <GhostButton label="Read a mill cert" icon="document-text-outline" onPress={() => setReadingCert(true)} style={{ flex: 1 }} />
+      </ControlRow>
+      <Text style={[t.type.caption, { color: t.colors.textMuted, paddingHorizontal: t.layout.screenPadding, marginTop: -t.space.sm, marginBottom: t.space.md }]}>
+        A photo of the MTR fills in each heat on it with its sulphur, checked by you before it is kept.
+      </Text>
+      <MillCertReader visible={readingCert} onClose={() => setReadingCert(false)} />
 
       <SectionHeader title="Heats" meta={`${book.heats.length} IN THE BOOK`} />
       {book.heats.length === 0 ? (

@@ -102,7 +102,8 @@ export function FittingSheetReader({
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     try {
       // Sized: good JPEG. Full sensor (no size could be set): squeezed harder to stay under the cap.
-      const shot = await c.takePictureAsync({ base64: true, quality: pictureSize ? 0.7 : 0.45 });
+      // JPEG on the web too, where the camera otherwise gives a PNG several times the size: a full-resolution one can pass the 5 MB cap.
+      const shot = await c.takePictureAsync({ base64: true, quality: pictureSize ? 0.7 : 0.45, imageType: 'jpg' });
       const b64 = shot?.base64 ?? (shot?.uri?.startsWith('data:') ? shot.uri : '');
       if (!shot?.uri || !b64) {
         setStage({ at: 'failed', why: 'The camera returned no picture. Try again.' });
