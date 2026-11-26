@@ -5,7 +5,7 @@ import * as Haptics from 'expo-haptics';
 import { useTheme } from '../../theme/ThemeProvider';
 import { reachAfter, reachBefore, type Knot } from '../../calc/knots/knots';
 import { VIEW, pointAt, type Laid } from '../../calc/knots/rope';
-import { BUZZ_EVERY_MS, TRACE, move, pulled, starsFor, type Trace } from '../../calc/knots/trace';
+import { BUZZ_EVERY_MS, TRACE, callsFor, missesFor, move, pulled, starsFor, type Call, type Trace } from '../../calc/knots/trace';
 import { recordTie } from '../../state/knotProgress';
 import { useKnotBook } from '../../state/knots';
 import { useScrollHost } from '../scrollHost';
@@ -22,11 +22,13 @@ import { lengthsAt } from './useStepPlayer';
 //
 // From memory (`blind`): no dashed line, no steps, no arrows. The line is still
 // there, hidden: the end follows only the knot's path, and the phone buzzes the
-// moment the finger is off it, and keeps buzzing until it's back. "Show me"
-// shows the step for a moment, and the tie counts one star.
+// moment the finger is off it, and keeps buzzing until it's back. At each
+// crossing the end stops short and asks over or under: right, a tick; wrong, a
+// buzz, the right way shown, and it counts as two slips. "Show me" shows the
+// step for a moment, and the tie counts one star.
 
 type Move = { step: number; rope: number; from: number; to: number; text: string };
-type Done = { ms: number; slips: number; stars: number; best: boolean };
+type Done = { ms: number; slips: number; wrong: number; stars: number; best: boolean };
 
 export const seconds = (ms: number) => `${(ms / 1000).toFixed(1)} s`;
 
@@ -55,6 +57,10 @@ export function TieGame({ knot, laid, size, blind = false, onNext, onCheck, onTe
     [knot, laid],
   );
   const fresh = (): Trace => ({ len: moves[0]!.from, off: false, slips: 0 });
+  // From memory: the crossings each move comes to, the ones answered, and the wrong calls.
+  const calls = useMemo(() => moves.map((m) => (blind ? callsFor(laid, knot.cross, m.rope, m.from, m.to) : [])), [moves, blind, laid, knot.cross]);
+  const [answered, setAnswered] = useState<ReadonlySet<number>>(new Set());
+  const [wrong, setWrong] = useState(0);
   const [k, setK] = useState(0);
   const [trace, setTrace] = useState<Trace>(fresh);
   const [started, setStarted] = useState<number | null>(null);
@@ -84,8 +90,14 @@ export function TieGame({ knot, laid, size, blind = false, onNext, onCheck, onTe
   const scale = size / VIEW;
 
   // The responder is made once; what it needs now it reads from here.
-  const live = useRef({ k, trace, moves, scale, started, done, pull, blind, peeked: false, buzzed: 0, tracking: false, grab: null as { i: number; x: number; y: number; from: number } | null, origin: [0, 0] as [number, number] });
-  live.current = { ...live.current, k, trace, moves, scale, started, done, pull, blind };
+  const live = useRef({ k, trace, moves, scale, started, done, pull, blind, calls, answered, wrong, peeked: false, buzzed: 0, tracking: false, grab: null as { i: number; x: number; y: number; from: number } | null, origin: [0, 0] as [number, number] });
+  live.current = { ...live.current, k, trace, moves, scale, started, done, pull, blind, calls, answered, wrong };
+  // The next crossing this move comes to that isn't answered yet, and whether the end has come to it.
+  const nextCall = (kk: number, ans: ReadonlySet<number>): Call | undefined => live.current.calls[kk]?.find((c) => !ans.has(c.i));
+  const dueAt = (kk: number, len: number, ans: ReadonlySet<number>) => {
+    const c = nextCall(kk, ans);
+    return c && c.stop <= len + 0.01 ? c : undefined;
+  };
   // A buzz while the finger stays off the line: not more often than the phone can make it felt.
   const buzz = (first: boolean) => {
     const at = Date.now();
@@ -102,10 +114,11 @@ export function TieGame({ knot, laid, size, blind = false, onNext, onCheck, onTe
 
   const finish = (slips: number) => {
     const ms = Date.now() - (live.current.started ?? Date.now());
+    const wrongCalls = live.current.wrong;
     // A look at the line from memory: tied, but one star.
-    const stars = live.current.peeked ? 1 : starsFor(slips);
+    const stars = live.current.peeked ? 1 : starsFor(missesFor(slips, wrongCalls));
     const had = book.value[where][knot.id];
-    setDone({ ms, slips, stars, best: !had || ms < had.bestMs });
+    setDone({ ms, slips, wrong: wrongCalls, stars, best: !had || ms < had.bestMs });
     book.apply((b) => recordTie(b, knot.id, ms, stars, Date.now(), where));
     void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   };
@@ -140,6 +153,11 @@ export function TieGame({ knot, laid, size, blind = false, onNext, onCheck, onTe
             return;
           }
           const m = L.moves[L.k]!;
+          if (L.blind && dueAt(L.k, L.trace.len, L.answered)) {
+            L.tracking = false;
+            setHint('Over or under first.');
+            return;
+          }
           const tip = pointAt(laid.samples[m.rope]!, L.trace.len);
           if (Math.hypot(tip.x - x, tip.y - y) > TRACE.start) {
             L.tracking = false;
@@ -177,7 +195,10 @@ export function TieGame({ knot, laid, size, blind = false, onNext, onCheck, onTe
           }
           if (!L.tracking) return;
           const m = L.moves[L.k]!;
-          const next = move(L.trace, laid.samples[m.rope]!, m.to, x, y, L.blind ? TRACE.buzz : TRACE.slip);
+          // From memory the end stops short of the next crossing to ask over or under.
+          const ahead = L.blind ? nextCall(L.k, L.answered) : undefined;
+          const stop = ahead ? Math.min(m.to, Math.max(L.trace.len, ahead.stop)) : m.to;
+          const next = move(L.trace, laid.samples[m.rope]!, stop, x, y, L.blind ? TRACE.buzz : TRACE.slip);
           // Still off the line: from memory, it keeps buzzing until the finger is back on it.
           if (L.blind && next.off && next.slips === L.trace.slips) buzz(false);
           if (next === L.trace) return;
@@ -186,6 +207,15 @@ export function TieGame({ knot, laid, size, blind = false, onNext, onCheck, onTe
             if (L.blind) buzz(true);
             else void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
           } else if (L.trace.off && !next.off) setHint(null);
+          if (ahead && stop < m.to && next.len >= stop - 0.01) {
+            // At a crossing: the end stops, and asks.
+            L.tracking = false;
+            L.trace = { ...next, len: stop };
+            setTrace(L.trace);
+            setHint(null);
+            void Haptics.selectionAsync();
+            return;
+          }
           if (next.len >= m.to - 1.5) {
             // This step tied: on to the next, or done.
             void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -229,7 +259,9 @@ export function TieGame({ knot, laid, size, blind = false, onNext, onCheck, onTe
 
   const again = () => {
     const tr = fresh();
-    live.current = { ...live.current, k: 0, trace: tr, started: null, done: null, pull: null, tracking: false, grab: null, peeked: false };
+    live.current = { ...live.current, k: 0, trace: tr, started: null, done: null, pull: null, tracking: false, grab: null, peeked: false, answered: new Set(), wrong: 0 };
+    setAnswered(new Set());
+    setWrong(0);
     setPeeked(false);
     setPeek(false);
     setK(0);
@@ -243,6 +275,26 @@ export function TieGame({ knot, laid, size, blind = false, onNext, onCheck, onTe
   // The clock ticks every 200 ms: never shown below nought in the moment before its first tick.
   const elapsed = done ? done.ms : started ? Math.max(0, now - started) : 0;
   const best = book.value[where][knot.id];
+  // From memory: the crossing the end has come to, waiting for over or under.
+  const asking = blind && !pull && !done ? dueAt(k, trace.len, answered) : undefined;
+  const call = (over: boolean) => {
+    const c = asking;
+    if (!c) return;
+    const ans = new Set(live.current.answered).add(c.i);
+    live.current.answered = ans;
+    setAnswered(ans);
+    if (!started) setStarted(Date.now());
+    if (over === c.over) {
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      setHint(c.over ? 'Over. Carry on.' : 'Under. Carry on.');
+    } else {
+      live.current.wrong += 1;
+      setWrong(live.current.wrong);
+      buzz(true);
+      setHint(`It goes ${c.over ? 'over' : 'under'} there. Carry on.`);
+    }
+  };
+  const callsMade = (n: number) => (blind && n ? ` · ${n} wrong call${n === 1 ? '' : 's'}` : '');
   const shownLine = !blind || peek;
   const offs = (n: number) => (blind ? `${n} off the line` : `${n} slip${n === 1 ? '' : 's'}`);
 
@@ -259,6 +311,7 @@ export function TieGame({ knot, laid, size, blind = false, onNext, onCheck, onTe
             tip={done || pull ? null : { rope: cur.rope, glow: true, arrow: shownLine, warn: blind && trace.off }}
             pulls={pull && !done ? pullsAt(knot, morph).map((p, i) => ({ ...p, grab: true, done: pull[i]! >= 1 })) : null}
             pullArrows={shownLine}
+            marks={asking ? [{ n: '?', x: asking.x, y: asking.y }] : null}
             shift={morph * 10}
             label={blind ? `${knot.name}: tie it from memory` : `${knot.name}: drag the glowing end`}
           />
@@ -266,13 +319,13 @@ export function TieGame({ knot, laid, size, blind = false, onNext, onCheck, onTe
       </View>
       <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: t.layout.screenPadding, gap: t.space.md }}>
         <Text style={[t.type.label, { color: c.textMuted, flex: 1 }]}>{done ? 'Tied' : `Step ${pull ? moves.length + 1 : Math.min(k, moves.length - 1) + 1} of ${moves.length + 1}`}</Text>
-        <Text style={[t.type.label, { color: blind && trace.off && !done ? c.danger : c.textMuted }]}>{`${seconds(elapsed)} · ${offs(trace.slips)}`}</Text>
+        <Text style={[t.type.label, { color: blind && trace.off && !done ? c.danger : c.textMuted }]}>{`${seconds(elapsed)} · ${offs(trace.slips)}${callsMade(wrong)}`}</Text>
       </View>
       {done ? (
         <View style={{ marginHorizontal: t.layout.screenPadding, padding: t.space.lg, borderRadius: t.radius.lg, backgroundColor: c.bgRaised, borderWidth: t.hairline, borderColor: c.border, gap: t.space.sm, alignItems: 'center' }}>
           <Text style={[t.type.sectionTitle, { color: c.text }]}>{blind ? `${knot.name}, tied from memory` : `${knot.name}, tied`}</Text>
           <Stars n={done.stars} size={28} />
-          <Text style={[t.type.body, { color: c.text }]}>{`${seconds(done.ms)} · ${offs(done.slips)}${done.best ? ' · your best' : best ? ` · best ${seconds(best.bestMs)}` : ''}`}</Text>
+          <Text style={[t.type.body, { color: c.text, textAlign: 'center' }]}>{`${seconds(done.ms)} · ${offs(done.slips)}${callsMade(done.wrong)}${done.best ? ' · your best' : best ? ` · best ${seconds(best.bestMs)}` : ''}`}</Text>
           <Text style={[t.type.caption, { color: c.textMuted, textAlign: 'center' }]}>
             {blind && peeked
               ? 'With a look at the line: one star. Tie it again without one.'
@@ -280,6 +333,15 @@ export function TieGame({ knot, laid, size, blind = false, onNext, onCheck, onTe
                 ? 'Tied from memory. Now tie it in a real line, the same way, and check it before it takes a load.'
                 : "Now check it the way you'll check a real one, then tie it in a real line before you need it on a job."}
           </Text>
+        </View>
+      ) : asking ? (
+        <View style={{ marginHorizontal: t.layout.screenPadding, padding: t.space.lg, borderRadius: t.radius.lg, backgroundColor: c.bgRaised, borderWidth: 1.5, borderColor: c.glow, gap: t.space.sm }}>
+          <Text style={[t.type.sectionTitle, { color: c.text }]}>Over or under?</Text>
+          <Text style={[t.type.body, { color: c.textMuted }]}>The end has come to the rope at the ring. Does it go over it, or under it?</Text>
+          <View style={{ flexDirection: 'row', gap: t.space.sm }}>
+            <GhostButton label="Over" icon="arrow-up-circle-outline" style={{ flex: 1 }} onPress={() => call(true)} />
+            <GhostButton label="Under" icon="arrow-down-circle-outline" style={{ flex: 1 }} onPress={() => call(false)} />
+          </View>
         </View>
       ) : (
         <Text style={[t.type.body, { color: c.text, paddingHorizontal: t.layout.screenPadding }]}>

@@ -2,7 +2,7 @@ import { KNOTS, SHORT_TAIL, checkMarks, faultDrawing, flipped, knotById, knotPro
 import { ROPE_W, VIEW, draw, layout, lengthTo, pointAt, samples, upTo } from '../calc/knots/rope';
 import { jones, polyText, type Closure } from '../calc/knots/jones';
 import { laidFault, laidSet, pairFrame } from '../components/knots/laid';
-import { PULL_DRAG, TRACE, move, nearest, pulled, starsFor } from '../calc/knots/trace';
+import { HOLD, PULL_DRAG, TRACE, callsFor, missesFor, move, nearest, pulled, starsFor } from '../calc/knots/trace';
 import { SAFETY, faultRound, makeTest, seeded } from '../calc/knots/quiz';
 import { emptyKnots, parseKnots, recordCheck, recordTest, recordTie, serialiseKnots } from '../state/knotProgress';
 
@@ -219,6 +219,52 @@ const ONE: Closure = [{ rope: 0 }];
 // The square knot as it binds: the two standing parts are one line round the bundle.
 const BOUND: Closure = [{ rope: 0, back: true }, { rope: 1 }];
 const fault = (id: string, f: string) => knotById(id)!.faults.find((x) => x.id === f)!;
+
+describe('over or under, from memory', () => {
+  // The moves as the game ties them: each step that moves the rope, from where it was to where it gets.
+  const lengthsAt = (laid: ReturnType<typeof layout>, to: readonly number[]) => to.map((p, i) => lengthTo(laid.samples[i]!, p));
+  const movesOf = (k: (typeof KNOTS)[number]) => {
+    const laid = layout(k.ropes, k.cross);
+    return {
+      laid,
+      moves: k.steps.map((st, i) => ({ rope: st.rope, from: lengthsAt(laid, reachBefore(k, i))[st.rope]!, to: lengthsAt(laid, reachAfter(k, i))[st.rope]! })).filter((m) => m.to - m.from > 1),
+    };
+  };
+  test.each(KNOTS.map((k) => [k.name, k] as const))('%s: every crossing is asked once, the answer the knot says', (_, k) => {
+    const { laid, moves } = movesOf(k);
+    const asked = moves.flatMap((m) => callsFor(laid, k.cross, m.rope, m.from, m.to));
+    expect(asked.map((c) => c.i).sort((a, b) => a - b)).toEqual(k.cross.split('').map((_, i) => i));
+    for (const c of asked) expect(c.over).toBe(k.cross[c.i] === 'o');
+  });
+  test.each(KNOTS.map((k) => [k.name, k] as const))("%s: the end stops on its own rope short of each crossing, so the answer isn't drawn first", (_, k) => {
+    const { laid, moves } = movesOf(k);
+    for (const m of moves) {
+      const calls = callsFor(laid, k.cross, m.rope, m.from, m.to);
+      const s = laid.samples[m.rope]!;
+      for (const c of calls) {
+        expect(c.stop).toBeGreaterThanOrEqual(m.from);
+        // Short of it by the hold; a crossing nearer the step's start than that is asked before the end moves at all.
+        if (c.len - m.from >= HOLD) expect(c.len - c.stop).toBeGreaterThanOrEqual(HOLD - 1e-9);
+        else expect(c.stop).toBe(m.from);
+        // A point the rope has, so the end comes to rest on it exactly.
+        if (c.stop > m.from) expect(s.some((p) => p.len === c.stop)).toBe(true);
+        // The end resting there is clear of the strand it is about to cross.
+        const tip = pointAt(s, c.stop);
+        if (c.stop > m.from) expect(Math.hypot(tip.x - c.x, tip.y - c.y)).toBeGreaterThan(ROPE_W);
+        // Traced right to it, the end stops there and goes no further.
+        let tr = { len: m.from, off: false, slips: 0 };
+        for (const p of s) if (p.len >= m.from && p.len <= c.len + 20) tr = move(tr, s, c.stop, p.x, p.y, TRACE.buzz);
+        expect(tr.len).toBe(c.stop);
+      }
+    }
+  });
+  test('a wrong call counts as two slips', () => {
+    expect(missesFor(0, 0)).toBe(0);
+    expect(starsFor(missesFor(1, 0))).toBe(3);
+    expect(starsFor(missesFor(0, 1))).toBe(2);
+    expect(starsFor(missesFor(0, 2))).toBe(1);
+  });
+});
 
 describe('dress and check', () => {
   test('the knot polynomial knows the knots: no crossings is no knot', () => {

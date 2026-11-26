@@ -5,8 +5,10 @@
 // while the finger is on the path near where the end is now: a finger that
 // wanders off counts one slip, once, until it comes back. From memory there
 // is no line to see: the end still follows only the knot's path, and the phone
-// buzzes as soon as the finger is off it. Pure.
+// buzzes as soon as the finger is off it. And at every crossing the end
+// stops short and asks: over or under? Pure.
 
+import { ROPE_W, type Laid } from './rope';
 import type { Sample } from './rope';
 
 /** In drawing units (the knot is 300 across). */
@@ -56,6 +58,31 @@ export const PULL_DRAG = 60;
 export function pulled(from: number, dx: number, dy: number, dir: readonly [number, number]): number {
   return Math.max(0, Math.min(1, from + (dx * dir[0] + dy * dir[1]) / PULL_DRAG));
 }
+
+/** From memory: how far short of a crossing the end stops to ask over or under, so the answer isn't drawn before it is given. */
+export const HOLD = ROPE_W * 1.6;
+
+/** A crossing the end comes to: where along its rope, where the end stops to ask (a point the rope has), where on the drawing, and whether it goes over. */
+export type Call = { i: number; len: number; stop: number; x: number; y: number; over: boolean };
+
+/**
+ * The crossings the end makes as it goes from `from` to `to` along `rope`, in
+ * order: those where it is the strand laid later, so over or under is its to
+ * choose. The strand laid first has nothing to cross yet.
+ */
+export function callsFor(laid: Laid, cross: string, rope: number, from: number, to: number): Call[] {
+  const s = laid.samples[rope]!;
+  // The end only ever rests on the rope's own points: stop on the last one short of the hold.
+  const stopAt = (len: number) => s.reduce((best, p) => (p.len <= len - HOLD && p.len > best ? p.len : best), from);
+  return laid.crossings
+    .map((c, i) => ({ c, i }))
+    .filter(({ c }) => c.later.rope === rope && c.later.len > from + 0.5 && c.later.len <= to + 0.5)
+    .map(({ c, i }) => ({ i, len: c.later.len, stop: stopAt(c.later.len), x: c.x, y: c.y, over: cross[i] === 'o' }))
+    .sort((a, b) => a.len - b.len);
+}
+
+/** A wrong over-or-under call counts as two slips. */
+export const missesFor = (slips: number, wrongCalls: number) => slips + 2 * wrongCalls;
 
 /** Three stars for one slip or none, two for up to three. */
 export const starsFor = (slips: number) => (slips <= 1 ? 3 : slips <= 3 ? 2 : 1);
