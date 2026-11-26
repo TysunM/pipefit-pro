@@ -699,7 +699,7 @@ Under 30° from horizontal, a sling is not used unless its maker or a qualified 
 
 ## Knots
 
-**The knots a fitter uses on tag lines and hand lines: watch each one tied, tie it on screen with a finger, check it for faults, then take the test.** PipeFit tab → **Rigging → Knots**, or say "knots".
+**The knots a fitter uses on tag lines and hand lines: watch each one tied, tie it on screen with a finger, tie it again from memory, check it for faults, then take the test.** PipeFit tab → **Rigging → Knots**, or say "knots".
 
 > Knots are for tag lines, hand lines and light material on a hand line. Never knot a sling or a wire rope, and never use a knot for fall protection: a lift is rigged to its plan with rated gear.
 
@@ -718,7 +718,9 @@ Under 30° from horizontal, a sling is not used unless its maker or a qualified 
 
 **Tie it:** the glowing end is yours. Put a finger on it and drag it along the dashed line. It follows only along the knot's path, over and under as the knot goes, step by step. Wander off the line and it counts a slip. A knot isn't tied until it's set: once the line is through, each end to pull glows with an arrow. Drag each one the way its arrow points and the knot draws up. Tied: your time, your slips and up to three stars, and the best is kept. Then tie it in a real line before you need it on a job.
 
-**Check:** what a knot tied right looks like before it takes a load. The knot is drawn set, with numbered rings on the places to look at, and the checks are listed underneath: on a bowline, the small loop closing on both parts of the end, the collar snug on the standing part, and the tail inside the eye. Then **spot the fault**: each fault hands really tie is drawn beside the knot tied right, zoomed in on the knot, and you tap the one that's ready to take a load. The answer names the fault, says why it fails and how to fix it. Finishing **Tie it** offers **Check it** to go straight here.
+**Memory:** tie it again from memory. No dashed line, no steps and no arrows: just the knot's name and the glowing end. The line is still there, hidden. The end follows only the knot's path, and **the phone buzzes the moment your finger goes off it, and keeps buzzing until you're back on it**. The ring on the end turns red and the count of times off the line goes up. Each step finished gives one light tick. Setting it has no arrows either: pull a part the wrong way and it buzzes. Stuck? **Show me** shows the line and the step for a couple of seconds, but the tie then counts one star. Ties from memory are kept apart from ties with the line shown, and the hub counts how many you've tied from memory.
+
+**Check:** what a knot tied right looks like before it takes a load. The knot is drawn set, with numbered rings on the places to look at, and the checks are listed underneath: on a bowline, the small loop closing on both parts of the end, the collar snug on the standing part, and the tail inside the eye. Then **spot the fault**: each fault hands really tie is drawn beside the knot tied right, zoomed in on the knot, and you tap the one that's ready to take a load. The answer names the fault, says why it fails and how to fix it. Finishing **Tie it** or **Memory** offers **Check it** to go straight here.
 
 | Knot | Faults to spot |
 |---|---|

@@ -9,7 +9,7 @@ import { VIEW, draw, pointAt, type Laid, type Prop } from '../../calc/knots/rope
 // the path still to go as a dashed guide, and the working end marked where it
 // is now. The drawing itself is rope.ts; this only puts it on the screen.
 
-export type Tip = { rope: number; glow?: boolean; arrow?: boolean };
+export type Tip = { rope: number; glow?: boolean; arrow?: boolean; /** Off the line: the ring goes red. */ warn?: boolean };
 /** A part to pull to set the knot: where it is, the way to pull, and whether it is the one to grab. */
 export type PullMark = { x: number; y: number; dx: number; dy: number; grab?: boolean; done?: boolean };
 
@@ -46,6 +46,7 @@ export function KnotView({
   shift = 0,
   marks,
   frame,
+  pullArrows = true,
 }: {
   knot: Knot;
   laid: Laid;
@@ -63,6 +64,8 @@ export function KnotView({
   marks?: readonly { n: number; x: number; y: number }[] | null;
   /** Part of the drawing to fill the view with, zoomed in (drawing units, square). */
   frame?: { x: number; y: number; s: number } | null;
+  /** The arrows on the parts to pull; from memory, only the rings to grab. */
+  pullArrows?: boolean;
 }) {
   const t = useTheme();
   const parts = useMemo(() => draw(knot.ropes, knot.props, laid, shown), [knot, laid, shown]);
@@ -134,7 +137,7 @@ export function KnotView({
           ),
         )}
         {guidePath ? <Path d={guidePath} fill="none" stroke={t.colors.glow} strokeWidth={3.5} strokeLinecap="round" strokeLinejoin="round" strokeDasharray="2 9" opacity={0.9} /> : null}
-        {(pulls ?? []).map((p, i) => {
+        {(pullArrows ? (pulls ?? []) : []).map((p, i) => {
           // An arrow out from the part to pull, the way to pull it.
           const o = 14 + shift;
           const x0 = p.x + p.dx * o;
@@ -204,8 +207,8 @@ export function KnotView({
             width: ring,
             height: ring,
             borderRadius: ring / 2,
-            borderWidth: 3,
-            borderColor: t.colors.glow,
+            borderWidth: tip.warn ? 4 : 3,
+            borderColor: tip.warn ? t.colors.danger : t.colors.glow,
             opacity: pulse.interpolate({ inputRange: [0, 1], outputRange: [0.95, 0.35] }),
             transform: [{ scale: pulse.interpolate({ inputRange: [0, 1], outputRange: [0.85, 1.25] }) }],
           }}

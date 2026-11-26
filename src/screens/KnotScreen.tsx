@@ -18,14 +18,16 @@ import { useTheme } from '../theme/ThemeProvider';
 import { KNOTS, knotById, stepsOf, type Knot } from '../calc/knots/knots';
 import { Pill } from './OrbitalScreen';
 
-// One knot: watch it tied a step at a time, tie it with a finger, then check
-// it: what right looks like, and spot the faults hands tie.
+// One knot: watch it tied a step at a time, tie it with a finger, tie it again
+// from memory (the line hidden, a buzz when off it), then check it: what right
+// looks like, and spot the faults hands tie.
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Knot'>;
-type Mode = 'learn' | 'tie' | 'check';
+type Mode = 'learn' | 'tie' | 'memory' | 'check';
 const MODES: { value: Mode; label: string }[] = [
   { value: 'learn', label: 'Learn' },
   { value: 'tie', label: 'Tie it' },
+  { value: 'memory', label: 'Memory' },
   { value: 'check', label: 'Check' },
 ];
 
@@ -68,8 +70,17 @@ function KnotBody({ knot, start, navigation }: { knot: Knot; start: Mode; naviga
       </View>
       {mode === 'learn' ? (
         <Learn knot={knot} size={size} onTie={() => setMode('tie')} />
-      ) : mode === 'tie' ? (
-        <TieGame key={knot.id} knot={knot} laid={laid} size={size} onNext={() => navigation.replace('Knot', { id: next.id, mode: 'tie' })} onCheck={() => setMode('check')} onTest={() => navigation.navigate('KnotTest')} />
+      ) : mode === 'tie' || mode === 'memory' ? (
+        <TieGame
+          key={`${knot.id}-${mode}`}
+          knot={knot}
+          laid={laid}
+          size={size}
+          blind={mode === 'memory'}
+          onNext={() => navigation.replace('Knot', { id: next.id, mode })}
+          onCheck={() => setMode('check')}
+          onTest={() => navigation.navigate('KnotTest')}
+        />
       ) : (
         <CheckKnot key={knot.id} knot={knot} size={size} onTest={() => navigation.navigate('KnotTest')} />
       )}

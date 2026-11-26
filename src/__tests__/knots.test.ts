@@ -107,6 +107,25 @@ describe('tying it with a finger', () => {
     expect(t.off).toBe(false);
     expect([starsFor(0), starsFor(1), starsFor(3), starsFor(4)]).toEqual([3, 3, 2, 1]);
   });
+  test('from memory the hidden line is held tighter: a finger off it by less than a slip with the line shown is off it', () => {
+    const at = s.find((p) => p.len >= 30)!;
+    const i = s.indexOf(at);
+    // A step to the side of the path, square to it: further than the memory line allows, nearer than a slip.
+    const dx = s[i + 1]!.x - s[i - 1]!.x;
+    const dy = s[i + 1]!.y - s[i - 1]!.y;
+    const n = Math.hypot(dx, dy);
+    const off = (TRACE.buzz + TRACE.slip) / 2;
+    const x = at.x - (dy / n) * off;
+    const y = at.y + (dx / n) * off;
+    const t0 = { len: at.len, off: false, slips: 0 };
+    if (nearest(s, at.len, end, x, y).dist <= TRACE.buzz) throw new Error('the test point is not off the line');
+    expect(move(t0, s, end, x, y).slips).toBe(0);
+    expect(move(t0, s, end, x, y, TRACE.buzz)).toEqual({ len: at.len, off: true, slips: 1 });
+    // Back on the line, it follows again and stops counting.
+    expect(move(move(t0, s, end, x, y, TRACE.buzz), s, end, at.x, at.y, TRACE.buzz).off).toBe(false);
+    expect(TRACE.buzz).toBeGreaterThan(TRACE.reach);
+    expect(TRACE.buzz).toBeLessThan(TRACE.slip);
+  });
 });
 
 describe('the knot test', () => {
@@ -144,6 +163,21 @@ describe('what has been tied', () => {
     expect(recordTie(b, 'not-a-knot', 1, 3, 4)).toBe(b);
     b = recordTest(recordTest(b, 8, 10), 6, 10);
     expect(b.test).toEqual({ best: 8, last: 6, of: 10, taken: 2 });
+  });
+  test('tied from memory is kept apart from tied with the line shown', () => {
+    let b = recordTie(emptyKnots(), 'bowline', 20_000, 3, 1);
+    b = recordTie(b, 'bowline', 41_000, 1, 2, 'memory');
+    b = recordTie(b, 'bowline', 35_000, 2, 3, 'memory');
+    expect(b.tied.bowline).toEqual({ count: 1, bestMs: 20_000, bestStars: 3, at: 1 });
+    expect(b.memory.bowline).toEqual({ count: 2, bestMs: 35_000, bestStars: 2, at: 3 });
+    expect(parseKnots(serialiseKnots(b))).toEqual(b);
+    // Saved before there was a memory mode: read the same, nothing dropped.
+    const old = JSON.parse(serialiseKnots(b));
+    delete old.memory;
+    expect(parseKnots(JSON.stringify(old))).toMatchObject({ memory: {}, dropped: 0 });
+    const bad = JSON.parse(serialiseKnots(b));
+    bad.memory.bowline.bestStars = 7;
+    expect(parseKnots(JSON.stringify(bad))).toMatchObject({ memory: {}, dropped: 1 });
   });
   test('spot the fault keeps the best round, started again when the knot has a different number of faults', () => {
     let b = recordCheck(emptyKnots(), 'clove', 2, 3, 1);
