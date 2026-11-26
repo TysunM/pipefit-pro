@@ -31,6 +31,10 @@ import { clock } from '../calc/orbitalProgram';
 import { shareSheet } from '../print/share';
 import { runHtml } from '../print/orbital';
 import { SulphurNote, useSulphurWords } from '../components/SulphurNote';
+import { WeldReportReader } from '../components/WeldReportReader';
+import { ReportTable } from '../components/orbital/ReportTable';
+import { checkReport } from '../calc/orbitalReport';
+import { useWpsBook } from '../state/heatInputs';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'OrbitalRun'>;
 
@@ -52,6 +56,8 @@ export function OrbitalRunScreen({ navigation, route }: Props) {
   const [note, setNote] = useState<string | null>(null);
 
   const sulphur = useSulphurWords([draft?.heatA ?? '', draft?.heatB ?? '']);
+  const [readingReport, setReadingReport] = useState(false);
+  const wpsBook = useWpsBook();
   const key = params.id ?? `${params.programId}|${params.kind}`;
   if (formFor !== key && runs.hydrated && programs.hydrated) {
     setFormFor(key);
@@ -81,6 +87,7 @@ export function OrbitalRunScreen({ navigation, route }: Props) {
   const looked = INSPECT.filter((i) => checks.has(i.id)).length;
   const o2Max = program?.gas.o2Max ?? null;
   const o2Over = r.o2 !== null && o2Max !== null && r.o2 > o2Max;
+  const reportCheck = r.report && program ? checkReport(r.report, program, wpsBook.book.wps) : null;
 
   const patch = (x: Partial<Run>) => {
     setWhy(null);
@@ -106,7 +113,7 @@ export function OrbitalRunScreen({ navigation, route }: Props) {
   const share = async () => {
     if (!program) return;
     setNote(null);
-    const out = await shareSheet(runHtml(r, program, head, supply, eqs, sulphur?.text), `${r.kind === 'coupon' ? 'Coupon' : 'Weld'} ${r.weld}`);
+    const out = await shareSheet(runHtml(r, program, head, supply, eqs, sulphur?.text, reportCheck ?? undefined), `${r.kind === 'coupon' ? 'Coupon' : 'Weld'} ${r.weld}`);
     if (!out.ok) setNote(out.why);
   };
 
@@ -167,6 +174,35 @@ export function OrbitalRunScreen({ navigation, route }: Props) {
       {INSPECT.map((i) => (
         <CheckRow key={i.id} on={checks.has(i.id)} text={i.text} onPress={() => tick(i.id)} />
       ))}
+
+      <SectionHeader title="Weld report" meta={r.report ? (r.report.figures === 'programmed' ? 'set figures' : 'as welded') : undefined} />
+      {r.report && program && reportCheck ? (
+        <View style={{ paddingHorizontal: t.layout.screenPadding, gap: t.space.sm }}>
+          <ReportTable report={r.report} check={reportCheck} />
+        </View>
+      ) : (
+        <HintRow text="Photograph the power supply's printout or screen when the weld is done: every level is set against the program, with the heat input it put in and any fault." />
+      )}
+      {program ? (
+        <ControlRow>
+          <GhostButton label={r.report ? 'Read it again' : 'Read the weld report'} icon="receipt-outline" onPress={() => setReadingReport(true)} style={{ flex: 1 }} />
+          {r.report ? <GhostButton label="Take it off" icon="close" onPress={() => patch({ report: null })} /> : null}
+        </ControlRow>
+      ) : null}
+      {program ? (
+        <WeldReportReader
+          visible={readingReport}
+          onClose={() => setReadingReport(false)}
+          program={program}
+          onKeep={(rep) =>
+            patch({
+              report: { ...rep, readAt: Date.now() },
+              weld: r.weld.trim() ? r.weld : rep.weldNo.slice(0, TEXT_MAX),
+              operator: r.operator.trim() ? r.operator : rep.operator.slice(0, TEXT_MAX),
+            })
+          }
+        />
+      ) : null}
 
       <SectionHeader title="How it came out" />
       <ChipRow options={[{ value: 'pass', label: 'Pass' }, { value: 'fail', label: 'Fail' }]} selected={r.result ?? ''} onSelect={(v) => patch({ result: v as Run['result'] })} />

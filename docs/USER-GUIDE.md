@@ -1600,6 +1600,12 @@ Then the level being edited (degrees, RPM, peak, background, pulse times), a tab
 
   How much is too much comes from your spec (ASME BPE or the client's).
 - **Fail:** pick what the coupon shows and the usual first moves come up. Change one thing, weld another coupon, and note what changed.
+- **Weld report:** when the weld is done, tap **Read the weld report** and photograph the power supply's printout or screen. It goes to the free reader first, then Claude only if that can't read it. Each level is set against the program:
+  - **Peak current, background and rotor speed:** what the report says over the program's figure. A difference past 5% shows in amber; what's acceptable is your WPS's call.
+  - **Heat input:** worked out from the reported volts, the pulse averaged over the program's times, and the speed round the tube (V × A × 60 ÷ in/min, J/in). If the program names a WPS that's in the **WPS book** with a heat input window, each level reads **in WPS**, **under** or **over**.
+  - **Also said in plain words:** a report for a different program, a different number of levels, a fault the supply stopped on, or an operator stop.
+  - **Set figures:** a printout of the supply's set figures, not the measured ones, checks that the supply holds this program.
+- **Keeping the report:** **Keep it on this weld** puts it on the run sheet and its PDF. It fills the weld number and operator if they're blank. **Take it off** removes it.
 
 ### Equations
 Every figure comes from an equation anyone can open, test, change or write. A formula uses names (`pi * OD * RPM`) and + − × ÷ ^, brackets and sqrt, sin and the like, with angles in degrees.

@@ -24,7 +24,9 @@ import { MAX_VOICE_BODY, VOICE_SCHEMA, VOICE_SYSTEM, cleanVoiceBody, readVoice, 
 import { MAX_IMAGE_B64, MAX_SHEET_BODY, SHEET_SCHEMA, SHEET_SYSTEM, bareBase64, cleanSheetBody, readSheet, sheetPrompt } from '../src/ai/fittingSheet';
 import { MAX_ORIENTATION_BODY, ORIENTATION_SCHEMA, ORIENTATION_SYSTEM, cleanOrientationBody, orientationMessage, readCourse } from '../src/ai/orientation';
 import { CHECK_MESSAGE, CHECK_SCHEMA, CHECK_SYSTEM, DETAIL_MAX, readCheck } from '../src/ai/claudeCheck';
-import { MAX_MILL_BODY, MILL_PROMPT, MILL_SCHEMA, MILL_SYSTEM, cleanMillBody, readMill } from '../src/ai/millCert';
+import { MAX_MILL_BODY, MILL_PROMPT, MILL_SCHEMA, MILL_SYSTEM, readMill, type MillRead } from '../src/ai/millCert';
+import { MAX_PHOTO_BODY, cleanPhotoBody } from '../src/ai/photoRead';
+import { REPORT_PROMPT, REPORT_SCHEMA, REPORT_SYSTEM, readReport, type WeldReportRead } from '../src/ai/weldReport';
 
 /**
  * How long Claude gets. A summary usually comes back in seconds; this is for
@@ -211,13 +213,16 @@ export async function fittingSheet(raw: string, apiKey: string, model: string, f
   }
 }
 
+/** A photo reader's fixed question: its rules, its schema, what it asks, how its answer is held to shape and keyed. */
+export type PhotoSpec<T> = { system: string; schema: unknown; prompt: string; read: (v: unknown) => T | null; key: string; maxBody: number; empty: (v: T) => boolean };
+
 /**
- * A mill cert's heats and their sulphur. The route takes a picture and
- * nothing else; the question is fixed here and the answer held to the schema,
- * then read again before it goes. A cert with no heat read is no read.
+ * A picture read for a photo reader. The route takes a picture and nothing
+ * else; the question is fixed by the spec and the answer held to its schema,
+ * then read again before it goes. An answer with nothing in it is no read.
  */
-export async function millCert(raw: string, apiKey: string, model: string, fetchImpl: typeof fetch): Promise<Reply> {
-  if (raw.length > MAX_MILL_BODY) return { status: 413, body: { error: 'too_large' } };
+export async function photoWithClaude<T>(spec: PhotoSpec<T>, raw: string, apiKey: string, model: string, fetchImpl: typeof fetch): Promise<Reply> {
+  if (raw.length > spec.maxBody) return { status: 413, body: { error: 'too_large' } };
   let parsed: unknown;
   try {
     parsed = JSON.parse(raw);
@@ -226,7 +231,7 @@ export async function millCert(raw: string, apiKey: string, model: string, fetch
   }
   const image = typeof (parsed as { image?: unknown } | null)?.image === 'string' ? bareBase64((parsed as { image: string }).image) : '';
   if (image.length > MAX_IMAGE_B64) return { status: 413, body: { error: 'too_large' } };
-  const body = cleanMillBody(parsed);
+  const body = cleanPhotoBody(parsed);
   if (!body) return { status: 400, body: { error: 'not_image' } };
 
   const client = new Anthropic({ apiKey, fetch: fetchImpl, maxRetries: 1, timeout: SHEET_MS });
@@ -236,15 +241,15 @@ export async function millCert(raw: string, apiKey: string, model: string, fetch
       max_tokens: OUTPUT_CAP,
       betas: ['server-side-fallback-2026-07-01'],
       fallbacks: 'default',
-      // A chemistry table photographed on a job: small figures in tight columns, worth reading with care.
-      output_config: { effort: 'medium', format: { type: 'json_schema', schema: MILL_SCHEMA } },
-      system: MILL_SYSTEM,
+      // Small print in tight columns, photographed on a job: worth reading with care.
+      output_config: { effort: 'medium', format: { type: 'json_schema', schema: spec.schema as Record<string, unknown> } },
+      system: spec.system,
       messages: [
         {
           role: 'user',
           content: [
             { type: 'image', source: { type: 'base64', media_type: body.media, data: body.image } },
-            { type: 'text', text: MILL_PROMPT },
+            { type: 'text', text: spec.prompt },
           ],
         },
       ],
@@ -256,12 +261,20 @@ export async function millCert(raw: string, apiKey: string, model: string, fetch
     } catch {
       return { status: 502, body: { error: 'bad_answer' } };
     }
-    const cert = readMill(out);
-    return cert && cert.heats.length ? { status: 200, body: { cert } } : { status: 502, body: { error: 'bad_answer' } };
+    const value = spec.read(out);
+    return value && !spec.empty(value) ? { status: 200, body: { [spec.key]: value } } : { status: 502, body: { error: 'bad_answer' } };
   } catch (e) {
     return failed(e);
   }
 }
+
+export const MILL_SPEC: PhotoSpec<MillRead> = { system: MILL_SYSTEM, schema: MILL_SCHEMA, prompt: MILL_PROMPT, read: readMill, key: 'cert', maxBody: MAX_MILL_BODY, empty: (c) => !c.heats.length };
+export const REPORT_SPEC: PhotoSpec<WeldReportRead> = { system: REPORT_SYSTEM, schema: REPORT_SCHEMA, prompt: REPORT_PROMPT, read: readReport, key: 'report', maxBody: MAX_PHOTO_BODY, empty: (r) => !r.levels.length && !r.faults.length };
+
+/** A mill cert's heats and their sulphur. */
+export const millCert = (raw: string, apiKey: string, model: string, fetchImpl: typeof fetch) => photoWithClaude(MILL_SPEC, raw, apiKey, model, fetchImpl);
+/** An orbital power supply's weld report: its levels as welded, and any fault. */
+export const weldReport = (raw: string, apiKey: string, model: string, fetchImpl: typeof fetch) => photoWithClaude(REPORT_SPEC, raw, apiKey, model, fetchImpl);
 
 /**
  * A site orientation module turned into a course: sections to be read aloud

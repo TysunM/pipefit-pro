@@ -17,33 +17,25 @@
 // under a column heading. The reader is asked for weight per cent and for
 // the figure as printed, so the fitter can see what it converted.
 
-import { CREDIT_WORDS, outOfCredit } from './claudeCheck';
-import { MAX_IMAGE_B64, bareBase64, mediaOf, type SheetMedia } from './fittingSheet';
+import { MAX_PHOTO_BODY, askPhoto, cleanPhotoBody, photoMissOf, photoMissWords, str, type PhotoBody, type PhotoMiss } from './photoRead';
 import { newHeat, normaliseHeat, type Heat } from '../calc/heat';
 import { findHeat, putHeat, type HeatBook } from '../state/heatBook';
 import { MAX_SULPHUR, pct } from '../calc/sulphur';
 
 export const MILL_CERT_PATH = '/api/mill-cert';
-export const MAX_MILL_BODY = MAX_IMAGE_B64 + 1024;
+export const MAX_MILL_BODY = MAX_PHOTO_BODY;
 export const MAX_CERT_HEATS = 40;
 /** A sulphur no stainless or carbon steel pipe cert prints: past this, the scale was likely misread. Free-machining grades (303) run higher and say so. */
 export const SULPHUR_CHECK_ABOVE = 0.1;
 
 const isRec = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
-const str = (v: unknown, max: number): string => (typeof v === 'string' ? v.replace(/\s+/g, ' ').trim().slice(0, max) : '');
 
 // ------------------------------------------------------------ the request
 
-export type MillBody = { image: string; media: SheetMedia };
+export type MillBody = PhotoBody;
 
-/** A request off the wire, or null: a picture, and nothing else, so there is no way in for a question of its own. */
-export function cleanMillBody(v: unknown): MillBody | null {
-  if (!isRec(v) || typeof v.image !== 'string') return null;
-  const image = bareBase64(v.image);
-  if (!image || image.length > MAX_IMAGE_B64 || !/^[A-Za-z0-9+/]+={0,2}$/.test(image)) return null;
-  const media = mediaOf(image);
-  return media ? { image, media } : null;
-}
+/** A request off the wire, or null: a picture, and nothing else. */
+export const cleanMillBody = cleanPhotoBody;
 
 // ------------------------------------------------------------ the question
 
@@ -194,73 +186,13 @@ export function certStatusWords(r: CertRow): { text: string; warn: boolean } {
 
 // ------------------------------------------------------------ asking
 
-export type MillMiss = 'not_set' | 'key_refused' | 'no_credit' | 'bad_model' | 'declined' | 'too_big' | 'not_image' | 'down' | 'offline' | 'daily_limit' | 'unread';
+export type MillMiss = PhotoMiss;
 
-export function millMissWords(m: MillMiss): string {
-  const then = 'Type the sulphur in on the heat instead.';
-  switch (m) {
-    case 'not_set':
-      return `The reader is not set up on the server. ${then}`;
-    case 'key_refused':
-      return `Anthropic turned the key down. Settings → Smart help → Test Claude shows why. ${then}`;
-    case 'no_credit':
-      return `${CREDIT_WORDS} ${then}`;
-    case 'bad_model':
-      return `The model in CLAUDE_MODEL would not take this. ${then}`;
-    case 'declined':
-      return `The reader declined that picture. ${then}`;
-    case 'too_big':
-      return 'That picture is too big to send. Step back a little, or photograph the chemistry block on its own.';
-    case 'not_image':
-      return 'That picture could not be sent as a JPEG or PNG. Try again.';
-    case 'down':
-      return `The reader is not answering right now. ${then}`;
-    case 'offline':
-      return `No signal to reach the reader. ${then}`;
-    case 'daily_limit':
-      return `Today's free reading allowance is used up; it comes back at midnight UTC. ${then}`;
-    case 'unread':
-      return 'That picture could not be read. Fill the frame with the heat numbers and the chemistry, square on and in good light, and try again.';
-  }
-}
+export const millMissWords = (m: MillMiss): string =>
+  photoMissWords(m, 'Type the sulphur in on the heat instead.', 'Fill the frame with the heat numbers and the chemistry, square on and in good light, and try again.');
 
-export function millMissOf(status: number, body: unknown): MillMiss {
-  const e = isRec(body) ? body : {};
-  if (status === 413 || e.error === 'too_large') return 'too_big';
-  if (e.error === 'not_image') return 'not_image';
-  if (e.error === 'not_configured') return 'not_set';
-  if (e.error === 'upstream' && (e.status === 401 || e.status === 403)) return 'key_refused';
-  if (outOfCredit(e)) return 'no_credit';
-  if (e.error === 'upstream' && e.status === 404) return 'bad_model';
-  if (e.error === 'declined') return 'declined';
-  if (status === 429 || e.error === 'daily_limit') return 'daily_limit';
-  if (e.error === 'bad_answer') return 'unread';
-  return 'down';
-}
+export const millMissOf = photoMissOf;
 
 /** Send a cert's picture to be read. The answer is held to shape here; the review is certRows'. */
-export async function askMillCert(base: string, image: string, opts: { fetchImpl?: typeof fetch; timeoutMs?: number } = {}): Promise<MillRead | MillMiss> {
-  const b64 = bareBase64(image);
-  if (b64.length > MAX_IMAGE_B64) return 'too_big';
-  if (!mediaOf(b64)) return 'not_image';
-  const f = opts.fetchImpl ?? fetch;
-  const ctrl = new AbortController();
-  // The free reader first (30 s at most), then Claude as the last resort (45 s): inside this.
-  const timer = setTimeout(() => ctrl.abort(), opts.timeoutMs ?? 85_000);
-  let res: Response;
-  try {
-    res = await f(`${base}${MILL_CERT_PATH}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ image: b64 }), signal: ctrl.signal });
-  } catch {
-    clearTimeout(timer);
-    return 'offline';
-  }
-  try {
-    const data = (await res.json()) as unknown;
-    if (!res.ok) return millMissOf(res.status, data);
-    return readMill(isRec(data) ? data.cert : null) ?? 'down';
-  } catch {
-    return 'down';
-  } finally {
-    clearTimeout(timer);
-  }
-}
+export const askMillCert = (base: string, image: string, opts: { fetchImpl?: typeof fetch; timeoutMs?: number } = {}): Promise<MillRead | MillMiss> =>
+  askPhoto(base, MILL_CERT_PATH, image, 'cert', readMill, opts);
