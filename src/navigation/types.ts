@@ -58,7 +58,7 @@ export type RootStackParamList = {
   /** Knots for tag lines and hand lines: each one watched, tied by finger, and the test. */
   Knots: undefined;
   /** One knot: Learn (watch it tied, a step at a time) or Tie it (drag the end through it). */
-  Knot: { id: string; mode?: 'learn' | 'tie' | 'check' };
+  Knot: { id: string; mode?: 'learn' | 'tie' | 'memory' | 'check' };
   /** Ten questions on the knots: which knot, which for the job, what next, safe or not. */
   KnotTest: undefined;
   Calibration: undefined;

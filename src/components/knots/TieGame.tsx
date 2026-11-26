@@ -5,7 +5,7 @@ import * as Haptics from 'expo-haptics';
 import { useTheme } from '../../theme/ThemeProvider';
 import { reachAfter, reachBefore, type Knot } from '../../calc/knots/knots';
 import { VIEW, pointAt, type Laid } from '../../calc/knots/rope';
-import { TRACE, move, pulled, starsFor, type Trace } from '../../calc/knots/trace';
+import { BUZZ_EVERY_MS, TRACE, move, pulled, starsFor, type Trace } from '../../calc/knots/trace';
 import { recordTie } from '../../state/knotProgress';
 import { useKnotBook } from '../../state/knots';
 import { useScrollHost } from '../scrollHost';
@@ -19,6 +19,11 @@ import { lengthsAt } from './useStepPlayer';
 // step, over and under as the knot goes; then pull it tight, each glowing end
 // dragged the way its arrow points, the knot drawing up as it goes. Timed,
 // slips counted, the best kept (trace.ts has the rules).
+//
+// From memory (`blind`): no dashed line, no steps, no arrows. The line is still
+// there, hidden: the end follows only the knot's path, and the phone buzzes the
+// moment the finger is off it, and keeps buzzing until it's back. "Show me"
+// shows the step for a moment, and the tie counts one star.
 
 type Move = { step: number; rope: number; from: number; to: number; text: string };
 type Done = { ms: number; slips: number; stars: number; best: boolean };
@@ -36,7 +41,7 @@ export function Stars({ n, size = 20 }: { n: number; size?: number }) {
   );
 }
 
-export function TieGame({ knot, laid, size, onNext, onCheck, onTest }: { knot: Knot; laid: Laid; size: number; onNext?: () => void; onCheck?: () => void; onTest: () => void }) {
+export function TieGame({ knot, laid, size, blind = false, onNext, onCheck, onTest }: { knot: Knot; laid: Laid; size: number; blind?: boolean; onNext?: () => void; onCheck?: () => void; onTest: () => void }) {
   const t = useTheme();
   const c = t.colors;
   const book = useKnotBook();
@@ -59,6 +64,19 @@ export function TieGame({ knot, laid, size, onNext, onCheck, onTest }: { knot: K
   // Once it is all tied: how far each pulled end has been pulled, 0 to 1. Null until then.
   const [pull, setPull] = useState<number[] | null>(null);
   const morph = pull ? pull.reduce((a, b) => a + b, 0) / pull.length : 0;
+  // From memory: a look at the line for a moment, and whether one was taken.
+  const [peek, setPeek] = useState(false);
+  const [peeked, setPeeked] = useState(false);
+  const peekTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => void (peekTimer.current && clearTimeout(peekTimer.current)), []);
+  const showMe = () => {
+    setPeek(true);
+    setPeeked(true);
+    live.current.peeked = true;
+    if (peekTimer.current) clearTimeout(peekTimer.current);
+    peekTimer.current = setTimeout(() => setPeek(false), 2500);
+  };
+  const where = blind ? 'memory' : 'tied';
 
   const cur = moves[Math.min(k, moves.length - 1)]!;
   const base = useMemo(() => lengthsAt(laid, reachBefore(knot, cur.step)), [knot, laid, cur.step]);
@@ -66,8 +84,15 @@ export function TieGame({ knot, laid, size, onNext, onCheck, onTest }: { knot: K
   const scale = size / VIEW;
 
   // The responder is made once; what it needs now it reads from here.
-  const live = useRef({ k, trace, moves, scale, started, done, pull, tracking: false, grab: null as { i: number; x: number; y: number; from: number } | null, origin: [0, 0] as [number, number] });
-  live.current = { ...live.current, k, trace, moves, scale, started, done, pull };
+  const live = useRef({ k, trace, moves, scale, started, done, pull, blind, peeked: false, buzzed: 0, tracking: false, grab: null as { i: number; x: number; y: number; from: number } | null, origin: [0, 0] as [number, number] });
+  live.current = { ...live.current, k, trace, moves, scale, started, done, pull, blind };
+  // A buzz while the finger stays off the line: not more often than the phone can make it felt.
+  const buzz = (first: boolean) => {
+    const at = Date.now();
+    if (!first && at - live.current.buzzed < BUZZ_EVERY_MS) return;
+    live.current.buzzed = at;
+    void (first ? Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning) : Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy));
+  };
 
   useEffect(() => {
     if (!started || done) return;
@@ -77,10 +102,11 @@ export function TieGame({ knot, laid, size, onNext, onCheck, onTest }: { knot: K
 
   const finish = (slips: number) => {
     const ms = Date.now() - (live.current.started ?? Date.now());
-    const stars = starsFor(slips);
-    const had = book.value.tied[knot.id];
+    // A look at the line from memory: tied, but one star.
+    const stars = live.current.peeked ? 1 : starsFor(slips);
+    const had = book.value[where][knot.id];
     setDone({ ms, slips, stars, best: !had || ms < had.bestMs });
-    book.apply((b) => recordTie(b, knot.id, ms, stars, Date.now()));
+    book.apply((b) => recordTie(b, knot.id, ms, stars, Date.now(), where));
     void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   };
 
@@ -133,6 +159,11 @@ export function TieGame({ knot, laid, size, onNext, onCheck, onTest }: { knot: K
           if (L.pull && L.grab) {
             const g = L.grab;
             const p = pulled(g.from, x - g.x, y - g.y, knot.tight.pulls[g.i]!.dir);
+            // From memory there are no arrows: pulled the wrong way, it buzzes.
+            if (L.blind && Math.hypot(x - g.x, y - g.y) > 24 && p <= g.from + 0.05) {
+              buzz(false);
+              setHint('Not that way.');
+            } else if (L.blind && p > g.from + 0.05) setHint(null);
             if (p === L.pull[g.i]) return;
             const next = L.pull.map((v, i) => (i === g.i ? p : v));
             if (p >= 1 && L.pull[g.i]! < 1) void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -146,11 +177,14 @@ export function TieGame({ knot, laid, size, onNext, onCheck, onTest }: { knot: K
           }
           if (!L.tracking) return;
           const m = L.moves[L.k]!;
-          const next = move(L.trace, laid.samples[m.rope]!, m.to, x, y);
+          const next = move(L.trace, laid.samples[m.rope]!, m.to, x, y, L.blind ? TRACE.buzz : TRACE.slip);
+          // Still off the line: from memory, it keeps buzzing until the finger is back on it.
+          if (L.blind && next.off && next.slips === L.trace.slips) buzz(false);
           if (next === L.trace) return;
           if (next.slips > L.trace.slips) {
-            setHint('Back to the dashed line: the end only follows the rope’s path.');
-            void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+            setHint(L.blind ? 'Off the line. Find where the knot goes.' : 'Back to the dashed line: the end only follows the rope’s path.');
+            if (L.blind) buzz(true);
+            else void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
           } else if (L.trace.off && !next.off) setHint(null);
           if (next.len >= m.to - 1.5) {
             // This step tied: on to the next, or done.
@@ -171,7 +205,7 @@ export function TieGame({ knot, laid, size, onNext, onCheck, onTest }: { knot: K
             L.tracking = false;
             setK(after);
             setTrace(L.trace);
-            setHint('Step tied. Pick up the glowing end again.');
+            setHint(L.blind ? 'Good. Pick up the glowing end again.' : 'Step tied. Pick up the glowing end again.');
             return;
           }
           L.trace = next;
@@ -195,7 +229,9 @@ export function TieGame({ knot, laid, size, onNext, onCheck, onTest }: { knot: K
 
   const again = () => {
     const tr = fresh();
-    live.current = { ...live.current, k: 0, trace: tr, started: null, done: null, pull: null, tracking: false, grab: null };
+    live.current = { ...live.current, k: 0, trace: tr, started: null, done: null, pull: null, tracking: false, grab: null, peeked: false };
+    setPeeked(false);
+    setPeek(false);
     setK(0);
     setPull(null);
     setTrace(tr);
@@ -204,8 +240,11 @@ export function TieGame({ knot, laid, size, onNext, onCheck, onTest }: { knot: K
     setHint(null);
   };
 
-  const elapsed = done ? done.ms : started ? now - started : 0;
-  const best = book.value.tied[knot.id];
+  // The clock ticks every 200 ms: never shown below nought in the moment before its first tick.
+  const elapsed = done ? done.ms : started ? Math.max(0, now - started) : 0;
+  const best = book.value[where][knot.id];
+  const shownLine = !blind || peek;
+  const offs = (n: number) => (blind ? `${n} off the line` : `${n} slip${n === 1 ? '' : 's'}`);
 
   return (
     <View style={{ gap: t.space.md }}>
@@ -216,31 +255,44 @@ export function TieGame({ knot, laid, size, onNext, onCheck, onTest }: { knot: K
             laid={pull ? laidAt(knot, morph) : laid}
             shown={pull ? shown.map(() => Number.MAX_SAFE_INTEGER) : shown}
             size={size}
-            guide={done || pull ? null : { rope: cur.rope, from: trace.len, to: cur.to }}
-            tip={done || pull ? null : { rope: cur.rope, glow: true, arrow: true }}
+            guide={done || pull || !shownLine ? null : { rope: cur.rope, from: trace.len, to: cur.to }}
+            tip={done || pull ? null : { rope: cur.rope, glow: true, arrow: shownLine, warn: blind && trace.off }}
             pulls={pull && !done ? pullsAt(knot, morph).map((p, i) => ({ ...p, grab: true, done: pull[i]! >= 1 })) : null}
+            pullArrows={shownLine}
             shift={morph * 10}
-            label={`${knot.name}: drag the glowing end`}
+            label={blind ? `${knot.name}: tie it from memory` : `${knot.name}: drag the glowing end`}
           />
         </View>
       </View>
       <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: t.layout.screenPadding, gap: t.space.md }}>
         <Text style={[t.type.label, { color: c.textMuted, flex: 1 }]}>{done ? 'Tied' : `Step ${pull ? moves.length + 1 : Math.min(k, moves.length - 1) + 1} of ${moves.length + 1}`}</Text>
-        <Text style={[t.type.label, { color: c.textMuted }]}>{`${seconds(elapsed)} · ${trace.slips} slip${trace.slips === 1 ? '' : 's'}`}</Text>
+        <Text style={[t.type.label, { color: blind && trace.off && !done ? c.danger : c.textMuted }]}>{`${seconds(elapsed)} · ${offs(trace.slips)}`}</Text>
       </View>
       {done ? (
         <View style={{ marginHorizontal: t.layout.screenPadding, padding: t.space.lg, borderRadius: t.radius.lg, backgroundColor: c.bgRaised, borderWidth: t.hairline, borderColor: c.border, gap: t.space.sm, alignItems: 'center' }}>
-          <Text style={[t.type.sectionTitle, { color: c.text }]}>{`${knot.name}, tied`}</Text>
+          <Text style={[t.type.sectionTitle, { color: c.text }]}>{blind ? `${knot.name}, tied from memory` : `${knot.name}, tied`}</Text>
           <Stars n={done.stars} size={28} />
-          <Text style={[t.type.body, { color: c.text }]}>{`${seconds(done.ms)} · ${done.slips} slip${done.slips === 1 ? '' : 's'}${done.best ? ' · your best' : best ? ` · best ${seconds(best.bestMs)}` : ''}`}</Text>
-          <Text style={[t.type.caption, { color: c.textMuted, textAlign: 'center' }]}>Now check it the way you'll check a real one, then tie it in a real line before you need it on a job.</Text>
+          <Text style={[t.type.body, { color: c.text }]}>{`${seconds(done.ms)} · ${offs(done.slips)}${done.best ? ' · your best' : best ? ` · best ${seconds(best.bestMs)}` : ''}`}</Text>
+          <Text style={[t.type.caption, { color: c.textMuted, textAlign: 'center' }]}>
+            {blind && peeked
+              ? 'With a look at the line: one star. Tie it again without one.'
+              : blind
+                ? 'Tied from memory. Now tie it in a real line, the same way, and check it before it takes a load.'
+                : "Now check it the way you'll check a real one, then tie it in a real line before you need it on a job."}
+          </Text>
         </View>
       ) : (
-        <Text style={[t.type.body, { color: c.text, paddingHorizontal: t.layout.screenPadding }]}>{pull ? knot.tight.text : cur.text}</Text>
+        <Text style={[t.type.body, { color: c.text, paddingHorizontal: t.layout.screenPadding }]}>
+          {shownLine ? (pull ? knot.tight.text : cur.text) : pull ? 'Now set it: grab each part that pulls, and pull it the way it goes.' : `${knot.name}, from memory: no line and no steps. Take the end where the knot goes.`}
+        </Text>
       )}
       {hint && !done ? <Text style={[t.type.bodyStrong, { color: c.warnText, paddingHorizontal: t.layout.screenPadding }]}>{hint}</Text> : null}
-      {pull && !done && !hint ? <Text style={[t.type.caption, { color: c.textFaint, paddingHorizontal: t.layout.screenPadding }]}>Drag each glowing end the way its arrow points, and the knot draws up.</Text> : null}
-      {!done && !started ? <Text style={[t.type.caption, { color: c.textFaint, paddingHorizontal: t.layout.screenPadding }]}>Put a finger on the glowing end and drag it along the dashed line. The rope goes over and under as the knot does.</Text> : null}
+      {pull && !done && !hint && shownLine ? <Text style={[t.type.caption, { color: c.textFaint, paddingHorizontal: t.layout.screenPadding }]}>Drag each glowing end the way its arrow points, and the knot draws up.</Text> : null}
+      {!done && !started ? (
+        <Text style={[t.type.caption, { color: c.textFaint, paddingHorizontal: t.layout.screenPadding }]}>
+          {blind ? "Put a finger on the glowing end. The knot's line is there but hidden: go off it and the phone buzzes until you're back on it." : 'Put a finger on the glowing end and drag it along the dashed line. The rope goes over and under as the knot does.'}
+        </Text>
+      ) : null}
       <ControlRow>
         {done ? (
           <>
@@ -248,7 +300,10 @@ export function TieGame({ knot, laid, size, onNext, onCheck, onTest }: { knot: K
             {onNext ? <GhostButton label="Next knot" icon="arrow-forward" style={{ flex: 1 }} onPress={onNext} /> : null}
           </>
         ) : (
-          <GhostButton label="Start over" icon="refresh" style={{ flex: 1 }} onPress={again} />
+          <>
+            <GhostButton label="Start over" icon="refresh" style={{ flex: 1 }} onPress={again} />
+            {blind ? <GhostButton label="Show me" icon="eye-outline" style={{ flex: 1 }} onPress={showMe} /> : null}
+          </>
         )}
       </ControlRow>
       {done ? (
