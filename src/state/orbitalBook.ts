@@ -20,6 +20,7 @@
 // the same units, so nothing is ever converted on the way through.
 
 import { validEquation, MAX_EQUATIONS, type Equation } from '../calc/orbitalEquations';
+import { readReport, type WeldReportRead } from '../ai/weldReport';
 
 export const ORBITAL_VERSION = 1;
 export const MAX_GEAR = 60;
@@ -272,10 +273,14 @@ export type Run = {
   faults: string[];
   note: string;
   at: number;
+  /** The power supply's report of the weld, read off its printout or screen and kept (ai/weldReport.ts); null for none. */
+  report: KeptReport | null;
 };
 
+export type KeptReport = WeldReportRead & { readAt: number };
+
 export function newRun(p: Program, kind: RunKind, now: number): Run {
-  return { id: 'new', programId: p.id, programName: p.name, version: p.version, kind, project: '', line: '', weld: '', heatA: '', heatB: '', operator: '', o2: null, purgeLen: null, changes: null, checks: [], result: null, faults: [], note: '', at: now };
+  return { id: 'new', programId: p.id, programName: p.name, version: p.version, kind, project: '', line: '', weld: '', heatA: '', heatB: '', operator: '', o2: null, purgeLen: null, changes: null, checks: [], result: null, faults: [], note: '', at: now, report: null };
 }
 
 // ------------------------------------------------------------ keeping them
@@ -431,7 +436,10 @@ export function validRun(v: unknown): Run | null {
   if (v.result !== null && v.result !== 'pass' && v.result !== 'fail') return null;
   const note = text(v.note, NOTE_MAX);
   if (note === undefined) return null;
-  return { ...(out as Omit<Run, 'checks' | 'faults' | 'result' | 'note'>), checks: (v.checks as string[]).slice(0, 40), faults: (v.faults as string[]).slice(0, 20), result: v.result as Run['result'], note };
+  // Added later: a run kept before reports were read has none, and a report that will not read is left off rather than the run lost.
+  const read = isRec(v.report) ? readReport(v.report) : null;
+  const report = read && isRec(v.report) && isTime(v.report.readAt) ? { ...read, readAt: v.report.readAt } : null;
+  return { ...(out as Omit<Run, 'checks' | 'faults' | 'result' | 'note' | 'report'>), checks: (v.checks as string[]).slice(0, 40), faults: (v.faults as string[]).slice(0, 20), result: v.result as Run['result'], note, report };
 }
 
 /** One store's records, read with the shared rules: a newer app's store is left alone, a bad record is counted and dropped, an id seen twice is kept once. */

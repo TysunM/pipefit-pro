@@ -22,8 +22,8 @@ import { MAX_VOICE_BODY, VOICE_SCHEMA, VOICE_SYSTEM_LITE, cleanVoiceBody, readVo
 import { MAX_SHEET_BODY, SHEET_SCHEMA, SHEET_SYSTEM, cleanSheetBody, readSheet, sheetPrompt } from '../src/ai/fittingSheet';
 import { MAX_POLISH_BODY, POLISH_SCHEMA, POLISH_SYSTEM, checkPolish, cleanPolishBody, polishMessage, readPolish } from '../src/ai/shiftPolish';
 import { MAX_ORIENTATION_BODY, ORIENTATION_SCHEMA, ORIENTATION_SYSTEM, cleanOrientationBody, orientationMessage, readCourse } from '../src/ai/orientation';
-import { MAX_MILL_BODY, MILL_PROMPT, MILL_SCHEMA, MILL_SYSTEM, cleanMillBody, readMill } from '../src/ai/millCert';
-import type { Reply } from './claude';
+import { cleanPhotoBody } from '../src/ai/photoRead';
+import { MILL_SPEC, REPORT_SPEC, type PhotoSpec, type Reply } from './claude';
 
 /** The Workers AI binding, as far as these routes use it. */
 export type Ai = { run: (model: string, inputs: Record<string, unknown>) => Promise<unknown> };
@@ -179,31 +179,34 @@ export async function sheetByWorkersAi(raw: string, ai: Ai, model: string): Prom
 }
 
 /**
- * A mill cert's heats and their sulphur, read by the vision model. A cert
- * with no heat read is no read: Claude is asked instead (index.ts).
+ * A picture read by the vision model for a photo reader (claude.ts's spec):
+ * an answer with nothing in it is no read, and Claude is asked instead.
  */
-export async function millByWorkersAi(raw: string, ai: Ai, model: string): Promise<Reply> {
-  const body = parseBody(raw, MAX_MILL_BODY, cleanMillBody, 'not_image');
+export async function photoByWorkersAi<T>(spec: PhotoSpec<T>, raw: string, ai: Ai, model: string): Promise<Reply> {
+  const body = parseBody(raw, spec.maxBody, cleanPhotoBody, 'not_image');
   if (isReply(body)) return body;
   return ask(ai, model, {
     messages: [
-      { role: 'system', content: MILL_SYSTEM },
+      { role: 'system', content: spec.system },
       {
         role: 'user',
         content: [
-          { type: 'text', text: MILL_PROMPT },
+          { type: 'text', text: spec.prompt },
           { type: 'image_url', image_url: { url: `data:${body.media};base64,${body.image}` } },
         ],
       },
     ],
-    schema: MILL_SCHEMA,
-    read: readMill,
-    key: 'cert',
+    schema: spec.schema,
+    read: spec.read,
+    key: spec.key,
     tokens: 2_000,
     ms: FREE_MS.sheet,
-    refuse: (c) => (c.heats.length ? null : `read no heat off the picture${c.unread ? ` (${c.unread})` : ''}`),
+    refuse: (v) => (spec.empty(v) ? 'read nothing off the picture' : null),
   });
 }
+
+export const millByWorkersAi = (raw: string, ai: Ai, model: string) => photoByWorkersAi(MILL_SPEC, raw, ai, model);
+export const reportByWorkersAi = (raw: string, ai: Ai, model: string) => photoByWorkersAi(REPORT_SPEC, raw, ai, model);
 
 /**
  * The shift report's facts and notes written up. A summary with a figure or a
