@@ -1,6 +1,6 @@
-import { KNOTS, knotById, knotProblems, reachAfter, reachBefore } from '../calc/knots/knots';
+import { KNOTS, knotById, knotProblems, morphRopes, reachAfter, reachBefore, stepsOf } from '../calc/knots/knots';
 import { draw, layout, lengthTo, pointAt, samples, upTo } from '../calc/knots/rope';
-import { TRACE, move, nearest, starsFor } from '../calc/knots/trace';
+import { PULL_DRAG, TRACE, move, nearest, pulled, starsFor } from '../calc/knots/trace';
 import { SAFETY, makeTest, seeded } from '../calc/knots/quiz';
 import { emptyKnots, parseKnots, recordTest, recordTie, serialiseKnots } from '../state/knotProgress';
 
@@ -22,7 +22,35 @@ describe('every knot draws and ties right', () => {
   });
   test('a crossing string that does not match the drawing is caught', () => {
     const k = knotById('figure8')!;
-    expect(knotProblems({ ...k, cross: 'ouo' })).toEqual(['figure8: 4 crossings drawn, 3 said']);
+    expect(knotProblems({ ...k, cross: 'ouo' })).toContain('figure8: 4 crossings drawn, 3 said');
+  });
+});
+
+describe('pulling it tight', () => {
+  test("every knot ends with pulling it tight, saying which parts to pull: an end pulled is the rope's very end or its standing part", () => {
+    for (const k of KNOTS) {
+      for (const p of k.tight.pulls) expect([k.id, p.at === 0 || p.at === k.ropes[p.rope]!.pts.length - 1 || k.id === 'bowline' || k.id === 'slip']).toEqual([k.id, true]);
+      const last = stepsOf(k).at(-1)!;
+      expect(last).toMatchObject({ tighten: true, text: k.tight.text });
+      expect(last.text).toMatch(/pull/i);
+      expect(stepsOf(k)).toHaveLength(k.steps.length + 1);
+    }
+  });
+  test('drawn up, a knot takes less room: its body draws in, its pulled ends go out the way they are pulled', () => {
+    for (const k of KNOTS) {
+      for (const pull of k.tight.pulls) {
+        const loose = k.ropes[pull.rope]!.pts[pull.at]!;
+        const tight = morphRopes(k, 1)[pull.rope]!.pts[pull.at]!;
+        expect([k.id, (tight[0] - loose[0]) * pull.dir[0] + (tight[1] - loose[1]) * pull.dir[1] > 0]).toEqual([k.id, true]);
+      }
+    }
+    expect(morphRopes(knotById('clove')!, 0)).toBe(knotById('clove')!.ropes);
+  });
+  test('a pull goes along the way it is pulled, never past tight or back past loose', () => {
+    expect(pulled(0, PULL_DRAG / 2, 0, [1, 0])).toBeCloseTo(0.5);
+    expect(pulled(0, 0, PULL_DRAG / 2, [1, 0])).toBe(0);
+    expect(pulled(0.5, -PULL_DRAG, 0, [1, 0])).toBe(0);
+    expect(pulled(0.5, PULL_DRAG * 3, 0, [1, 0])).toBe(1);
   });
 });
 

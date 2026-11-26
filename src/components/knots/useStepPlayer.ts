@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { AccessibilityInfo } from 'react-native';
-import { reachAfter, reachBefore, type Knot } from '../../calc/knots/knots';
+import { reachAfter, reachBefore, stepsOf, type Knot } from '../../calc/knots/knots';
 import { lengthTo, type Laid } from '../../calc/knots/rope';
 
 /** The ropes' lengths, shown as far as `to` says (points along each rope). */
@@ -17,9 +17,12 @@ export function useStepPlayer(knot: Knot, laid: Laid, step: number, playing: boo
   const before = useMemo(() => lengthsAt(laid, reachBefore(knot, step)), [knot, laid, step]);
   const after = useMemo(() => lengthsAt(laid, reachAfter(knot, step)), [knot, laid, step]);
   const moving = knot.steps[step]?.rope ?? 0;
+  // The last step pulls it tight: the rope is all shown, and it draws up.
+  const tighten = !!stepsOf(knot)[step]?.tighten;
   const [shown, setShown] = useState<number[]>(after);
   const [going, setGoing] = useState(false);
   const [still, setStill] = useState(false);
+  const [morph, setMorph] = useState(0);
 
   useEffect(() => {
     let live = true;
@@ -32,6 +35,27 @@ export function useStepPlayer(knot: Knot, laid: Laid, step: number, playing: boo
   }, []);
 
   useEffect(() => {
+    if (tighten) {
+      setShown(after.map(() => Number.MAX_SAFE_INTEGER));
+      if (!playing || still) {
+        setMorph(1);
+        setGoing(false);
+        return;
+      }
+      const run = 1500;
+      const hold = 1300;
+      const t0 = Date.now();
+      let raf = 0;
+      const tick = () => {
+        const el = (Date.now() - t0) % (run + hold);
+        setMorph(ease(Math.min(1, el / run)));
+        setGoing(el < run);
+        raf = requestAnimationFrame(tick);
+      };
+      raf = requestAnimationFrame(tick);
+      return () => cancelAnimationFrame(raf);
+    }
+    setMorph(0);
     const dist = (after[moving] ?? 0) - (before[moving] ?? 0);
     if (!playing || still || dist < 1) {
       setShown(after);
@@ -52,7 +76,7 @@ export function useStepPlayer(knot: Knot, laid: Laid, step: number, playing: boo
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [before, after, moving, playing, still]);
+  }, [before, after, moving, playing, still, tighten]);
 
-  return { shown, moving, going };
+  return { shown, moving, going, morph, tighten };
 }

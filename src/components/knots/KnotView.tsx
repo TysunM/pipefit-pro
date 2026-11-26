@@ -10,6 +10,8 @@ import { VIEW, draw, pointAt, type Laid, type Prop } from '../../calc/knots/rope
 // is now. The drawing itself is rope.ts; this only puts it on the screen.
 
 export type Tip = { rope: number; glow?: boolean; arrow?: boolean };
+/** A part to pull to set the knot: where it is, the way to pull, and whether it is the one to grab. */
+export type PullMark = { x: number; y: number; dx: number; dy: number; grab?: boolean; done?: boolean };
 
 // Each drawing's own gradient id: on the web a url(#id) takes the first in the
 // page, and the same knot drawn on a screen behind (hidden) would paint the pipe black.
@@ -40,6 +42,8 @@ export function KnotView({
   guide,
   tip,
   label,
+  pulls,
+  shift = 0,
 }: {
   knot: Knot;
   laid: Laid;
@@ -50,6 +54,9 @@ export function KnotView({
   guide?: { rope: number; from: number; to: number } | null;
   tip?: Tip | null;
   label?: string;
+  /** The parts to pull to set it, with arrows; `shift` moves the arrows along as it is pulled. */
+  pulls?: readonly PullMark[] | null;
+  shift?: number;
 }) {
   const t = useTheme();
   const parts = useMemo(() => draw(knot.ropes, knot.props, laid, shown), [knot, laid, shown]);
@@ -76,12 +83,13 @@ export function KnotView({
 
   // The glow on the end to drag: a ring that breathes, so it is found at a glance.
   const pulse = useRef(new Animated.Value(0)).current;
+  const glowing = !!tip?.glow || !!pulls?.some((p) => p.grab && !p.done);
   useEffect(() => {
-    if (!tip?.glow) return;
+    if (!glowing) return;
     const loop = Animated.loop(Animated.sequence([Animated.timing(pulse, { toValue: 1, duration: 700, easing: Easing.out(Easing.quad), useNativeDriver: true }), Animated.timing(pulse, { toValue: 0, duration: 700, easing: Easing.in(Easing.quad), useNativeDriver: true })]));
     loop.start();
     return () => loop.stop();
-  }, [tip?.glow, pulse]);
+  }, [glowing, pulse]);
   const ring = 22 * scale + 10;
 
   return (
@@ -120,6 +128,22 @@ export function KnotView({
           ),
         )}
         {guidePath ? <Path d={guidePath} fill="none" stroke={t.colors.glow} strokeWidth={3.5} strokeLinecap="round" strokeLinejoin="round" strokeDasharray="2 9" opacity={0.9} /> : null}
+        {(pulls ?? []).map((p, i) => {
+          // An arrow out from the part to pull, the way to pull it.
+          const o = 14 + shift;
+          const x0 = p.x + p.dx * o;
+          const y0 = p.y + p.dy * o;
+          const x1 = x0 + p.dx * 26;
+          const y1 = y0 + p.dy * 26;
+          const col = p.done ? t.colors.success : t.colors.glow;
+          return (
+            <React.Fragment key={`pull${i}`}>
+              <Path d={`M${x0} ${y0}L${x1} ${y1}`} stroke="#1a1208" strokeWidth={8} strokeLinecap="round" />
+              <Path d={`M${x0} ${y0}L${x1} ${y1}`} stroke={col} strokeWidth={5} strokeLinecap="round" />
+              <Path d={`M${x1 + p.dx * 12} ${y1 + p.dy * 12}L${x1 - p.dy * 9} ${y1 + p.dx * 9}L${x1 + p.dy * 9} ${y1 - p.dx * 9}Z`} fill={col} stroke="#1a1208" strokeWidth={1.4} />
+            </React.Fragment>
+          );
+        })}
         {end && tip?.arrow ? (
           <Path
             d={`M${end.x + end.dx * 22} ${end.y + end.dy * 22}L${end.x + end.dx * 11 - end.dy * 7} ${end.y + end.dy * 11 + end.dx * 7}L${end.x + end.dx * 11 + end.dy * 7} ${end.y + end.dy * 11 - end.dx * 7}Z`}
@@ -129,6 +153,26 @@ export function KnotView({
           />
         ) : null}
       </Svg>
+      {(pulls ?? [])
+        .filter((p) => p.grab && !p.done)
+        .map((p, i) => (
+          <Animated.View
+            key={`grab${i}`}
+            pointerEvents="none"
+            style={{
+              position: 'absolute',
+              left: p.x * scale - ring / 2,
+              top: p.y * scale - ring / 2,
+              width: ring,
+              height: ring,
+              borderRadius: ring / 2,
+              borderWidth: 3,
+              borderColor: t.colors.glow,
+              opacity: pulse.interpolate({ inputRange: [0, 1], outputRange: [0.95, 0.35] }),
+              transform: [{ scale: pulse.interpolate({ inputRange: [0, 1], outputRange: [0.85, 1.25] }) }],
+            }}
+          />
+        ))}
       {end && tip?.glow ? (
         <Animated.View
           pointerEvents="none"
