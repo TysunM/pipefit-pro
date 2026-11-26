@@ -17,10 +17,11 @@ import { SectionHeader } from '../components/SectionHeader';
 import { HintRow } from '../components/HintRow';
 import { AccentButton, ControlRow, GhostButton } from '../components/Buttons';
 import { ReceiveProgramSheet } from '../components/orbital/ProgramShare';
+import { QcSigningSheet } from '../components/orbital/QcSigning';
 import { Banner } from '../components/FormFields';
 import { WeldClock } from '../components/orbital/WeldClock';
 import { useTheme, type Theme } from '../theme/ThemeProvider';
-import { useOrbitalEquations, useOrbitalGear, useOrbitalPrograms, useOrbitalRuns } from '../state/orbital';
+import { useOrbitalEquations, useOrbitalGear, useOrbitalPrograms, useOrbitalRuns, useOrbitalSigning } from '../state/orbital';
 import { FAMILIES, GEAR_NUM, KIND_LABEL, familyOf, gearName, tubeLabel, type Gear, type GearKind, type Program, type Run } from '../state/orbitalBook';
 import { editedFromShipped, equationSet } from '../calc/orbitalEquations';
 import { clock, programTimes } from '../calc/orbitalProgram';
@@ -142,6 +143,8 @@ export function OrbitalScreen({ navigation, route }: Props) {
   const c = t.colors;
   const [tab, setTab] = useState<Tab>(route.params?.tab ?? 'programs');
   const [receiving, setReceiving] = useState(false);
+  const [qcOpen, setQcOpen] = useState(false);
+  const signing = useOrbitalSigning().value;
   const gear = useOrbitalGear();
   const programs = useOrbitalPrograms();
   const equations = useOrbitalEquations();
@@ -214,8 +217,20 @@ export function OrbitalScreen({ navigation, route }: Props) {
           </ControlRow>
           <ControlRow>
             <GhostButton label="Receive a program" icon="qr-code-outline" style={{ flex: 1 }} onPress={() => setReceiving(true)} />
+            <GhostButton label="QC signing" icon="shield-checkmark-outline" style={{ flex: 1 }} onPress={() => setQcOpen(true)} />
           </ControlRow>
+          {signing.signer || signing.qcs.length ? (
+            <View style={{ flexDirection: 'row', gap: t.space.sm, alignItems: 'center', paddingHorizontal: t.layout.screenPadding, paddingBottom: t.space.sm }}>
+              <Ionicons name="shield-checkmark" size={16} color={t.colors.success} />
+              <Text style={[t.type.caption, { color: t.colors.textMuted, flex: 1 }]}>
+                {signing.signer
+                  ? `This is the QC phone: programs shared from here are signed by ${signing.signer.name}.`
+                  : `Qualified programs are taken only signed by ${signing.qcs.map((q) => q.name).join(' or ')}.`}
+              </Text>
+            </View>
+          ) : null}
           <ReceiveProgramSheet visible={receiving} onClose={() => setReceiving(false)} onOpen={(id) => navigation.navigate('OrbitalProgram', { id })} />
+          <QcSigningSheet visible={qcOpen} onClose={() => setQcOpen(false)} />
           {ps.filter((p) => p.status === 'qualified').length ? <SectionHeader title="Qualified" meta={`${qualified}`} /> : null}
           {ps.filter((p) => p.status === 'qualified').map(programRow)}
           {ps.filter((p) => p.status === 'dev').length ? <SectionHeader title="In development" meta={`${ps.length - qualified}`} /> : null}

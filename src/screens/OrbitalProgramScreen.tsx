@@ -53,6 +53,7 @@ import { shareSheet } from '../print/share';
 import { programHtml } from '../print/orbital';
 import { VoicePressable } from '../voice/VoicePressable';
 import { ShareProgramSheet } from '../components/orbital/ProgramShare';
+import { SignedLine, useSignature } from '../components/orbital/QcSigning';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'OrbitalProgram'>;
 
@@ -106,6 +107,8 @@ export function OrbitalProgramScreen({ navigation, route }: Props) {
   useEffect(() => {
     navigation.setOptions({ title: draft?.name.trim() || 'Program' });
   }, [navigation, draft?.name]);
+
+  const signature = useSignature(draft);
 
   if (!draft) {
     return (
@@ -171,7 +174,7 @@ export function OrbitalProgramScreen({ navigation, route }: Props) {
   };
   const share = async () => {
     setNote(null);
-    const out = await shareSheet(programHtml(p, head, supply, eqs, dayKey(Date.now())), p.name);
+    const out = await shareSheet(programHtml(p, head, supply, eqs, dayKey(Date.now()), signature?.pdf), p.name);
     if (!out.ok) setNote(out.why);
   };
 
@@ -202,6 +205,7 @@ export function OrbitalProgramScreen({ navigation, route }: Props) {
           {p.id === 'new' ? <Pill text="Not saved yet" tone="plain" /> : null}
         </View>
         <Text style={[t.type.caption, { color: c.textMuted }]}>{[tubeLabel(p), head ? gearName(head) : 'no head chosen', supply ? gearName(supply) : ''].filter(Boolean).join(' · ')}</Text>
+        <SignedLine program={p} />
       </View>
       {locked ? (
         <Banner

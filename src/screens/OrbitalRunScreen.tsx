@@ -35,6 +35,7 @@ import { WeldReportReader } from '../components/WeldReportReader';
 import { ReportTable } from '../components/orbital/ReportTable';
 import { checkReport } from '../calc/orbitalReport';
 import { useWpsBook } from '../state/heatInputs';
+import { useSignature } from '../components/orbital/QcSigning';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'OrbitalRun'>;
 
@@ -67,6 +68,10 @@ export function OrbitalRunScreen({ navigation, route }: Props) {
       setDraft(from ? { ...newRun(from, params.kind!, Date.now()), project: settings.projectId } : null);
     }
   }
+
+  // The program's QC signature, for the run sheet: only while it is the version this weld was made to.
+  const signedProgram = draft ? programs.value.programs.find((p) => p.id === draft.programId && p.version === draft.version) : null;
+  const signature = useSignature(signedProgram);
 
   if (!draft) {
     return (
@@ -113,7 +118,7 @@ export function OrbitalRunScreen({ navigation, route }: Props) {
   const share = async () => {
     if (!program) return;
     setNote(null);
-    const out = await shareSheet(runHtml(r, program, head, supply, eqs, sulphur?.text, reportCheck ?? undefined), `${r.kind === 'coupon' ? 'Coupon' : 'Weld'} ${r.weld}`);
+    const out = await shareSheet(runHtml(r, program, head, supply, eqs, sulphur?.text, reportCheck ?? undefined, signature?.pdf), `${r.kind === 'coupon' ? 'Coupon' : 'Weld'} ${r.weld}`);
     if (!out.ok) setNote(out.why);
   };
 
