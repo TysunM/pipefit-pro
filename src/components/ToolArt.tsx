@@ -282,6 +282,17 @@ const art: Partial<Record<ToolRoute, (k: Ink) => React.ReactNode>> = {
     </G>
   ),
 
+  // A hook over two sling legs to a load, the angle marked at one pick point.
+  SlingAngle: (k) => (
+    <G fill="none" strokeLinecap="round" strokeLinejoin="round">
+      <Path d="M40 4 V12 M40 12 v5 a4 4 0 1 1 -4 4" stroke={k.line} strokeWidth={2.4} />
+      <Path d="M40 22 L16 46 M40 22 L64 46" stroke={k.accent} strokeWidth={3} />
+      <Rect x={8} y={46} width={64} height={10} rx={3} stroke={k.line} strokeWidth={2} />
+      <Path d="M54 46 A10 10 0 0 0 56.9 38.9" stroke={k.soft} strokeWidth={1.6} />
+      <Path d="M44 46 H58" stroke={k.soft} strokeWidth={1.2} strokeDasharray="2 2" />
+    </G>
+  ),
+
   // A figure eight in a line, the working end taped: a knot, tied.
   Knots: (k) => (
     <G fill="none" strokeLinecap="round" strokeLinejoin="round">

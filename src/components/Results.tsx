@@ -22,12 +22,15 @@ export function ResultBanner({
   meta,
   tone = 'default',
   speak,
+  icon = 'cut-outline',
 }: {
   label: string;
   value: string;
   hint?: string;
   meta?: string;
   tone?: 'default' | 'idle' | 'error';
+  /** The mark beside the label: a cut, unless the answer is something else (a load, say). */
+  icon?: keyof typeof Ionicons.glyphMap;
   /** The figure to read aloud, when there is a real one. */
   speak?: Speak;
 }) {
@@ -68,7 +71,7 @@ export function ResultBanner({
       >
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.sm }}>
           <Ionicons
-            name={isError ? 'alert-circle-outline' : isIdle ? 'ellipsis-horizontal-outline' : 'cut-outline'}
+            name={isError ? 'alert-circle-outline' : isIdle ? 'ellipsis-horizontal-outline' : icon}
             size={18}
             color={t.colors.textMuted}
           />

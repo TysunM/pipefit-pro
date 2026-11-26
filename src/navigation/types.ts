@@ -53,6 +53,8 @@ export type RootStackParamList = {
   OrbitalEquation: { id: string };
   /** One weld off a program: a saved one's id, or a new coupon or production weld. */
   OrbitalRun: { id: string; programId?: undefined; kind?: undefined } | { id?: undefined; programId: string; kind: 'coupon' | 'production' };
+  /** Sling angles: each leg's tension from the load, the legs and their angle, or an off-centre CG. */
+  SlingAngle: undefined;
   /** Knots for tag lines and hand lines: each one watched, tied by finger, and the test. */
   Knots: undefined;
   /** One knot: Learn (watch it tied, a step at a time) or Tie it (drag the end through it). */

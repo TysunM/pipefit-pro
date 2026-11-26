@@ -77,6 +77,7 @@ export const TOOL_WORDS: Record<OpenRoute, readonly string[]> = {
   HeatInput: ['heat input', 'heat input calculator', 'arc energy', 'travel speed', 'kilojoules per inch', 'joules per inch', 'kj per inch', 'kj per mm', 'wps check', 'wps range', 'wps ranges', 'check the wps'],
   Orbital: ['orbital welding', 'orbital welder', 'orbital weld', 'orbital', 'orbital programs', 'orbital program', 'weld schedule', 'weld schedules', 'orbital heads', 'weld heads', 'orbital equations', 'orbital coupons', 'coupons'],
   // Not "knot" alone: said, it is "not", which a fitter says all day.
+  SlingAngle: ['sling angle', 'sling angles', 'sling tension', 'sling calculator', 'leg tension', 'load angle factor', 'angle factor', 'bridle', 'rigging calculator', 'off center lift', 'off centre lift'],
   Knots: ['knots', 'knot tying', 'tie knots', 'tying knots', 'rigging knots', 'knot test', 'knot game', 'bowline', 'clove hitch'],
   Weldability: ['weldability', 'carbon equivalent', 'carbon equivalents', 'ce calculator', 'pcm', 'pren', 'pitting resistance'],
   CutList: ['cut list', 'cut sheet', 'saw list', 'cutting list', 'cuts list'],

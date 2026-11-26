@@ -57,9 +57,7 @@ describe('the zones', () => {
   });
 
   test('a zone holds at least two things, or there is nothing to move', () => {
-    // Rigging on the PipeFit tab holds the knots alone, until it has a second tool beside them.
-    const alone = new Set([sectionZone('tools', 'rigging')]);
-    for (const [zone, order] of Object.entries(ZONES)) expect(order.length).toBeGreaterThanOrEqual(alone.has(zone) ? 1 : 2);
+    for (const order of Object.values(ZONES)) expect(order.length).toBeGreaterThanOrEqual(2);
   });
 });
 

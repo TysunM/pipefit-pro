@@ -666,6 +666,37 @@ More segments = smaller cut angle = a smoother, stronger elbow. If you get the w
 
 ---
 
+## Sling angle
+
+**What each sling leg really pulls, from the load, the legs and their angle.** PipeFit tab → **Rigging → Sling angle**, or say "sling angle".
+
+A leg at an angle pulls harder than its share of the load: its share times the **angle factor**, 1 ÷ sin of the angle from horizontal. That's the same as the sling's length ÷ the hook's height above the pick point.
+
+| Angle from horizontal | Factor | |
+|---|---|---|
+| 90° | 1.000 | straight |
+| 60° | 1.155 | good |
+| 45° | 1.414 | |
+| 30° | 2.000 | the least that is used |
+
+Under 30° from horizontal, a sling is not used unless its maker or a qualified person says so (ASME B30.9).
+
+**Equal legs:**
+- Put in the load, with the rigging under the hook, and pick the units: lb, US ton, kg or tonne.
+- Pick the legs: 1 (straight down), 2, 3 or 4.
+- Give the angle as you have it: the angle itself (from horizontal or vertical), the sling length and the hook's height, or the sling length and its reach out from under the hook.
+- **Drag the hook** in the drawing up or down to try another angle. Each leg is coloured by its angle: green 60° and up, amber under 45°, red under 30°.
+- You get each leg's tension, the angle factor, each leg's share, the pull in on each pick point (it squeezes the load and loads the lugs sideways), and all the carrying legs together.
+- **Three and four legs:** on a rigid load, two legs can end up carrying it all while the others only balance it, so the app works it on two. Switch to **All** only when the assembly is rated, or rigged with an equaliser, for every leg to share.
+
+**CG off centre (two legs):** put in how far each pick point is from the centre of gravity (measured level) and how high the hook sits above them. The pick point nearer the CG takes the bigger share and its leg pulls harder. The app gives each leg's tension and angle, and **the sling lengths that hang the load level** with the hook over the CG. With equal slings, the load tilts until the CG is under the hook.
+
+**Against the tag:** put in the sling's rated load straight (vertical) off its tag, and each leg's tension is checked against it. Over the tag, it says so plainly.
+
+**Print / PDF** gives a sheet of the check to go with the lift's paperwork.
+
+> Forces, not a lift plan. The lift is planned and the rigging chosen by a qualified person, to the load's weight and the slings' tags. Choker and basket ratings, D/d and edge protection are on the tag and from the maker, and are not in this.
+
 ## Knots
 
 **The knots a fitter uses on tag lines and hand lines: watch each one tied, tie it on screen with a finger, then take the test.** PipeFit tab → **Rigging → Knots**, or say "knots".
