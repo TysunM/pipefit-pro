@@ -61,7 +61,7 @@ export function KnotView({
   pulls?: readonly PullMark[] | null;
   shift?: number;
   /** Numbered rings on the places to check. */
-  marks?: readonly { n: number; x: number; y: number }[] | null;
+  marks?: readonly { n: number | string; x: number; y: number }[] | null;
   /** Part of the drawing to fill the view with, zoomed in (drawing units, square). */
   frame?: { x: number; y: number; s: number } | null;
   /** The arrows on the parts to pull; from memory, only the rings to grab. */
