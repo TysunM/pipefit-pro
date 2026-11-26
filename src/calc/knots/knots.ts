@@ -13,7 +13,19 @@ import { layout, type P, type Prop, type Rope } from './rope';
 
 export type KnotKind = 'Loop' | 'Hitch' | 'Stopper' | 'Bend' | 'Binding';
 
-export type KnotStep = { rope: number; to: number; text: string };
+export type KnotStep = { rope: number; to: number; text: string; /** The last step: pulling it tight. */ tighten?: boolean };
+
+/** An end or a bight pulled to set the knot: the point pulled, and the way. */
+export type Pull = { rope: number; at: number; dir: readonly [number, number] };
+
+/**
+ * How the knot draws up when it is pulled tight: its body drawn in toward a
+ * centre (by s, across and down), each point by its weight (a range of points
+ * and how much: 1 all the way, 0 not at all), and the pulled points out the way
+ * they are pulled.
+ */
+export type Snug = { c: readonly [number, number]; s: readonly [number, number]; w: readonly (readonly (readonly [number, number, number])[])[] };
+export type Tight = { text: string; pulls: Pull[]; snug: Snug };
 
 export type Knot = {
   id: string;
@@ -31,6 +43,8 @@ export type Knot = {
   /** Over or under at each crossing, in the order the working end gets there. */
   cross: string;
   steps: KnotStep[];
+  /** The last step: which parts to pull, and the knot drawn up tight. */
+  tight: Tight;
 };
 
 const rope = (pts: P[], start: number, color: Rope['color'] = 'a'): Rope => ({ pts, start, color });
@@ -93,6 +107,14 @@ export const KNOTS: Knot[] = [
       { rope: 0, to: 27, text: 'Round behind the standing part: round the tree.' },
       { rope: 0, to: 32, text: 'Back down through the loop beside itself, and pull the standing part to set it.' },
     ],
+    tight: {
+      text: 'Set it: hold the eye and the tail together, and pull the standing part hard. The loop closes round both parts of the end.',
+      pulls: [
+        { rope: 0, at: 0, dir: [0, -1] },
+        { rope: 0, at: 16, dir: [0, 1] },
+      ],
+      snug: { c: [150, 135], s: [0.72, 0.72], w: [[[2, 2, 0.5], [3, 11, 1], [12, 12, 0.6], [13, 13, 0.25], [19, 19, 0.25], [20, 20, 0.6], [21, 31, 1], [32, 32, 0.7]]] },
+    },
   },
   {
     id: 'clove',
@@ -129,6 +151,14 @@ export const KNOTS: Knot[] = [
       { rope: 0, to: 9, text: 'Round the pipe again beside the first turn.' },
       { rope: 0, to: 12, text: 'Down across the front and tuck it under the first turn: an X on the front. Pull both ends to set it.' },
     ],
+    tight: {
+      text: 'Set it: pull both ends to snug the turns together on the pipe, then put the pull on the standing part.',
+      pulls: [
+        { rope: 0, at: 0, dir: [0, 1] },
+        { rope: 0, at: 12, dir: [0, 1] },
+      ],
+      snug: { c: [128, 150], s: [0.72, 1], w: [[[1, 1, 0.3], [2, 10, 1], [11, 11, 0.5]]] },
+    },
   },
   {
     id: 'figure8',
@@ -169,6 +199,14 @@ export const KNOTS: Knot[] = [
       { rope: 0, to: 11, text: 'Under the standing part and back up: round it.' },
       { rope: 0, to: 15, text: 'Down through the loop, over then under, and pull it snug: a figure eight.' },
     ],
+    tight: {
+      text: 'Set it: hold its shape and pull the standing part and the end apart, so it draws up neat with no turn crossed over.',
+      pulls: [
+        { rope: 0, at: 0, dir: [-1, 0] },
+        { rope: 0, at: 15, dir: [1, 0] },
+      ],
+      snug: { c: [140, 145], s: [0.7, 0.7], w: [[[1, 1, 0.4], [2, 13, 1], [14, 14, 0.4]]] },
+    },
   },
   {
     id: 'slip',
@@ -211,6 +249,14 @@ export const KNOTS: Knot[] = [
       { rope: 0, to: 13, text: "Don't push the end through: push a bight of it up through the loop, under then over." },
       { rope: 0, to: 18, text: 'Pull the bight and the standing part to snug it. One pull on the tail and it lets go.' },
     ],
+    tight: {
+      text: 'Set it: pull the bight against the standing part to snug it. Leave the tail free: one pull on it and it lets go.',
+      pulls: [
+        { rope: 0, at: 0, dir: [-1, 0] },
+        { rope: 0, at: 13, dir: [0, -1] },
+      ],
+      snug: { c: [150, 140], s: [0.75, 0.75], w: [[[1, 1, 0.3], [2, 11, 1], [12, 12, 0.5], [14, 14, 0.5], [15, 16, 1], [17, 17, 0.5]]] },
+    },
   },
   {
     id: 'halfhitches',
@@ -262,6 +308,14 @@ export const KNOTS: Knot[] = [
       { rope: 0, to: 18, text: 'First half hitch: round behind the standing part and back across the front of it.' },
       { rope: 0, to: 26, text: 'Second half hitch the same way round, below the first, the end tucked up under the first. Snug them up to the rail.' },
     ],
+    tight: {
+      text: 'Set it: slide both half hitches up snug against the round turn and pull the end tight. Then the load goes on the standing part.',
+      pulls: [
+        { rope: 0, at: 26, dir: [0.7, 0.7] },
+        { rope: 0, at: 0, dir: [0, 1] },
+      ],
+      snug: { c: [110, 140], s: [0.85, 0.6], w: [[[11, 11, 0.5], [12, 24, 1], [25, 25, 0.6], [26, 26, 0.2]]] },
+    },
   },
   {
     id: 'timber',
@@ -304,6 +358,11 @@ export const KNOTS: Knot[] = [
       { rope: 0, to: 13, text: 'Round the standing part: behind it and back across the front.' },
       { rope: 0, to: 17, text: 'Twist the end round its own part, the turn on the pipe, three times at least. Pull it snug.' },
     ],
+    tight: {
+      text: 'Set it: pull the standing part. The turn closes on the pipe and the twists bite on themselves. Three twists at least.',
+      pulls: [{ rope: 0, at: 0, dir: [0, -1] }],
+      snug: { c: [150, 140], s: [0.75, 0.85], w: [[[6, 6, 0.4], [7, 7, 0.8], [8, 17, 1]]] },
+    },
   },
   {
     id: 'sheetbend',
@@ -356,6 +415,21 @@ export const KNOTS: Knot[] = [
       { rope: 1, to: 11, text: 'Round behind both parts of the bight.' },
       { rope: 1, to: 15, text: 'Over the bight and tuck the end under its own line. Both short ends on the same side.' },
     ],
+    tight: {
+      text: 'Set it: hold both short ends and pull the two standing parts apart. Check both short ends are on the same side.',
+      pulls: [
+        { rope: 0, at: 0, dir: [-1, 0] },
+        { rope: 1, at: 0, dir: [1, 0] },
+      ],
+      snug: {
+        c: [150, 140],
+        s: [0.85, 0.65],
+        w: [
+          [[0, 0, 0.3], [1, 5, 1], [6, 6, 0.5]],
+          [[1, 1, 0.3], [2, 15, 1]],
+        ],
+      },
+    },
   },
   {
     id: 'square',
@@ -410,6 +484,21 @@ export const KNOTS: Knot[] = [
       { rope: 1, to: 9, text: 'Round under both orange parts.' },
       { rope: 1, to: 14, text: 'Over the bottom part and back out under the bight. Each colour stays on one side of the other: a square knot.' },
     ],
+    tight: {
+      text: "Set it: pull both parts of each colour away from the other, and it draws up flat. If a colour's two parts don't lie side by side, it's a granny: tie it again.",
+      pulls: [
+        { rope: 0, at: 0, dir: [-1, 0] },
+        { rope: 1, at: 0, dir: [1, 0] },
+      ],
+      snug: {
+        c: [140, 150],
+        s: [0.8, 0.6],
+        w: [
+          [[0, 0, 0.3], [1, 7, 1], [8, 8, 0.5]],
+          [[1, 1, 0.4], [2, 12, 1], [13, 13, 0.4]],
+        ],
+      },
+    },
   },
 ];
 
@@ -426,6 +515,51 @@ export function reachBefore(k: Knot, step: number): number[] {
 
 /** The same, once `step` is done too. */
 export const reachAfter = (k: Knot, step: number) => reachBefore(k, step + 1);
+
+/** The steps with the last one added: pulling it tight. */
+export function stepsOf(k: Knot): KnotStep[] {
+  const r = k.tight.pulls[0]!.rope;
+  return [...k.steps, { rope: r, to: k.ropes[r]!.pts.length - 1, text: k.tight.text, tighten: true }];
+}
+
+const weight = (ranges: readonly (readonly [number, number, number])[] | undefined, i: number) => ranges?.find(([a, b]) => i >= a && i <= b)?.[2] ?? 0;
+/** How far a pulled point moves out, at full tightness. */
+export const PULL_OUT = 16;
+
+/** The ropes drawn up tight. */
+export function tightRopes(k: Knot): Rope[] {
+  const { c, s, w } = k.tight.snug;
+  return k.ropes.map((r, ri) => ({
+    ...r,
+    pts: r.pts.map((p, i): P => {
+      const f = weight(w[ri], i);
+      let x = p[0] + (c[0] + (p[0] - c[0]) * s[0] - p[0]) * f;
+      let y = p[1] + (c[1] + (p[1] - c[1]) * s[1] - p[1]) * f;
+      for (const pl of k.tight.pulls) {
+        if (pl.rope === ri && pl.at === i) {
+          x += pl.dir[0] * PULL_OUT;
+          y += pl.dir[1] * PULL_OUT;
+        }
+      }
+      return p[2] ? [x, y, p[2]] : [x, y];
+    }),
+  }));
+}
+
+/** The ropes part way to tight: 0 as tied, 1 pulled tight. */
+export function morphRopes(k: Knot, t: number): Rope[] {
+  if (t <= 0) return k.ropes;
+  const tight = tightRopes(k);
+  return k.ropes.map((r, ri) => ({
+    ...r,
+    pts: r.pts.map((p, i): P => {
+      const q = tight[ri]!.pts[i]!;
+      const x = p[0] + (q[0] - p[0]) * t;
+      const y = p[1] + (q[1] - p[1]) * t;
+      return p[2] ? [x, y, p[2]] : [x, y];
+    }),
+  }));
+}
 
 /** What would make a knot draw wrong or tie wrong: the tests hold every knot to none. */
 export function knotProblems(k: Knot): string[] {
@@ -444,5 +578,13 @@ export function knotProblems(k: Knot): string[] {
   k.ropes.forEach((r, i) => last[i]! !== r.pts.length - 1 && out.push(`${k.id}: rope ${i} is never tied to its end`));
   if (!k.steps.some((s, i) => reachAfter(k, i)[s.rope]! > reachBefore(k, i)[s.rope]!)) out.push(`${k.id}: nothing to tie`);
   if (!k.use.trim() || !k.watch.trim() || k.jobs.length < 2) out.push(`${k.id}: what it is for, or what to watch, is missing`);
+  // Pulled tight, it is the same knot all the way: no crossing comes or goes, none changes over or under.
+  if (!k.tight.text.trim() || !k.tight.pulls.length) out.push(`${k.id}: says nothing of pulling it tight`);
+  if (k.tight.pulls.some((p) => !k.ropes[p.rope] || p.at < 0 || p.at >= k.ropes[p.rope]!.pts.length)) out.push(`${k.id}: pulls a point it hasn't`);
+  if (k.tight.snug.w.length !== k.ropes.length) out.push(`${k.id}: says how to draw up ${k.tight.snug.w.length} ropes of ${k.ropes.length}`);
+  for (const t of [0.25, 0.5, 0.75, 1]) {
+    const n = layout(morphRopes(k, t), k.cross).crossings.length;
+    if (n !== k.cross.length) out.push(`${k.id}: drawn up ${Math.round(t * 100)}%, ${n} crossings where ${k.cross.length} are said`);
+  }
   return out;
 }

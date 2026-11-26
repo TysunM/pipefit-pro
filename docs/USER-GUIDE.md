@@ -714,9 +714,9 @@ Under 30° from horizontal, a sling is not used unless its maker or a qualified 
 | Sheet bend | Joins two lines, even of different sizes |
 | Square knot | Ties two ends round a bundle. Never to join lines that take a load |
 
-**Learn:** the knot is tied in front of you a step at a time, the working end (taped black) moving over and under as it goes, on a loop like a short film. **Back** and **Next** move between steps; **Pause** holds the step done. With Reduce Motion on, each step shows done.
+**Learn:** the knot is tied in front of you a step at a time, the working end (taped black) moving over and under as it goes, on a loop like a short film. The last step on every knot is **Set it**: arrows show which parts to pull and which way, and the knot draws up tight in front of you. **Back** and **Next** move between steps; **Pause** holds the step done. With Reduce Motion on, each step shows done.
 
-**Tie it:** the glowing end is yours. Put a finger on it and drag it along the dashed line. It follows only along the knot's path, over and under as the knot goes, step by step. Wander off the line and it counts a slip. Tied: your time, your slips and up to three stars, and the best is kept. Then tie it in a real line before you need it on a job.
+**Tie it:** the glowing end is yours. Put a finger on it and drag it along the dashed line. It follows only along the knot's path, over and under as the knot goes, step by step. Wander off the line and it counts a slip. A knot isn't tied until it's set: once the line is through, each end to pull glows with an arrow. Drag each one the way its arrow points and the knot draws up. Tied: your time, your slips and up to three stars, and the best is kept. Then tie it in a real line before you need it on a job.
 
 **The knot test:** ten questions: which knot is this, which knot for this job, what comes next, and is that safe. Each answer says why. The missed ones link back to their knot, and the best score is kept.
 

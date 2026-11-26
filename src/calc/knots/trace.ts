@@ -42,5 +42,13 @@ export function move(t: Trace, s: readonly Sample[], end: number, x: number, y: 
   return t;
 }
 
+/** How far a pulled end is dragged, in drawing units, to pull it all the way tight. */
+export const PULL_DRAG = 60;
+
+/** How far one pull has gone, from where the drag started: along the way to pull it, never past tight or back past loose. */
+export function pulled(from: number, dx: number, dy: number, dir: readonly [number, number]): number {
+  return Math.max(0, Math.min(1, from + (dx * dir[0] + dy * dir[1]) / PULL_DRAG));
+}
+
 /** Three stars for one slip or none, two for up to three. */
 export const starsFor = (slips: number) => (slips <= 1 ? 3 : slips <= 3 ? 2 : 1);

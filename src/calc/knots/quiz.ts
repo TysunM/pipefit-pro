@@ -5,7 +5,7 @@
 // themselves (knots.ts) and the safety calls below. Pure: the order comes from
 // the random function it is given.
 
-import { KNOTS, type Knot } from './knots';
+import { KNOTS, stepsOf, type Knot } from './knots';
 
 export type Option = { id: string; label: string };
 export type Question = {
@@ -69,16 +69,20 @@ export function makeTest(rnd: () => number): Question[] {
     const job = k.jobs[Math.floor(rnd() * k.jobs.length)]!;
     qs.push({ kind: 'job', prompt: `Which knot for this: ${job.charAt(0).toLowerCase()}${job.slice(1)}?`, options: shuffle([k, ...others(k, 3, rnd)], rnd).map(asOption), answer: k.id, why: `${k.name}: ${k.use}` });
   }
-  const stepped = KNOTS.filter((k) => k.steps.length >= 4);
+  const stepped = KNOTS.filter((k) => stepsOf(k).length >= 4);
   for (const k of shuffle(stepped, rnd).slice(0, 2)) {
-    // Shown tied as far as a step in the middle; the answer is the step after it.
-    const i = 1 + Math.floor(rnd() * (k.steps.length - 2));
-    const right = k.steps[i]!;
+    // Shown tied as far as a step past the first; the answer is the step after it, pulling it tight included.
+    const all = stepsOf(k);
+    const i = 1 + Math.floor(rnd() * (all.length - 1));
+    const right = all[i]!;
     // One move from earlier in the same knot, one from another knot: never the same words as the right one.
     const unlike = (xs: typeof k.steps) => xs.filter((s) => s.text !== right.text);
-    const wrong = shuffle(unlike(k.steps.filter((_, j) => j < i)), rnd)
-      .slice(0, 1)
-      .concat(shuffle(unlike(others(k, 3, rnd).flatMap((o) => o.steps.slice(1))), rnd).slice(0, 1));
+    const first = shuffle(unlike(all.filter((_, j) => j < i)), rnd).slice(0, 1);
+    const wrong = first.concat(
+      shuffle(unlike(others(k, 3, rnd).flatMap((o) => stepsOf(o).slice(1))), rnd)
+        .filter((s) => !first.some((f) => f.text === s.text))
+        .slice(0, 1),
+    );
     qs.push({
       kind: 'next',
       prompt: `${k.name}: what comes next?`,

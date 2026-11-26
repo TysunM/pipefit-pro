@@ -10,11 +10,11 @@ import { Banner } from '../components/FormFields';
 import { AccentButton, ControlRow, GhostButton } from '../components/Buttons';
 import { KnotView } from '../components/knots/KnotView';
 import { TieGame } from '../components/knots/TieGame';
-import { laidOf } from '../components/knots/laid';
+import { laidAt, laidOf, pullsAt } from '../components/knots/laid';
 import { useStepPlayer } from '../components/knots/useStepPlayer';
 import { VoicePressable } from '../voice/VoicePressable';
 import { useTheme } from '../theme/ThemeProvider';
-import { KNOTS, knotById, type Knot } from '../calc/knots/knots';
+import { KNOTS, knotById, stepsOf, type Knot } from '../calc/knots/knots';
 import { Pill } from './OrbitalScreen';
 
 // One knot: watch it tied a step at a time, then tie it with a finger.
@@ -87,11 +87,14 @@ function KnotBody({ knot, start, navigation }: { knot: Knot; start: Mode; naviga
 function Learn({ knot, size, onTie }: { knot: Knot; size: number; onTie: () => void }) {
   const t = useTheme();
   const c = t.colors;
-  const laid = laidOf(knot);
+  const base = laidOf(knot);
+  const steps = stepsOf(knot);
   const [step, setStep] = useState(0);
   const [playing, setPlaying] = useState(true);
-  const { shown, moving, going } = useStepPlayer(knot, laid, step, playing);
-  const last = knot.steps.length - 1;
+  const { shown, moving, going, morph, tighten } = useStepPlayer(knot, base, step, playing);
+  // Pulling it tight: the knot drawn as far drawn up as it is, with arrows on the parts to pull.
+  const laid = tighten ? laidAt(knot, morph) : base;
+  const last = steps.length - 1;
   const go = (n: number) => {
     setStep(Math.max(0, Math.min(last, n)));
     setPlaying(true);
@@ -100,10 +103,19 @@ function Learn({ knot, size, onTie }: { knot: Knot; size: number; onTie: () => v
   return (
     <View style={{ gap: t.space.md }}>
       <View style={{ alignItems: 'center' }}>
-        <KnotView knot={knot} laid={laid} shown={shown} size={size} tip={{ rope: moving, arrow: going }} label={`${knot.name}, step ${step + 1} of ${last + 1}: ${knot.steps[step]!.text}`} />
+        <KnotView
+          knot={knot}
+          laid={laid}
+          shown={shown}
+          size={size}
+          tip={tighten ? null : { rope: moving, arrow: going }}
+          pulls={tighten ? pullsAt(knot, morph) : null}
+          shift={morph * 10}
+          label={`${knot.name}, step ${step + 1} of ${last + 1}: ${steps[step]!.text}`}
+        />
       </View>
       <View style={{ flexDirection: 'row', justifyContent: 'center', gap: t.space.sm }}>
-        {knot.steps.map((_, n) => (
+        {steps.map((_, n) => (
           <VoicePressable key={n} voiceLabel={`Step ${n + 1}`} onPress={() => go(n)} accessibilityRole="button" accessibilityLabel={`Step ${n + 1}`} hitSlop={8}>
             <View style={{ width: n === step ? 26 : 10, height: 10, borderRadius: 5, backgroundColor: n <= step ? c.glow : c.border }} />
           </VoicePressable>
@@ -111,7 +123,7 @@ function Learn({ knot, size, onTie }: { knot: Knot; size: number; onTie: () => v
       </View>
       <View style={{ paddingHorizontal: t.layout.screenPadding, gap: t.space.xs, minHeight: 84 }}>
         <Text style={[t.type.label, { color: c.textMuted }]}>{`Step ${step + 1} of ${last + 1}`}</Text>
-        <Text style={[t.type.sectionTitle, { color: c.text }]}>{knot.steps[step]!.text}</Text>
+        <Text style={[t.type.sectionTitle, { color: c.text }]}>{steps[step]!.text}</Text>
       </View>
       <ControlRow>
         <GhostButton label="Back" icon="chevron-back" style={{ flex: 1 }} onPress={() => go(step - 1)} />
