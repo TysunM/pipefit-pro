@@ -43,7 +43,28 @@ export function Stars({ n, size = 20 }: { n: number; size?: number }) {
   );
 }
 
-export function TieGame({ knot, laid, size, blind = false, onNext, onCheck, onTest }: { knot: Knot; laid: Laid; size: number; blind?: boolean; onNext?: () => void; onCheck?: () => void; onTest: () => void }) {
+export function TieGame({
+  knot,
+  laid,
+  size,
+  blind = false,
+  cert = false,
+  onDone,
+  onNext,
+  onCheck,
+  onTest,
+}: {
+  knot: Knot;
+  laid: Laid;
+  size: number;
+  blind?: boolean;
+  /** One knot of the Knot Certified run: from memory, no look at the line, no starting over; the run moves on. */
+  cert?: boolean;
+  onDone?: (r: { ms: number; slips: number; wrong: number }) => void;
+  onNext?: () => void;
+  onCheck?: () => void;
+  onTest?: () => void;
+}) {
   const t = useTheme();
   const c = t.colors;
   const book = useKnotBook();
@@ -90,8 +111,8 @@ export function TieGame({ knot, laid, size, blind = false, onNext, onCheck, onTe
   const scale = size / VIEW;
 
   // The responder is made once; what it needs now it reads from here.
-  const live = useRef({ k, trace, moves, scale, started, done, pull, blind, calls, answered, wrong, peeked: false, buzzed: 0, tracking: false, grab: null as { i: number; x: number; y: number; from: number } | null, origin: [0, 0] as [number, number] });
-  live.current = { ...live.current, k, trace, moves, scale, started, done, pull, blind, calls, answered, wrong };
+  const live = useRef({ k, trace, moves, scale, started, done, pull, blind, calls, answered, wrong, onDone, peeked: false, buzzed: 0, tracking: false, grab: null as { i: number; x: number; y: number; from: number } | null, origin: [0, 0] as [number, number] });
+  live.current = { ...live.current, k, trace, moves, scale, started, done, pull, blind, calls, answered, wrong, onDone };
   // The next crossing this move comes to that isn't answered yet, and whether the end has come to it.
   const nextCall = (kk: number, ans: ReadonlySet<number>): Call | undefined => live.current.calls[kk]?.find((c) => !ans.has(c.i));
   const dueAt = (kk: number, len: number, ans: ReadonlySet<number>) => {
@@ -120,6 +141,7 @@ export function TieGame({ knot, laid, size, blind = false, onNext, onCheck, onTe
     const had = book.value[where][knot.id];
     setDone({ ms, slips, wrong: wrongCalls, stars, best: !had || ms < had.bestMs });
     book.apply((b) => recordTie(b, knot.id, ms, stars, Date.now(), where));
+    live.current.onDone?.({ ms, slips, wrong: wrongCalls });
     void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   };
 
@@ -327,11 +349,13 @@ export function TieGame({ knot, laid, size, blind = false, onNext, onCheck, onTe
           <Stars n={done.stars} size={28} />
           <Text style={[t.type.body, { color: c.text, textAlign: 'center' }]}>{`${seconds(done.ms)} · ${offs(done.slips)}${callsMade(done.wrong)}${done.best ? ' · your best' : best ? ` · best ${seconds(best.bestMs)}` : ''}`}</Text>
           <Text style={[t.type.caption, { color: c.textMuted, textAlign: 'center' }]}>
-            {blind && peeked
-              ? 'With a look at the line: one star. Tie it again without one.'
-              : blind
-                ? 'Tied from memory. Now tie it in a real line, the same way, and check it before it takes a load.'
-                : "Now check it the way you'll check a real one, then tie it in a real line before you need it on a job."}
+            {cert
+              ? 'Tied. On to the next.'
+              : blind && peeked
+                ? 'With a look at the line: one star. Tie it again without one.'
+                : blind
+                  ? 'Tied from memory. Now tie it in a real line, the same way, and check it before it takes a load.'
+                  : "Now check it the way you'll check a real one, then tie it in a real line before you need it on a job."}
           </Text>
         </View>
       ) : asking ? (
@@ -355,23 +379,25 @@ export function TieGame({ knot, laid, size, blind = false, onNext, onCheck, onTe
           {blind ? "Put a finger on the glowing end. The knot's line is there but hidden: go off it and the phone buzzes until you're back on it." : 'Put a finger on the glowing end and drag it along the dashed line. The rope goes over and under as the knot does.'}
         </Text>
       ) : null}
-      <ControlRow>
-        {done ? (
-          <>
-            <GhostButton label="Tie it again" icon="refresh" style={{ flex: 1 }} onPress={again} />
-            {onNext ? <GhostButton label="Next knot" icon="arrow-forward" style={{ flex: 1 }} onPress={onNext} /> : null}
-          </>
-        ) : (
-          <>
-            <GhostButton label="Start over" icon="refresh" style={{ flex: 1 }} onPress={again} />
-            {blind ? <GhostButton label="Show me" icon="eye-outline" style={{ flex: 1 }} onPress={showMe} /> : null}
-          </>
-        )}
-      </ControlRow>
-      {done ? (
+      {cert ? null : (
+        <ControlRow>
+          {done ? (
+            <>
+              <GhostButton label="Tie it again" icon="refresh" style={{ flex: 1 }} onPress={again} />
+              {onNext ? <GhostButton label="Next knot" icon="arrow-forward" style={{ flex: 1 }} onPress={onNext} /> : null}
+            </>
+          ) : (
+            <>
+              <GhostButton label="Start over" icon="refresh" style={{ flex: 1 }} onPress={again} />
+              {blind ? <GhostButton label="Show me" icon="eye-outline" style={{ flex: 1 }} onPress={showMe} /> : null}
+            </>
+          )}
+        </ControlRow>
+      )}
+      {done && !cert ? (
         <ControlRow>
           {onCheck ? <AccentButton label="Check it" icon="search-outline" style={{ flex: 1 }} onPress={onCheck} /> : null}
-          <GhostButton label="Knot test" icon="school-outline" style={{ flex: 1 }} onPress={onTest} />
+          {onTest ? <GhostButton label="Knot test" icon="school-outline" style={{ flex: 1 }} onPress={onTest} /> : null}
         </ControlRow>
       ) : null}
     </View>

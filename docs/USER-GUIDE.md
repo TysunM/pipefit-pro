@@ -699,7 +699,7 @@ Under 30° from horizontal, a sling is not used unless its maker or a qualified 
 
 ## Knots
 
-**The knots a fitter uses on tag lines and hand lines: watch each one tied, tie it on screen with a finger, tie it again from memory, check it for faults, then take the test.** PipeFit tab → **Rigging → Knots**, or say "knots".
+**The knots a fitter uses on tag lines and hand lines: watch each one tied, tie it on screen with a finger, tie it again from memory, check it for faults, take the test, then get Knot Certified.** PipeFit tab → **Rigging → Knots**, or say "knots".
 
 > Knots are for tag lines, hand lines and light material on a hand line. Never knot a sling or a wire rope, and never use a knot for fall protection: a lift is rigged to its plan with rated gear.
 
@@ -708,7 +708,8 @@ Under 30° from horizontal, a sling is not used unless its maker or a qualified 
 | Bowline | A fixed loop in the end of a line that won't slip, and unties after a load |
 | Clove hitch | Two turns round a pipe, rail or post: quick to tie and adjust |
 | Figure eight | A stopper, so a line can't run out through a block |
-| Slip knot | Lets go with one pull on the tail. Never for a load |
+| Slip knot (sliding loop) | A bight with the end wrapped two or three times round both parts: a loop that slides closed on what it's round. Never round a person, never on a lift |
+| Quick-release knot (slipped overhand) | Lets go with one pull on the tail. Never for a load |
 | Round turn and two half hitches | Ties a line off to a rail or ring so it holds under load |
 | Timber hitch | Grips a pipe or timber for a pull or a hand-line hoist (add a half hitch for a killick hitch) |
 | Sheet bend | Joins two lines, even of different sizes |
@@ -729,13 +730,25 @@ Under 30° from horizontal, a sling is not used unless its maker or a qualified 
 | Bowline | Not set, short tail |
 | Clove hitch | End over the X instead of under it, not set, short tail |
 | Figure eight | Last tuck over instead of under (no knot at all: it falls out), not set, short tail |
-| Slip knot | Not set, short tail |
+| Slip knot | One wrap instead of two or three, not set, short tail |
+| Quick-release knot | Not set, short tail |
 | Round turn and two half hitches | Second hitch the other way (a cow hitch, not a clove), not set, short tail |
 | Timber hitch | One twist instead of three, not set |
 | Sheet bend | End not tucked under its own line, not set |
 | Square knot | Granny knot, not set, short ends |
 
 Every fault is drawn from the knot tied right, not drawn separately, so it can't be drawn wrong. The faults that change which way a crossing goes are proved with a knot invariant (the Jones polynomial): the figure eight is a true figure eight and its fault is no knot at all, and the square knot is a true square knot and its fault a true granny. The best round on each knot is kept, and the hub marks every knot with all its faults spotted as **Checked**.
+
+**Knot Certified:** the run, from the Knots hub (**Get Knot Certified**, or say "get knot certified"). Every knot from memory, back to back, in an order shuffled each run so it can't be learned by heart. No line, no steps, no Show me, no starting a knot over, and every over or under called. The clock counts tying time only. Skip a knot if you must, but a skipped knot can't be certified. At the end, a certificate in a rope frame with a rubber stamp:
+
+| Run | Stamp | Title |
+|---|---|---|
+| Every knot, nothing missed | KNOT CERTIFIED ★★★ | Grand Master of Rope |
+| Up to 4 misses | KNOT CERTIFIED ★★ | Journeyman Knotter |
+| Up to 10 misses | KNOT QUITE ~~CERTIFIED~~ | Knot Quite Certified |
+| More, or any knot skipped | KNOT YET ~~CERTIFIED~~ | Knot Yet Certified |
+
+A miss is a time off the line; a wrong call counts as two. It's awarded to "the hands holding this phone", witnessed by one very tired rope, and its fine print says it certifies absolutely nothing. It's for you: nothing is sent anywhere. The best run and the last are kept on the phone, and the hub shows your best.
 
 **The knot test:** ten questions: which knot is this, which knot for this job, what comes next, is that safe, and which one is ready to take a load, picked from two drawings. Each answer says why. The missed ones link back to their knot (a missed fault opens its Check), and the best score is kept.
 

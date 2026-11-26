@@ -228,7 +228,8 @@ const TIED: Tied[] = [
   },
   {
     id: 'slip',
-    name: 'Slip knot',
+    name: 'Quick-release knot',
+    aka: 'Slipped overhand',
     kind: 'Stopper',
     use: 'A knot that lets go with one pull on the tail: for something that has to come undone fast.',
     jobs: ['Tying off a tarp or a coil to undo in a hurry', 'A quick stopper that comes out with one pull', 'Holding a coil of hand line together'],
@@ -274,6 +275,78 @@ const TIED: Tied[] = [
         { rope: 0, at: 13, dir: [0, -1] },
       ],
       snug: { c: [150, 140], s: [0.75, 0.75], w: [[[1, 1, 0.3], [2, 11, 1], [12, 12, 0.5], [14, 14, 0.5], [15, 16, 1], [17, 17, 0.5]]] },
+    },
+  },
+  {
+    id: 'slipknot',
+    name: 'Slip knot',
+    aka: 'Sliding loop',
+    kind: 'Loop',
+    use: 'A loop that slides: pull the standing part and it closes snug on whatever it is round.',
+    jobs: ['Snugging a hand line round a bundle of conduit', 'A loop that cinches tight on a post or rail', 'Closing a line round a rolled-up tarp'],
+    watch: 'It slides closed under load: never round a person, and never on a lift. For a loop that holds its size, tie a bowline.',
+    ropes: [
+      rope(
+        [
+          [108, 2],
+          [108, 50],
+          [108, 100],
+          [108, 150],
+          [108, 200],
+          [110, 236],
+          [128, 260],
+          [150, 252],
+          [157, 222],
+          [157, 185],
+          [157, 145],
+          [157, 105],
+          [159, 72],
+          [178, 46],
+          [220, 44],
+          [250, 70],
+          [262, 120],
+          [252, 172],
+          [224, 200],
+          [192, 203],
+          [145, 192],
+          [100, 182],
+          [82, 170],
+          [90, 156],
+          [128, 150],
+          [178, 146],
+          [180, 134],
+          [140, 128],
+          [100, 120],
+          [82, 108],
+          [90, 94],
+          [128, 88],
+          [178, 84],
+          [186, 74],
+          [145, 66],
+          [104, 60],
+          [70, 44],
+          [44, 22],
+        ],
+        2,
+      ),
+    ],
+    props: [],
+    cross: 'oouuoouuoo',
+    steps: [
+      { rope: 0, to: 2, text: 'The standing part comes down from the top.' },
+      { rope: 0, to: 11, text: 'Fold the end back along the line to make a bight: the end runs back beside the standing part.' },
+      { rope: 0, to: 19, text: 'Carry the end on round in a loop, back toward the bight.' },
+      { rope: 0, to: 25, text: 'Wrap the end across the front of both parts and round behind them, inside the loop.' },
+      { rope: 0, to: 32, text: 'Wrap it round both parts again, working up the line: two or three wraps in all.' },
+      { rope: 0, to: 37, text: 'Bring the end across the front of both parts and out.' },
+    ],
+    tight: {
+      text: 'Set it: hold the loop and pull the end to snug the wraps into a neat coil. Then pull the standing part, and the loop slides closed on what it is round.',
+      pulls: [
+        { rope: 0, at: 37, dir: [-0.7, -0.7] },
+        { rope: 0, at: 0, dir: [0, -1] },
+      ],
+      snug: { c: [132, 125], s: [0.58, 0.8], w: [[[11, 11, 0.3], [12, 12, 0.6], [13, 18, 0.9], [19, 35, 1], [36, 36, 0.5]]] },
     },
   },
   {
@@ -573,6 +646,18 @@ const DRESS: Record<string, Pick<Knot, 'checks' | 'faults'>> = {
       shortTail("Cut short, there's nothing to grab to let it go, and the tail can pull through by itself. Leave a tail you can get hold of."),
     ],
   },
+  slipknot: {
+    checks: [
+      { text: 'Two or three wraps round both parts of the line, lying side by side.', at: [[0, 22], [0, 29]] },
+      { text: 'The end comes out of the last wrap with a tail to spare.', at: [[0, 36]] },
+      { text: 'The loop slides: pull the standing part and it closes. Never round a person.', at: [[0, 6]] },
+    ],
+    faults: [
+      { id: 'wraps', kind: 'short', ropes: [0], after: 3, name: 'One wrap', why: 'Only one wrap round both parts. It can pull straight out under load: two or three wraps.' },
+      notSet("Wraps left loose don't grip: the loop won't stay where you set it, and the end can work out. Pull the end to snug the wraps first."),
+      shortTail(),
+    ],
+  },
   halfhitches: {
     checks: [
       { text: 'Two full turns on the rail: the round turn takes the load.', at: [[0, 7]] },
@@ -701,7 +786,10 @@ export function faultDrawing(k: Knot, f: Fault): { ropes: Rope[]; cross: string;
       if (f.after !== undefined && i > f.after) return;
       for (const side of [c.later, c.earlier]) if (side.rope === r) last = Math.max(last, side.len);
     });
-    return last + SHORT_TAIL;
+    // Cut short of the next crossing along, a rope width clear, so a crossing is never half drawn.
+    let next = Infinity;
+    for (const c of crossings) for (const side of [c.later, c.earlier]) if (side.rope === r && side.len > last + 0.5) next = Math.min(next, side.len);
+    return Math.max(last + ROPE_W, Math.min(last + SHORT_TAIL, next - ROPE_W));
   });
   return { ropes, cross: k.cross, keep };
 }
