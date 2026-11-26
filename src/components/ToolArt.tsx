@@ -282,6 +282,15 @@ const art: Partial<Record<ToolRoute, (k: Ink) => React.ReactNode>> = {
     </G>
   ),
 
+  // A figure eight in a line, the working end taped: a knot, tied.
+  Knots: (k) => (
+    <G fill="none" strokeLinecap="round" strokeLinejoin="round">
+      <Path d="M6 40 H30 C42 40 50 34 50 24 C50 14 38 10 31 18 C25 25 26 38 28 46 C30 54 22 58 18 52 C14 46 22 34 34 30 C46 26 58 30 70 32" stroke={k.line} strokeWidth={5} />
+      <Path d="M6 40 H30 C42 40 50 34 50 24 C50 14 38 10 31 18 C25 25 26 38 28 46 C30 54 22 58 18 52 C14 46 22 34 34 30 C46 26 58 30 70 32" stroke={k.accent} strokeWidth={2.6} />
+      <Path d="M66 31.5 L72 32.5" stroke={k.line} strokeWidth={4} />
+    </G>
+  ),
+
   // A tube end-on in an orbital head: the levels round it as arcs, the arc at the top going clockwise.
   Orbital: (k) => (
     <G fill="none" strokeLinecap="round" strokeLinejoin="round">

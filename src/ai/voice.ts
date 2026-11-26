@@ -68,6 +68,7 @@ export const VOICE_ROUTES = [
   'HeatInput',
   'Weldability',
   'Orbital',
+  'Knots',
   'Calibration',
   'Passport',
   'Orientation',
@@ -113,6 +114,7 @@ const ROUTE_WORDS: Record<VoiceRoute, string> = {
   HeatInput: 'heat input: kJ per inch or per mm from volts, amps, length welded and arc time, or a machine\'s total energy; travel speed; checked against a WPS window (amps, volts, travel speed, heat input); saved and exported',
   Weldability: 'weldability: carbon equivalents (IIW, CET, AWS, Pcm) and PREN from a mill cert\'s chemistry',
   Orbital: 'orbital welding: weld schedules (programs) with their levels, the weld heads and power supplies, the equations, and coupon and production weld run sheets',
+  Knots: 'knots for tag lines and hand lines (bowline, clove hitch, slip knot, figure eight, half hitches, timber hitch, sheet bend, square knot): each one shown tied step by step, tied on screen by finger, and a knot test',
 };
 
 export const TEST_OPS = ['start_hold', 'reading', 'end_hold', 'pass', 'fail'] as const;
