@@ -36,7 +36,7 @@ export function Stars({ n, size = 20 }: { n: number; size?: number }) {
   );
 }
 
-export function TieGame({ knot, laid, size, onNext, onTest }: { knot: Knot; laid: Laid; size: number; onNext?: () => void; onTest: () => void }) {
+export function TieGame({ knot, laid, size, onNext, onCheck, onTest }: { knot: Knot; laid: Laid; size: number; onNext?: () => void; onCheck?: () => void; onTest: () => void }) {
   const t = useTheme();
   const c = t.colors;
   const book = useKnotBook();
@@ -233,7 +233,7 @@ export function TieGame({ knot, laid, size, onNext, onTest }: { knot: Knot; laid
           <Text style={[t.type.sectionTitle, { color: c.text }]}>{`${knot.name}, tied`}</Text>
           <Stars n={done.stars} size={28} />
           <Text style={[t.type.body, { color: c.text }]}>{`${seconds(done.ms)} · ${done.slips} slip${done.slips === 1 ? '' : 's'}${done.best ? ' · your best' : best ? ` · best ${seconds(best.bestMs)}` : ''}`}</Text>
-          <Text style={[t.type.caption, { color: c.textMuted, textAlign: 'center' }]}>Now tie it in a real line, the same way, before you need it on a job.</Text>
+          <Text style={[t.type.caption, { color: c.textMuted, textAlign: 'center' }]}>Now check it the way you'll check a real one, then tie it in a real line before you need it on a job.</Text>
         </View>
       ) : (
         <Text style={[t.type.body, { color: c.text, paddingHorizontal: t.layout.screenPadding }]}>{pull ? knot.tight.text : cur.text}</Text>
@@ -244,7 +244,7 @@ export function TieGame({ knot, laid, size, onNext, onTest }: { knot: Knot; laid
       <ControlRow>
         {done ? (
           <>
-            <AccentButton label="Tie it again" icon="refresh" style={{ flex: 1 }} onPress={again} />
+            <GhostButton label="Tie it again" icon="refresh" style={{ flex: 1 }} onPress={again} />
             {onNext ? <GhostButton label="Next knot" icon="arrow-forward" style={{ flex: 1 }} onPress={onNext} /> : null}
           </>
         ) : (
@@ -253,7 +253,8 @@ export function TieGame({ knot, laid, size, onNext, onTest }: { knot: Knot; laid
       </ControlRow>
       {done ? (
         <ControlRow>
-          <GhostButton label="Take the knot test" icon="school-outline" style={{ flex: 1 }} onPress={onTest} />
+          {onCheck ? <AccentButton label="Check it" icon="search-outline" style={{ flex: 1 }} onPress={onCheck} /> : null}
+          <GhostButton label="Knot test" icon="school-outline" style={{ flex: 1 }} onPress={onTest} />
         </ControlRow>
       ) : null}
     </View>

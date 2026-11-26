@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef } from 'react';
 import { Animated, Easing, View } from 'react-native';
-import Svg, { Defs, LinearGradient, Path, Rect, Stop } from 'react-native-svg';
+import Svg, { Circle, Defs, LinearGradient, Path, Rect, Stop, Text as SvgText } from 'react-native-svg';
 import { useTheme } from '../../theme/ThemeProvider';
 import type { Knot } from '../../calc/knots/knots';
 import { VIEW, draw, pointAt, type Laid, type Prop } from '../../calc/knots/rope';
@@ -44,6 +44,8 @@ export function KnotView({
   label,
   pulls,
   shift = 0,
+  marks,
+  frame,
 }: {
   knot: Knot;
   laid: Laid;
@@ -57,6 +59,10 @@ export function KnotView({
   /** The parts to pull to set it, with arrows; `shift` moves the arrows along as it is pulled. */
   pulls?: readonly PullMark[] | null;
   shift?: number;
+  /** Numbered rings on the places to check. */
+  marks?: readonly { n: number; x: number; y: number }[] | null;
+  /** Part of the drawing to fill the view with, zoomed in (drawing units, square). */
+  frame?: { x: number; y: number; s: number } | null;
 }) {
   const t = useTheme();
   const parts = useMemo(() => draw(knot.ropes, knot.props, laid, shown), [knot, laid, shown]);
@@ -94,7 +100,7 @@ export function KnotView({
 
   return (
     <View style={{ width: size, height: size, borderRadius: t.radius.lg, overflow: 'hidden', backgroundColor: t.colors.bgSunken }} accessible accessibilityRole="image" accessibilityLabel={label ?? knot.name}>
-      <Svg width={size} height={size} viewBox={`0 0 ${VIEW} ${VIEW}`}>
+      <Svg width={size} height={size} viewBox={frame ? `${frame.x} ${frame.y} ${frame.s} ${frame.s}` : `0 0 ${VIEW} ${VIEW}`}>
         <Defs>
           <LinearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
             <Stop offset="0" stopColor="#59636e" />
@@ -141,6 +147,21 @@ export function KnotView({
               <Path d={`M${x0} ${y0}L${x1} ${y1}`} stroke="#1a1208" strokeWidth={8} strokeLinecap="round" />
               <Path d={`M${x0} ${y0}L${x1} ${y1}`} stroke={col} strokeWidth={5} strokeLinecap="round" />
               <Path d={`M${x1 + p.dx * 12} ${y1 + p.dy * 12}L${x1 - p.dy * 9} ${y1 + p.dx * 9}L${x1 + p.dy * 9} ${y1 - p.dx * 9}Z`} fill={col} stroke="#1a1208" strokeWidth={1.4} />
+            </React.Fragment>
+          );
+        })}
+        {(marks ?? []).map((m, i) => {
+          // A ring round the place, its number on a badge pushed in from the drawing's edge.
+          const bx = Math.max(12, Math.min(VIEW - 12, m.x + 17));
+          const by = Math.max(12, Math.min(VIEW - 12, m.y - 17));
+          return (
+            <React.Fragment key={`mark${i}`}>
+              <Circle cx={m.x} cy={m.y} r={19} fill="none" stroke="#1a1208" strokeWidth={5} opacity={0.6} />
+              <Circle cx={m.x} cy={m.y} r={19} fill="none" stroke={t.colors.glow} strokeWidth={2.6} strokeDasharray="5 4" />
+              <Circle cx={bx} cy={by} r={10} fill={t.colors.glow} stroke="#1a1208" strokeWidth={1.6} />
+              <SvgText x={bx} y={by + 4.2} fill="#1a1208" fontSize={12} fontWeight="800" textAnchor="middle">
+                {String(m.n)}
+              </SvgText>
             </React.Fragment>
           );
         })}

@@ -8,7 +8,7 @@ import { Screen } from '../components/Screen';
 import { SectionHeader } from '../components/SectionHeader';
 import { AccentButton, ControlRow } from '../components/Buttons';
 import { KnotView } from '../components/knots/KnotView';
-import { laidOf } from '../components/knots/laid';
+import { laidFault, laidOf, laidSet, pairFrame } from '../components/knots/laid';
 import { lengthsAt } from '../components/knots/useStepPlayer';
 import { VoicePressable } from '../voice/VoicePressable';
 import { useTheme } from '../theme/ThemeProvider';
@@ -19,7 +19,7 @@ import { makeTest, seeded, type Question } from '../calc/knots/quiz';
 import { ListRow } from './OrbitalScreen';
 
 // Ten questions: what knot is that, which knot for the job, what comes next,
-// and is that safe. Each answer says why; the best score is kept.
+// is that safe, and which one is ready to load. Each answer says why; the best score is kept.
 
 type Props = NativeStackScreenProps<RootStackParamList, 'KnotTest'>;
 
@@ -81,7 +81,7 @@ export function KnotTestScreen({ navigation }: Props) {
         {missed.length ? <SectionHeader title="Missed" meta={`${missed.length}`} /> : null}
         {missed.map((m, j) => {
           const id = knotOf(m);
-          return <ListRow key={j} voice={`Missed ${j + 1}`} title={m.prompt} sub={m.why} onPress={() => (id ? navigation.navigate('Knot', { id }) : undefined)} />;
+          return <ListRow key={j} voice={`Missed ${j + 1}`} title={m.prompt} sub={m.why} onPress={() => (id ? navigation.navigate('Knot', { id, mode: m.kind === 'fault' ? 'check' : undefined }) : undefined)} />;
         })}
       </Screen>
     );
@@ -99,13 +99,36 @@ export function KnotTestScreen({ navigation }: Props) {
         <Text style={[t.type.label, { color: c.textMuted }]}>{`Question ${at + 1} of ${qs.length}`}</Text>
         <Text style={[t.type.sectionTitle, { color: c.text }]}>{q.prompt}</Text>
       </View>
-      {k ? (
+      {k && q.kind === 'fault' ? (
+        <View style={{ flexDirection: 'row', justifyContent: 'center', gap: t.space.sm, paddingHorizontal: t.layout.screenPadding, paddingTop: t.space.md }}>
+          {q.options.map((o, s) => {
+            const fault = k.faults.find((f) => f.id === q.fault);
+            const d = s === q.good || !fault ? laidSet(k) : laidFault(k, fault);
+            const right = o.id === q.answer;
+            const ink = picked === null ? c.border : right ? c.success : picked === o.id ? c.danger : c.border;
+            const half = Math.floor((Math.min(width - 2 * t.layout.screenPadding, 440) - t.space.sm) / 2);
+            return (
+              <VoicePressable
+                key={o.id}
+                voiceLabel={o.label}
+                onPress={() => pick(o.id)}
+                accessibilityRole="button"
+                accessibilityLabel={o.label}
+                accessibilityState={{ selected: picked === o.id, disabled: picked !== null }}
+                style={{ borderRadius: t.radius.lg + 3, borderWidth: picked !== null && (right || picked === o.id) ? 3 : 1.5, borderColor: ink }}
+              >
+                <KnotView knot={k} laid={d.laid} shown={d.shown} size={half - 6} frame={fault ? pairFrame(k, fault) : null} label={`${k.name}, ${o.label.toLowerCase()}`} />
+              </VoicePressable>
+            );
+          })}
+        </View>
+      ) : k ? (
         <View style={{ alignItems: 'center', paddingVertical: t.space.md }}>
           <KnotView knot={k} laid={laidOf(k)} shown={lengthsAt(laidOf(k), reachAfter(k, q.shownStep ?? k.steps.length - 1))} size={size} label={q.kind === 'name' ? 'A knot' : `${k.name}, part tied`} />
         </View>
       ) : null}
       <View style={{ paddingHorizontal: t.layout.screenPadding, gap: t.space.sm, paddingTop: t.space.sm }}>
-        {q.options.map((o) => {
+        {(q.kind === 'fault' ? [] : q.options).map((o) => {
           const right = o.id === q.answer;
           const mine = picked === o.id;
           const ink = picked === null ? c.border : right ? c.success : mine ? c.danger : c.border;

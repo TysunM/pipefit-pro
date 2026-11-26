@@ -699,7 +699,7 @@ Under 30° from horizontal, a sling is not used unless its maker or a qualified 
 
 ## Knots
 
-**The knots a fitter uses on tag lines and hand lines: watch each one tied, tie it on screen with a finger, then take the test.** PipeFit tab → **Rigging → Knots**, or say "knots".
+**The knots a fitter uses on tag lines and hand lines: watch each one tied, tie it on screen with a finger, check it for faults, then take the test.** PipeFit tab → **Rigging → Knots**, or say "knots".
 
 > Knots are for tag lines, hand lines and light material on a hand line. Never knot a sling or a wire rope, and never use a knot for fall protection: a lift is rigged to its plan with rated gear.
 
@@ -718,7 +718,22 @@ Under 30° from horizontal, a sling is not used unless its maker or a qualified 
 
 **Tie it:** the glowing end is yours. Put a finger on it and drag it along the dashed line. It follows only along the knot's path, over and under as the knot goes, step by step. Wander off the line and it counts a slip. A knot isn't tied until it's set: once the line is through, each end to pull glows with an arrow. Drag each one the way its arrow points and the knot draws up. Tied: your time, your slips and up to three stars, and the best is kept. Then tie it in a real line before you need it on a job.
 
-**The knot test:** ten questions: which knot is this, which knot for this job, what comes next, and is that safe. Each answer says why. The missed ones link back to their knot, and the best score is kept.
+**Check:** what a knot tied right looks like before it takes a load. The knot is drawn set, with numbered rings on the places to look at, and the checks are listed underneath: on a bowline, the small loop closing on both parts of the end, the collar snug on the standing part, and the tail inside the eye. Then **spot the fault**: each fault hands really tie is drawn beside the knot tied right, zoomed in on the knot, and you tap the one that's ready to take a load. The answer names the fault, says why it fails and how to fix it. Finishing **Tie it** offers **Check it** to go straight here.
+
+| Knot | Faults to spot |
+|---|---|
+| Bowline | Not set, short tail |
+| Clove hitch | End over the X instead of under it, not set, short tail |
+| Figure eight | Last tuck over instead of under (no knot at all: it falls out), not set, short tail |
+| Slip knot | Not set, short tail |
+| Round turn and two half hitches | Second hitch the other way (a cow hitch, not a clove), not set, short tail |
+| Timber hitch | One twist instead of three, not set |
+| Sheet bend | End not tucked under its own line, not set |
+| Square knot | Granny knot, not set, short ends |
+
+Every fault is drawn from the knot tied right, not drawn separately, so it can't be drawn wrong. The faults that change which way a crossing goes are proved with a knot invariant (the Jones polynomial): the figure eight is a true figure eight and its fault is no knot at all, and the square knot is a true square knot and its fault a true granny. The best round on each knot is kept, and the hub marks every knot with all its faults spotted as **Checked**.
+
+**The knot test:** ten questions: which knot is this, which knot for this job, what comes next, is that safe, and which one is ready to take a load, picked from two drawings. Each answer says why. The missed ones link back to their knot (a missed fault opens its Check), and the best score is kept.
 
 ## 3D spool
 

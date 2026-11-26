@@ -1,19 +1,22 @@
 // The knot test
 // -------------
 // Ten questions a rigger would ask a hand: what knot is that, which knot for
-// this job, what comes next, and is that safe. The answers come from the knots
+// this job, what comes next, is that safe, and which one is ready to load. The answers come from the knots
 // themselves (knots.ts) and the safety calls below. Pure: the order comes from
 // the random function it is given.
 
-import { KNOTS, stepsOf, type Knot } from './knots';
+import { KNOTS, stepsOf, type Fault, type Knot } from './knots';
 
 export type Option = { id: string; label: string };
 export type Question = {
-  kind: 'name' | 'job' | 'next' | 'safe';
+  kind: 'name' | 'job' | 'next' | 'safe' | 'fault';
   prompt: string;
   /** The knot drawn with the question, and how far tied (the step done), when there is one. */
   knot?: string;
   shownStep?: number;
+  /** Spot the fault: the fault drawn, and which side the knot tied right is on (0 left, 1 right). */
+  fault?: string;
+  good?: 0 | 1;
   options: Option[];
   answer: string;
   why: string;
@@ -59,13 +62,18 @@ function shuffle<T>(xs: readonly T[], rnd: () => number): T[] {
 const others = (k: Knot, n: number, rnd: () => number) => shuffle(KNOTS.filter((x) => x.id !== k.id), rnd).slice(0, n);
 const asOption = (k: Knot): Option => ({ id: k.id, label: k.name });
 
-/** A test: three of what knot is that, three of which knot for the job, two of what comes next, two of is that safe. */
+/** A round of spot the fault: every fault the knot has, each beside the knot tied right, on a side picked at random. */
+export function faultRound(k: Knot, rnd: () => number): { fault: Fault; good: 0 | 1 }[] {
+  return shuffle(k.faults, rnd).map((fault) => ({ fault, good: rnd() < 0.5 ? 0 : 1 }));
+}
+
+/** A test: two each of what knot is that, which knot for the job, what comes next, is that safe, and which one is ready to load. */
 export function makeTest(rnd: () => number): Question[] {
   const qs: Question[] = [];
-  for (const k of shuffle(KNOTS, rnd).slice(0, 3)) {
+  for (const k of shuffle(KNOTS, rnd).slice(0, 2)) {
     qs.push({ kind: 'name', prompt: 'Which knot is this?', knot: k.id, shownStep: k.steps.length - 1, options: shuffle([k, ...others(k, 3, rnd)], rnd).map(asOption), answer: k.id, why: `${k.name}: ${k.use}` });
   }
-  for (const k of shuffle(KNOTS, rnd).slice(0, 3)) {
+  for (const k of shuffle(KNOTS, rnd).slice(0, 2)) {
     const job = k.jobs[Math.floor(rnd() * k.jobs.length)]!;
     qs.push({ kind: 'job', prompt: `Which knot for this: ${job.charAt(0).toLowerCase()}${job.slice(1)}?`, options: shuffle([k, ...others(k, 3, rnd)], rnd).map(asOption), answer: k.id, why: `${k.name}: ${k.use}` });
   }
@@ -95,6 +103,22 @@ export function makeTest(rnd: () => number): Question[] {
   }
   for (const s of shuffle(SAFETY, rnd).slice(0, 2)) {
     qs.push({ kind: 'safe', prompt: `Safe or not? ${s.text}`, options: [{ id: 'yes', label: 'Safe' }, { id: 'no', label: 'Not safe' }], answer: s.safe ? 'yes' : 'no', why: s.why });
+  }
+  for (const k of shuffle(KNOTS, rnd).slice(0, 2)) {
+    const [{ fault, good }] = faultRound(k, rnd) as [{ fault: Fault; good: 0 | 1 }];
+    qs.push({
+      kind: 'fault',
+      prompt: `${k.name}: which one is ready to take a load?`,
+      knot: k.id,
+      fault: fault.id,
+      good,
+      options: [
+        { id: 'left', label: 'The left one' },
+        { id: 'right', label: 'The right one' },
+      ],
+      answer: good === 0 ? 'left' : 'right',
+      why: `The other: ${fault.name.toLowerCase()}. ${fault.why}`,
+    });
   }
   return shuffle(qs, rnd);
 }
