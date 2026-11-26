@@ -15,7 +15,8 @@ import { Screen } from '../components/Screen';
 import { Segmented } from '../components/Segmented';
 import { SectionHeader } from '../components/SectionHeader';
 import { HintRow } from '../components/HintRow';
-import { AccentButton, ControlRow } from '../components/Buttons';
+import { AccentButton, ControlRow, GhostButton } from '../components/Buttons';
+import { ReceiveProgramSheet } from '../components/orbital/ProgramShare';
 import { Banner } from '../components/FormFields';
 import { WeldClock } from '../components/orbital/WeldClock';
 import { useTheme, type Theme } from '../theme/ThemeProvider';
@@ -140,6 +141,7 @@ export function OrbitalScreen({ navigation, route }: Props) {
   const t = useTheme();
   const c = t.colors;
   const [tab, setTab] = useState<Tab>(route.params?.tab ?? 'programs');
+  const [receiving, setReceiving] = useState(false);
   const gear = useOrbitalGear();
   const programs = useOrbitalPrograms();
   const equations = useOrbitalEquations();
@@ -210,6 +212,10 @@ export function OrbitalScreen({ navigation, route }: Props) {
           <ControlRow>
             <AccentButton label="New program" icon="add" style={{ flex: 1 }} onPress={() => navigation.navigate('OrbitalProgram', { id: 'new' })} />
           </ControlRow>
+          <ControlRow>
+            <GhostButton label="Receive a program" icon="qr-code-outline" style={{ flex: 1 }} onPress={() => setReceiving(true)} />
+          </ControlRow>
+          <ReceiveProgramSheet visible={receiving} onClose={() => setReceiving(false)} onOpen={(id) => navigation.navigate('OrbitalProgram', { id })} />
           {ps.filter((p) => p.status === 'qualified').length ? <SectionHeader title="Qualified" meta={`${qualified}`} /> : null}
           {ps.filter((p) => p.status === 'qualified').map(programRow)}
           {ps.filter((p) => p.status === 'dev').length ? <SectionHeader title="In development" meta={`${ps.length - qualified}`} /> : null}
