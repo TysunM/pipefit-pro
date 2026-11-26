@@ -1582,7 +1582,17 @@ Then the level being edited (degrees, RPM, peak, background, pulse times), a tab
 - Not side by side? **Send as text** puts the code in a message. On the other phone, paste it into **Receive a program** and tap **Read the code**.
 - Before anything changes, it says what it would do: **new**, **update** an older version (the phone's own copy goes under Earlier versions), **already here**, or **this phone's is newer** (nothing taken).
 - Equipment and equations already on the phone are kept as they are. Only missing ones are added.
-- The code is checked for a misread or a message cut short, and every record is checked as if typed in. It is not a signature: it doesn't prove who made it. Take programs from your own QC.
+- The code is checked for a misread or a message cut short, and every record is checked as if typed in. On its own that doesn't prove who made it: that's what QC signing is for.
+
+**QC signing: proof a program came from your QC:**
+- On the QC phone: **Orbital welding → Programs → QC signing**, put your name, tap **Make this the QC phone**. It shows the phone's key: sixteen characters like `K2JD-BR7D-WYZP-S31T`.
+- Every program shared from the QC phone is signed. The share sheet says so and shows the key.
+- On a crew phone, the first signed program shows the QC's key. Check it against the QC phone's screen, then tap **Trust … and add it**.
+- From then on, a crew phone takes a **qualified** program only if a QC it trusts signed it. Programs in development still come in, marked **Not signed**.
+- A program says **Signed by your QC** while it's exactly what was signed. Its program sheet and its run sheets carry the QC's name and key.
+- A crew phone passing a program on sends the QC's own signed code, so the next phone sees the QC's signature too.
+- **Key changed?** A code signed with a different key under a trusted QC's name is flagged in red. Trust the new key only after checking it on the QC's screen. It replaces the old key, which may be on a lost phone.
+- The key never leaves the QC phone: it isn't in a backup or a code. If the QC phone is lost, make a new key on the next one.
 
 ### 3. Welds
 **Weld a coupon** (or **Weld**, on a qualified program) opens the run sheet:

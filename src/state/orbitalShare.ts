@@ -19,6 +19,7 @@
 // are kept as they are: the crew's own edits are never written over.
 
 import { equationSet, validEquation, newEquation, type Equation } from '../calc/orbitalEquations';
+import { MAX_QC_NAME, signText, verifyText, type SignedCopy, type Signed, type Signer } from './qcSigning';
 import { programFigures } from '../calc/orbitalProgram';
 import {
   FAMILIES,
@@ -131,32 +132,54 @@ export function ownEquationsFor(p: ProgramBody, head: Gear | undefined, saved: r
   return saved.filter((e) => !e.builtIn && used.has(e.id));
 }
 
-/** The code for a program, with the equipment it names and the equations of the crew's own that work on it. */
-export function packShare(p: Program, gear: readonly Gear[], equations: readonly Equation[]): string {
+/**
+ * The code for a program, with the equipment it names and the equations of the crew's own that work on it.
+ * From the QC phone it is signed: the QC's name and key go inside the checked part, the signature after it.
+ */
+export function packShare(p: Program, gear: readonly Gear[], equations: readonly Equation[], signer: Signer | null = null): string {
   const named = gear.filter((g) => g.id === p.headId || g.id === p.supplyId);
   const head = named.find((g) => g.id === p.headId);
   // The head and supply by their place in the list, not their ids twice over.
   const at = (id: string | null) => (id === null ? null : named.findIndex((g) => g.id === id));
   const program = { ...p, headId: at(p.headId), supplyId: at(p.supplyId) };
-  const body = { p: toWire(program), g: named.map(({ kind: _k, ...g }) => (void _k, toWire(g))), e: ownEquationsFor(p, head, equations).map((e) => toWire(e)) };
+  const body: Record<string, unknown> = { p: toWire(program), g: named.map(({ kind: _k, ...g }) => (void _k, toWire(g))), e: ownEquationsFor(p, head, equations).map((e) => toWire(e)) };
+  if (signer) body.q = { n: signer.name, k: signer.key };
   const json = ascii(JSON.stringify(body));
-  return `${SHARE_PREFIX}:${checksum(json)}:${json}`;
+  const code = `${SHARE_PREFIX}:${checksum(json)}:${json}`;
+  return signer ? `${code}.${signText(signer, json)}` : code;
 }
 
+const NOT_WHOLE = 'That code did not come through whole. Scan it again, or send it again as text.';
+const BAD_SIGNATURE = "The QC's signature on this code doesn't check out: it was changed after it was signed, or cut short. Ask for it again.";
+
 /** A code read off a QR or pasted from a message, checked and every record made whole, or why not. */
-export function unpackShare(text: string): { ok: true; share: Share } | { ok: false; why: string } {
+export function unpackShare(text: string): { ok: true; share: Share; signed: Signed | null } | { ok: false; why: string } {
   if (text.length > MAX_SHARE_CODE) return { ok: false, why: 'That is too long to be a program code.' };
-  const m = /PFP1:([0-9a-f]{8}):(\{[\s\S]*\})/.exec(text);
+  const m = /PFP1:([0-9a-f]{8}):\{/.exec(text);
   if (!m) return { ok: false, why: /PFP\d/.test(text) ? 'That code is from a newer PipeFit Pro. Update the app, then read it again.' : 'That is not a PipeFit Pro program code.' };
-  const json = m[2]!.trim();
-  if (checksum(json) !== m[1]) return { ok: false, why: 'That code did not come through whole. Scan it again, or send it again as text.' };
+  // The records run to the closing brace the checksum agrees with: words after the code in a message may hold braces of their own.
+  const from = m.index + m[0].length - 1;
+  let json: string | null = null;
+  for (let end = text.lastIndexOf('}'); end > from && json === null; end = text.lastIndexOf('}', end - 1)) {
+    if (checksum(text.slice(from, end + 1)) === m[1]) json = text.slice(from, end + 1);
+  }
+  if (json === null) return { ok: false, why: NOT_WHOLE };
   let body: unknown;
   try {
     body = JSON.parse(json);
   } catch {
-    return { ok: false, why: 'That code did not come through whole. Scan it again, or send it again as text.' };
+    return { ok: false, why: NOT_WHOLE };
   }
   if (!isRec(body)) return { ok: false, why: 'That code holds no program.' };
+  // Signed: the QC's name and key are inside the checked part, the signature straight after it.
+  let signed: Signed | null = null;
+  if (body.q !== undefined) {
+    const q = body.q;
+    const sig = /^\.([A-Za-z0-9_-]{86})/.exec(text.slice(from + json.length));
+    const name = isRec(q) && typeof q.n === 'string' ? q.n.trim().slice(0, MAX_QC_NAME) : '';
+    if (!isRec(q) || typeof q.k !== 'string' || !name || !sig || !verifyText(q.k, json, sig[1]!)) return { ok: false, why: BAD_SIGNATURE };
+    signed = { name, key: q.k, code: `${SHARE_PREFIX}:${m[1]}:${json}.${sig[1]}` };
+  }
   // Each part off the wire on its own: the parts' own names (p, g, e) are not field names.
   body = { p: fromWire(body.p), g: fromWire(body.g), e: fromWire(body.e) };
   if (!isRec(body)) return { ok: false, why: 'That code holds no program.' };
@@ -177,7 +200,30 @@ export function unpackShare(text: string): { ok: true; share: Share } | { ok: fa
     const ok = validEquation(fill(newEquation(0), e));
     if (ok && !ok.builtIn) equations.push(ok);
   }
-  return { ok: true, share: { program, gear, equations } };
+  return { ok: true, share: { program, gear, equations }, signed };
+}
+
+/** A record as text with its fields in name order: the same record reads the same whichever order its fields came in. */
+const stable = (v: unknown): string =>
+  Array.isArray(v) ? `[${v.map(stable).join(',')}]` : isRec(v) ? `{${Object.keys(v).sort().map((k) => `${JSON.stringify(k)}:${stable(v[k])}`).join(',')}}` : JSON.stringify(v) ?? 'null';
+
+/** The same program, its history and created time aside (neither travels). */
+export const sameProgram = (a: Program, b: Program) => stable({ ...a, history: [], createdAt: 0 }) === stable({ ...b, history: [], createdAt: 0 });
+
+// Reading a kept code means checking its signature; a program screen asks on every change, so each code is read once.
+const readCopy = new Map<string, ReturnType<typeof unpackShare>>();
+
+/** The QC's signed code this program came in on, while the program is still exactly what was signed. */
+export function signedCopyFor(p: Program, copies: readonly SignedCopy[]): Signed | null {
+  const c = copies.find((x) => x.id === p.id);
+  if (!c) return null;
+  let out = readCopy.get(c.code);
+  if (!out) {
+    out = unpackShare(c.code);
+    if (readCopy.size > 50) readCopy.clear();
+    readCopy.set(c.code, out);
+  }
+  return out.ok && out.signed && sameProgram(out.share.program, p) ? out.signed : null;
 }
 
 export type ImportPlan = {
@@ -186,15 +232,11 @@ export type ImportPlan = {
   equations: { id: string; name: string; state: 'new' | 'have' }[];
 };
 
-/** A record as text with its fields in name order: the same record reads the same whichever order its fields came in. */
-const stable = (v: unknown): string =>
-  Array.isArray(v) ? `[${v.map(stable).join(',')}]` : isRec(v) ? `{${Object.keys(v).sort().map((k) => `${JSON.stringify(k)}:${stable(v[k])}`).join(',')}}` : JSON.stringify(v) ?? 'null';
-
 /** What taking a code in would do, before it is done. */
 export function planImport(s: Share, books: { programs: ProgramBook; gear: GearBook; equations: EquationBook }): ImportPlan {
   const have = books.programs.programs.find((p) => p.id === s.program.id);
   // The created time does not travel (it is the updated time on the phone it lands on), so it is no difference.
-  const same = have && stable({ ...have, history: [], createdAt: 0 }) === stable({ ...s.program, history: [], createdAt: 0 });
+  const same = have && sameProgram(have, s.program);
   const state = !have ? 'new' : same ? 'same' : s.program.version > have.version || (s.program.version === have.version && s.program.updatedAt > have.updatedAt) ? 'update' : 'older';
   return {
     program: { state, have: have?.version ?? null },

@@ -35,7 +35,7 @@ function page(title: string, where: string, when: string, problems: string[], bo
   );
 }
 
-export function programHtml(p: Program, head: Gear | undefined, supply: Gear | undefined, equations: readonly Equation[], today: string): string {
+export function programHtml(p: Program, head: Gear | undefined, supply: Gear | undefined, equations: readonly Equation[], today: string, signedBy?: string): string {
   const t = programTimes(p);
   const figs = programFigures(p, head, equations);
   const levels = p.levels.map((l, i) => [`L${i + 1}`, plain(l.deg, '°'), plain(l.rpm), plain(l.ip, 'A'), l.ib < l.ip ? plain(l.ib, 'A') : '—', l.ib < l.ip ? `${l.tp} / ${l.tb} s` : '—', f3(levelAverage(l), 'A'), clock(levelSeconds(l))]);
@@ -50,6 +50,7 @@ export function programHtml(p: Program, head: Gear | undefined, supply: Gear | u
     ['Overlap', plain(p.overlap, '°')],
     ['Times', `round ${clock(t.weld)}, arc on ${clock(t.arc)}, gas on to off ${clock(t.total)}`],
     ['Status', p.status === 'qualified' ? `Qualified to ${p.wps}${p.coupon ? `, coupon ${p.coupon}` : ''}${p.qualifiedAt ? `, ${usDate(dayKey(p.qualifiedAt))}` : ''}` : 'In development: coupons only'],
+    ...(signedBy ? [['Signed', signedBy]] : []),
   ];
   const worked = [
     ...figs.program.map((f) => [f.label, f3(f.value, f.unit), f.name]),
@@ -78,13 +79,14 @@ function reportTable(rep: WeldReportRead, c: ReportCheck): string {
   return table({ title, head: ['Level', 'Peak A (program)', 'Bkg A (program)', 'RPM (program)', 'Volts', 'Heat input J/in'], rows }) + (c.notes.length ? `<p class="problem">${c.notes.map(esc).join('<br>')}</p>` : '');
 }
 
-export function runHtml(r: Run, p: Program, head: Gear | undefined, supply: Gear | undefined, equations: readonly Equation[], sulphur?: string, report?: ReportCheck): string {
+export function runHtml(r: Run, p: Program, head: Gear | undefined, supply: Gear | undefined, equations: readonly Equation[], sulphur?: string, report?: ReportCheck, signedBy?: string): string {
   const steps = runSteps(p, supply, head, equations, r);
   const done = new Set(r.checks);
   const rows = steps.map((s) => [done.has(s.id) ? '✓' : '☐', s.title, s.detail]);
   const look = INSPECT.map((i) => [done.has(i.id) ? '✓' : '☐', i.text]);
   const facts = [
     ['Program', `${r.programName}, version ${r.version}`],
+    ...(signedBy ? [['Program signed', signedBy]] : []),
     ['Weld', `${r.kind === 'coupon' ? 'Coupon' : 'Production weld'} ${r.weld || '—'}`],
     ['Job / line', [r.project, r.line].filter(Boolean).join(' / ') || '—'],
     ['Heats', [r.heatA, r.heatB].filter(Boolean).join(' to ') || '—'],
