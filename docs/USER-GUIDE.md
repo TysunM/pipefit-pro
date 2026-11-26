@@ -666,6 +666,29 @@ More segments = smaller cut angle = a smoother, stronger elbow. If you get the w
 
 ---
 
+## Knots
+
+**The knots a fitter uses on tag lines and hand lines: watch each one tied, tie it on screen with a finger, then take the test.** PipeFit tab → **Rigging → Knots**, or say "knots".
+
+> Knots are for tag lines, hand lines and light material on a hand line. Never knot a sling or a wire rope, and never use a knot for fall protection: a lift is rigged to its plan with rated gear.
+
+| Knot | What it's for |
+|---|---|
+| Bowline | A fixed loop in the end of a line that won't slip, and unties after a load |
+| Clove hitch | Two turns round a pipe, rail or post: quick to tie and adjust |
+| Figure eight | A stopper, so a line can't run out through a block |
+| Slip knot | Lets go with one pull on the tail. Never for a load |
+| Round turn and two half hitches | Ties a line off to a rail or ring so it holds under load |
+| Timber hitch | Grips a pipe or timber for a pull or a hand-line hoist (add a half hitch for a killick hitch) |
+| Sheet bend | Joins two lines, even of different sizes |
+| Square knot | Ties two ends round a bundle. Never to join lines that take a load |
+
+**Learn:** the knot is tied in front of you a step at a time, the working end (taped black) moving over and under as it goes, on a loop like a short film. **Back** and **Next** move between steps; **Pause** holds the step done. With Reduce Motion on, each step shows done.
+
+**Tie it:** the glowing end is yours. Put a finger on it and drag it along the dashed line. It follows only along the knot's path, over and under as the knot goes, step by step. Wander off the line and it counts a slip. Tied: your time, your slips and up to three stars, and the best is kept. Then tie it in a real line before you need it on a job.
+
+**The knot test:** ten questions: which knot is this, which knot for this job, what comes next, and is that safe. Each answer says why. The missed ones link back to their knot, and the best score is kept.
+
 ## 3D spool
 
 **Build a whole run and look at it before you cut any of it.**

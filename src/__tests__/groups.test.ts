@@ -28,6 +28,7 @@ const EXPECTED: ToolRoute[] = [
   'SaddleBend',
   'MiterBend',
   'Orbital',
+  'Knots',
   'HandBender',
   'FittingLibrary',
   'CutList',

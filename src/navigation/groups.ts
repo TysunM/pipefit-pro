@@ -48,6 +48,7 @@ export type ToolRoute =
   | 'HeatInput'
   | 'Weldability'
   | 'Orbital'
+  | 'Knots'
   | 'Calibration'
   | 'Passport'
   | 'Orientation'
@@ -78,6 +79,7 @@ export const TOOLS: Tool[] = [
   { route: 'HeatInput', title: 'Heat input', subtitle: 'kJ per inch from volts, amps and travel', icon: 'thermometer-outline' },
   { route: 'Weldability', title: 'Weldability', subtitle: 'Carbon equivalents and PREN', icon: 'flask-outline' },
   { route: 'Orbital', title: 'Orbital welding', subtitle: 'Programs, heads, equations and coupons', icon: 'aperture-outline' },
+  { route: 'Knots', title: 'Knots', subtitle: 'Watch, tie them by finger, then the test', icon: 'infinite-outline' },
   { route: 'Calibration', title: 'Calibration', subtitle: 'Gauges and wrenches, and when due', icon: 'build-outline' },
   { route: 'Passport', title: 'Skills passport', subtitle: 'What you can do, proved and signed', icon: 'ribbon-outline' },
   { route: 'Orientation', title: 'Orientation', subtitle: 'Site rules, taught and checked', icon: 'school-outline' },
@@ -115,7 +117,7 @@ export const GROUPS: Group[] = [
   {
     id: 'tools',
     title: 'PipeFit',
-    subtitle: 'The iso paper, the spool, the bolt-up, the level and the measure, then every bend and offset.',
+    subtitle: 'The iso paper, the spool, the bolt-up, the level and the measure, every bend and offset, and the knots.',
     sections: [
       { id: 'fitup', title: 'Layout & fit-up', size: 'big', tools: pick(['IsoSketch', 'SpoolBuilder', 'FlangeBoltUp', 'Level', 'Measure']) },
       {
@@ -124,6 +126,7 @@ export const GROUPS: Group[] = [
         size: 'small',
         tools: pick(['SimpleOffset', 'RollingOffset', 'CutLength', 'SaddleBend', 'MiterBend', 'HandBender']),
       },
+      { id: 'rigging', title: 'Rigging', size: 'wide', tools: pick(['Knots']) },
     ],
   },
   {

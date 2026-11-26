@@ -53,6 +53,12 @@ export type RootStackParamList = {
   OrbitalEquation: { id: string };
   /** One weld off a program: a saved one's id, or a new coupon or production weld. */
   OrbitalRun: { id: string; programId?: undefined; kind?: undefined } | { id?: undefined; programId: string; kind: 'coupon' | 'production' };
+  /** Knots for tag lines and hand lines: each one watched, tied by finger, and the test. */
+  Knots: undefined;
+  /** One knot: Learn (watch it tied, a step at a time) or Tie it (drag the end through it). */
+  Knot: { id: string; mode?: 'learn' | 'tie' };
+  /** Ten questions on the knots: which knot, which for the job, what next, safe or not. */
+  KnotTest: undefined;
   Calibration: undefined;
   /** The skills passport: what this hand can do, proved by the records and signed off. */
   Passport: undefined;

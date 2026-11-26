@@ -41,6 +41,9 @@ import { OrbitalProgramScreen } from '../screens/OrbitalProgramScreen';
 import { OrbitalGearScreen } from '../screens/OrbitalGearScreen';
 import { OrbitalEquationScreen } from '../screens/OrbitalEquationScreen';
 import { OrbitalRunScreen } from '../screens/OrbitalRunScreen';
+import { KnotsScreen } from '../screens/KnotsScreen';
+import { KnotScreen } from '../screens/KnotScreen';
+import { KnotTestScreen } from '../screens/KnotTestScreen';
 import { WeldabilityScreen } from '../screens/WeldabilityScreen';
 import { CalibrationScreen } from '../screens/CalibrationScreen';
 import { BackupScreen } from '../screens/BackupScreen';
@@ -146,6 +149,9 @@ export function RootNavigator() {
         <Stack.Screen name="OrbitalGear" component={OrbitalGearScreen} options={{ title: 'Equipment' }} />
         <Stack.Screen name="OrbitalEquation" component={OrbitalEquationScreen} options={{ title: 'Equation' }} />
         <Stack.Screen name="OrbitalRun" component={OrbitalRunScreen} options={{ title: 'Weld' }} />
+        <Stack.Screen name="Knots" component={KnotsScreen} options={{ title: 'Knots' }} />
+        <Stack.Screen name="Knot" component={KnotScreen} options={{ title: 'Knot' }} />
+        <Stack.Screen name="KnotTest" component={KnotTestScreen} options={{ title: 'Knot test' }} />
         <Stack.Screen name="Weld" component={WeldScreen} options={{ title: 'Weld' }} />
         <Stack.Screen name="Calibration" component={CalibrationScreen} options={{ title: 'Calibration' }} />
         <Stack.Screen name="Backup" component={BackupScreen} options={{ title: 'Backup' }} />
