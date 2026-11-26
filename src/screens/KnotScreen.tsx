@@ -10,6 +10,7 @@ import { Banner } from '../components/FormFields';
 import { AccentButton, ControlRow, GhostButton } from '../components/Buttons';
 import { KnotView } from '../components/knots/KnotView';
 import { TieGame } from '../components/knots/TieGame';
+import { CheckKnot } from '../components/knots/CheckKnot';
 import { laidAt, laidOf, pullsAt } from '../components/knots/laid';
 import { useStepPlayer } from '../components/knots/useStepPlayer';
 import { VoicePressable } from '../voice/VoicePressable';
@@ -17,13 +18,15 @@ import { useTheme } from '../theme/ThemeProvider';
 import { KNOTS, knotById, stepsOf, type Knot } from '../calc/knots/knots';
 import { Pill } from './OrbitalScreen';
 
-// One knot: watch it tied a step at a time, then tie it with a finger.
+// One knot: watch it tied a step at a time, tie it with a finger, then check
+// it: what right looks like, and spot the faults hands tie.
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Knot'>;
-type Mode = 'learn' | 'tie';
+type Mode = 'learn' | 'tie' | 'check';
 const MODES: { value: Mode; label: string }[] = [
   { value: 'learn', label: 'Learn' },
   { value: 'tie', label: 'Tie it' },
+  { value: 'check', label: 'Check' },
 ];
 
 export function KnotScreen({ route, navigation }: Props) {
@@ -65,8 +68,10 @@ function KnotBody({ knot, start, navigation }: { knot: Knot; start: Mode; naviga
       </View>
       {mode === 'learn' ? (
         <Learn knot={knot} size={size} onTie={() => setMode('tie')} />
+      ) : mode === 'tie' ? (
+        <TieGame key={knot.id} knot={knot} laid={laid} size={size} onNext={() => navigation.replace('Knot', { id: next.id, mode: 'tie' })} onCheck={() => setMode('check')} onTest={() => navigation.navigate('KnotTest')} />
       ) : (
-        <TieGame key={knot.id} knot={knot} laid={laid} size={size} onNext={() => navigation.replace('Knot', { id: next.id, mode: 'tie' })} onTest={() => navigation.navigate('KnotTest')} />
+        <CheckKnot key={knot.id} knot={knot} size={size} onTest={() => navigation.navigate('KnotTest')} />
       )}
       <SectionHeader title="On the job" />
       <View style={{ paddingHorizontal: t.layout.screenPadding, gap: t.space.xs }}>

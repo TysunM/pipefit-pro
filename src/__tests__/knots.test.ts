@@ -1,8 +1,10 @@
-import { KNOTS, knotById, knotProblems, morphRopes, reachAfter, reachBefore, stepsOf } from '../calc/knots/knots';
-import { draw, layout, lengthTo, pointAt, samples, upTo } from '../calc/knots/rope';
+import { KNOTS, SHORT_TAIL, checkMarks, faultDrawing, flipped, knotById, knotProblems, morphRopes, reachAfter, reachBefore, stepsOf, tightRopes } from '../calc/knots/knots';
+import { ROPE_W, VIEW, draw, layout, lengthTo, pointAt, samples, upTo } from '../calc/knots/rope';
+import { jones, polyText, type Closure } from '../calc/knots/jones';
+import { laidFault, laidSet, pairFrame } from '../components/knots/laid';
 import { PULL_DRAG, TRACE, move, nearest, pulled, starsFor } from '../calc/knots/trace';
-import { SAFETY, makeTest, seeded } from '../calc/knots/quiz';
-import { emptyKnots, parseKnots, recordTest, recordTie, serialiseKnots } from '../state/knotProgress';
+import { SAFETY, faultRound, makeTest, seeded } from '../calc/knots/quiz';
+import { emptyKnots, parseKnots, recordCheck, recordTest, recordTie, serialiseKnots } from '../state/knotProgress';
 
 describe('every knot draws and ties right', () => {
   test.each(KNOTS.map((k) => [k.name, k] as const))('%s: its crossings are the ones it says, its steps run the rope to its end', (_, k) => {
@@ -118,7 +120,12 @@ describe('the knot test', () => {
         expect(q.why.trim()).not.toBe('');
         if (q.knot) expect(knotById(q.knot)).toBeDefined();
       }
-      expect(qs.map((q) => q.kind).sort()).toEqual(['job', 'job', 'job', 'name', 'name', 'name', 'next', 'next', 'safe', 'safe']);
+      expect(qs.map((q) => q.kind).sort()).toEqual(['fault', 'fault', 'job', 'job', 'name', 'name', 'next', 'next', 'safe', 'safe']);
+      for (const q of qs.filter((x) => x.kind === 'fault')) {
+        const k = knotById(q.knot!)!;
+        expect(k.faults.map((f) => f.id)).toContain(q.fault);
+        expect(q.answer).toBe(q.good === 0 ? 'left' : 'right');
+      }
     }
     expect(makeTest(seeded(7))).toEqual(makeTest(seeded(7)));
   });
@@ -138,13 +145,154 @@ describe('what has been tied', () => {
     b = recordTest(recordTest(b, 8, 10), 6, 10);
     expect(b.test).toEqual({ best: 8, last: 6, of: 10, taken: 2 });
   });
+  test('spot the fault keeps the best round, started again when the knot has a different number of faults', () => {
+    let b = recordCheck(emptyKnots(), 'clove', 2, 3, 1);
+    b = recordCheck(b, 'clove', 3, 3, 2);
+    b = recordCheck(b, 'clove', 1, 3, 3);
+    expect(b.checked.clove).toEqual({ best: 3, of: 3, at: 3 });
+    expect(recordCheck(b, 'clove', 1, 4, 4).checked.clove).toEqual({ best: 1, of: 4, at: 4 });
+    expect(recordCheck(b, 'not-a-knot', 1, 3, 4)).toBe(b);
+    expect(recordCheck(b, 'bowline', 9, 2, 5).checked.bowline!.best).toBe(2);
+  });
   test('the store reads back what it wrote, and drops what it cannot use', () => {
-    const b = recordTest(recordTie(emptyKnots(), 'clove', 9000, 3, 5), 9, 10);
+    const b = recordCheck(recordTest(recordTie(emptyKnots(), 'clove', 9000, 3, 5), 9, 10), 'bowline', 2, 2, 6);
+    expect(parseKnots(serialiseKnots(b))).toEqual(b);
+    const bad = JSON.parse(serialiseKnots(b));
+    bad.checked.bowline.best = 5;
+    bad.checked.gone = { best: 1, of: 1, at: 1 };
+    expect(parseKnots(JSON.stringify(bad))).toMatchObject({ checked: {}, dropped: 2 });
+    // Saved before there was spot the fault: read the same, nothing dropped.
+    const old = JSON.parse(serialiseKnots(b));
+    delete old.checked;
+    expect(parseKnots(JSON.stringify(old))).toMatchObject({ checked: {}, dropped: 0 });
     expect(parseKnots(serialiseKnots(b))).toEqual(b);
     const raw = JSON.parse(serialiseKnots(b));
     raw.tied.gone = { count: 1, bestMs: 1, bestStars: 1, at: 1 };
     raw.tied.clove.bestStars = 9;
     expect(parseKnots(JSON.stringify(raw))).toMatchObject({ tied: {}, dropped: 2 });
     expect(parseKnots(JSON.stringify({ v: 2 })).foreign).toBe(true);
+  });
+});
+
+// Which knot a drawing is, proved: the Jones polynomial is the same for every
+// drawing of a knot, so these hold however the knots are redrawn.
+const UNKNOT = '1';
+const FIGURE_EIGHT = 't^2 - t + 1 - t^-1 + t^-2';
+// A square (reef) knot is a trefoil and its mirror; a granny, two trefoils the same way.
+const REEF = '-t^3 + t^2 - t + 3 - t^-1 + t^-2 - t^-3';
+const GRANNY = ['t^8 - 2t^7 + t^6 - 2t^5 + 2t^4 + t^2', 't^-2 + 2t^-4 - 2t^-5 + t^-6 - 2t^-7 + t^-8'];
+const ONE: Closure = [{ rope: 0 }];
+// The square knot as it binds: the two standing parts are one line round the bundle.
+const BOUND: Closure = [{ rope: 0, back: true }, { rope: 1 }];
+const fault = (id: string, f: string) => knotById(id)!.faults.find((x) => x.id === f)!;
+
+describe('dress and check', () => {
+  test('the knot polynomial knows the knots: no crossings is no knot', () => {
+    const k = knotById('figure8')!;
+    expect(polyText(jones([{ pts: [[0, 150], [300, 150]], start: 0, color: 'a' }], '', ONE))).toBe(UNKNOT);
+    // The same knot drawn as tied and pulled tight.
+    expect(polyText(jones(tightRopes(k), k.cross, ONE))).toBe(polyText(jones(k.ropes, k.cross, ONE)));
+  });
+  test('the figure eight is a figure eight, the square knot a square knot and not a granny, the slip knot no knot at all', () => {
+    const f8 = knotById('figure8')!;
+    const sq = knotById('square')!;
+    const slip = knotById('slip')!;
+    expect(polyText(jones(f8.ropes, f8.cross, ONE))).toBe(FIGURE_EIGHT);
+    expect(polyText(jones(sq.ropes, sq.cross, BOUND))).toBe(REEF);
+    // One pull on the tail and it is gone: there is no knot in it.
+    expect(polyText(jones(slip.ropes, slip.cross, ONE))).toBe(UNKNOT);
+  });
+  test("the faults drawn are the knots they say: the figure eight's last tuck over is no knot, the square knot's fault a granny", () => {
+    const f8 = knotById('figure8')!;
+    const sq = knotById('square')!;
+    const tuck = fault('figure8', 'tuck');
+    const granny = fault('square', 'granny');
+    if (tuck.kind !== 'cross' || granny.kind !== 'cross') throw new Error('faults changed kind');
+    expect(polyText(jones(f8.ropes, flipped(f8.cross, tuck.flip), ONE))).toBe(UNKNOT);
+    expect(GRANNY).toContain(polyText(jones(sq.ropes, flipped(sq.cross, granny.flip), BOUND)));
+    expect(tuck.why).toMatch(/falls straight out/);
+  });
+  test.each(KNOTS.map((k) => [k.name, k] as const))('%s: every fault draws, and differs from the knot tied right', (_, k) => {
+    const right = layout(tightRopes(k), k.cross);
+    for (const f of k.faults) {
+      const d = faultDrawing(k, f);
+      const laid = layout(d.ropes, d.cross);
+      // The same crossings: a fault is the knot tied wrong, not another drawing.
+      expect(laid.crossings).toHaveLength(k.cross.length);
+      if (f.kind === 'cross') {
+        expect(d.cross).not.toBe(k.cross);
+        expect([...d.cross].filter((ch, i) => ch !== k.cross[i]).length).toBe(f.flip.length);
+      }
+      if (f.kind === 'loose') expect(d.ropes).toBe(k.ropes);
+      if (f.kind === 'short') {
+        for (const r of f.ropes) {
+          const keep = d.keep[r]!;
+          const whole = right.samples[r]!.at(-1)!.len;
+          // Visibly short: well under the tail tied right.
+          expect(keep).toBeLessThan(whole - SHORT_TAIL);
+          // Never cut in the middle of a crossing: a pass shown is a rope width clear of the cut.
+          for (const c of laid.crossings) for (const side of [c.later, c.earlier]) if (side.rope === r && side.len <= keep) expect(keep - side.len).toBeGreaterThanOrEqual(ROPE_W);
+        }
+      }
+    }
+  });
+  test('the timber hitch cut to one twist keeps its turn and one twist: three crossings before, three twists dropped to one', () => {
+    const k = knotById('timber')!;
+    const f = fault('timber', 'twists');
+    const d = faultDrawing(k, f);
+    const laid = layout(d.ropes, d.cross);
+    const shown = laid.crossings.filter((c) => c.later.len <= d.keep[0]!);
+    expect(shown).toHaveLength(3);
+    expect(k.checks.some((c) => /Three twists at least/.test(c.text))).toBe(true);
+  });
+  test('every check that points at the knot points inside the drawing, numbered in order', () => {
+    for (const k of KNOTS) {
+      const m = checkMarks(k);
+      expect(m.length).toBeGreaterThan(0);
+      for (const p of m) {
+        expect(p.x).toBeGreaterThanOrEqual(5);
+        expect(p.x).toBeLessThanOrEqual(VIEW - 5);
+        expect(p.y).toBeGreaterThanOrEqual(5);
+        expect(p.y).toBeLessThanOrEqual(VIEW - 5);
+      }
+      expect(m.map((p) => p.n)).toEqual([...m.map((p) => p.n)].sort((a, b) => a - b));
+    }
+  });
+  test('a pair is zoomed on the knot, the same frame both sides, every crossing and a cut end in it', () => {
+    for (const k of KNOTS) {
+      for (const f of k.faults) {
+        const fr = pairFrame(k, f);
+        expect(fr.s).toBeGreaterThanOrEqual(150);
+        expect(fr.x).toBeGreaterThanOrEqual(0);
+        expect(fr.y).toBeGreaterThanOrEqual(0);
+        expect(fr.x + fr.s).toBeLessThanOrEqual(VIEW + 1e-9);
+        expect(fr.y + fr.s).toBeLessThanOrEqual(VIEW + 1e-9);
+        const inside = (p: { x: number; y: number }) => p.x >= fr.x && p.x <= fr.x + fr.s && p.y >= fr.y && p.y <= fr.y + fr.s;
+        for (const c of [...laidSet(k).laid.crossings, ...laidFault(k, f).laid.crossings]) expect(inside(c)).toBe(true);
+        const w = laidFault(k, f);
+        w.shown.forEach((len, r) => {
+          if (len < w.laid.samples[r]!.at(-1)!.len) expect(inside(pointAt(w.laid.samples[r]!, len))).toBe(true);
+        });
+      }
+    }
+  });
+  test('a round shows every fault once, the knot tied right on both sides over the rounds', () => {
+    for (const k of KNOTS) {
+      const sides = new Set<number>();
+      for (let seed = 1; seed < 40; seed += 1) {
+        const round = faultRound(k, seeded(seed));
+        expect(round.map((r) => r.fault.id).sort()).toEqual(k.faults.map((f) => f.id).sort());
+        round.forEach((r) => sides.add(r.good));
+      }
+      expect([...sides].sort()).toEqual([0, 1]);
+    }
+  });
+  test('the safety that matters is in the faults: none is left unset, and every knot warns of a short tail, drawn or said', () => {
+    for (const k of KNOTS) {
+      expect(k.faults.some((f) => f.kind === 'loose')).toBe(true);
+      expect(k.faults.some((f) => f.kind === 'short') || /tail/i.test(k.watch)).toBe(true);
+    }
+    // The sheet bend's tail is drawn inside the bight, too short to show cut shorter: its warning is said.
+    expect(knotById('sheetbend')!.watch).toMatch(/Leave long tails/);
   });
 });

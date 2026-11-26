@@ -1,5 +1,6 @@
 import React from 'react';
 import { Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
 import { Screen } from '../components/Screen';
@@ -16,7 +17,7 @@ import { KNOTS, reachAfter, type Knot } from '../calc/knots/knots';
 import { ListRow, Pill } from './OrbitalScreen';
 
 // The knots a fitter uses on tag lines and hand lines: watch each tied, tie it
-// with a finger, then take the test.
+// with a finger, check it, then take the test.
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Knots'>;
 
@@ -30,6 +31,7 @@ export function KnotsScreen({ navigation }: Props) {
   const c = t.colors;
   const book = useKnotBook().value;
   const tied = KNOTS.filter((k) => book.tied[k.id]).length;
+  const checked = KNOTS.filter((k) => book.checked[k.id]?.best === k.faults.length).length;
 
   return (
     <Screen>
@@ -38,8 +40,9 @@ export function KnotsScreen({ navigation }: Props) {
       </View>
       <View style={{ marginHorizontal: t.layout.screenPadding, marginTop: t.space.md, padding: t.space.lg, borderRadius: t.radius.lg, backgroundColor: c.bgRaised, borderWidth: t.hairline, borderColor: c.border, gap: t.space.xs }}>
         <Text style={[t.type.sectionTitle, { color: c.text }]}>{`Tied by hand: ${tied} of ${KNOTS.length}`}</Text>
+        <Text style={[t.type.body, { color: c.text }]}>{`Every fault spotted: ${checked} of ${KNOTS.length}`}</Text>
         <Text style={[t.type.caption, { color: c.textMuted }]}>
-          {book.test.taken ? `Knot test: best ${book.test.best} of ${book.test.of}, last ${book.test.last} of ${book.test.of}` : 'Watch each one tied, tie it on screen with a finger, then take the test.'}
+          {book.test.taken ? `Knot test: best ${book.test.best} of ${book.test.of}, last ${book.test.last} of ${book.test.of}` : 'Watch each one tied, tie it on screen with a finger, check it, then take the test.'}
         </Text>
       </View>
       <ControlRow>
@@ -48,6 +51,7 @@ export function KnotsScreen({ navigation }: Props) {
       <SectionHeader title="Knots" meta={`${KNOTS.length}`} />
       {KNOTS.map((k) => {
         const mine = book.tied[k.id];
+        const spotted = book.checked[k.id]?.best === k.faults.length;
         return (
           <ListRow
             key={k.id}
@@ -60,6 +64,12 @@ export function KnotsScreen({ navigation }: Props) {
               <View style={{ alignItems: 'flex-end', gap: 4 }}>
                 <Pill text={k.kind} tone="plain" />
                 {mine ? <Stars n={mine.bestStars} size={13} /> : null}
+                {spotted ? (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }} accessible accessibilityLabel="Every fault spotted">
+                    <Ionicons name="shield-checkmark" size={13} color={c.success} />
+                    <Text style={[t.type.caption, { color: c.success, fontSize: 11 }]}>Checked</Text>
+                  </View>
+                ) : null}
                 {mine ? <Text style={[t.type.caption, { color: c.textFaint, fontSize: 11 }]}>{seconds(mine.bestMs)}</Text> : null}
               </View>
             }

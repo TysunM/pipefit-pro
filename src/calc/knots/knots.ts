@@ -9,7 +9,7 @@
 // here are for tag lines, hand lines and light material on a hand line, never
 // in a sling or a wire rope on a lift.
 
-import { layout, type P, type Prop, type Rope } from './rope';
+import { ROPE_W, layout, type P, type Prop, type Rope } from './rope';
 
 export type KnotKind = 'Loop' | 'Hitch' | 'Stopper' | 'Bend' | 'Binding';
 
@@ -45,11 +45,29 @@ export type Knot = {
   steps: KnotStep[];
   /** The last step: which parts to pull, and the knot drawn up tight. */
   tight: Tight;
+  /** What to look at before it takes a load. */
+  checks: Check[];
+  /** The faults hands tie, each drawn, to spot against the knot tied right. */
+  faults: Fault[];
 };
+
+/** One thing to look at before it takes a load, and where on the knot pulled tight: points on its ropes. */
+export type Check = { text: string; at?: readonly (readonly [number, number])[] };
+
+/**
+ * A fault, drawn from the knot itself so the drawing can't be wrong:
+ * - loose: as tied, never pulled tight;
+ * - short: pulled tight, the tail of each rope named cut off just past its
+ *   last crossing (or past crossing `after`, dropping the tucks beyond it);
+ * - cross: pulled tight, the crossings named going the other way, over for under.
+ */
+export type Fault = { id: string; name: string; why: string } & ({ kind: 'loose' } | { kind: 'short'; ropes: number[]; after?: number } | { kind: 'cross'; flip: number[] });
+
+type Tied = Omit<Knot, 'checks' | 'faults'>;
 
 const rope = (pts: P[], start: number, color: Rope['color'] = 'a'): Rope => ({ pts, start, color });
 
-export const KNOTS: Knot[] = [
+const TIED: Tied[] = [
   {
     id: 'bowline',
     name: 'Bowline',
@@ -502,6 +520,109 @@ export const KNOTS: Knot[] = [
   },
 ];
 
+// ------------------------------------------------------------ dress and check
+
+// Most knots that fail were tied right and then not set, cut short or crossed
+// the wrong way at one tuck. Each fault here is one a hand really ties, and is
+// drawn from the knot tied right: the tests prove the crossing faults are the
+// knot (or no knot) they say.
+
+const notSet = (why: string): Fault => ({ id: 'loose', kind: 'loose', name: 'Not set', why });
+const TAIL = 'Leave a tail of a dozen rope widths.';
+const shortTail = (why = `Cut short, the tail can pull back through as the line loads and slacks, and the knot lets go. ${TAIL}`): Fault => ({ id: 'short', kind: 'short', ropes: [0], name: 'Short tail', why });
+
+const DRESS: Record<string, Pick<Knot, 'checks' | 'faults'>> = {
+  bowline: {
+    checks: [
+      { text: 'The small loop closes round both parts of the end where they pass through it.', at: [[0, 29]] },
+      { text: 'The end goes round the back of the standing part: a collar, snug on it.', at: [[0, 25]] },
+      { text: `The tail finishes inside the eye. ${TAIL}`, at: [[0, 32]] },
+    ],
+    faults: [notSet("Not pulled tight, a bowline can shake loose before the load comes on. Hold the eye and the tail, and pull the standing part hard."), shortTail()],
+  },
+  clove: {
+    checks: [
+      { text: 'Two turns side by side on the pipe, crossing in an X on the front.', at: [[0, 9]] },
+      { text: 'The end comes out from under the X, between the two turns.', at: [[0, 11]] },
+      { text: 'If the pull keeps changing direction, back it up with two half hitches.' },
+    ],
+    faults: [
+      { id: 'tuck', kind: 'cross', flip: [0], name: 'End over the X', why: "The end crosses over the first turn instead of tucking under it. Nothing traps it: that's two turns wrapped round the pipe, and they slide off. Tuck it under the X." },
+      notSet('Turns left loose roll along the pipe and slip. Pull both ends to bed them down before the pull comes on.'),
+      shortTail(),
+    ],
+  },
+  figure8: {
+    checks: [
+      { text: "It reads as an 8: two loops, and the end out through the second, no turn crossed over.", at: [[0, 8]] },
+      { text: `Drawn up neat with a tail. ${TAIL}`, at: [[0, 14]] },
+    ],
+    faults: [
+      { id: 'tuck', kind: 'cross', flip: [3], name: 'Last tuck over, not under', why: "The end goes over the last strand where it goes under. That isn't a figure eight, it's no knot at all: pull the ends and it falls straight out." },
+      notSet("Left loose, it can capsize into a smaller knot or work out of the end. Pull the standing part and the end apart to set it."),
+      shortTail(),
+    ],
+  },
+  slip: {
+    checks: [
+      { text: 'A bight of the end comes up through the loop: the end itself never goes through.', at: [[0, 12]] },
+      { text: 'The tail hangs free to pull: one pull and it lets go. Never let it take a load.', at: [[0, 18]] },
+    ],
+    faults: [
+      notSet('Left loose, a slip knot falls out by itself. Pull the bight against the standing part to snug it.'),
+      shortTail("Cut short, there's nothing to grab to let it go, and the tail can pull through by itself. Leave a tail you can get hold of."),
+    ],
+  },
+  halfhitches: {
+    checks: [
+      { text: 'Two full turns on the rail: the round turn takes the load.', at: [[0, 7]] },
+      { text: 'Both half hitches go the same way round: behind the standing part first, then across the front.', at: [[0, 14], [0, 21]] },
+      { text: `Hitches slid up snug against the round turn. ${TAIL}`, at: [[0, 26]] },
+    ],
+    faults: [
+      { id: 'turned', kind: 'cross', flip: [2, 3, 4], name: 'Second hitch the other way', why: "The second half hitch goes round the opposite way to the first: across the front first, then behind. Together they make a cow hitch on the standing part, not a clove hitch, and it slips sooner. Make both the same way round." },
+      notSet('Left loose down the standing part, the hitches work loose. Slide them up snug against the round turn and pull the end tight.'),
+      shortTail(),
+    ],
+  },
+  timber: {
+    checks: [
+      { text: 'The end goes round the pipe and back round its own standing part.', at: [[0, 11]] },
+      { text: 'Three twists at least, round its own part, not round the pipe.', at: [[0, 15]] },
+      { text: 'To hoist a length of pipe, add a half hitch near the far end so it rides level.' },
+    ],
+    faults: [
+      { id: 'twists', kind: 'short', ropes: [0], after: 2, name: 'One twist', why: 'Only one twist round its own part. The twists are what grip, and one slips under load. Three at least.' },
+      notSet("Not drawn up, the turn sits loose and the twists can't bite. Pull the standing part to set it before the hoist takes it."),
+    ],
+  },
+  sheetbend: {
+    checks: [
+      { text: 'The thinner line (orange) comes up through the bight and round behind both its parts.', at: [[1, 8]] },
+      { text: 'Its end is tucked under its own line, nipped against the bight.', at: [[1, 13]] },
+      { text: "Both short ends on the same side, or it's the weaker left-handed sheet bend.", at: [[1, 15], [0, 6]] },
+    ],
+    faults: [
+      { id: 'tuck', kind: 'cross', flip: [5], name: 'End not tucked under', why: "The end runs over its own line instead of under it. Nothing nips it: it's only wrapped round the bight, and it pulls out under load. Tuck it under its own line." },
+      notSet('Left loose, a sheet bend can slip or spill under load. Hold both short ends and pull the standing parts apart.'),
+    ],
+  },
+  square: {
+    checks: [
+      { text: "Each colour's two parts lie side by side on the same side of the other's bight: blue under the orange bight, orange over the blue.", at: [[0, 4], [1, 7]] },
+      { text: 'It draws up flat, each end along its own standing part.' },
+      { text: 'For binding a bundle only: never to join two lines that take a load.' },
+    ],
+    faults: [
+      { id: 'granny', kind: 'cross', flip: [3, 4, 5], name: 'Granny knot', why: 'The second half went the same way as the first, so one colour straddles the other: over one part, under the other. A granny slips or jams. Right over left, then left over right.' },
+      notSet("Not drawn up flat, it can roll and loosen. Pull both parts of each colour away from the other."),
+      { id: 'short', kind: 'short', ropes: [0, 1], name: 'Short ends', why: 'Cut short, the ends can slip back through the bights and the binding lets go. Leave ends long enough to untie.' },
+    ],
+  },
+};
+
+export const KNOTS: Knot[] = TIED.map((k) => ({ ...k, checks: DRESS[k.id]?.checks ?? [], faults: DRESS[k.id]?.faults ?? [] }));
+
 export const knotById = (id: string) => KNOTS.find((k) => k.id === id);
 
 // ------------------------------------------------------------ steps as lengths
@@ -561,6 +682,36 @@ export function morphRopes(k: Knot, t: number): Rope[] {
   }));
 }
 
+/** How far a tail cut short runs on past its last crossing. */
+export const SHORT_TAIL = ROPE_W * 1.6;
+
+/** The over and under of a knot with some crossings turned the other way. */
+export const flipped = (cross: string, flip: readonly number[]) => cross.replace(/[ou]/g, (ch, i: number) => (flip.includes(i) ? (ch === 'o' ? 'u' : 'o') : ch));
+
+/** A fault drawn: the ropes (as tied, or pulled tight), what goes over and under, and how far each rope is shown (null: all of it). */
+export function faultDrawing(k: Knot, f: Fault): { ropes: Rope[]; cross: string; keep: (number | null)[] } {
+  if (f.kind === 'loose') return { ropes: k.ropes, cross: k.cross, keep: k.ropes.map(() => null) };
+  const ropes = tightRopes(k);
+  if (f.kind === 'cross') return { ropes, cross: flipped(k.cross, f.flip), keep: ropes.map(() => null) };
+  const { crossings } = layout(ropes, k.cross);
+  const keep = ropes.map((_, r) => {
+    if (!f.ropes.includes(r)) return null;
+    let last = 0;
+    crossings.forEach((c, i) => {
+      if (f.after !== undefined && i > f.after) return;
+      for (const side of [c.later, c.earlier]) if (side.rope === r) last = Math.max(last, side.len);
+    });
+    return last + SHORT_TAIL;
+  });
+  return { ropes, cross: k.cross, keep };
+}
+
+/** Where each check points on the knot pulled tight, numbered from 1. */
+export function checkMarks(k: Knot): { n: number; x: number; y: number }[] {
+  const tight = tightRopes(k);
+  return k.checks.flatMap((c, i) => (c.at ?? []).map(([r, at]) => ({ n: i + 1, x: tight[r]!.pts[at]![0], y: tight[r]!.pts[at]![1] })));
+}
+
 /** What would make a knot draw wrong or tie wrong: the tests hold every knot to none. */
 export function knotProblems(k: Knot): string[] {
   const out: string[] = [];
@@ -585,6 +736,16 @@ export function knotProblems(k: Knot): string[] {
   for (const t of [0.25, 0.5, 0.75, 1]) {
     const n = layout(morphRopes(k, t), k.cross).crossings.length;
     if (n !== k.cross.length) out.push(`${k.id}: drawn up ${Math.round(t * 100)}%, ${n} crossings where ${k.cross.length} are said`);
+  }
+  // Checked before use: something to look at, each pointing at a point the knot has, and faults to spot.
+  if (k.checks.length < 2 || k.checks.some((c) => !c.text.trim())) out.push(`${k.id}: says too little of what to check`);
+  for (const c of k.checks) for (const [r, at] of c.at ?? []) if (!k.ropes[r] || at < 0 || at >= k.ropes[r]!.pts.length) out.push(`${k.id}: a check points at a point it hasn't`);
+  if (k.faults.length < 2) out.push(`${k.id}: too few faults to spot`);
+  if (new Set(k.faults.map((f) => f.id)).size !== k.faults.length) out.push(`${k.id}: two faults share an id`);
+  for (const f of k.faults) {
+    if (!f.name.trim() || !f.why.trim()) out.push(`${k.id} ${f.id}: says nothing of what is wrong`);
+    if (f.kind === 'cross' && (!f.flip.length || f.flip.some((i) => i < 0 || i >= k.cross.length))) out.push(`${k.id} ${f.id}: turns a crossing it hasn't`);
+    if (f.kind === 'short' && f.ropes.some((r) => !k.ropes[r])) out.push(`${k.id} ${f.id}: cuts a rope it hasn't`);
   }
   return out;
 }
