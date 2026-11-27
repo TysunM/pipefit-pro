@@ -7,7 +7,7 @@ import { SAFETY, faultRound, makeTest, seeded } from '../calc/knots/quiz';
 import { emptyKnots, parseKnots, recordCert, recordCheck, recordMystery, recordTest, recordTie, serialiseKnots } from '../state/knotProgress';
 import { ART_H, ART_W, artTexts, balanced, certificateArt, estWidth, turnedBox, wrap } from '../components/knots/certArt';
 import { ROUNDS, mysteryBeats, mysteryRounds, mysteryTotals, verdictOf, whyNot, type MysteryResult } from '../calc/knots/mystery';
-import { FINE_PRINT, STAMP, TITLE, beats, certOrder, certTotals, certified, clock, missedOf, shortOf, type CertKnot } from '../calc/knots/cert';
+import { FINE_PRINT, OFF_LINE_ALLOWED, STAMP, TITLE, beats, certOrder, certTotals, certified, clock, missedOf, shortOf, type CertKnot } from '../calc/knots/cert';
 
 describe('every knot draws and ties right', () => {
   test.each(KNOTS.map((k) => [k.name, k] as const))('%s: its crossings are the ones it says, its steps run the rope to its end', (_, k) => {
@@ -400,16 +400,22 @@ describe('Knot Certified', () => {
     const run = clean();
     run[0] = { ...run[0]!, slips: 1, wrong: 1 };
     const t = certTotals(run);
-    expect(t).toMatchObject({ ms: 20_000 * KNOTS.length, slips: 1, wrong: 1, misses: 3, tied: KNOTS.length, skipped: 0, of: KNOTS.length });
+    expect(t).toMatchObject({ ms: 20_000 * KNOTS.length, slips: 1, wrong: 1, misses: 3, tied: KNOTS.length, skipped: 0, of: KNOTS.length, over: 0 });
   });
-  test('one certificate, for all of them clean: one miss, one wrong call or one skip and there is none', () => {
+  test('one certificate, for all sixteen: up to three times off the line a knot, no wrong call, none skipped', () => {
+    expect(KNOTS).toHaveLength(16);
+    expect(OFF_LINE_ALLOWED).toBe(3);
     const withMisses = (slips: number, wrong: number) => {
       const run = clean();
       run[4] = { ...run[4]!, slips, wrong };
       return certTotals(run);
     };
     expect(certified(withMisses(0, 0))).toBe(true);
-    expect(certified(withMisses(1, 0))).toBe(false);
+    expect(certified(withMisses(3, 0))).toBe(true);
+    // Three on every knot is still certified: the allowance is a knot's, not the run's.
+    expect(certified(certTotals(clean().map((r) => ({ ...r, slips: 3 }))))).toBe(true);
+    expect(certified(withMisses(4, 0))).toBe(false);
+    expect(certTotals(clean().map((r, i) => (i < 2 ? { ...r, slips: 5 } : r))).over).toBe(2);
     expect(certified(withMisses(0, 1))).toBe(false);
     const skipped = clean();
     skipped[3] = { ...skipped[3]!, skipped: true };
@@ -417,19 +423,24 @@ describe('Knot Certified', () => {
     // A skipped knot's time and misses don't count, and it can't hide behind them.
     expect(certTotals(skipped)).toMatchObject({ tied: KNOTS.length - 1, skipped: 1 });
     expect(certified(certTotals(clean().slice(0, 3)))).toBe(false);
+    // A clean run of the nine there used to be is no longer all of them.
+    expect(certified({ ...certTotals(clean()), of: 9, tied: 9 })).toBe(false);
   });
   test('Knot this time says what kept the run from it', () => {
     const t = (slips: number, wrong: number, skipped: number) => certTotals(KNOTS.map((k, i) => ({ id: k.id, ms: 1, slips: i ? 0 : slips, wrong: i ? 0 : wrong, skipped: i > 0 && i <= skipped })));
-    expect(shortOf(t(1, 0, 0))).toBe('1 time off the line');
+    expect(shortOf(t(2, 0, 0))).toBe('');
+    expect(shortOf(t(4, 0, 0))).toBe('1 knot off the line more than 3 times');
     expect(shortOf(t(0, 2, 0))).toBe('2 wrong calls');
-    expect(shortOf(t(3, 1, 0))).toBe('3 times off the line and 1 wrong call');
-    expect(shortOf(t(2, 1, 1))).toBe('1 knot skipped, 2 times off the line and 1 wrong call');
+    expect(shortOf(t(5, 1, 0))).toBe('1 knot off the line more than 3 times and 1 wrong call');
+    expect(shortOf(t(6, 1, 1))).toBe('1 knot skipped, 1 knot off the line more than 3 times and 1 wrong call');
     expect(shortOf(t(0, 0, 0))).toBe('');
   });
-  test('and how many of them were missed: off the line, a wrong call or skipped, each knot once', () => {
+  test('and how many of them were missed: off the line more than allowed, a wrong call or skipped, each knot once', () => {
     const run = clean();
     expect(missedOf(run)).toBe(0);
-    run[0] = { ...run[0]!, slips: 3, wrong: 2 };
+    run[1] = { ...run[1]!, slips: 3 };
+    expect(missedOf(run)).toBe(0);
+    run[0] = { ...run[0]!, slips: 4, wrong: 2 };
     run[2] = { ...run[2]!, wrong: 1 };
     run[5] = { ...run[5]!, skipped: true };
     expect(missedOf(run)).toBe(3);
@@ -441,7 +452,7 @@ describe('Knot Certified', () => {
     expect(FINE_PRINT).toMatch(/certifies absolutely nothing/);
     expect(FINE_PRINT).toMatch(/fall protection/);
   });
-  test('the best run is the one with more knots tied, then fewer misses, then faster', () => {
+  test('the best run is a certified one, then the one with more knots tied, then fewer misses, then faster', () => {
     const fast = certTotals(clean(10_000));
     const slow = certTotals(clean(30_000));
     const sloppy = certTotals(clean(5_000).map((r, i) => (i ? r : { ...r, slips: 2 })));
@@ -454,6 +465,12 @@ describe('Knot Certified', () => {
     expect(beats(verySloppy, skipped)).toBe(true);
     expect(beats(slow, verySloppy)).toBe(true);
     expect(beats(skipped, verySloppy)).toBe(false);
+    // Certified with its allowance used beats a run with one wrong call and nothing off the line.
+    const allowance = certTotals(clean(30_000).map((r) => ({ ...r, slips: 3 })));
+    const oneWrong = certTotals(clean(5_000).map((r, i) => (i ? r : { ...r, wrong: 1 })));
+    expect(certified(allowance)).toBe(true);
+    expect(beats(allowance, oneWrong)).toBe(true);
+    expect(beats(oneWrong, allowance)).toBe(false);
     expect(clock(187_400)).toBe('3:07');
   });
   test('the store keeps the best and the last run, and how many', () => {
@@ -472,6 +489,15 @@ describe('Knot Certified', () => {
     const old = JSON.parse(serialiseKnots(b));
     delete old.cert;
     expect(parseKnots(JSON.stringify(old))).toMatchObject({ cert: { best: null, last: null, runs: 0 }, dropped: 0 });
+    // A run kept before the line allowance reads back with none over, and a clean nine never certifies now.
+    const nine = JSON.parse(serialiseKnots(b));
+    nine.cert.best = { ms: 60_000, slips: 0, wrong: 0, misses: 0, tied: 9, skipped: 0, of: 9, at: 5 };
+    const read = parseKnots(JSON.stringify(nine));
+    expect(read.cert.best).toMatchObject({ tied: 9, of: 9, over: 0 });
+    expect(certified(read.cert.best!)).toBe(false);
+    const tooMany = JSON.parse(serialiseKnots(b));
+    tooMany.cert.best.over = 99;
+    expect(parseKnots(JSON.stringify(tooMany)).cert.best).toBeNull();
   });
 });
 

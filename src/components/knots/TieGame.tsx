@@ -6,6 +6,7 @@ import { useTheme } from '../../theme/ThemeProvider';
 import { reachAfter, reachBefore, type Knot } from '../../calc/knots/knots';
 import { VIEW, pointAt, type Laid } from '../../calc/knots/rope';
 import { BUZZ_EVERY_MS, TRACE, callsFor, missesFor, move, pulled, starsFor, type Call, type Trace } from '../../calc/knots/trace';
+import { OFF_LINE_ALLOWED } from '../../calc/knots/cert';
 import { recordTie } from '../../state/knotProgress';
 import { useKnotBook } from '../../state/knots';
 import { useScrollHost } from '../scrollHost';
@@ -318,7 +319,7 @@ export function TieGame({
   };
   const callsMade = (n: number) => (blind && n ? ` · ${n} wrong call${n === 1 ? '' : 's'}` : '');
   const shownLine = !blind || peek;
-  const offs = (n: number) => (blind ? `${n} off the line` : `${n} slip${n === 1 ? '' : 's'}`);
+  const offs = (n: number) => (cert ? `${n} off the line (${OFF_LINE_ALLOWED} allowed)` : blind ? `${n} off the line` : `${n} slip${n === 1 ? '' : 's'}`);
 
   return (
     <View style={{ gap: t.space.md }}>
@@ -350,9 +351,13 @@ export function TieGame({
           <Text style={[t.type.body, { color: c.text, textAlign: 'center' }]}>{`${seconds(done.ms)} · ${offs(done.slips)}${callsMade(done.wrong)}${done.best ? ' · your best' : best ? ` · best ${seconds(best.bestMs)}` : ''}`}</Text>
           <Text style={[t.type.caption, { color: c.textMuted, textAlign: 'center' }]}>
             {cert
-              ? done.slips || done.wrong
-                ? "A miss: this run won't certify. Finish it anyway, then run it again."
-                : 'Tied clean. On to the next.'
+              ? done.wrong
+                ? "A wrong call: this run won't certify. Finish it anyway, then run it again."
+                : done.slips > OFF_LINE_ALLOWED
+                  ? `Off the line more than ${OFF_LINE_ALLOWED} times: this run won't certify. Finish it anyway, then run it again.`
+                  : done.slips
+                    ? `Tied: ${done.slips} of ${OFF_LINE_ALLOWED} times off the line allowed. On to the next.`
+                    : 'Tied clean. On to the next.'
               : blind && peeked
                 ? 'With a look at the line: one star. Tie it again without one.'
                 : blind

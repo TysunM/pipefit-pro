@@ -706,14 +706,21 @@ Under 30° from horizontal, a sling is not used unless its maker or a qualified 
 | Knot | What it's for |
 |---|---|
 | Bowline | A fixed loop in the end of a line that won't slip, and unties after a load |
+| Running bowline | A noose: a bowline with the standing part run through its eye, so it closes on a pull and still unties. Never round a person |
 | Clove hitch | Two turns round a pipe, rail or post: quick to tie and adjust |
+| Rolling hitch | Grips a pipe or another line against a pull along it: two turns ride over the standing part toward the pull |
 | Figure eight | A stopper, so a line can't run out through a block |
-| Slip knot (sliding loop) | A bight with the end wrapped two or three times round both parts: a loop that slides closed on what it's round. Never round a person, never on a lift |
+| Figure-eight loop (figure eight follow-through) | A fixed loop that can't shake loose, two strands side by side: easy to check, hard to untie after a heavy load |
 | Quick-release knot (slipped overhand) | Lets go with one pull on the tail. Never for a load |
+| Slip knot (sliding loop) | A bight with the end wrapped two or three times round both parts: a loop that slides closed on what it's round. Never round a person, never on a lift |
 | Round turn and two half hitches | Ties a line off to a rail or ring so it holds under load |
-| Timber hitch | Grips a pipe or timber for a pull or a hand-line hoist (add a half hitch for a killick hitch) |
+| Timber hitch | Grips a pipe or timber for a drag or a pull, and falls free when the pull comes off |
+| Timber hitch and half hitch (killick hitch) | Sends a length of pipe up on a hand line end first, in line with the line, instead of swinging |
 | Sheet bend | Joins two lines, even of different sizes |
+| Double sheet bend | A sheet bend with a second turn: holds in a wet, stiff or slick line where a single one slips |
 | Square knot | Ties two ends round a bundle. Never to join lines that take a load |
+| Cat's paw | Puts the middle of a hand line on a hook with two twisted loops. Never as a sling on a lift |
+| Trucker's hitch | A rope pulley for tie-downs: twice the pull, tied off with two half hitches. For securing, never for lifting |
 
 **Learn:** the knot is tied in front of you a step at a time, the working end (taped black) moving over and under as it goes, on a loop like a short film. The last step on every knot is **Set it**: arrows show which parts to pull and which way, and the knot draws up tight in front of you. **Back** and **Next** move between steps; **Pause** holds the step done. With Reduce Motion on, each step shows done.
 
@@ -728,14 +735,21 @@ Under 30° from horizontal, a sling is not used unless its maker or a qualified 
 | Knot | Faults to spot |
 |---|---|
 | Bowline | Not set, short tail |
+| Running bowline | Standing part only lying across the eye instead of through it, not set, short tail |
 | Clove hitch | End over the X instead of under it, not set, short tail |
+| Rolling hitch | End not tucked under the last turn, not set, short tail |
 | Figure eight | Last tuck over instead of under (no knot at all: it falls out), not set, short tail |
-| Slip knot | One wrap instead of two or three, not set, short tail |
+| Figure-eight loop | Strands crossed instead of side by side, not set, short tail |
 | Quick-release knot | Not set, short tail |
+| Slip knot | One wrap instead of two or three, not set, short tail |
 | Round turn and two half hitches | Second hitch the other way (a cow hitch, not a clove), not set, short tail |
 | Timber hitch | One twist instead of three, not set |
+| Timber hitch and half hitch | Half hitch not trapped (it slides off and the pipe swings), one twist, not set |
 | Sheet bend | End not tucked under its own line, not set |
+| Double sheet bend | Second turn not tucked, not set |
 | Square knot | Granny knot, not set, short ends |
+| Cat's paw | A loop not twisted (it pulls straight off the hook), not set |
+| Trucker's hitch | Line only lying across the pulley loop instead of through it, not set, short tail |
 
 Every fault is drawn from the knot tied right, not drawn separately, so it can't be drawn wrong. The faults that change which way a crossing goes are proved with a knot invariant (the Jones polynomial): the figure eight is a true figure eight and its fault is no knot at all, and the square knot is a true square knot and its fault a true granny. The best round on each knot is kept, and the hub marks every knot with all its faults spotted as **Checked**.
 
@@ -752,9 +766,9 @@ Each job ends with what was wanted, and tapping a job opens its knot. The best s
 
 **Knot Certified:** the run, from the Knots hub (**Get Knot Certified**, or say "get knot certified"). Every knot from memory, back to back, in an order shuffled each run so it can't be learned by heart. No line, no steps, no Show me, no starting a knot over, and every over or under called. The clock counts tying time only.
 
-To get certified it has to be all of them clean: never off the line, not one wrong call, none skipped. Miss once and that run can't certify: the knot says so, the run shows **not clean this run**, and you finish it anyway. At the end it's **Knot this time.**, how many of the 9 you missed ("2 of 9 missed"), what missed ("1 time off the line and 1 wrong call"), **Try tying them again**, and **Run it again**. As many runs as it takes.
+To get certified it has to be all 16: not one wrong call, none skipped, and **no more than 3 times off the line on any one knot**. While you tie, the knot shows how many times you've been off it ("2 off the line (3 allowed)"), and each knot says when it's done: "Tied clean", "Tied: 2 of 3 times off the line allowed", or, past that or after a wrong call, that this run won't certify. The run shows **on track** or **won't certify this run**, and you finish it anyway. At the end it's **Knot this time.**, how many of the 16 you missed ("2 of 16 missed": a knot counts once, whether skipped, a wrong call or off the line more than 3 times), what missed ("1 knot off the line more than 3 times and 1 wrong call"), **Try tying them again**, and **Run it again**. As many runs as it takes.
 
-A clean run gets the one certificate: **Certified Master Of Rope**, in bold, in a rope frame with a rubber stamp, KNOT CERTIFIED ★★★. Under it, your time, the zero off the line and the zero wrong calls, the date, and fine print that says it certifies absolutely nothing. It's for you: nothing is sent anywhere. The best run and the last are kept on the phone, and the hub shows your best.
+A run that makes it gets the one certificate: **Certified Master Of Rope**, in bold, in a rope frame with a rubber stamp, KNOT CERTIFIED ★★★. Under it, your time, your times off the line, the zero wrong calls, the date, and fine print that says it certifies absolutely nothing. It's for you: nothing is sent anywhere. The best run (a certified one first, then the most knots tied, the fewest misses and the fastest) and the last are kept on the phone, and the hub shows your best. A certificate from when there were nine knots doesn't count: all 16 now.
 
 **Save as image**, under the certificate, makes it a picture: a 1080 × 1350 portrait PNG of the same certificate, rope frame and stamp, with "Tied in PipeFit Pro" at the foot. On the phone it opens the share sheet: save it to your photos, or send it to the crew's chat. In a browser it opens the share sheet where the browser has one, and otherwise downloads **knot-certified.png**. The picture is made on the phone; nothing is uploaded.
 
