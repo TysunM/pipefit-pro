@@ -19,13 +19,14 @@ import { useKnotBook } from '../state/knots';
 import { recordCert } from '../state/knotProgress';
 import { KNOTS, knotById } from '../calc/knots/knots';
 import { seeded } from '../calc/knots/quiz';
-import { TITLE, beats, certOrder, certTotals, certified, clock, type CertKnot } from '../calc/knots/cert';
+import { TITLE, beats, certOrder, certTotals, certified, clock, shortOf, type CertKnot } from '../calc/knots/cert';
 import { ListRow } from './OrbitalScreen';
 
 // The Knot Certified run: every knot, from memory, back to back, in an order
 // shuffled each time. No line, no steps, no look at it, every over or under
-// called. The clock counts tying only. Tie every one and there's a
-// certificate that certifies absolutely nothing; skip one and there's none.
+// called. The clock counts tying only. All of them without a miss and there's
+// a certificate that certifies absolutely nothing. One miss and the run is
+// finished anyway, then Knot this time: run it again.
 
 type Props = NativeStackScreenProps<RootStackParamList, 'KnotCert'>;
 type Phase = 'intro' | 'run' | 'done';
@@ -87,15 +88,16 @@ export function KnotCertScreen({ navigation }: Props) {
           <Ionicons name="ribbon" size={44} color={c.glow} />
           <Text style={[t.type.sectionTitle, { color: c.text, fontSize: 28, textAlign: 'center' }]}>Knot Certified</Text>
           <Text style={[t.type.body, { color: c.textMuted, textAlign: 'center' }]}>
-            {`All ${KNOTS.length} knots from memory, back to back, in a shuffled order. Tie every one to get certified. It certifies nothing.`}
+            {`All ${KNOTS.length} knots from memory, back to back, in a shuffled order, without a single miss. It certifies nothing.`}
           </Text>
         </View>
         <SectionHeader title="The rules" />
         <View style={{ paddingHorizontal: t.layout.screenPadding, gap: t.space.sm }}>
           {[
             'No line, no steps, no Show me. The phone buzzes when you are off the line.',
-            'Every crossing: over or under, your call. A wrong call counts as two misses.',
-            'No starting a knot over. Skip one if you must, but a skipped knot means no certificate.',
+            'Every crossing: over or under, your call.',
+            `To get certified: all ${KNOTS.length}, never off the line, not one wrong call, none skipped.`,
+            'Miss once and that run is done for: finish it anyway, then run it again. As many runs as it takes.',
             'The clock counts tying time only. Breathe between knots.',
           ].map((r) => (
             <View key={r} style={{ flexDirection: 'row', gap: t.space.sm }}>
@@ -107,8 +109,8 @@ export function KnotCertScreen({ navigation }: Props) {
         {best ? (
           <View style={{ marginHorizontal: t.layout.screenPadding, marginTop: t.space.lg, padding: t.space.lg, borderRadius: t.radius.lg, backgroundColor: c.bgRaised, borderWidth: t.hairline, borderColor: c.border, gap: 4 }}>
             <Text style={[t.type.label, { color: c.textMuted }]}>Your best</Text>
-            <Text style={[t.type.sectionTitle, { color: c.text }]}>{certified(best) ? TITLE : `${best.tied} of ${best.of} tied`}</Text>
-            <Text style={[t.type.caption, { color: c.textMuted }]}>{`${clock(best.ms)} · ${best.misses} miss${best.misses === 1 ? '' : 'es'} · ${book.value.cert.runs} run${book.value.cert.runs === 1 ? '' : 's'}`}</Text>
+            <Text style={[t.type.sectionTitle, { color: c.text }]}>{certified(best) ? TITLE : 'Not certified yet'}</Text>
+            <Text style={[t.type.caption, { color: c.textMuted }]}>{`${certified(best) ? clock(best.ms) : `Best run: ${shortOf(best)}`} · ${book.value.cert.runs} run${book.value.cert.runs === 1 ? '' : 's'}`}</Text>
           </View>
         ) : null}
         <ControlRow>
@@ -145,13 +147,11 @@ export function KnotCertScreen({ navigation }: Props) {
           </>
         ) : (
           <>
-            {/* No certificate: a knot was skipped. */}
+            {/* No certificate: a miss, or a knot skipped. */}
             <View style={{ paddingHorizontal: t.layout.screenPadding, paddingTop: t.space.lg, gap: t.space.sm, alignItems: 'center' }}>
-              <Ionicons name="close-circle-outline" size={44} color={c.textMuted} />
-              <Text style={[t.type.sectionTitle, { color: c.text, fontSize: 26, textAlign: 'center' }]}>No certificate this time</Text>
-              <Text style={[t.type.body, { color: c.textMuted, textAlign: 'center' }]}>
-                {`${totals.skipped} knot${totals.skipped === 1 ? '' : 's'} skipped. Tie all ${totals.of} without skipping to get certified.`}
-              </Text>
+              <Ionicons name="refresh-circle-outline" size={44} color={c.textMuted} />
+              <Text style={[t.type.sectionTitle, { color: c.text, fontSize: 26, textAlign: 'center' }]}>Knot this time.</Text>
+              <Text style={[t.type.body, { color: c.textMuted, textAlign: 'center' }]}>{`${shortOf(totals)}. Try again: all ${totals.of}, not one miss.`.replace(/^\. /, '')}</Text>
             </View>
             <ControlRow>
               <AccentButton label="Run it again" icon="refresh" style={{ flex: 1 }} onPress={start} />
@@ -181,6 +181,7 @@ export function KnotCertScreen({ navigation }: Props) {
   const knot = knotById(order[at]!)!;
   const doneHere = run.length > at;
   const soFar = run.reduce((a, r) => a + r.ms, 0);
+  const clean = run.every((r) => !r.skipped && !r.slips && !r.wrong);
   return (
     <Screen>
       <View style={{ paddingHorizontal: t.layout.screenPadding, paddingTop: t.space.md, gap: t.space.sm }}>
@@ -192,7 +193,7 @@ export function KnotCertScreen({ navigation }: Props) {
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
           <Text style={[t.type.label, { color: c.textMuted, flex: 1 }]}>{`Knot ${at + 1} of ${order.length}`}</Text>
-          <Text style={[t.type.label, { color: c.textMuted }]}>{`Total ${clock(soFar)}`}</Text>
+          <Text style={[t.type.label, { color: clean ? c.textMuted : c.warnText }]}>{`Total ${clock(soFar)} · ${clean ? 'clean so far' : 'not clean this run'}`}</Text>
         </View>
         <Text style={[t.type.sectionTitle, { color: c.text, fontSize: 26 }]}>{knot.name}</Text>
         <Text style={[t.type.body, { color: c.textMuted }]}>{knot.use}</Text>

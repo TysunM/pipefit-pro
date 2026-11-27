@@ -350,7 +350,9 @@ export function TieGame({
           <Text style={[t.type.body, { color: c.text, textAlign: 'center' }]}>{`${seconds(done.ms)} · ${offs(done.slips)}${callsMade(done.wrong)}${done.best ? ' · your best' : best ? ` · best ${seconds(best.bestMs)}` : ''}`}</Text>
           <Text style={[t.type.caption, { color: c.textMuted, textAlign: 'center' }]}>
             {cert
-              ? 'Tied. On to the next.'
+              ? done.slips || done.wrong
+                ? "A miss: this run won't certify. Finish it anyway, then run it again."
+                : 'Tied clean. On to the next.'
               : blind && peeked
                 ? 'With a look at the line: one star. Tie it again without one.'
                 : blind

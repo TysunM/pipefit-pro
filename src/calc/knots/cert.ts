@@ -2,10 +2,10 @@
 // --------------
 // The run: every knot, from memory, back to back, in an order shuffled each
 // time so it can't be learned by heart. No line, no steps, no look at the
-// line, every over or under called. Tie every one and you're certified: one
-// certificate, that certifies absolutely nothing. Skip one and there's none.
-// Its misses (each time off the line, a wrong call as two) and tying time are
-// printed on it, and rank the best run. Pure.
+// line, every over or under called. All of them clean, not once off the line
+// and not one wrong call, and you're certified: one certificate, that
+// certifies absolutely nothing. One miss and the run is finished anyway, then
+// run again, as many times as it takes. Pure.
 
 import { KNOTS } from './knots';
 import { missesFor } from './trace';
@@ -30,10 +30,17 @@ export function certTotals(run: readonly CertKnot[]): CertTotals {
   return { ms, slips, wrong, misses: missesFor(slips, wrong), tied: done.length, skipped: run.length - done.length, of: KNOTS.length };
 }
 
-/** Certified: every knot tied, none skipped. */
-export const certified = (t: CertTotals) => t.skipped === 0 && t.tied === t.of;
+/** Certified: every knot tied, none skipped, not once off the line, not one wrong call. */
+export const certified = (t: CertTotals) => t.skipped === 0 && t.tied === t.of && t.slips === 0 && t.wrong === 0;
 
-/** Whether run a beats run b: more knots tied (a certified run beats any other), then fewer misses, then faster. */
+const count = (n: number, one: string) => `${n} ${one}${n === 1 ? '' : 's'}`;
+/** What kept a run from it, in words: "1 knot skipped, 2 times off the line and 1 wrong call". */
+export function shortOf(t: CertTotals): string {
+  const parts = [t.skipped ? `${count(t.skipped, 'knot')} skipped` : '', t.slips ? `${count(t.slips, 'time')} off the line` : '', t.wrong ? count(t.wrong, 'wrong call') : ''].filter(Boolean);
+  return parts.length > 1 ? `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}` : (parts[0] ?? '');
+}
+
+/** Whether run a beats run b: more knots tied, then fewer misses (a certified run beats any other), then faster. */
 export function beats(a: CertTotals, b: CertTotals): boolean {
   if (a.tied !== b.tied) return a.tied > b.tied;
   if (a.misses !== b.misses) return a.misses < b.misses;

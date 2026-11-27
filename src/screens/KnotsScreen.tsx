@@ -35,6 +35,7 @@ export function KnotsScreen({ navigation }: Props) {
   const checked = KNOTS.filter((k) => book.checked[k.id]?.best === k.faults.length).length;
   const remembered = KNOTS.filter((k) => book.memory[k.id]).length;
   const cert = book.cert.best;
+  const certRuns = book.cert.runs;
   const mystery = book.mystery.best;
 
   return (
@@ -46,7 +47,7 @@ export function KnotsScreen({ navigation }: Props) {
         <Text style={[t.type.sectionTitle, { color: c.text }]}>{`Tied by hand: ${tied} of ${KNOTS.length}`}</Text>
         <Text style={[t.type.body, { color: c.text }]}>{`Tied from memory: ${remembered} of ${KNOTS.length}`}</Text>
         <Text style={[t.type.body, { color: c.text }]}>{`Every fault spotted: ${checked} of ${KNOTS.length}`}</Text>
-        <Text style={[t.type.body, { color: c.text }]}>{cert ? (certified(cert) ? `Knot Certified: ${TITLE}, ${clock(cert.ms)}` : `Knot Certified: not yet, best ${cert.tied} of ${cert.of} tied`) : 'Knot Certified: not yet run'}</Text>
+        <Text style={[t.type.body, { color: c.text }]}>{cert ? (certified(cert) ? `Knot Certified: ${TITLE}, ${clock(cert.ms)}` : `Knot Certified: not yet, ${certRuns} run${certRuns === 1 ? '' : 's'}`) : 'Knot Certified: not yet run'}</Text>
         <Text style={[t.type.body, { color: c.text }]}>{mystery ? `Mystery knot: best ${mystery.right} of ${mystery.rounds} right` : 'Mystery knot: not yet tried'}</Text>
         <Text style={[t.type.caption, { color: c.textMuted }]}>
           {book.test.taken ? `Knot test: best ${book.test.best} of ${book.test.of}, last ${book.test.last} of ${book.test.of}` : 'Watch each one tied, tie it on screen with a finger, tie it again from memory, check it, then take the test.'}

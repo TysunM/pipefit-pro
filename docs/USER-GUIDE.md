@@ -750,9 +750,11 @@ Every fault is drawn from the knot tied right, not drawn separately, so it can't
 
 Each job ends with what was wanted, and tapping a job opens its knot. The best session and the last are kept on the phone, and the hub shows your best.
 
-**Knot Certified:** the run, from the Knots hub (**Get Knot Certified**, or say "get knot certified"). Every knot from memory, back to back, in an order shuffled each run so it can't be learned by heart. No line, no steps, no Show me, no starting a knot over, and every over or under called. The clock counts tying time only. Skip a knot if you must, but a skipped knot means no certificate, just the run knot by knot and **Run it again**.
+**Knot Certified:** the run, from the Knots hub (**Get Knot Certified**, or say "get knot certified"). Every knot from memory, back to back, in an order shuffled each run so it can't be learned by heart. No line, no steps, no Show me, no starting a knot over, and every over or under called. The clock counts tying time only.
 
-Tie every one and there's one certificate: **Certified Master Of Rope**, in bold, in a rope frame with a rubber stamp, KNOT CERTIFIED ★★★. Under it, your time, times off the line and wrong calls, the date, and fine print that says it certifies absolutely nothing. A miss is a time off the line; a wrong call counts as two. Your best run is the one with the most knots tied, then the fewest misses, then the fastest. It's for you: nothing is sent anywhere. The best run and the last are kept on the phone, and the hub shows your best.
+To get certified it has to be all of them clean: never off the line, not one wrong call, none skipped. Miss once and that run can't certify: the knot says so, the run shows **not clean this run**, and you finish it anyway. At the end it's **Knot this time.**, what kept it from you ("1 wrong call"), and **Run it again**. As many runs as it takes.
+
+A clean run gets the one certificate: **Certified Master Of Rope**, in bold, in a rope frame with a rubber stamp, KNOT CERTIFIED ★★★. Under it, your time, the zero off the line and the zero wrong calls, the date, and fine print that says it certifies absolutely nothing. It's for you: nothing is sent anywhere. The best run and the last are kept on the phone, and the hub shows your best.
 
 **Save as image**, under the certificate, makes it a picture: a 1080 × 1350 portrait PNG of the same certificate, rope frame and stamp, with "Tied in PipeFit Pro" at the foot. On the phone it opens the share sheet: save it to your photos, or send it to the crew's chat. In a browser it opens the share sheet where the browser has one, and otherwise downloads **knot-certified.png**. The picture is made on the phone; nothing is uploaded.
 

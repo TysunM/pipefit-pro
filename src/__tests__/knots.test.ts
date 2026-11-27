@@ -7,7 +7,7 @@ import { SAFETY, faultRound, makeTest, seeded } from '../calc/knots/quiz';
 import { emptyKnots, parseKnots, recordCert, recordCheck, recordMystery, recordTest, recordTie, serialiseKnots } from '../state/knotProgress';
 import { ART_H, ART_W, artTexts, balanced, certificateArt, estWidth, turnedBox, wrap } from '../components/knots/certArt';
 import { ROUNDS, mysteryBeats, mysteryRounds, mysteryTotals, verdictOf, whyNot, type MysteryResult } from '../calc/knots/mystery';
-import { FINE_PRINT, STAMP, TITLE, beats, certOrder, certTotals, certified, clock, type CertKnot } from '../calc/knots/cert';
+import { FINE_PRINT, STAMP, TITLE, beats, certOrder, certTotals, certified, clock, shortOf, type CertKnot } from '../calc/knots/cert';
 
 describe('every knot draws and ties right', () => {
   test.each(KNOTS.map((k) => [k.name, k] as const))('%s: its crossings are the ones it says, its steps run the rope to its end', (_, k) => {
@@ -402,20 +402,29 @@ describe('Knot Certified', () => {
     const t = certTotals(run);
     expect(t).toMatchObject({ ms: 20_000 * KNOTS.length, slips: 1, wrong: 1, misses: 3, tied: KNOTS.length, skipped: 0, of: KNOTS.length });
   });
-  test('one certificate, for tying every knot: misses or not, but a skipped knot means none', () => {
-    const withMisses = (n: number) => {
+  test('one certificate, for all of them clean: one miss, one wrong call or one skip and there is none', () => {
+    const withMisses = (slips: number, wrong: number) => {
       const run = clean();
-      run[0] = { ...run[0]!, slips: n, wrong: n };
+      run[4] = { ...run[4]!, slips, wrong };
       return certTotals(run);
     };
-    expect(certified(withMisses(0))).toBe(true);
-    expect(certified(withMisses(25))).toBe(true);
+    expect(certified(withMisses(0, 0))).toBe(true);
+    expect(certified(withMisses(1, 0))).toBe(false);
+    expect(certified(withMisses(0, 1))).toBe(false);
     const skipped = clean();
     skipped[3] = { ...skipped[3]!, skipped: true };
     expect(certified(certTotals(skipped))).toBe(false);
     // A skipped knot's time and misses don't count, and it can't hide behind them.
     expect(certTotals(skipped)).toMatchObject({ tied: KNOTS.length - 1, skipped: 1 });
     expect(certified(certTotals(clean().slice(0, 3)))).toBe(false);
+  });
+  test('Knot this time says what kept the run from it', () => {
+    const t = (slips: number, wrong: number, skipped: number) => certTotals(KNOTS.map((k, i) => ({ id: k.id, ms: 1, slips: i ? 0 : slips, wrong: i ? 0 : wrong, skipped: i > 0 && i <= skipped })));
+    expect(shortOf(t(1, 0, 0))).toBe('1 time off the line');
+    expect(shortOf(t(0, 2, 0))).toBe('2 wrong calls');
+    expect(shortOf(t(3, 1, 0))).toBe('3 times off the line and 1 wrong call');
+    expect(shortOf(t(2, 1, 1))).toBe('1 knot skipped, 2 times off the line and 1 wrong call');
+    expect(shortOf(t(0, 0, 0))).toBe('');
   });
   test("it's a joke, and says so: the stamp reads KNOT, the fine print certifies nothing", () => {
     expect(STAMP).toBe('KNOT CERTIFIED');
@@ -432,8 +441,9 @@ describe('Knot Certified', () => {
     expect(beats(fast, slow)).toBe(true);
     expect(beats(slow, fast)).toBe(false);
     expect(beats(slow, sloppy)).toBe(true);
-    // Certified, however sloppy, beats a quick clean run with a knot skipped.
+    // Every knot tied, however sloppy, ranks above a quick run with one skipped; a certified run above both.
     expect(beats(verySloppy, skipped)).toBe(true);
+    expect(beats(slow, verySloppy)).toBe(true);
     expect(beats(skipped, verySloppy)).toBe(false);
     expect(clock(187_400)).toBe('3:07');
   });
@@ -519,7 +529,7 @@ describe('the certificate as a picture', () => {
   const run = (slips: number, wrong: number, ms: number): CertKnot[] => KNOTS.map((k, i) => ({ id: k.id, ms, slips: i === 0 ? slips : 0, wrong: i === 0 ? wrong : 0 }));
   const cases = [
     ['a clean run', run(0, 0, 21_000)],
-    ['a long sloppy one', run(137, 48, 400_000)],
+    ['a long one', run(0, 0, 400_000)],
   ] as const;
   test.each(cases)('%s: the title, the stamp and the fine print, every line inside the card', (_, r) => {
     const art = certificateArt(certTotals(r), Date.UTC(2026, 10, 27));
