@@ -33,6 +33,9 @@ export function certTotals(run: readonly CertKnot[]): CertTotals {
 /** Certified: every knot tied, none skipped, not once off the line, not one wrong call. */
 export const certified = (t: CertTotals) => t.skipped === 0 && t.tied === t.of && t.slips === 0 && t.wrong === 0;
 
+/** How many knots in a run were missed: off the line, a wrong call, or skipped. */
+export const missedOf = (run: readonly CertKnot[]) => run.filter((r) => r.skipped || r.slips || r.wrong).length;
+
 const count = (n: number, one: string) => `${n} ${one}${n === 1 ? '' : 's'}`;
 /** What kept a run from it, in words: "1 knot skipped, 2 times off the line and 1 wrong call". */
 export function shortOf(t: CertTotals): string {
