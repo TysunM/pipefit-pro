@@ -4,7 +4,8 @@ import { jones, polyText, type Closure } from '../calc/knots/jones';
 import { laidFault, laidSet, pairFrame } from '../components/knots/laid';
 import { HOLD, PULL_DRAG, TRACE, callsFor, missesFor, move, nearest, pulled, starsFor } from '../calc/knots/trace';
 import { SAFETY, faultRound, makeTest, seeded } from '../calc/knots/quiz';
-import { emptyKnots, parseKnots, recordCert, recordCheck, recordTest, recordTie, serialiseKnots } from '../state/knotProgress';
+import { emptyKnots, parseKnots, recordCert, recordCheck, recordMystery, recordTest, recordTie, serialiseKnots } from '../state/knotProgress';
+import { ROUNDS, mysteryBeats, mysteryRounds, mysteryTotals, verdictOf, whyNot, type MysteryResult } from '../calc/knots/mystery';
 import { CERTIFIED_UP_TO, FINE_PRINT, QUITE_UP_TO, TIERS, beats, certOrder, certTotals, clock, tierOf, type CertKnot } from '../calc/knots/cert';
 
 describe('every knot draws and ties right', () => {
@@ -451,5 +452,64 @@ describe('Knot Certified', () => {
     const old = JSON.parse(serialiseKnots(b));
     delete old.cert;
     expect(parseKnots(JSON.stringify(old))).toMatchObject({ cert: { best: null, last: null, runs: 0 }, dropped: 0 });
+  });
+});
+
+describe('Mystery knot', () => {
+  test('a session is five jobs, each a different knot, each job one that knot is for', () => {
+    const seen = new Set<string>();
+    for (let seed = 1; seed < 40; seed += 1) {
+      const rs = mysteryRounds(seeded(seed));
+      expect(rs).toHaveLength(ROUNDS);
+      expect(new Set(rs.map((r) => r.knot)).size).toBe(ROUNDS);
+      for (const r of rs) expect(knotById(r.knot)!.jobs).toContain(r.job);
+      seen.add(rs.map((r) => r.job).join('|'));
+    }
+    expect(seen.size).toBeGreaterThan(30);
+    expect(mysteryRounds(seeded(9))).toEqual(mysteryRounds(seeded(9)));
+  });
+  test("a job never gives its knot away: no job names a knot", () => {
+    const names = KNOTS.flatMap((k) => [k.name, k.aka ?? ''].filter(Boolean).map((n) => n.toLowerCase()));
+    for (const k of KNOTS) for (const job of k.jobs) for (const n of names) expect([job, n, job.toLowerCase().includes(n)]).toEqual([job, n, false]);
+  });
+  const round = (knot: string, picked: string, slips = 0, wrong = 0, skipped = false): MysteryResult => ({ knot, picked, ms: 10_000, slips, wrong, skipped });
+  test('scored on right picks first, then the tying', () => {
+    const perfect = mysteryTotals(['bowline', 'clove', 'figure8', 'slipknot', 'square'].map((k) => round(k, k)));
+    expect(perfect).toMatchObject({ rounds: 5, right: 5, misses: 0, skipped: 0, ms: 50_000 });
+    expect(verdictOf(perfect).title).toBe('Mind reader');
+    const sloppy = mysteryTotals([round('bowline', 'bowline', 2, 1), ...['clove', 'figure8', 'slipknot', 'square'].map((k) => round(k, k))]);
+    expect(sloppy).toMatchObject({ right: 5, misses: 4 });
+    expect(verdictOf(sloppy).title).toBe('Right knot, every time');
+    const missed = mysteryTotals([round('bowline', 'slipknot'), round('clove', 'timber'), ...['figure8', 'slipknot', 'square'].map((k) => round(k, k))]);
+    expect(missed.right).toBe(3);
+    expect(verdictOf(missed).title).toBe('Mostly the right knot');
+    expect(verdictOf(mysteryTotals(['bowline', 'clove', 'figure8', 'slipknot', 'square'].map((k) => round(k, 'sheetbend')))).title).toBe('Wrong knot, right confidence');
+    // A skipped tie is no time and no misses, but never a mind reader.
+    const skipped = mysteryTotals([round('bowline', 'bowline', 0, 0, true), ...['clove', 'figure8', 'slipknot', 'square'].map((k) => round(k, k))]);
+    expect(skipped).toMatchObject({ skipped: 1, ms: 40_000 });
+    expect(verdictOf(skipped).title).toBe('Right knot, every time');
+    expect(mysteryBeats(perfect, sloppy)).toBe(true);
+    expect(mysteryBeats(sloppy, missed)).toBe(true);
+    expect(mysteryBeats(perfect, skipped)).toBe(true);
+  });
+  test('a wrong pick says what the picked knot is for and what the job wanted', () => {
+    const why = whyNot('slipknot', 'bowline');
+    expect(why).toMatch(/^A slip knot is for this: a loop that slides/);
+    expect(why).toMatch(/This job wants a bowline: a fixed loop/);
+  });
+  test('the store keeps the best and the last session, and how many', () => {
+    const good = mysteryTotals(['bowline', 'clove', 'figure8', 'slipknot', 'square'].map((k) => round(k, k)));
+    const worse = mysteryTotals(['bowline', 'clove', 'figure8', 'slipknot', 'square'].map((k) => round(k, 'timber')));
+    let b = recordMystery(emptyKnots(), worse, 1, mysteryBeats);
+    b = recordMystery(b, good, 2, mysteryBeats);
+    b = recordMystery(b, worse, 3, mysteryBeats);
+    expect(b.mystery).toEqual({ best: { ...good, at: 2 }, last: { ...worse, at: 3 }, runs: 3 });
+    expect(parseKnots(serialiseKnots(b))).toEqual(b);
+    const bad = JSON.parse(serialiseKnots(b));
+    bad.mystery.best.right = 9;
+    expect(parseKnots(JSON.stringify(bad)).mystery.best).toBeNull();
+    const old = JSON.parse(serialiseKnots(b));
+    delete old.mystery;
+    expect(parseKnots(JSON.stringify(old))).toMatchObject({ mystery: { best: null, last: null, runs: 0 }, dropped: 0 });
   });
 });

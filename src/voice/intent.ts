@@ -78,7 +78,7 @@ export const TOOL_WORDS: Record<OpenRoute, readonly string[]> = {
   Orbital: ['orbital welding', 'orbital welder', 'orbital weld', 'orbital', 'orbital programs', 'orbital program', 'weld schedule', 'weld schedules', 'orbital heads', 'weld heads', 'orbital equations', 'orbital coupons', 'coupons'],
   // Not "knot" alone: said, it is "not", which a fitter says all day.
   SlingAngle: ['sling angle', 'sling angles', 'sling tension', 'sling calculator', 'leg tension', 'load angle factor', 'angle factor', 'bridle', 'rigging calculator', 'off center lift', 'off centre lift'],
-  Knots: ['knots', 'knot tying', 'tie knots', 'tying knots', 'rigging knots', 'knot test', 'knot game', 'bowline', 'clove hitch', 'spot the fault', 'check a knot', 'dress a knot', 'granny knot', 'knots from memory', 'tie from memory', 'knot certified', 'knot certification', 'get knot certified', 'slip knot', 'sliding loop', 'quick-release knot'],
+  Knots: ['knots', 'knot tying', 'tie knots', 'tying knots', 'rigging knots', 'knot test', 'knot game', 'bowline', 'clove hitch', 'spot the fault', 'check a knot', 'dress a knot', 'granny knot', 'knots from memory', 'tie from memory', 'knot certified', 'knot certification', 'get knot certified', 'slip knot', 'sliding loop', 'quick-release knot', 'mystery knot', 'mystery mode', 'which knot for the job'],
   Weldability: ['weldability', 'carbon equivalent', 'carbon equivalents', 'ce calculator', 'pcm', 'pren', 'pitting resistance'],
   CutList: ['cut list', 'cut sheet', 'saw list', 'cutting list', 'cuts list'],
   FittingLibrary: ['fitting library', 'fittings library', 'takeout library', 'saved takeouts', 'fitting takeouts', 'library'],

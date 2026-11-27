@@ -232,7 +232,7 @@ const TIED: Tied[] = [
     aka: 'Slipped overhand',
     kind: 'Stopper',
     use: 'A knot that lets go with one pull on the tail: for something that has to come undone fast.',
-    jobs: ['Tying off a tarp or a coil to undo in a hurry', 'A quick stopper that comes out with one pull', 'Holding a coil of hand line together'],
+    jobs: ['Tying off a tarp or a coil to undo in a hurry', 'A quick stopper that comes out with one pull', 'Holding a coil together so one pull sets it free'],
     watch: "One pull on the tail and it's gone. Never for anything that takes a load or holds a person.",
     ropes: [
       rope(
@@ -283,7 +283,7 @@ const TIED: Tied[] = [
     aka: 'Sliding loop',
     kind: 'Loop',
     use: 'A loop that slides: pull the standing part and it closes snug on whatever it is round.',
-    jobs: ['Snugging a hand line round a bundle of conduit', 'A loop that cinches tight on a post or rail', 'Closing a line round a rolled-up tarp'],
+    jobs: ['Cinching a hand line tight round a bundle of conduit', 'A loop that cinches tight on a post or rail', 'A running loop that closes up as the line is pulled'],
     watch: 'It slides closed under load: never round a person, and never on a lift. For a loop that holds its size, tie a bowline.',
     ropes: [
       rope(
@@ -528,7 +528,7 @@ const TIED: Tied[] = [
     aka: 'Reef knot',
     kind: 'Binding',
     use: 'Ties the two ends of one line round a bundle, flat and easy to untie.',
-    jobs: ['Tying a bundle of rod or small pipe together', 'Tying off a bag or a tarp round a bundle', 'Binding a coil'],
+    jobs: ['Tying a bundle of rod or small pipe together', 'Tying off a bag or a tarp round a bundle', 'Tying both ends of a tie round a coil, flat'],
     watch: "Never to join two lines that take a load: it can capsize and pull apart. Use a sheet bend for that. Each colour's two parts lie on the same side of the other's bight, or it is a granny.",
     ropes: [
       rope(

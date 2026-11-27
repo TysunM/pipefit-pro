@@ -35,6 +35,7 @@ export function KnotsScreen({ navigation }: Props) {
   const checked = KNOTS.filter((k) => book.checked[k.id]?.best === k.faults.length).length;
   const remembered = KNOTS.filter((k) => book.memory[k.id]).length;
   const cert = book.cert.best;
+  const mystery = book.mystery.best;
 
   return (
     <Screen>
@@ -46,6 +47,7 @@ export function KnotsScreen({ navigation }: Props) {
         <Text style={[t.type.body, { color: c.text }]}>{`Tied from memory: ${remembered} of ${KNOTS.length}`}</Text>
         <Text style={[t.type.body, { color: c.text }]}>{`Every fault spotted: ${checked} of ${KNOTS.length}`}</Text>
         <Text style={[t.type.body, { color: c.text }]}>{cert ? `Knot Certified: ${TIERS[tierOf(cert)].title}, ${clock(cert.ms)}` : 'Knot Certified: not yet run'}</Text>
+        <Text style={[t.type.body, { color: c.text }]}>{mystery ? `Mystery knot: best ${mystery.right} of ${mystery.rounds} right` : 'Mystery knot: not yet tried'}</Text>
         <Text style={[t.type.caption, { color: c.textMuted }]}>
           {book.test.taken ? `Knot test: best ${book.test.best} of ${book.test.of}, last ${book.test.last} of ${book.test.of}` : 'Watch each one tied, tie it on screen with a finger, tie it again from memory, check it, then take the test.'}
         </Text>
@@ -54,6 +56,7 @@ export function KnotsScreen({ navigation }: Props) {
         <AccentButton label="Take the knot test" icon="school-outline" style={{ flex: 1 }} onPress={() => navigation.navigate('KnotTest')} />
       </ControlRow>
       <ControlRow>
+        <GhostButton label="Mystery knot" icon="help-circle-outline" style={{ flex: 1 }} onPress={() => navigation.navigate('KnotMystery')} />
         <GhostButton label="Get Knot Certified" icon="ribbon-outline" style={{ flex: 1 }} onPress={() => navigation.navigate('KnotCert')} />
       </ControlRow>
       <SectionHeader title="Knots" meta={`${KNOTS.length}`} />

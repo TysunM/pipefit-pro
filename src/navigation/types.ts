@@ -63,6 +63,8 @@ export type RootStackParamList = {
   KnotTest: undefined;
   /** Every knot from memory, back to back, and a certificate that certifies nothing. */
   KnotCert: undefined;
+  /** The job given, never the knot: pick the knot, then tie it from memory. */
+  KnotMystery: undefined;
   Calibration: undefined;
   /** The skills passport: what this hand can do, proved by the records and signed off. */
   Passport: undefined;
