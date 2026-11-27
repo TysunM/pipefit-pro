@@ -5,8 +5,9 @@ import { laidFault, laidSet, pairFrame } from '../components/knots/laid';
 import { HOLD, PULL_DRAG, TRACE, callsFor, missesFor, move, nearest, pulled, starsFor } from '../calc/knots/trace';
 import { SAFETY, faultRound, makeTest, seeded } from '../calc/knots/quiz';
 import { emptyKnots, parseKnots, recordCert, recordCheck, recordMystery, recordTest, recordTie, serialiseKnots } from '../state/knotProgress';
+import { ART_H, ART_W, artTexts, balanced, certificateArt, estWidth, turnedBox, wrap } from '../components/knots/certArt';
 import { ROUNDS, mysteryBeats, mysteryRounds, mysteryTotals, verdictOf, whyNot, type MysteryResult } from '../calc/knots/mystery';
-import { CERTIFIED_UP_TO, FINE_PRINT, QUITE_UP_TO, TIERS, beats, certOrder, certTotals, clock, tierOf, type CertKnot } from '../calc/knots/cert';
+import { FINE_PRINT, STAMP, TITLE, beats, certOrder, certTotals, certified, clock, shortOf, type CertKnot } from '../calc/knots/cert';
 
 describe('every knot draws and ties right', () => {
   test.each(KNOTS.map((k) => [k.name, k] as const))('%s: its crossings are the ones it says, its steps run the rope to its end', (_, k) => {
@@ -401,39 +402,49 @@ describe('Knot Certified', () => {
     const t = certTotals(run);
     expect(t).toMatchObject({ ms: 20_000 * KNOTS.length, slips: 1, wrong: 1, misses: 3, tied: KNOTS.length, skipped: 0, of: KNOTS.length });
   });
-  test('the tiers: clean is a grand master, a few misses certified, more knot quite, many or any skip knot yet', () => {
-    const withMisses = (n: number) => {
+  test('one certificate, for all of them clean: one miss, one wrong call or one skip and there is none', () => {
+    const withMisses = (slips: number, wrong: number) => {
       const run = clean();
-      run[0] = { ...run[0]!, slips: n };
+      run[4] = { ...run[4]!, slips, wrong };
       return certTotals(run);
     };
-    expect(tierOf(withMisses(0))).toBe('grand');
-    expect(tierOf(withMisses(1))).toBe('certified');
-    expect(tierOf(withMisses(CERTIFIED_UP_TO))).toBe('certified');
-    expect(tierOf(withMisses(CERTIFIED_UP_TO + 1))).toBe('quite');
-    expect(tierOf(withMisses(QUITE_UP_TO))).toBe('quite');
-    expect(tierOf(withMisses(QUITE_UP_TO + 1))).toBe('yet');
+    expect(certified(withMisses(0, 0))).toBe(true);
+    expect(certified(withMisses(1, 0))).toBe(false);
+    expect(certified(withMisses(0, 1))).toBe(false);
     const skipped = clean();
     skipped[3] = { ...skipped[3]!, skipped: true };
-    expect(tierOf(certTotals(skipped))).toBe('yet');
+    expect(certified(certTotals(skipped))).toBe(false);
     // A skipped knot's time and misses don't count, and it can't hide behind them.
     expect(certTotals(skipped)).toMatchObject({ tied: KNOTS.length - 1, skipped: 1 });
-    expect(tierOf(certTotals(clean().slice(0, 3)))).toBe('yet');
+    expect(certified(certTotals(clean().slice(0, 3)))).toBe(false);
   });
-  test("it's a joke, and says so: the stamps read KNOT, the fine print certifies nothing", () => {
-    expect(TIERS.grand.stamp).toBe('KNOT CERTIFIED');
-    expect(TIERS.quite.struck).toBe('CERTIFIED');
-    expect(TIERS.yet.stamp).toBe('KNOT YET');
+  test('Knot this time says what kept the run from it', () => {
+    const t = (slips: number, wrong: number, skipped: number) => certTotals(KNOTS.map((k, i) => ({ id: k.id, ms: 1, slips: i ? 0 : slips, wrong: i ? 0 : wrong, skipped: i > 0 && i <= skipped })));
+    expect(shortOf(t(1, 0, 0))).toBe('1 time off the line');
+    expect(shortOf(t(0, 2, 0))).toBe('2 wrong calls');
+    expect(shortOf(t(3, 1, 0))).toBe('3 times off the line and 1 wrong call');
+    expect(shortOf(t(2, 1, 1))).toBe('1 knot skipped, 2 times off the line and 1 wrong call');
+    expect(shortOf(t(0, 0, 0))).toBe('');
+  });
+  test("it's a joke, and says so: the stamp reads KNOT, the fine print certifies nothing", () => {
+    expect(STAMP).toBe('KNOT CERTIFIED');
+    expect(TITLE).toBe('Certified Master Of Rope');
     expect(FINE_PRINT).toMatch(/certifies absolutely nothing/);
     expect(FINE_PRINT).toMatch(/fall protection/);
   });
-  test('the best run is the better tier, then fewer misses, then faster', () => {
+  test('the best run is the one with more knots tied, then fewer misses, then faster', () => {
     const fast = certTotals(clean(10_000));
     const slow = certTotals(clean(30_000));
     const sloppy = certTotals(clean(5_000).map((r, i) => (i ? r : { ...r, slips: 2 })));
+    const skipped = certTotals(clean(1_000).map((r, i) => (i ? r : { ...r, skipped: true })));
+    const verySloppy = certTotals(clean(60_000).map((r, i) => (i ? r : { ...r, slips: 30, wrong: 10 })));
     expect(beats(fast, slow)).toBe(true);
     expect(beats(slow, fast)).toBe(false);
     expect(beats(slow, sloppy)).toBe(true);
+    // Every knot tied, however sloppy, ranks above a quick run with one skipped; a certified run above both.
+    expect(beats(verySloppy, skipped)).toBe(true);
+    expect(beats(slow, verySloppy)).toBe(true);
+    expect(beats(skipped, verySloppy)).toBe(false);
     expect(clock(187_400)).toBe('3:07');
   });
   test('the store keeps the best and the last run, and how many', () => {
@@ -511,5 +522,59 @@ describe('Mystery knot', () => {
     const old = JSON.parse(serialiseKnots(b));
     delete old.mystery;
     expect(parseKnots(JSON.stringify(old))).toMatchObject({ mystery: { best: null, last: null, runs: 0 }, dropped: 0 });
+  });
+});
+
+describe('the certificate as a picture', () => {
+  const run = (slips: number, wrong: number, ms: number): CertKnot[] => KNOTS.map((k, i) => ({ id: k.id, ms, slips: i === 0 ? slips : 0, wrong: i === 0 ? wrong : 0 }));
+  const cases = [
+    ['a clean run', run(0, 0, 21_000)],
+    ['a long one', run(0, 0, 400_000)],
+  ] as const;
+  test.each(cases)('%s: the title, the stamp and the fine print, every line inside the card', (_, r) => {
+    const art = certificateArt(certTotals(r), Date.UTC(2026, 10, 27));
+    const texts = artTexts(art);
+    const all = texts.map((t) => t.text).join(' ');
+    expect(all).toContain(STAMP);
+    expect(all).toContain('★');
+    // The fine print, every word of it, and where it was tied.
+    for (const w of FINE_PRINT.split(' ')) expect(all).toContain(w);
+    // Kept simple: it opens on the title, nothing above it, no joke under the stamp.
+    expect(texts[0]!.text).toBe(TITLE);
+    expect(all).not.toMatch(/CERTIFY THAT|hands holding|Sailors|Spiders|KNOT YET|KNOT QUITE|Journeyman|Witnessed|tired rope/);
+    // The date on its own, in the middle.
+    const date = texts.find((t) => /2026/.test(t.text));
+    expect([date?.anchor, date?.x]).toEqual(['middle', ART_W / 2]);
+    expect(all).toContain('TIED IN PIPEFIT PRO');
+    // 1080 by 1350: the 4:5 portrait a feed or a chat shows whole.
+    expect(art.w).toBe(ART_W);
+    expect(art.h).toBe(ART_H);
+    // The stamp, turned, clears the title above it and the line below it.
+    const stamp = art.prims.find((p) => p.k === 'group');
+    if (!stamp || stamp.k !== 'group') throw new Error('no stamp');
+    const box = turnedBox(stamp);
+    const title = texts.filter((t) => t.face === 'serif');
+    // The first line under the stamp, not the stamp's own lettering.
+    const own = new Set(stamp.children.filter((c) => c.k === 'text'));
+    const below = texts.filter((t) => !own.has(t) && t.y > box.top).sort((a, b) => a.y - b.y)[0];
+    expect(box.top).toBeGreaterThan(Math.max(...title.map((t) => t.y + t.size * 0.3)));
+    expect(below!.y - below!.size).toBeGreaterThan(box.bottom);
+    for (const t of texts) {
+      const w = estWidth(t.text, t.size, t.face, t.spacing);
+      const left = t.anchor === 'middle' ? t.x - w / 2 : t.anchor === 'end' ? t.x - w : t.x;
+      expect([t.text, left >= 60, left + w <= ART_W - 60, t.y > 60, t.y < art.h - 60]).toEqual([t.text, true, true, true, true]);
+    }
+  });
+  test('a title too wide for the screen splits evenly, never leaving one word on its own', () => {
+    // "Master Of Rope" kept together, not "Rope" left on its own.
+    expect(balanced('Certified Master Of Rope', 30, 'serif', 320)).toBe('Certified\nMaster Of Rope');
+    expect(balanced('Certified Master Of Rope', 30, 'serif', 600)).toBe('Certified Master Of Rope');
+    expect(balanced('Rope', 30, 'serif', 10)).toBe('Rope');
+  });
+  test('lines wrap to the width given, words kept whole', () => {
+    const lines = wrap(FINE_PRINT, 27, 'sansRegular', 840);
+    expect(lines.length).toBeGreaterThan(1);
+    expect(lines.join(' ')).toBe(FINE_PRINT);
+    for (const l of lines) expect(estWidth(l, 27, 'sansRegular')).toBeLessThanOrEqual(840);
   });
 });
