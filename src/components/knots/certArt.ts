@@ -7,14 +7,14 @@
 // lines are wrapped on a generous estimate of how wide each face sets. Pure.
 
 import { ROPE_INK } from '../../calc/knots/rope';
-import { FINE_PRINT, TIERS, clock, tierOf, type CertTotals } from '../../calc/knots/cert';
+import { FINE_PRINT, STAMP as STAMP_TEXT, TITLE, clock, type CertTotals } from '../../calc/knots/cert';
 
 export type Face = 'sans' | 'sansRegular' | 'serif' | 'serifItalic';
 export type Prim =
   | { k: 'rect'; x: number; y: number; w: number; h: number; rx: number; fill?: string; stroke?: string; sw?: number; dash?: number[] }
   | { k: 'circle'; cx: number; cy: number; r: number; fill?: string; stroke?: string; sw?: number; dash?: number[] }
   | { k: 'line'; x1: number; y1: number; x2: number; y2: number; stroke: string; sw: number }
-  | { k: 'text'; x: number; y: number; text: string; size: number; face: Face; color: string; anchor: 'start' | 'middle' | 'end'; spacing?: number; strike?: boolean }
+  | { k: 'text'; x: number; y: number; text: string; size: number; face: Face; color: string; anchor: 'start' | 'middle' | 'end'; spacing?: number }
   | { k: 'group'; rotate: number; cx: number; cy: number; children: Prim[] };
 export type Art = { w: number; h: number; prims: Prim[] };
 
@@ -106,8 +106,6 @@ export function wrap(text: string, size: number, face: Face, max: number): strin
 }
 
 export function certificateArt(totals: CertTotals, at: number): Art {
-  const tierKey = tierOf(totals);
-  const tier = TIERS[tierKey];
   const prims: Prim[] = [];
   const cx = ART_W / 2;
   const max = ART_W - 2 * PAD;
@@ -121,11 +119,11 @@ export function certificateArt(totals: CertTotals, at: number): Art {
 
   // Straight to it: the title, in bold.
   y = 90;
-  lines(tier.title, 72, 'serif', INK, 1.3);
+  lines(TITLE, 72, 'serif', INK, 1.3);
 
   // The stamp, slapped on at an angle.
   const stampSize = 76;
-  const sw = estWidth(tier.stamp, stampSize, 'sans', 9) + 110;
+  const sw = estWidth(STAMP_TEXT, stampSize, 'sans', 9) + 110;
   const sh = 190;
   // Turned, its far corner rises by half its width times the sine of the turn: clear of the title's descenders.
   const rise = (sw / 2) * Math.sin((9 * Math.PI) / 180);
@@ -139,10 +137,8 @@ export function certificateArt(totals: CertTotals, at: number): Art {
     children: [
       { k: 'rect', x: cx - sw / 2, y: sy, w: sw, h: sh, rx: 26, stroke: STAMP, sw: 9 },
       { k: 'rect', x: cx - sw / 2 + 22, y: sy + 20, w: sw - 44, h: sh - 40, rx: 16, stroke: STAMP, sw: 4 },
-      { k: 'text', x: cx, y: sy + 102, text: tier.stamp, size: stampSize, face: 'sans', color: STAMP, anchor: 'middle', spacing: 9 },
-      tier.struck
-        ? { k: 'text', x: cx, y: sy + 154, text: tier.struck, size: 44, face: 'sans', color: STAMP, anchor: 'middle', spacing: 12, strike: true }
-        : { k: 'text', x: cx, y: sy + 152, text: tierKey === 'grand' ? '★   ★   ★' : '★   ★', size: 40, face: 'sans', color: STAMP, anchor: 'middle' },
+      { k: 'text', x: cx, y: sy + 102, text: STAMP_TEXT, size: stampSize, face: 'sans', color: STAMP, anchor: 'middle', spacing: 9 },
+      { k: 'text', x: cx, y: sy + 152, text: '★   ★   ★', size: 40, face: 'sans', color: STAMP, anchor: 'middle' },
     ],
   });
   // The corners a turned stamp swings out, and some air.

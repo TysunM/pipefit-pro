@@ -26,7 +26,6 @@ function draw(p: Prim, fonts: Fonts, key: string): React.ReactNode {
           fontFamily={fonts[p.face]}
           textAnchor={p.anchor}
           letterSpacing={p.spacing}
-          textDecoration={p.strike ? 'line-through' : undefined}
         >
           {p.text}
         </SvgText>

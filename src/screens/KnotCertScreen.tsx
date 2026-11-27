@@ -19,13 +19,13 @@ import { useKnotBook } from '../state/knots';
 import { recordCert } from '../state/knotProgress';
 import { KNOTS, knotById } from '../calc/knots/knots';
 import { seeded } from '../calc/knots/quiz';
-import { TIERS, beats, certOrder, certTotals, clock, tierOf, type CertKnot } from '../calc/knots/cert';
+import { TITLE, beats, certOrder, certTotals, certified, clock, type CertKnot } from '../calc/knots/cert';
 import { ListRow } from './OrbitalScreen';
 
 // The Knot Certified run: every knot, from memory, back to back, in an order
 // shuffled each time. No line, no steps, no look at it, every over or under
-// called. The clock counts tying only. Then a certificate that certifies
-// absolutely nothing, kept on the phone for bragging rights.
+// called. The clock counts tying only. Tie every one and there's a
+// certificate that certifies absolutely nothing; skip one and there's none.
 
 type Props = NativeStackScreenProps<RootStackParamList, 'KnotCert'>;
 type Phase = 'intro' | 'run' | 'done';
@@ -48,7 +48,8 @@ export function KnotCertScreen({ navigation }: Props) {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState<string | null>(null);
   const fonts: Fonts = { sans: t.font.sans, sansRegular: t.font.sansRegular, serif: t.font.serif, serifItalic: t.font.serifItalic };
-  const art = useMemo(() => (phase === 'done' ? certificateArt(certTotals(run), finishedAt) : null), [phase, run, finishedAt]);
+  const totals = useMemo(() => certTotals(run), [run]);
+  const art = useMemo(() => (phase === 'done' && certified(totals) ? certificateArt(totals, finishedAt) : null), [phase, totals, finishedAt]);
   const save = async () => {
     if (!art || saving) return;
     setSaving(true);
@@ -80,14 +81,13 @@ export function KnotCertScreen({ navigation }: Props) {
   };
 
   if (phase === 'intro') {
-    const bt = best ? TIERS[tierOf(best)] : null;
     return (
       <Screen>
         <View style={{ paddingHorizontal: t.layout.screenPadding, paddingTop: t.space.lg, gap: t.space.sm, alignItems: 'center' }}>
           <Ionicons name="ribbon" size={44} color={c.glow} />
           <Text style={[t.type.sectionTitle, { color: c.text, fontSize: 28, textAlign: 'center' }]}>Knot Certified</Text>
           <Text style={[t.type.body, { color: c.textMuted, textAlign: 'center' }]}>
-            {`All ${KNOTS.length} knots from memory, back to back, in a shuffled order. Get certified. It certifies nothing.`}
+            {`All ${KNOTS.length} knots from memory, back to back, in a shuffled order. Tie every one to get certified. It certifies nothing.`}
           </Text>
         </View>
         <SectionHeader title="The rules" />
@@ -95,7 +95,7 @@ export function KnotCertScreen({ navigation }: Props) {
           {[
             'No line, no steps, no Show me. The phone buzzes when you are off the line.',
             'Every crossing: over or under, your call. A wrong call counts as two misses.',
-            'No starting a knot over. Skip one if you must, but a skipped knot means Knot Yet.',
+            'No starting a knot over. Skip one if you must, but a skipped knot means no certificate.',
             'The clock counts tying time only. Breathe between knots.',
           ].map((r) => (
             <View key={r} style={{ flexDirection: 'row', gap: t.space.sm }}>
@@ -104,10 +104,10 @@ export function KnotCertScreen({ navigation }: Props) {
             </View>
           ))}
         </View>
-        {best && bt ? (
+        {best ? (
           <View style={{ marginHorizontal: t.layout.screenPadding, marginTop: t.space.lg, padding: t.space.lg, borderRadius: t.radius.lg, backgroundColor: c.bgRaised, borderWidth: t.hairline, borderColor: c.border, gap: 4 }}>
             <Text style={[t.type.label, { color: c.textMuted }]}>Your best</Text>
-            <Text style={[t.type.sectionTitle, { color: c.text }]}>{bt.title}</Text>
+            <Text style={[t.type.sectionTitle, { color: c.text }]}>{certified(best) ? TITLE : `${best.tied} of ${best.of} tied`}</Text>
             <Text style={[t.type.caption, { color: c.textMuted }]}>{`${clock(best.ms)} · ${best.misses} miss${best.misses === 1 ? '' : 'es'} · ${book.value.cert.runs} run${book.value.cert.runs === 1 ? '' : 's'}`}</Text>
           </View>
         ) : null}
@@ -122,25 +122,43 @@ export function KnotCertScreen({ navigation }: Props) {
   }
 
   if (phase === 'done') {
-    const totals = certTotals(run);
     return (
       <Screen>
-        <View style={{ paddingTop: t.space.lg }}>
-          <Certificate totals={totals} at={finishedAt} width={size} />
-        </View>
-        {art && Platform.OS !== 'web' ? (
-          <View pointerEvents="none" style={{ position: 'absolute', left: 0, top: 0, opacity: 0 }} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
-            <CertArtSvg ref={artRef} art={art} fonts={fonts} width={270} />
-          </View>
-        ) : null}
-        <ControlRow>
-          <AccentButton label={saving ? 'Making the picture…' : 'Save as image'} icon="image-outline" style={{ flex: 1 }} onPress={() => void save()} />
-        </ControlRow>
-        {saved ? <Text style={[t.type.caption, { color: c.textMuted, paddingHorizontal: t.layout.screenPadding, textAlign: 'center' }]}>{saved}</Text> : null}
-        <ControlRow>
-          <GhostButton label="Run it again" icon="refresh" style={{ flex: 1 }} onPress={start} />
-          <GhostButton label="Back to knots" icon="arrow-back" style={{ flex: 1 }} onPress={() => navigation.goBack()} />
-        </ControlRow>
+        {art ? (
+          <>
+            <View style={{ paddingTop: t.space.lg }}>
+              <Certificate totals={totals} at={finishedAt} width={size} />
+            </View>
+            {Platform.OS !== 'web' ? (
+              <View pointerEvents="none" style={{ position: 'absolute', left: 0, top: 0, opacity: 0 }} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+                <CertArtSvg ref={artRef} art={art} fonts={fonts} width={270} />
+              </View>
+            ) : null}
+            <ControlRow>
+              <AccentButton label={saving ? 'Making the picture…' : 'Save as image'} icon="image-outline" style={{ flex: 1 }} onPress={() => void save()} />
+            </ControlRow>
+            {saved ? <Text style={[t.type.caption, { color: c.textMuted, paddingHorizontal: t.layout.screenPadding, textAlign: 'center' }]}>{saved}</Text> : null}
+            <ControlRow>
+              <GhostButton label="Run it again" icon="refresh" style={{ flex: 1 }} onPress={start} />
+              <GhostButton label="Back to knots" icon="arrow-back" style={{ flex: 1 }} onPress={() => navigation.goBack()} />
+            </ControlRow>
+          </>
+        ) : (
+          <>
+            {/* No certificate: a knot was skipped. */}
+            <View style={{ paddingHorizontal: t.layout.screenPadding, paddingTop: t.space.lg, gap: t.space.sm, alignItems: 'center' }}>
+              <Ionicons name="close-circle-outline" size={44} color={c.textMuted} />
+              <Text style={[t.type.sectionTitle, { color: c.text, fontSize: 26, textAlign: 'center' }]}>No certificate this time</Text>
+              <Text style={[t.type.body, { color: c.textMuted, textAlign: 'center' }]}>
+                {`${totals.skipped} knot${totals.skipped === 1 ? '' : 's'} skipped. Tie all ${totals.of} without skipping to get certified.`}
+              </Text>
+            </View>
+            <ControlRow>
+              <AccentButton label="Run it again" icon="refresh" style={{ flex: 1 }} onPress={start} />
+              <GhostButton label="Back to knots" icon="arrow-back" style={{ flex: 1 }} onPress={() => navigation.goBack()} />
+            </ControlRow>
+          </>
+        )}
         <SectionHeader title="Knot by knot" meta={clock(totals.ms)} />
         {run.map((r, i) => {
           const k = knotById(r.id)!;

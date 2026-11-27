@@ -14,7 +14,7 @@ import { lengthsAt } from '../components/knots/useStepPlayer';
 import { useTheme } from '../theme/ThemeProvider';
 import { useKnotBook } from '../state/knots';
 import { KNOTS, reachAfter, type Knot } from '../calc/knots/knots';
-import { TIERS, clock, tierOf } from '../calc/knots/cert';
+import { TITLE, certified, clock } from '../calc/knots/cert';
 import { ListRow, Pill } from './OrbitalScreen';
 
 // The knots a fitter uses on tag lines and hand lines: watch each tied, tie it
@@ -46,7 +46,7 @@ export function KnotsScreen({ navigation }: Props) {
         <Text style={[t.type.sectionTitle, { color: c.text }]}>{`Tied by hand: ${tied} of ${KNOTS.length}`}</Text>
         <Text style={[t.type.body, { color: c.text }]}>{`Tied from memory: ${remembered} of ${KNOTS.length}`}</Text>
         <Text style={[t.type.body, { color: c.text }]}>{`Every fault spotted: ${checked} of ${KNOTS.length}`}</Text>
-        <Text style={[t.type.body, { color: c.text }]}>{cert ? `Knot Certified: ${TIERS[tierOf(cert)].title}, ${clock(cert.ms)}` : 'Knot Certified: not yet run'}</Text>
+        <Text style={[t.type.body, { color: c.text }]}>{cert ? (certified(cert) ? `Knot Certified: ${TITLE}, ${clock(cert.ms)}` : `Knot Certified: not yet, best ${cert.tied} of ${cert.of} tied`) : 'Knot Certified: not yet run'}</Text>
         <Text style={[t.type.body, { color: c.text }]}>{mystery ? `Mystery knot: best ${mystery.right} of ${mystery.rounds} right` : 'Mystery knot: not yet tried'}</Text>
         <Text style={[t.type.caption, { color: c.textMuted }]}>
           {book.test.taken ? `Knot test: best ${book.test.best} of ${book.test.of}, last ${book.test.last} of ${book.test.of}` : 'Watch each one tied, tie it on screen with a finger, tie it again from memory, check it, then take the test.'}

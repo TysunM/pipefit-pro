@@ -58,14 +58,10 @@ export function drawOnCanvas(ctx: CanvasRenderingContext2D, art: Art, fonts: Fon
         const widths = chars.map((ch) => ctx.measureText(ch).width);
         const total = widths.reduce((a, w) => a + w, 0) + sp * Math.max(0, chars.length - 1);
         let x = p.anchor === 'middle' ? p.x - total / 2 : p.anchor === 'end' ? p.x - total : p.x;
-        const x0 = x;
         chars.forEach((ch, i) => {
           ctx.fillText(ch, x, p.y);
           x += widths[i]! + sp;
         });
-        if (p.strike) {
-          ctx.fillRect(x0, p.y - p.size * 0.33, total, Math.max(2, p.size * 0.08));
-        }
         break;
       }
       case 'group':
