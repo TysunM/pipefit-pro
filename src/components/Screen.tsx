@@ -5,6 +5,7 @@ import { useTheme } from '../theme/ThemeProvider';
 import { useVoiceMaybe } from '../voice/VoiceProvider';
 import { TAB_BAR_HEIGHT } from './TabBar';
 import { ScrollHostContext, type ScrollHost } from './scrollHost';
+import { useBarHide } from './barHide';
 
 export function Screen({
   children,
@@ -23,6 +24,9 @@ export function Screen({
   const base: ViewStyle = { flex: 1, backgroundColor: t.colors.bg };
   // The mic floats over the foot of every page; room to scroll the last button clear of it.
   const mic = useVoiceMaybe()?.enabled ? (tabbed ? 0 : TAB_BAR_HEIGHT) + 84 : 0;
+  // On a tab's page the bar lies over the foot of the page (barHide.tsx): room to scroll clear of it.
+  const bar = useBarHide();
+  const under = tabbed && bar ? bar.height : 0;
 
   const frame = useRef<View>(null);
   const scroller = useRef<ScrollView>(null);
@@ -35,6 +39,7 @@ export function Screen({
     () => ({
       lock: (on) => {
         setLocked(on);
+        bar?.hold(on, yRef.current);
         if (on)
           frame.current?.measureInWindow((_x, y, _w, h) => {
             topRef.current = y;
@@ -49,9 +54,9 @@ export function Screen({
         yRef.current = next;
         scroller.current?.scrollTo({ y: next, animated: false });
       },
-      viewport: () => ({ top: topRef.current, height: heightRef.current }),
+      viewport: () => ({ top: topRef.current, height: heightRef.current - (bar?.cover() ?? 0) }),
     }),
-    []
+    [bar]
   );
 
   if (!scroll)
@@ -67,13 +72,19 @@ export function Screen({
         <ScrollView
           ref={scroller}
           style={{ flex: 1 }}
-          contentContainerStyle={[{ paddingBottom: (tabbed ? 0 : insets.bottom) + t.space.xxxl + mic }, style]}
+          contentContainerStyle={[{ paddingBottom: (tabbed ? 0 : insets.bottom) + under + t.space.xxxl + mic }, style]}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
           scrollEnabled={!locked}
           scrollEventThrottle={16}
-          onScroll={(e) => (yRef.current = e.nativeEvent.contentOffset.y)}
-          onContentSizeChange={(_w, h) => (contentRef.current = h)}
+          onScroll={(e) => {
+            yRef.current = e.nativeEvent.contentOffset.y;
+            bar?.scrolled(yRef.current, contentRef.current, heightRef.current);
+          }}
+          onContentSizeChange={(_w, h) => {
+            contentRef.current = h;
+            bar?.scrolled(yRef.current, h, heightRef.current);
+          }}
         >
           <View style={[styles.content, { maxWidth: t.layout.maxContentWidth }]}>{children}</View>
         </ScrollView>

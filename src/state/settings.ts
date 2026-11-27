@@ -78,6 +78,11 @@ export type Settings = {
    */
   voice: boolean;
   /**
+   * On a tab's page, the bar along the foot slides away as the page scrolls
+   * down and comes back as it scrolls up (state/barHide.ts). Off keeps it.
+   */
+  hideBar: boolean;
+  /**
    * Days or nights: where "today" turns over. On nights the work from noon to
    * noon is one day, dated by the night it started — the Projects Today view
    * and the shift report both follow it. See calc/days.ts workDay.
@@ -129,6 +134,7 @@ export const DEFAULT_SETTINGS: Settings = {
   readAloud: 'tap',
   gloveMode: false,
   voice: true,
+  hideBar: true,
   shift: 'days',
   coach: 'on',
   heatUnit: 'auto',

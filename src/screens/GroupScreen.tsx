@@ -8,7 +8,8 @@ import { CalcTile, GridLabel, WideTile } from '../components/ToolTile';
 import { LiveTile } from '../components/LiveTile';
 import { HintRow } from '../components/HintRow';
 import { FooterNote } from '../components/Results';
-import { TabBar } from '../components/TabBar';
+import { TAB_BAR_HEIGHT, TabBar } from '../components/TabBar';
+import { TabPage } from '../components/barHide';
 import { ReorderZone, type Hold } from '../components/Reorder';
 import { useTheme } from '../theme/ThemeProvider';
 import { sectionZone } from '../state/layout';
@@ -33,12 +34,12 @@ export function GroupScreen({ route, navigation }: Props) {
   if (!g) return <Screen><FooterNote text="That tab is not in this build." /></Screen>;
 
   return (
-    <View style={{ flex: 1, backgroundColor: t.colors.bg }}>
+    <TabPage barHeight={TAB_BAR_HEIGHT}>
       <Screen tabbed>
         <GroupSections g={g} open={(x) => navigation.navigate(x.route as never)} />
       </Screen>
       <TabBar active={g.id === 'logs' ? 'projects' : g.id} />
-    </View>
+    </TabPage>
   );
 }
 

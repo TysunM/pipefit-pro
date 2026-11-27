@@ -321,6 +321,19 @@ export function SettingsScreen() {
         Hold a tab on the bar, or a tile or card on a page, until it lifts, then carry it where you want it. A tab goes anywhere along the bar; a tile or
         card anywhere in its own section; the mic anywhere on the screen. The phone keeps the order, and putting it back puts the mic back too.
       </Text>
+      <ChipRow
+        label="Tab bar"
+        options={[
+          { value: 'hide', label: 'Hides as you scroll' },
+          { value: 'keep', label: 'Always there' },
+        ]}
+        selected={settings.hideBar ? 'hide' : 'keep'}
+        onSelect={(v) => update({ hideBar: v === 'hide' })}
+      />
+      <Text style={[t.type.caption, { color: t.colors.textMuted, paddingHorizontal: t.layout.screenPadding, marginTop: -t.space.sm, marginBottom: t.space.lg }]}>
+        On a tab's page the bar slides away as you scroll down, for more of the page, and comes back as soon as you scroll up a little, reach the top or
+        the end, or come back to the page. With a screen reader on it always stays.
+      </Text>
       <ControlRow>
         <GhostButton
           label="Put everything back where it shipped"
