@@ -37,6 +37,35 @@ export function turnedBox(g: Extract<Prim, { k: 'group' }>): { top: number; bott
 }
 
 export const ART_W = 1080;
+/** 4:5: the tallest a feed shows without cropping. */
+export const ART_H = 1350;
+
+/** Everything moved down by dy. */
+function shift(ps: Prim[], dy: number) {
+  if (!dy) return;
+  ps.forEach((p, i) => {
+    switch (p.k) {
+      case 'rect':
+        ps[i] = { ...p, y: p.y + dy };
+        break;
+      case 'circle':
+        ps[i] = { ...p, cy: p.cy + dy };
+        break;
+      case 'line':
+        ps[i] = { ...p, y1: p.y1 + dy, y2: p.y2 + dy };
+        break;
+      case 'text':
+        ps[i] = { ...p, y: p.y + dy };
+        break;
+      case 'group': {
+        const children = [...p.children];
+        shift(children, dy);
+        ps[i] = { ...p, cy: p.cy + dy, children };
+        break;
+      }
+    }
+  });
+}
 const PAD = 120;
 const PAPER = '#f4ecd8';
 const INK = '#2b2116';
@@ -48,6 +77,18 @@ const ROPE = ROPE_INK.a;
 /** How wide a face sets, as a share of its size per character: on the generous side, so no line runs over. */
 const WIDTH: Record<Face, number> = { sans: 0.56, sansRegular: 0.52, serif: 0.5, serifItalic: 0.47 };
 export const estWidth = (text: string, size: number, face: Face, spacing = 0) => [...text].reduce((a, ch) => a + (ch === ' ' ? 0.3 : /[A-Z]/.test(ch) ? 1.2 : 1) * WIDTH[face] * size, 0) + spacing * Math.max(0, text.length - 1);
+
+/** A title too wide for one line, split into two of even length: never a lone word left on the second. */
+export function balanced(text: string, size: number, face: Face, max: number): string {
+  const words = text.split(' ');
+  if (words.length < 2 || estWidth(text, size, face) <= max) return text;
+  let best = 1;
+  for (let i = 1; i < words.length; i += 1) {
+    const worst = (k: number) => Math.max(words.slice(0, k).join(' ').length, words.slice(k).join(' ').length);
+    if (worst(i) < worst(best)) best = i;
+  }
+  return `${words.slice(0, best).join(' ')}\n${words.slice(best).join(' ')}`;
+}
 
 /** Words into lines no wider than `max`. */
 export function wrap(text: string, size: number, face: Face, max: number): string[] {
@@ -78,14 +119,9 @@ export function certificateArt(totals: CertTotals, at: number): Art {
     }
   };
 
-  y = 150;
-  prims.push({ k: 'text', x: cx, y, text: 'THIS IS TO CERTIFY THAT', size: 32, face: 'sans', color: FADED, anchor: 'middle', spacing: 7 });
-  y += 20;
-  lines('the hands holding this phone', 64, 'serifItalic', INK);
-  y += 6;
-  lines(totals.tied === totals.of ? `tied all ${totals.of} knots from memory, back to back, with every over and under called` : `tied ${totals.tied} of ${totals.of} knots from memory, and skipped ${totals.skipped}`, 38, 'sansRegular', INK, 1.35);
-  y += 30;
-  lines(tier.title, 84, 'serif', INK, 1.15);
+  // Straight to it: the title, in bold.
+  y = 90;
+  lines(tier.title, 72, 'serif', INK, 1.3);
 
   // The stamp, slapped on at an angle.
   const stampSize = 76;
@@ -110,12 +146,9 @@ export function certificateArt(totals: CertTotals, at: number): Art {
     ],
   });
   // The corners a turned stamp swings out, and some air.
-  y = sy + sh + 95;
-
-  lines(tier.line, 42, 'serifItalic', INK, 1.3);
+  y = sy + sh + 110;
 
   // The run's numbers between two rules.
-  y += 40;
   prims.push({ k: 'line', x1: PAD, y1: y, x2: ART_W - PAD, y2: y, stroke: RULE, sw: 3 });
   const cols = [
     ['TIME', clock(totals.ms)],
@@ -140,7 +173,10 @@ export function certificateArt(totals: CertTotals, at: number): Art {
 
   y += 74;
   prims.push({ k: 'text', x: cx, y, text: 'TIED IN PIPEFIT PRO', size: 28, face: 'sans', color: ROPE.lay, anchor: 'middle', spacing: 6 });
-  const h = Math.ceil(y + 110);
+  // At least 4:5, the portrait a feed shows whole, the content centred in it.
+  const natural = Math.ceil(y + 110);
+  const h = Math.max(ART_H, natural);
+  shift(prims, (h - natural) / 2);
 
   // The rope round the edge, and a turn at each corner: drawn first, under everything.
   const inset = 34;

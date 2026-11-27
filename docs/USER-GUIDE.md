@@ -754,12 +754,12 @@ Each job ends with what was wanted, and tapping a job opens its knot. The best s
 
 | Run | Stamp | Title |
 |---|---|---|
-| Every knot, nothing missed | KNOT CERTIFIED ★★★ | Grand Master of Rope |
+| Every knot, nothing missed | KNOT CERTIFIED ★★★ | Certified Master Of Rope |
 | Up to 4 misses | KNOT CERTIFIED ★★ | Journeyman Knotter |
 | Up to 10 misses | KNOT QUITE ~~CERTIFIED~~ | Knot Quite Certified |
 | More, or any knot skipped | KNOT YET ~~CERTIFIED~~ | Knot Yet Certified |
 
-A miss is a time off the line; a wrong call counts as two. It's awarded to "the hands holding this phone", witnessed by one very tired rope, and its fine print says it certifies absolutely nothing. It's for you: nothing is sent anywhere. The best run and the last are kept on the phone, and the hub shows your best.
+A miss is a time off the line; a wrong call counts as two. It keeps it simple: the title in bold, the stamp, your time, times off the line and wrong calls, the date, "witnessed by one very tired rope", and fine print that says it certifies absolutely nothing. It's for you: nothing is sent anywhere. The best run and the last are kept on the phone, and the hub shows your best.
 
 **Save as image**, under the certificate, makes it a picture: a 1080-wide portrait PNG of the same certificate, rope frame and stamp, with "Tied in PipeFit Pro" at the foot. On the phone it opens the share sheet: save it to your photos, or send it to the crew's chat. In a browser it opens the share sheet where the browser has one, and otherwise downloads **knot-certified.png**. The picture is made on the phone; nothing is uploaded.
 

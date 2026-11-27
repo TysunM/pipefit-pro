@@ -14,11 +14,11 @@ export type CertKnot = { id: string; ms: number; slips: number; wrong: number; s
 export type Tier = 'grand' | 'certified' | 'quite' | 'yet';
 export type CertTotals = { ms: number; slips: number; wrong: number; misses: number; tied: number; skipped: number; of: number };
 
-export const TIERS: Record<Tier, { stamp: string; struck?: string; title: string; line: string }> = {
-  grand: { stamp: 'KNOT CERTIFIED', title: 'Grand Master of Rope', line: 'Every knot, every tuck, not one wrong call. Sailors fear you. Spiders ask you for tips.' },
-  certified: { stamp: 'KNOT CERTIFIED', title: 'Journeyman Knotter', line: 'A wobble or two, but every knot holds. Your rope respects you.' },
-  quite: { stamp: 'KNOT QUITE', struck: 'CERTIFIED', title: 'Knot Quite Certified', line: 'Close. Your knots would mostly hold. Mostly. Run it again.' },
-  yet: { stamp: 'KNOT YET', struck: 'CERTIFIED', title: 'Knot Yet Certified', line: 'Your rope has filed a complaint. Back to Learn, then run it again.' },
+export const TIERS: Record<Tier, { stamp: string; struck?: string; title: string }> = {
+  grand: { stamp: 'KNOT CERTIFIED', title: 'Certified Master Of Rope' },
+  certified: { stamp: 'KNOT CERTIFIED', title: 'Journeyman Knotter' },
+  quite: { stamp: 'KNOT QUITE', struck: 'CERTIFIED', title: 'Knot Quite Certified' },
+  yet: { stamp: 'KNOT YET', struck: 'CERTIFIED', title: 'Knot Yet Certified' },
 };
 
 /** What it says at the bottom of every one, whatever the score. */

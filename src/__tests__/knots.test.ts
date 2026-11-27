@@ -5,7 +5,7 @@ import { laidFault, laidSet, pairFrame } from '../components/knots/laid';
 import { HOLD, PULL_DRAG, TRACE, callsFor, missesFor, move, nearest, pulled, starsFor } from '../calc/knots/trace';
 import { SAFETY, faultRound, makeTest, seeded } from '../calc/knots/quiz';
 import { emptyKnots, parseKnots, recordCert, recordCheck, recordMystery, recordTest, recordTie, serialiseKnots } from '../state/knotProgress';
-import { ART_W, artTexts, certificateArt, estWidth, turnedBox, wrap } from '../components/knots/certArt';
+import { ART_H, ART_W, artTexts, balanced, certificateArt, estWidth, turnedBox, wrap } from '../components/knots/certArt';
 import { ROUNDS, mysteryBeats, mysteryRounds, mysteryTotals, verdictOf, whyNot, type MysteryResult } from '../calc/knots/mystery';
 import { CERTIFIED_UP_TO, FINE_PRINT, QUITE_UP_TO, TIERS, beats, certOrder, certTotals, clock, tierOf, type CertKnot } from '../calc/knots/cert';
 
@@ -532,17 +532,21 @@ describe('the certificate as a picture', () => {
     if (TIERS[tier].struck) expect(texts.some((t) => t.text === TIERS[tier].struck && t.strike)).toBe(true);
     // The fine print, every word of it, and where it was tied.
     for (const w of FINE_PRINT.split(' ')) expect(all).toContain(w);
+    // Kept simple: it opens on the title, nothing above it, no joke under the stamp.
+    expect(texts[0]!.text).toBe(TIERS[tier].title);
+    expect(all).not.toMatch(/CERTIFY THAT|hands holding|Sailors|Spiders/);
     expect(all).toContain('TIED IN PIPEFIT PRO');
-    // Portrait, about the shape a chat shows whole.
+    // 1080 by 1350: the 4:5 portrait a feed or a chat shows whole.
     expect(art.w).toBe(ART_W);
-    expect(art.h).toBeGreaterThan(1200);
-    expect(art.h).toBeLessThan(1700);
+    expect(art.h).toBe(ART_H);
     // The stamp, turned, clears the title above it and the line below it.
     const stamp = art.prims.find((p) => p.k === 'group');
     if (!stamp || stamp.k !== 'group') throw new Error('no stamp');
     const box = turnedBox(stamp);
     const title = texts.filter((t) => t.face === 'serif');
-    const below = texts.find((t) => t.face === 'serifItalic' && t.y > box.bottom - 200 && t.text !== 'the hands holding this phone');
+    // The first line under the stamp, not the stamp's own lettering.
+    const own = new Set(stamp.children.filter((c) => c.k === 'text'));
+    const below = texts.filter((t) => !own.has(t) && t.y > box.top).sort((a, b) => a.y - b.y)[0];
     expect(box.top).toBeGreaterThan(Math.max(...title.map((t) => t.y + t.size * 0.3)));
     expect(below!.y - below!.size).toBeGreaterThan(box.bottom);
     for (const t of texts) {
@@ -550,6 +554,12 @@ describe('the certificate as a picture', () => {
       const left = t.anchor === 'middle' ? t.x - w / 2 : t.anchor === 'end' ? t.x - w : t.x;
       expect([t.text, left >= 60, left + w <= ART_W - 60, t.y > 60, t.y < art.h - 60]).toEqual([t.text, true, true, true, true]);
     }
+  });
+  test('a title too wide for the screen splits evenly, never leaving one word on its own', () => {
+    // "Master Of Rope" kept together, not "Rope" left on its own.
+    expect(balanced('Certified Master Of Rope', 30, 'serif', 320)).toBe('Certified\nMaster Of Rope');
+    expect(balanced('Certified Master Of Rope', 30, 'serif', 600)).toBe('Certified Master Of Rope');
+    expect(balanced('Journeyman Knotter', 30, 'serif', 320)).toBe('Journeyman Knotter');
   });
   test('lines wrap to the width given, words kept whole', () => {
     const lines = wrap(FINE_PRINT, 27, 'sansRegular', 840);
