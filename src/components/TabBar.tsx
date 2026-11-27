@@ -1,14 +1,15 @@
-import React, { useCallback } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
-import Svg, { Defs, LinearGradient, RadialGradient, Rect, Stop } from 'react-native-svg';
-import { useNavigation } from '@react-navigation/native';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import Svg, { Defs, LinearGradient, Mask, RadialGradient, Rect, Stop } from 'react-native-svg';
+import { useIsFocused, useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../theme/ThemeProvider';
 import { TABS, type Tab, type TabId, type TabRoute } from '../navigation/tabs';
-import { TABS_ZONE } from '../state/layout';
+import { TABS_ZONE, scrollToShow } from '../state/layout';
 import { useZone } from '../state/layouts';
 import { ReorderZone } from './Reorder';
+import { ScrollHostContext, type ScrollHost } from './scrollHost';
 import { useSvgIds } from './metal';
 import { PLATE, Screw, corners, useBox } from './plates';
 
@@ -17,7 +18,12 @@ export type { TabId } from '../navigation/tabs';
 // The tab bar
 // -----------
 // Seven ways into the app from its foot, the same seven on every tab (tabs.ts
-// says which). It sits on the tab screens and not on a tool: a tool is where a man
+// says which). Where they all stand across at a good size (a tablet, a phone
+// on its side) they do; on a phone the bar scrolls sideways instead of
+// squeezing them, five and a half in view so the half one says there are more,
+// and a fade at an end that runs on. How far it is scrolled carries from one
+// tab's page to the next, moved only as far as it takes to show the tab you
+// are on. It sits on the tab screens and not on a tool: a tool is where a man
 // is working, and the level's dial and the spool's model want every point of
 // the screen they can get. The calculator is the exception because it is a
 // tab, the one tool used all day long.
@@ -38,8 +44,18 @@ export type { TabId } from '../navigation/tabs';
 export const TAB_BAR_HEIGHT = 62;
 /** Where the screws sit, in from the plate's corners. */
 const INSET = 11;
-/** The tabs keep clear of the screws: seven tabs across leave room for no more. */
+/** The tabs keep clear of the screws: they scroll in the window between them. */
 const EDGE = 12;
+/** Narrower than this a tab's word gets squeezed: past it, the bar scrolls. */
+const MIN_TAB = 64;
+/** Tabs in view when the bar scrolls: the half one says there are more. */
+const PEEK = 5.5;
+/** The fade at an end that runs on out of view. */
+const FADE = 22;
+
+/** How far the bar is scrolled, carried from one tab's page to the next (each draws its own bar). */
+let carriedX = 0;
+
 
 const tabId = (x: Tab) => x.id;
 
@@ -51,6 +67,63 @@ export function TabBar({ active }: { active: TabId }) {
   const [box, onLayout] = useBox();
   const gid = useSvgIds('foot');
   const p = PLATE[t.mode === 'dark' ? 'dark' : 'light'];
+  const { width: windowW } = useWindowDimensions();
+  // Home sits under every tab's page with a bar of its own: only the page in view moves the shared scroll.
+  const focused = useIsFocused();
+
+  // Every tab across if they fit at a good size; else a fixed width, scrolled.
+  const n = items.length;
+  const view = Math.max(0, (box?.w ?? windowW) - 2 * EDGE);
+  const scrolls = n > 0 && view / n < MIN_TAB;
+  const tabW = scrolls ? view / PEEK : view / Math.max(1, n);
+  const activeAt = items.findIndex((x) => x.id === active);
+
+  const scroller = useRef<ScrollView>(null);
+  const frame = useRef<View>(null);
+  const x = useRef(carriedX);
+  const span = useRef({ left: 0, width: view });
+  const [locked, setLocked] = useState(false);
+  const [ends, setEnds] = useState({ left: false, right: false });
+  const showEnds = useCallback(
+    (at: number) => {
+      const max = tabW * n - view;
+      const next = { left: scrolls && at > 2, right: scrolls && at < max - 2 };
+      setEnds((e) => (e.left === next.left && e.right === next.right ? e : next));
+    },
+    [n, scrolls, tabW, view]
+  );
+
+  // Where it was on the last page, moved to show this page's tab; again on coming back to this page.
+  useEffect(() => {
+    if (!focused) return;
+    if (!scrolls || activeAt < 0 || view <= 0) return showEnds(0);
+    const to = scrollToShow(carriedX, activeAt, tabW, view, n);
+    x.current = to;
+    carriedX = to;
+    scroller.current?.scrollTo({ x: to, animated: false });
+    showEnds(to);
+  }, [focused, scrolls, activeAt, tabW, view, n, showEnds]);
+
+  // For a tab carried along the bar: held still under it, and scrolled at the ends.
+  const host = useMemo<ScrollHost>(
+    () => ({
+      axis: 'x',
+      lock: (on) => {
+        setLocked(on);
+        if (on) frame.current?.measureInWindow((left, _y, width) => width > 0 && (span.current = { left, width }));
+      },
+      y: () => x.current,
+      scrollBy: (d) => {
+        const to = Math.max(0, Math.min(tabW * n - view, x.current + d));
+        if (to === x.current) return;
+        x.current = to;
+        carriedX = to;
+        scroller.current?.scrollTo({ x: to, animated: false });
+      },
+      viewport: () => ({ top: span.current.left, height: span.current.width }),
+    }),
+    [n, tabW, view]
+  );
 
   const go = useCallback(
     (tab: Tab) => {
@@ -94,45 +167,91 @@ export function TabBar({ active }: { active: TabId }) {
         </Svg>
       ) : null}
 
-      <ReorderZone
-        items={items}
-        idOf={tabId}
-        layout="row"
-        onMove={move}
-        style={{ paddingBottom: insets.bottom, paddingHorizontal: EDGE }}
-        render={(tab, hold) => {
-          const on = tab.id === active;
-          const color = on ? t.colors.onTabBar : t.colors.onTabBarFaint;
-          return (
-            <Pressable onPress={() => go(tab)} {...hold} accessibilityRole="tab" accessibilityState={{ selected: on }} accessibilityLabel={tab.label} style={styles.tab}>
-              {({ pressed }) => (
-                <View
-                  style={{
-                    height: TAB_BAR_HEIGHT,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 4,
-                    opacity: pressed ? 0.6 : 1,
-                  }}
-                >
-                  {on ? (
-                    <View style={{ position: 'absolute', top: 3, left: '14%', right: '14%', height: 3, borderRadius: 2, backgroundColor: p.copper[1] }} />
-                  ) : null}
-                  <Ionicons name={on ? tab.on : tab.icon} size={23} color={color} />
-                  <Text
-                    style={[t.type.labelSmall, { color, fontSize: 9.5, letterSpacing: 0.2 }]}
-                    numberOfLines={1}
-                    adjustsFontSizeToFit
-                    minimumFontScale={0.75}
-                  >
-                    {tab.label}
-                  </Text>
-                </View>
-              )}
-            </Pressable>
-          );
-        }}
-      />
+      <View ref={frame} style={{ marginHorizontal: EDGE, marginBottom: insets.bottom, height: TAB_BAR_HEIGHT }}>
+        <ScrollView
+          ref={scroller}
+          horizontal
+          scrollEnabled={scrolls && !locked}
+          showsHorizontalScrollIndicator={false}
+          style={{ height: TAB_BAR_HEIGHT, flexGrow: 0 }}
+          contentContainerStyle={{ width: tabW * n }}
+          scrollEventThrottle={16}
+          onScroll={(e) => {
+            x.current = e.nativeEvent.contentOffset.x;
+            if (focused) carriedX = x.current;
+            showEnds(x.current);
+          }}
+        >
+          <ScrollHostContext.Provider value={scrolls ? host : null}>
+            <ReorderZone
+              items={items}
+              idOf={tabId}
+              layout="row"
+              onMove={move}
+              style={{ width: tabW * n }}
+              render={(tab, hold) => {
+                const on = tab.id === active;
+                const color = on ? t.colors.onTabBar : t.colors.onTabBarFaint;
+                return (
+                  <Pressable onPress={() => go(tab)} {...hold} accessibilityRole="tab" accessibilityState={{ selected: on }} aria-selected={on} accessibilityLabel={tab.label} style={styles.tab}>
+                    {({ pressed }) => (
+                      <View
+                        style={{
+                          height: TAB_BAR_HEIGHT,
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: 4,
+                          opacity: pressed ? 0.6 : 1,
+                        }}
+                      >
+                        {on ? (
+                          <View style={{ position: 'absolute', top: 3, left: '14%', right: '14%', height: 3, borderRadius: 2, backgroundColor: p.copper[1] }} />
+                        ) : null}
+                        <Ionicons name={on ? tab.on : tab.icon} size={23} color={color} />
+                        <Text
+                          style={[t.type.labelSmall, { color, fontSize: 9.5, letterSpacing: 0.2 }]}
+                          numberOfLines={1}
+                          adjustsFontSizeToFit
+                          minimumFontScale={0.75}
+                        >
+                          {tab.label}
+                        </Text>
+                      </View>
+                    )}
+                  </Pressable>
+                );
+              }}
+            />
+          </ScrollHostContext.Provider>
+        </ScrollView>
+        {/* A fade at an end that runs on out of view, in the plate's own shades. */}
+        {box && (ends.left || ends.right) ? (
+          <Svg width={view} height={TAB_BAR_HEIGHT} style={StyleSheet.absoluteFill} pointerEvents="none">
+            <Defs>
+              <LinearGradient id={gid('fv')} x1="0" y1="0" x2="0" y2="1">
+                <Stop offset="0" stopColor={t.colors.tabBarHi} />
+                <Stop offset="1" stopColor={t.colors.tabBarLo} />
+              </LinearGradient>
+              <LinearGradient id={gid('fl')} x1="0" y1="0" x2="1" y2="0">
+                <Stop offset="0" stopColor="#ffffff" stopOpacity={1} />
+                <Stop offset="1" stopColor="#ffffff" stopOpacity={0} />
+              </LinearGradient>
+              <LinearGradient id={gid('fr')} x1="0" y1="0" x2="1" y2="0">
+                <Stop offset="0" stopColor="#ffffff" stopOpacity={0} />
+                <Stop offset="1" stopColor="#ffffff" stopOpacity={1} />
+              </LinearGradient>
+              <Mask id={gid('ml')} x={0} y={0} width={FADE} height={TAB_BAR_HEIGHT} maskUnits="userSpaceOnUse">
+                <Rect x={0} y={0} width={FADE} height={TAB_BAR_HEIGHT} fill={`url(#${gid('fl')})`} />
+              </Mask>
+              <Mask id={gid('mr')} x={view - FADE} y={0} width={FADE} height={TAB_BAR_HEIGHT} maskUnits="userSpaceOnUse">
+                <Rect x={view - FADE} y={0} width={FADE} height={TAB_BAR_HEIGHT} fill={`url(#${gid('fr')})`} />
+              </Mask>
+            </Defs>
+            {ends.left ? <Rect x={0} y={0} width={FADE} height={TAB_BAR_HEIGHT} fill={`url(#${gid('fv')})`} mask={`url(#${gid('ml')})`} /> : null}
+            {ends.right ? <Rect x={view - FADE} y={0} width={FADE} height={TAB_BAR_HEIGHT} fill={`url(#${gid('fv')})`} mask={`url(#${gid('mr')})`} /> : null}
+          </Svg>
+        ) : null}
+      </View>
     </View>
   );
 }

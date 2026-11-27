@@ -72,9 +72,13 @@ The app agrees with every one of them to **four decimal places**, and a test pro
 
 ## Make it yours: moving the tabs and tiles
 
-The six tabs along the foot ship as **Home, Calculator, PipeFit, Weld, Projects, Edu**. PipeFit is the tab that used to be called Tools. The **Logs** are a tab at the top of the Projects page now, not one along the foot. A phone that already moved its tabs keeps its order without Logs, and Weld comes in right after PipeFit. Hold any tab until it lifts, carry it along the bar, let go. It stays there on every screen.
+The seven tabs along the foot ship as **Home, Calculator, PipeFit, Weld, Rigging, Projects, Edu**. PipeFit is the tab that used to be called Tools. **Rigging** holds Rig this spool, Sling angle, Gear check, Crane signals and Knots; they used to be a section of PipeFit. The **Logs** are a tab at the top of the Projects page now, not one along the foot. A phone that already moved its tabs keeps its order: Weld comes in right after PipeFit, and Rigging right after Weld.
 
-The tiles on Home, PipeFit, Weld, Logs and Edu, and the cards down the Projects page, move the same way: hold one until it lifts and buzzes, carry it, let go. A tile moves anywhere in its own section (Layout & fit-up, Bends & offsets, Records…); a card anywhere down the page. Carry one to the top or foot of the screen and the page scrolls with it. A finger that drifts while holding is a scroll, not a hold: hold still.
+**The bar scrolls sideways.** On a phone, five and a half tabs show at once: the half one at the end, and a fade, tell you there are more. Swipe the bar left or right to reach them. A tablet, or a phone turned on its side, has room for all seven and doesn't scroll. The bar stays scrolled where you left it from one tab to the next, and moves only far enough to show the tab you're on.
+
+Hold any tab until it lifts, carry it along the bar, let go. Carry it to either end and the bar scrolls with it. It stays there on every screen.
+
+The tiles on Home, PipeFit, Weld, Rigging, Logs and Edu, and the cards down the Projects page, move the same way: hold one until it lifts and buzzes, carry it, let go. A tile moves anywhere in its own section (Layout & fit-up, Bends & offsets, Records…); a card anywhere down the page. Carry one to the top or foot of the screen and the page scrolls with it. A finger that drifts while holding is a scroll, not a hold: hold still.
 
 On Home, **Recently used** stays as you left it until you open a tool, which puts that one first, as it always has. The **Field tools** keep the order you put them in.
 
@@ -668,7 +672,7 @@ More segments = smaller cut angle = a smoother, stronger elbow. If you get the w
 
 ## Sling angle
 
-**What each sling leg really pulls, from the load, the legs and their angle.** PipeFit tab → **Rigging → Sling angle**, or say "sling angle".
+**What each sling leg really pulls, from the load, the legs and their angle.** **Rigging** tab → **Sling angle**, or say "sling angle".
 
 A leg at an angle pulls harder than its share of the load: its share times the **angle factor**, 1 ÷ sin of the angle from horizontal. That's the same as the sling's length ÷ the hook's height above the pick point.
 
@@ -699,7 +703,7 @@ Under 30° from horizontal, a sling is not used unless its maker or a qualified 
 
 ## Rig this spool
 
-**What the spool on the 3D page weighs, where its centre of gravity is, and a two-sling pick for it.** PipeFit tab → **Rigging → Rig this spool**, the **Rig this spool** button under the 3D spool, or say "rig this spool".
+**What the spool on the 3D page weighs, where its centre of gravity is, and a two-sling pick for it.** **Rigging** tab → **Rig this spool**, the **Rig this spool** button under the 3D spool, or say "rig this spool".
 
 - **No spool on screen:** pick a saved one off the shelf, or build one in 3D spool first.
 - **The weight:** the pipe cut to length and the elbows, the same as the spool's own weight. Switch **Lifted** to **Full of water** if it goes up full (62.4 lb a cubic foot of bore).
@@ -724,7 +728,7 @@ Under 30° from horizontal, a sling is not used unless its maker or a qualified 
 
 ## Gear check
 
-**Everything below the hook against the rating on its own tag: what each piece carries, and the weakest one.** PipeFit tab → **Rigging → Gear check**, or say "gear check".
+**Everything below the hook against the rating on its own tag: what each piece carries, and the weakest one.** **Rigging** tab → **Gear check**, or say "gear check".
 
 - **The load:** the load, and the rigging hung under the hook (slings, shackles, spreader). From Rig this spool, each sling's pull comes with it; change the load and it works the legs out from how many there are and their angle instead.
 - **Legs:** 1 to 4, with the angle from horizontal. On a rigid load two legs can end up carrying it all, so 3 and 4 legs are each checked for half the load.
@@ -753,7 +757,7 @@ Any one, and it's a critical lift: an engineered lift plan, reviewed and signed 
 
 ## Crane signals
 
-**The standard hand signals for cranes, on a moving figure, then a test and the quick read.** PipeFit tab → **Rigging → Crane signals**, or say "crane signals".
+**The standard hand signals for cranes, on a moving figure, then a test and the quick read.** **Rigging** tab → **Crane signals**, or say "crane signals".
 
 The 19 signals are the ones in OSHA's standard for cranes in construction (29 CFR 1926 Subpart CC, Appendix A):
 
@@ -784,7 +788,7 @@ The 19 signals are the ones in OSHA's standard for cranes in construction (29 CF
 
 ## Knots
 
-**The knots a fitter uses on tag lines and hand lines: watch each one tied, tie it on screen with a finger, tie it again from memory, check it for faults, take the test, pick the right knot for the job in Mystery knot, then get Knot Certified.** PipeFit tab → **Rigging → Knots**, or say "knots".
+**The knots a fitter uses on tag lines and hand lines: watch each one tied, tie it on screen with a finger, tie it again from memory, check it for faults, take the test, pick the right knot for the job in Mystery knot, then get Knot Certified.** **Rigging** tab → **Knots**, or say "knots".
 
 > Knots are for tag lines, hand lines and light material on a hand line. Never knot a sling or a wire rope, and never use a knot for fall protection: a lift is rigged to its plan with rated gear.
 
@@ -2055,7 +2059,7 @@ Whatever you can see, you can say. Every button, chip, switch and box tells the 
 | Say | What happens |
 |---|---|
 | "Bolt up", "hydro", "heat book", "shift report" | That tool opens. Works with no signal. |
-| "Home", "projects", "PipeFit", "weld", "logs", "calculator", "edu" | That tab opens; "logs" opens the Logs tab on the Projects page. |
+| "Home", "projects", "PipeFit", "weld", "rigging", "logs", "calculator", "edu" | That tab opens; "logs" opens the Logs tab on the Projects page. |
 | "Rolling offset, rise 12, roll 8 and a half, run 30", "rolling offset rise 12 roll 8 at 45" | Rolling offset opens with the figures in. "3 foot 6", "12 and 3/8" and "350 millimetres" are understood, and a plain figure after "at" is the angle. Said on the Calculator, it is worked there instead (see Calculator → Say the sum). |
 | "Simple offset, 14 and a half at 22 and a half degrees" | Any bend or offset tool opens filled in — see the table below. |
 | "Rise 12", "leg b 3 foot 6" (with the tool open) | Fills that field on the screen you are on. |

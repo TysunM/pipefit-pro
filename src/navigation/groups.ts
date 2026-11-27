@@ -117,15 +117,15 @@ export type SectionSize = 'big' | 'wide' | 'small';
 /** `id` names the section in the saved layout, so it must not change once shipped; the title may. */
 export type Section = { id: string; title: string; size: SectionSize; tools: Tool[] };
 
-export type GroupId = 'tools' | 'weld' | 'logs' | 'edu';
+export type GroupId = 'tools' | 'weld' | 'rigging' | 'logs' | 'edu';
 export type Group = { id: GroupId; title: string; subtitle: string; sections: Section[] };
 
-/** What the PipeFit, Weld, Logs and Edu tabs hold. The PipeFit tab keeps the id 'tools' it shipped with, so the saved order of its tiles carries over. */
+/** What the PipeFit, Weld, Rigging, Logs and Edu tabs hold. The PipeFit tab keeps the id 'tools' it shipped with, so the saved order of its tiles carries over. */
 export const GROUPS: Group[] = [
   {
     id: 'tools',
     title: 'PipeFit',
-    subtitle: 'The iso paper, the spool, the bolt-up, the level and the measure, every bend and offset, and the rigging: rig a spool, sling angles, the gear check, crane signals and knots.',
+    subtitle: 'The iso paper, the spool, the bolt-up, the level and the measure, and every bend and offset. The rigging has its own tab.',
     sections: [
       { id: 'fitup', title: 'Layout & fit-up', size: 'big', tools: pick(['IsoSketch', 'SpoolBuilder', 'FlangeBoltUp', 'Level', 'Measure']) },
       {
@@ -134,7 +134,6 @@ export const GROUPS: Group[] = [
         size: 'small',
         tools: pick(['SimpleOffset', 'RollingOffset', 'CutLength', 'SaddleBend', 'MiterBend', 'HandBender']),
       },
-      { id: 'rigging', title: 'Rigging', size: 'wide', tools: pick(['RigSpool', 'SlingAngle', 'GearCheck', 'CraneSignals', 'Knots']) },
     ],
   },
   {
@@ -143,6 +142,15 @@ export const GROUPS: Group[] = [
     subtitle: 'Orbital programs and their coupons, heat input for the WPS and PQR, the carbon equivalents off a mill cert, and the weld log with its NDE.',
     sections: [
       { id: 'welding', title: 'Welding', size: 'big', tools: pick(['Orbital', 'HeatInput', 'Weldability', 'WeldLog']) },
+    ],
+  },
+  {
+    id: 'rigging',
+    title: 'Rigging',
+    subtitle: 'The pick worked out (a spool weighed and its slings, sling angles, every piece below the hook against its tag) and what a hand on the ground learns and proves: the crane hand signals and the knots.',
+    sections: [
+      { id: 'pick', title: 'The pick', size: 'big', tools: pick(['RigSpool', 'SlingAngle', 'GearCheck']) },
+      { id: 'learn', title: 'Signals and knots', size: 'big', tools: pick(['CraneSignals', 'Knots']) },
     ],
   },
   {

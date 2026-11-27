@@ -110,8 +110,8 @@ function figuresSaid(route: string, f: Figures): string {
 /** Go to a screen, and hand it any figures said for it. Returns the screen's reason if it refused them. */
 function openWith(route: string, figures?: Figures): string | undefined {
   if (!nav.isReady()) return undefined;
-  // The PipeFit (Tools), Weld and Edu tabs are one screen, shown with that tab's tools.
-  const tab = { Tools: 'tools', Weld: 'weld', Edu: 'edu' } as const;
+  // The PipeFit (Tools), Weld, Rigging and Edu tabs are one screen, shown with that tab's tools.
+  const tab = { Tools: 'tools', Weld: 'weld', Rigging: 'rigging', Edu: 'edu' } as const;
   // The Logs are a tab at the top of the Projects page.
   if (route === 'Logs') {
     nav.navigate('Projects', { view: 'logs' });

@@ -46,6 +46,8 @@ export type ReorderLayout = 'row' | 'grid' | 'stack';
 export const HOLD_MS = 400;
 /** A finger this close to the top or foot of the page carries the scroll with it. */
 const EDGE = 72;
+/** Across the tab bar, a narrower band: the bar is only a phone's width. */
+const EDGE_ACROSS = 40;
 /** The most the page scrolls per frame under a carried tile. */
 const EDGE_STEP = 12;
 
@@ -130,13 +132,16 @@ export function ReorderZone<T>({
   const place = useCallback(() => {
     const a = armed.current;
     if (!a || !a.rects) return;
+    // The tab bar scrolls across; a page scrolls down.
+    const across = host?.axis === 'x';
     if (host) {
       const { top, height } = host.viewport();
-      const step = edgeScroll(a.last.y - top, height, EDGE, EDGE_STEP);
+      const step = edgeScroll((across ? a.last.x : a.last.y) - top, height, across ? EDGE_ACROSS : EDGE, EDGE_STEP);
       if (step) host.scrollBy(step);
     }
-    const dx = layout === 'stack' ? 0 : a.last.x - a.page0.x;
-    const dy = layout === 'row' ? 0 : a.last.y - a.page0.y + ((host?.y() ?? 0) - a.y0);
+    const scrolled = (host?.y() ?? 0) - a.y0;
+    const dx = layout === 'stack' ? 0 : a.last.x - a.page0.x + (across ? scrolled : 0);
+    const dy = layout === 'row' ? 0 : a.last.y - a.page0.y + (across ? 0 : scrolled);
     offset.setValue({ x: dx, y: dy });
     const home = a.rects[a.from] as Rect;
     const to = nearestSlot(a.rects, { x: home.x + home.width / 2 + dx, y: home.y + home.height / 2 + dy });

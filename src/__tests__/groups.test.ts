@@ -76,6 +76,13 @@ describe('the tabs reach every tool, once', () => {
     }
   });
 
+  test('rigging is its own tab: the pick worked out, then the signals and the knots; none of it is left on PipeFit', () => {
+    const g = group('rigging');
+    expect(routes(g?.sections[0]?.tools ?? [])).toEqual(['RigSpool', 'SlingAngle', 'GearCheck']);
+    expect(routes(g?.sections[1]?.tools ?? [])).toEqual(['CraneSignals', 'Knots']);
+    expect(group('tools')?.sections.map((s) => s.id)).toEqual(['fitup', 'bends']);
+  });
+
   test('tools: the iso paper, the spool, the bolt-up, the level and AR measure, then every bend and offset', () => {
     const g = group('tools');
     expect(routes(g?.sections[0]?.tools ?? [])).toEqual(['IsoSketch', 'SpoolBuilder', 'FlangeBoltUp', 'Level', 'Measure']);
