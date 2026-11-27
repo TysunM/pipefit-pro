@@ -1004,6 +1004,11 @@ export function SpoolBuilderScreen({ route, navigation }: Props) {
         badge={`SCH ${pipe.schedule}`}
         text={valid ? `Pipe weight ${u.weight(spool.weight, 2)} for ${u.num(spool.totalCut)} ${u.unitName}` : 'Weight unavailable'}
       />
+      {valid ? (
+        <ControlRow>
+          <GhostButton label="Rig this spool" icon="git-pull-request-outline" style={{ flex: 1 }} onPress={() => navigation.navigate('RigSpool', { spool: { name: loaded?.name, ...onScreen } })} />
+        </ControlRow>
+      ) : null}
 
       <FooterNote text="A leg is where it runs and how far: a bearing off the compass and a slope off level, so straight up is a slope of 90 and the bearing stops mattering. Lengths on the drawing are centre-to-centre; each cut deducts the takeoff at both ends plus the weld gap." />
 

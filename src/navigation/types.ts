@@ -1,3 +1,8 @@
+import type { ElbowRadius, Schedule } from '../calc/pipe';
+
+/** A spool as the 3D page describes it, handed to Rig this spool. */
+export type RigSpoolShape = { name?: string; nps: number; kind: ElbowRadius; schedule: Schedule; gap: number; legs: { length: number; bearing: number; slope: number }[] };
+
 export type RootStackParamList = {
   Home: undefined;
   /** The PipeFit, Weld or Edu tab, or the Logs tiles — see navigation/groups.ts. */
@@ -55,6 +60,12 @@ export type RootStackParamList = {
   OrbitalRun: { id: string; programId?: undefined; kind?: undefined } | { id?: undefined; programId: string; kind: 'coupon' | 'production' };
   /** Sling angles: each leg's tension from the load, the legs and their angle, or an off-centre CG. */
   SlingAngle: undefined;
+  /** Rig this spool: its weight and centre of gravity, and a two-sling pick. Handed a spool from the 3D page, or one off the shelf by id. */
+  RigSpool: { spool?: RigSpoolShape; spoolId?: string } | undefined;
+  /** Everything below the hook against its tag: the weakest piece, and whether it's a critical lift. From a pick, its load and leg tensions. */
+  GearCheck: { /** Pounds, as are the legs. */ load?: number; legs?: number[]; angle?: number } | undefined;
+  /** The standard hand signals for mobile cranes: each one shown, then the test and the drill. */
+  CraneSignals: undefined;
   /** Knots for tag lines and hand lines: each one watched, tied by finger, and the test. */
   Knots: undefined;
   /** One knot: Learn (watch it tied, a step at a time) or Tie it (drag the end through it). */

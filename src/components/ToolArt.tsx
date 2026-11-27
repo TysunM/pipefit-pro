@@ -302,6 +302,51 @@ const art: Partial<Record<ToolRoute, (k: Ink) => React.ReactNode>> = {
     </G>
   ),
 
+  // An L spool on two slings, the hook straight over its centre of gravity.
+  RigSpool: (k) => (
+    <G fill="none" strokeLinecap="round" strokeLinejoin="round">
+      <Path d="M40 3 V8 M40 8 v4 a3.5 3.5 0 1 1 -3.5 3.5" stroke={k.line} strokeWidth={2.2} />
+      <Path d="M40 16 L15 45 M40 16 L61 30" stroke={k.accent} strokeWidth={2.6} />
+      <Path d="M8 49 H50 Q62 49 62 37 V25" stroke={k.line} strokeWidth={7.5} />
+      <Path d="M8 49 H50 Q62 49 62 37 V25" stroke={k.plate} strokeWidth={3.2} />
+      <Path d="M40 20 V37" stroke={k.soft} strokeWidth={1.2} strokeDasharray="2 2" />
+      <Circle cx={40} cy={41.5} r={4.5} stroke={k.accent} strokeWidth={1.6} />
+      <Path d="M40 37 A4.5 4.5 0 0 1 44.5 41.5 L40 41.5 Z M40 46 A4.5 4.5 0 0 1 35.5 41.5 L40 41.5 Z" fill={k.accent} stroke="none" />
+    </G>
+  ),
+
+  // A shackle, its pin home, and the tag hanging off it checked.
+  GearCheck: (k) => (
+    <G fill="none" strokeLinecap="round" strokeLinejoin="round">
+      <Path d="M20 46 V24 A11 11 0 0 1 42 24 V46" stroke={k.line} strokeWidth={4.2} />
+      <Path d="M13 48 H49" stroke={k.line} strokeWidth={4} />
+      <Circle cx={12} cy={48} r={3.6} stroke={k.line} strokeWidth={2} />
+      <Path d="M49 48 h4" stroke={k.soft} strokeWidth={2.4} />
+      <Path d="M40 17 Q50 18 58 26" stroke={k.soft} strokeWidth={1.4} />
+      <Rect x={53} y={26} width={21} height={28} rx={3} stroke={k.line} strokeWidth={2} />
+      <Circle cx={63.5} cy={31} r={1.6} stroke={k.line} strokeWidth={1.4} />
+      <Path d="M57 37 H70 M57 41.5 H66" stroke={k.soft} strokeWidth={1.4} />
+      <Path d="M58 47.5 l3.5 3.5 l7 -8" stroke={k.accent} strokeWidth={2.6} />
+    </G>
+  ),
+
+  // A signal person in a hard hat and vest, one finger up and circling: hoist.
+  CraneSignals: (k) => (
+    <G fill="none" strokeLinecap="round" strokeLinejoin="round">
+      <Path d="M27 28 H45 L42.5 47 H29.5 Z" fill={k.accent} stroke={k.line} strokeWidth={1.8} />
+      <Path d="M28.2 35 H43.8 M29 41 H43" stroke={k.onAccent} strokeWidth={1.6} />
+      <Circle cx={36} cy={19} r={5.5} stroke={k.line} strokeWidth={2} />
+      <Path d="M29.8 16.5 A6.2 6 0 0 1 42.2 16.5 Z" fill={k.accent} stroke={k.line} strokeWidth={1.4} />
+      <Path d="M28 16.8 H44.5" stroke={k.line} strokeWidth={1.8} />
+      <Path d="M32 47 L30.5 61 M40 47 L41.5 61" stroke={k.line} strokeWidth={3.2} />
+      <Path d="M27.5 29 H15 V14" stroke={k.line} strokeWidth={3.2} />
+      <Path d="M15 13 V5.5" stroke={k.line} strokeWidth={2.2} />
+      <Path d="M9 7.5 A6 2.6 0 1 0 21 7.5" stroke={k.accent} strokeWidth={1.8} />
+      <Path d="M21 7.5 l-0.5 -3 M21 7.5 l-3 0.6" stroke={k.accent} strokeWidth={1.6} />
+      <Path d="M44.5 29.5 L51 40 L52 48" stroke={k.line} strokeWidth={3.2} />
+    </G>
+  ),
+
   // A tube end-on in an orbital head: the levels round it as arcs, the arc at the top going clockwise.
   Orbital: (k) => (
     <G fill="none" strokeLinecap="round" strokeLinejoin="round">
