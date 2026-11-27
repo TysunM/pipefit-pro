@@ -83,6 +83,11 @@ export type Settings = {
    */
   hideBar: boolean;
   /**
+   * The Calculator's tab bar tucked away for bigger keys: swiped down off the
+   * foot, a handle left to bring it back. Kept until it is brought back.
+   */
+  calcBarTucked: boolean;
+  /**
    * Days or nights: where "today" turns over. On nights the work from noon to
    * noon is one day, dated by the night it started — the Projects Today view
    * and the shift report both follow it. See calc/days.ts workDay.
@@ -135,6 +140,7 @@ export const DEFAULT_SETTINGS: Settings = {
   gloveMode: false,
   voice: true,
   hideBar: true,
+  calcBarTucked: false,
   shift: 'days',
   coach: 'on',
   heatUnit: 'auto',

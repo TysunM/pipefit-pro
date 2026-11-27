@@ -21,6 +21,7 @@ const DEFAULTS: Settings = {
   gloveMode: false,
   voice: true,
   hideBar: true,
+  calcBarTucked: false,
   shift: 'days',
   coach: 'on',
   heatUnit: 'auto',
@@ -183,5 +184,15 @@ describe('the tab bar while scrolling', () => {
     expect(readSettings(JSON.stringify(before), DEFAULTS).settings.hideBar).toBe(true);
     expect(readSettings(JSON.stringify({ ...DEFAULTS, hideBar: false }), DEFAULTS).settings.hideBar).toBe(false);
     expect(readSettings(JSON.stringify({ ...DEFAULTS, hideBar: 'no' }), DEFAULTS).settings.hideBar).toBe(true);
+  });
+});
+
+describe("the Calculator's tab bar tucked away", () => {
+  test('shown by default; tucked is kept; anything else is the default', () => {
+    const { calcBarTucked, ...before } = DEFAULTS;
+    void calcBarTucked;
+    expect(readSettings(JSON.stringify(before), DEFAULTS).settings.calcBarTucked).toBe(false);
+    expect(readSettings(JSON.stringify({ ...DEFAULTS, calcBarTucked: true }), DEFAULTS).settings.calcBarTucked).toBe(true);
+    expect(readSettings(JSON.stringify({ ...DEFAULTS, calcBarTucked: 1 }), DEFAULTS).settings.calcBarTucked).toBe(false);
   });
 });
