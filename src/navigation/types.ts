@@ -6,7 +6,7 @@ export type RigSpoolShape = { name?: string; nps: number; kind: ElbowRadius; sch
 export type RootStackParamList = {
   Home: undefined;
   /** The PipeFit, Weld or Edu tab, or the Logs tiles — see navigation/groups.ts. */
-  Group: { id: 'tools' | 'weld' | 'logs' | 'edu' };
+  Group: { id: 'tools' | 'weld' | 'rigging' | 'logs' | 'edu' };
   /** Everything saved on the phone, one card per kind. */
   /** view: which tab at the top of the page it opens on, the job's records or the Logs. */
   Projects: { view?: 'jobs' | 'logs' } | undefined;

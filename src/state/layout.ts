@@ -268,3 +268,20 @@ export function edgeScroll(pos: number, length: number, band: number, max: numbe
   const step = max * Math.min(1, depth) ** 2;
   return pos < band ? -step : step;
 }
+
+/**
+ * Where a sideways-scrolling tab bar scrolls to, to show the tab at `index`:
+ * where it was, moved only as far as it takes to show that tab and a little of
+ * its neighbour, and never past either end. `tabW` wide tabs, `count` of them,
+ * in a window `view` wide.
+ */
+export function scrollToShow(was: number, index: number, tabW: number, view: number, count: number): number {
+  const max = Math.max(0, tabW * count - view);
+  const left = index * tabW;
+  const right = left + tabW;
+  const margin = tabW * 0.4;
+  let x = was;
+  if (left - margin < x) x = left - margin;
+  if (right + margin > x + view) x = right + margin - view;
+  return Math.max(0, Math.min(max, x));
+}

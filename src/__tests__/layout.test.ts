@@ -25,6 +25,7 @@ import {
   withOrder,
   type Layout,
   type Rect,
+  scrollToShow,
 } from '../state/layout';
 
 // Where things stand
@@ -165,8 +166,8 @@ describe('the layout', () => {
     expect(orderOf(l, HOME_ZONE)).toEqual(['Level', 'IsoSketch', 'FlangeBoltUp', 'SpoolBuilder']);
   });
 
-  test('the shipped tab order is Home, Calculator, PipeFit, Weld, Projects, Edu', () => {
-    expect(orderOf(EMPTY_LAYOUT, TABS_ZONE)).toEqual(['home', 'calc', 'tools', 'weld', 'projects', 'edu']);
+  test('the shipped tab order is Home, Calculator, PipeFit, Weld, Rigging, Projects, Edu', () => {
+    expect(orderOf(EMPTY_LAYOUT, TABS_ZONE)).toEqual(['home', 'calc', 'tools', 'weld', 'rigging', 'projects', 'edu']);
   });
 });
 
@@ -188,7 +189,7 @@ describe('reading what was stored', () => {
   test('a zone that is gone, or that is not a list, is dropped; the rest is kept', () => {
     const l = parseLayout(store({ 'tools.nothing': ['IsoSketch'], [HOME_ZONE]: 'IsoSketch', [TABS_ZONE]: ['edu', 'home'] }));
     expect(Object.keys(l.zones)).toEqual([TABS_ZONE]);
-    expect(l.zones[TABS_ZONE]).toEqual(['edu', 'home', 'calc', 'tools', 'weld', 'projects']);
+    expect(l.zones[TABS_ZONE]).toEqual(['edu', 'home', 'calc', 'tools', 'weld', 'rigging', 'projects']);
   });
 
   test('a stored order that comes to the shipped one is not kept as a change', () => {
@@ -205,12 +206,18 @@ describe('reading what was stored', () => {
 
   test('the Weld tab, new in an update, stands straight after PipeFit in a saved tab order', () => {
     const l = parseLayout(store({ [TABS_ZONE]: ['edu', 'tools', 'home', 'calc', 'projects', 'logs'] }));
-    expect(l.zones[TABS_ZONE]).toEqual(['edu', 'tools', 'weld', 'home', 'calc', 'projects']);
+    expect(l.zones[TABS_ZONE]).toEqual(['edu', 'tools', 'weld', 'rigging', 'home', 'calc', 'projects']);
+  });
+
+  test('the Rigging tab, new in an update, stands straight after Weld in a saved tab order; the rigging tiles left on PipeFit are dropped', () => {
+    const l = parseLayout(store({ [TABS_ZONE]: ['edu', 'weld', 'home', 'calc', 'tools', 'projects'], 'tools.rigging': ['Knots', 'SlingAngle'] }));
+    expect(l.zones[TABS_ZONE]).toEqual(['edu', 'weld', 'rigging', 'home', 'calc', 'tools', 'projects']);
+    expect(l.zones['tools.rigging']).toBeUndefined();
   });
 
   test('the Logs, gone from the foot onto the Projects page, drop out of a saved tab order; the rest stand as they were', () => {
     const l = parseLayout(store({ [TABS_ZONE]: ['logs', 'edu', 'home', 'calc', 'tools', 'weld', 'projects'] }));
-    expect(l.zones[TABS_ZONE]).toEqual(['edu', 'home', 'calc', 'tools', 'weld', 'projects']);
+    expect(l.zones[TABS_ZONE]).toEqual(['edu', 'home', 'calc', 'tools', 'weld', 'rigging', 'projects']);
   });
 });
 
@@ -290,5 +297,33 @@ describe('where a carried tile is', () => {
     expect(edgeScroll(752, 800, 96, 14)).toBeCloseTo(3.5);
     expect(edgeScroll(900, 800, 96, 14)).toBe(14);
     expect(edgeScroll(10, 0, 96, 14)).toBe(0);
+  });
+});
+
+describe('the tab bar scrolled sideways', () => {
+  // Seven tabs 70 wide in a window 385 wide: five and a half in view.
+  const W = 70;
+  const VIEW = 385;
+  test('a tab already in view leaves the bar where it was', () => {
+    expect(scrollToShow(0, 1, W, VIEW, 7)).toBe(0);
+    expect(scrollToShow(60, 3, W, VIEW, 7)).toBe(60);
+  });
+  test('a tab off the right end brings it in, with a little of the next; off the left, the same the other way', () => {
+    const x = scrollToShow(0, 6, W, VIEW, 7);
+    expect(x).toBe(7 * W - VIEW);
+    expect(6 * W >= x && 7 * W <= x + VIEW).toBe(true);
+    const y = scrollToShow(7 * W - VIEW, 0, W, VIEW, 7);
+    expect(y).toBe(0);
+    const z = scrollToShow(0, 5, W, VIEW, 7);
+    expect(6 * W - z).toBeLessThanOrEqual(VIEW);
+    expect(5 * W + W * 1.4 - z).toBeCloseTo(VIEW, 6);
+  });
+  test('never past either end, and nothing to scroll when they all fit', () => {
+    for (let i = 0; i < 7; i += 1) {
+      const x = scrollToShow(1e6, i, W, VIEW, 7);
+      expect(x).toBeGreaterThanOrEqual(0);
+      expect(x).toBeLessThanOrEqual(7 * W - VIEW);
+    }
+    expect(scrollToShow(40, 6, 50, 400, 7)).toBe(0);
   });
 });

@@ -23,7 +23,7 @@ import { snapPhrases, snapWords, splitGlued } from './hear';
 import { applyLearned } from './learned';
 
 /** Somewhere a voice can open: a tool, or one of the tabs along the bottom, Settings or Backup. */
-export type OpenRoute = ToolRoute | 'Home' | 'Settings' | 'Backup' | 'Projects' | 'Tools' | 'Weld' | 'Logs' | 'Edu';
+export type OpenRoute = ToolRoute | 'Home' | 'Settings' | 'Backup' | 'Projects' | 'Tools' | 'Weld' | 'Rigging' | 'Logs' | 'Edu';
 
 export type VoiceCommand =
   /** Open a screen; for a tool that takes figures, with what was said for them. `ignored` is what was said that the app could not place, when it opened the tool anyway. */
@@ -47,6 +47,7 @@ export const TOOL_WORDS: Record<OpenRoute, readonly string[]> = {
   Projects: ['projects', 'project', 'projects tab', 'my projects', 'jobs', 'turnover', 'turnover package'],
   Tools: ['tools', 'tools tab', 'tool tab', 'all tools', 'tool box', 'toolbox', 'pipe fit tab', 'pipe fitting tab', 'pipefitting', 'fitting tools'],
   Weld: ['weld tab', 'welding', 'welding tab', 'weld tools', 'welding tools'],
+  Rigging: ['rigging', 'rigging tab', 'rigging tools', 'rig tab', 'rigger', 'riggers'],
   Logs: ['logs', 'logs tab', 'log tab', 'log book', 'records', 'the books'],
   Edu: ['edu', 'edu tab', 'education', 'education tab', 'learning', 'learn', 'training tab', 'school'],
   Settings: ['settings', 'setting', 'preferences'],

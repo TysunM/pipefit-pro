@@ -3,7 +3,7 @@ import type { RootStackParamList } from './types';
 
 // The tabs
 // --------
-// Six ways into the app from its foot, the same six on every tab. This
+// Seven ways into the app from its foot, the same seven on every tab. This
 // file says which and in what order they stand before anyone has moved one;
 // state/layout.ts keeps the order a man drags them into.
 //
@@ -14,6 +14,10 @@ import type { RootStackParamList } from './types';
 //              Its id is still 'tools', which it shipped as, so a saved
 //              order and the tiles moved on it carry over.
 //   Weld       heat input, weldability, and the weld log.
+//   Rigging    rig a spool, sling angles, the gear check, the crane hand
+//              signals and the knots. It stood as a section of PipeFit
+//              until it was its own tab; a saved order without it puts it
+//              straight after Weld (layout.ts).
 //   Projects   everything saved: bolt-ups, isos, spools, level readings;
 //              and, a tab at the top of the page, the Logs: the books he
 //              keeps and looks things up in. Logs stood on its own at the
@@ -21,7 +25,7 @@ import type { RootStackParamList } from './types';
 //              drops it (layout.ts), and its tiles keep their order.
 //   Edu        what a new hire learns and proves: orientation and the passport.
 
-export type TabId = 'home' | 'calc' | 'tools' | 'weld' | 'projects' | 'edu';
+export type TabId = 'home' | 'calc' | 'tools' | 'weld' | 'rigging' | 'projects' | 'edu';
 
 export type TabRoute = { name: keyof RootStackParamList; params?: object };
 
@@ -40,11 +44,12 @@ export const TABS: readonly Tab[] = [
   { id: 'calc', label: 'Calculator', icon: 'calculator-outline', on: 'calculator', route: { name: 'Calculator' } },
   { id: 'tools', label: 'PipeFit', icon: 'construct-outline', on: 'construct', route: { name: 'Group', params: { id: 'tools' } } },
   { id: 'weld', label: 'Weld', icon: 'flame-outline', on: 'flame', route: { name: 'Group', params: { id: 'weld' } } },
+  { id: 'rigging', label: 'Rigging', icon: 'link-outline', on: 'link', route: { name: 'Group', params: { id: 'rigging' } } },
   { id: 'projects', label: 'Projects', icon: 'folder-outline', on: 'folder', route: { name: 'Projects' } },
   { id: 'edu', label: 'Edu', icon: 'school-outline', on: 'school', route: { name: 'Group', params: { id: 'edu' } } },
 ];
 
-/** The tab ids in their shipped order: Home, Calculator, PipeFit, Weld, Projects, Edu. */
+/** The tab ids in their shipped order: Home, Calculator, PipeFit, Weld, Rigging, Projects, Edu. */
 export const TAB_ORDER: readonly TabId[] = TABS.map((t) => t.id);
 
 export const isTabId = (x: string): x is TabId => TAB_ORDER.includes(x as TabId);
