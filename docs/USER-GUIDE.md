@@ -697,6 +697,91 @@ Under 30° from horizontal, a sling is not used unless its maker or a qualified 
 
 > Forces, not a lift plan. The lift is planned and the rigging chosen by a qualified person, to the load's weight and the slings' tags. Choker and basket ratings, D/d and edge protection are on the tag and from the maker, and are not in this.
 
+## Rig this spool
+
+**What the spool on the 3D page weighs, where its centre of gravity is, and a two-sling pick for it.** PipeFit tab → **Rigging → Rig this spool**, the **Rig this spool** button under the 3D spool, or say "rig this spool".
+
+- **No spool on screen:** pick a saved one off the shelf, or build one in 3D spool first.
+- **The weight:** the pipe cut to length and the elbows, the same as the spool's own weight. Switch **Lifted** to **Full of water** if it goes up full (62.4 lb a cubic foot of bore).
+- **Valves, flanges and the rest:** add each one with the weight off its tag or the drawing, the leg it sits on, and how far along that leg. The app never guesses a maker's weight.
+- **Centre of gravity:** shown on the drawing and given east, north and up from the start of leg 1.
+- **Where it is picked:** a leg and a distance along it for each sling, centre to centre. **Suggest picks** puts them either side of the centre of gravity, well inside them. Pick on the pipe, clear of the fittings and the welds.
+- **The hook:** how high it sits above the higher pick. **Set for 60°** puts the flatter sling at 60° from horizontal (each leg pulls 1.155 times its share).
+- You get each sling's pull, its length from pick to hook, its angle and its share of the weight, coloured like Sling angle (green 60° and up, amber under 45°, red under 30°), plus the pull in on each pick and how far the centre of gravity sits off the line between the picks.
+
+**What it warns you about:**
+
+| Warning | What it means |
+|---|---|
+| Rolls | The centre of gravity is off the line between the picks: the spool turns about that line until it hangs under it. Add a third pick or a tag line, or move a pick. |
+| Can roll over | The centre of gravity is above the picks. Pick above it, or choke the slings so it can't turn. |
+| Tips off one end | The centre of gravity is outside a pick: no answer is given until that pick moves past it. |
+| Under 30° | A leg is too flat. Raise the hook or use longer slings. |
+
+**Check the gear for this pick** opens Gear check with this load and each sling's pull filled in.
+
+> A check for the hand on the ground, not a lift plan. A qualified rigger rigs it, the crane's capacity comes from its own chart and its operator, and a critical lift gets an engineered lift plan.
+
+## Gear check
+
+**Everything below the hook against the rating on its own tag: what each piece carries, and the weakest one.** PipeFit tab → **Rigging → Gear check**, or say "gear check".
+
+- **The load:** the load, and the rigging hung under the hook (slings, shackles, spreader). From Rig this spool, each sling's pull comes with it; change the load and it works the legs out from how many there are and their angle instead.
+- **Legs:** 1 to 4, with the angle from horizontal. On a rigid load two legs can end up carrying it all, so 3 and 4 legs are each checked for half the load.
+- **Below the hook:** it starts with a choker sling, a shackle and the hook. Add more from the list: sling, shackle, eyebolt, hook or master link, chain fall, come-along, beam clamp, spreader or lifting beam, or other.
+- **The rating:** type each one off its tag, for the way it's used. A sling has a **vertical**, **choker** and **basket** rating on the tag: pick the hitch and type that one.
+
+**What each piece carries:**
+- On each leg (a sling, a shackle at the pick, an eyebolt): the heaviest leg's pull.
+- A sling in a **basket** carries two legs, because both its parts go up to the hook. It is checked against the basket rating.
+- In line with the whole load (the hook, a chain fall, a come-along, a beam clamp, a spreader): the load and the rigging together.
+
+Each piece shows what it carries, its percentage of its tag and a bar. At **90%** it's working hard: check it twice. Over **100%** it says don't lift. The piece working hardest is picked out as the weakest. A piece with no rating yet is flagged: no tag, no lift.
+
+**Choked tighter than 120°:** the choker rating on the tag comes down. Use the maker's chart for the angle, or choke it looser. **Eyebolts:** shouldered only, seated flat; loaded at an angle their rating drops a long way.
+
+**Is it a critical lift?** Tick any that apply:
+- over 75% of the crane or hoist's rating at that radius (ask the operator);
+- two or more cranes or hoists on the one load;
+- over people, an occupied building, or live lines and equipment;
+- lifting people;
+- the weight or centre of gravity isn't known, or the load could shift.
+
+Any one, and it's a critical lift: an engineered lift plan, reviewed and signed off, and a pre-lift meeting, before it goes up. Your site may have more on its list.
+
+> Every rating is the one on that piece's tag. Inspect every piece before use. This checks the gear; it doesn't plan the lift.
+
+## Crane signals
+
+**The standard hand signals for cranes, on a moving figure, then a test and the quick read.** PipeFit tab → **Rigging → Crane signals**, or say "crane signals".
+
+The 19 signals are the ones in OSHA's standard for cranes in construction (29 CFR 1926 Subpart CC, Appendix A):
+
+| Group | Signals |
+|---|---|
+| Stops | Stop, Emergency stop, Dog everything |
+| The hoist lines | Hoist, Lower, Use main hoist, Use whip line, Move slowly |
+| The boom | Raise boom, Lower boom, Raise the boom and lower the load, Lower the boom and raise the load, Swing, Extend boom and Retract boom (telescoping booms) |
+| Travel | Travel, Travel both tracks and Travel one track (crawler cranes), Trolley travel (tower cranes) |
+
+**Learn:** tap a signal to see it given on a loop, in a hi-vis vest with the gloves picked out. A faint dashed line shows each moving hand's path, so a circle, a sweep or a push reads even when it's paused. Each one says:
+- what it tells the operator;
+- how it's given;
+- the signal it gets mixed up with, and how to tell them apart.
+
+**Left hand** shows a one-hand signal given with the other hand: it's the same signal. **Pause** holds it still. With Reduce Motion on in the phone's settings, it holds still.
+
+**Test:** ten signals. Half are shown, and you pick the name. Half are named, and you pick the figure. Every question puts the answer against the signals it's likeliest mistaken for. The ones you get wrong come up more next time. Your best score is kept.
+
+**Quick read:** all 19 once, shuffled, as fast as you can read them. A miss costs 5 seconds. Your best is the fewest misses, then the quickest time.
+
+**On the job:**
+- Agree the signals with the operator before the lift. The chart is posted on the crane or near the lift.
+- One signal person gives the signals. Anyone can give Stop or Emergency stop, and the operator stops for it from anyone.
+- Main hoist or whip line first, then the motion. If the operator loses sight of the signal person or can't read the signal, the operator stops.
+
+> Knowing the signals doesn't make you a signal person: that takes a qualification from a qualified evaluator. Where a site or country uses other signals, use the chart posted for the lift.
+
 ## Knots
 
 **The knots a fitter uses on tag lines and hand lines: watch each one tied, tie it on screen with a finger, tie it again from memory, check it for faults, take the test, pick the right knot for the job in Mystery knot, then get Knot Certified.** PipeFit tab → **Rigging → Knots**, or say "knots".

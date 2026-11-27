@@ -43,6 +43,9 @@ import { OrbitalEquationScreen } from '../screens/OrbitalEquationScreen';
 import { OrbitalRunScreen } from '../screens/OrbitalRunScreen';
 import { KnotsScreen } from '../screens/KnotsScreen';
 import { SlingAngleScreen } from '../screens/SlingAngleScreen';
+import { RigSpoolScreen } from '../screens/RigSpoolScreen';
+import { GearCheckScreen } from '../screens/GearCheckScreen';
+import { CraneSignalsScreen } from '../screens/CraneSignalsScreen';
 import { KnotScreen } from '../screens/KnotScreen';
 import { KnotTestScreen } from '../screens/KnotTestScreen';
 import { KnotCertScreen } from '../screens/KnotCertScreen';
@@ -153,6 +156,9 @@ export function RootNavigator() {
         <Stack.Screen name="OrbitalEquation" component={OrbitalEquationScreen} options={{ title: 'Equation' }} />
         <Stack.Screen name="OrbitalRun" component={OrbitalRunScreen} options={{ title: 'Weld' }} />
         <Stack.Screen name="SlingAngle" component={SlingAngleScreen} options={{ title: 'Sling angle' }} />
+        <Stack.Screen name="RigSpool" component={RigSpoolScreen} options={{ title: 'Rig this spool' }} />
+        <Stack.Screen name="GearCheck" component={GearCheckScreen} options={{ title: 'Gear check' }} />
+        <Stack.Screen name="CraneSignals" component={CraneSignalsScreen} options={{ title: 'Crane signals' }} />
         <Stack.Screen name="Knots" component={KnotsScreen} options={{ title: 'Knots' }} />
         <Stack.Screen name="Knot" component={KnotScreen} options={{ title: 'Knot' }} />
         <Stack.Screen name="KnotTest" component={KnotTestScreen} options={{ title: 'Knot test' }} />

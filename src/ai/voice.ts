@@ -70,6 +70,9 @@ export const VOICE_ROUTES = [
   'Orbital',
   'Knots',
   'SlingAngle',
+  'RigSpool',
+  'GearCheck',
+  'CraneSignals',
   'Calibration',
   'Passport',
   'Orientation',
@@ -116,6 +119,9 @@ const ROUTE_WORDS: Record<VoiceRoute, string> = {
   Weldability: 'weldability: carbon equivalents (IIW, CET, AWS, Pcm) and PREN from a mill cert\'s chemistry',
   Orbital: 'orbital welding: weld schedules (programs) with their levels, the weld heads and power supplies, the equations, and coupon and production weld run sheets',
   SlingAngle: "sling angle: each sling leg's tension from the load, the number of legs and the angle (or the sling length and the hook's height or reach), the angle factor, the pull in on the pick points, checked against the sling's tag; and two legs with the centre of gravity off centre, with the sling lengths that hang the load level",
+  RigSpool: "rig this spool: a spool's weight (pipe, elbows, water, and valves or flanges typed off their tags) and its centre of gravity, then a two-sling pick: each sling's angle and pull, the hook height for 60°, and warnings when it will tip, roll or overturn",
+  GearCheck: 'gear check: every piece below the hook (slings, shackles, eyebolts, the hook, chain falls, beam clamps, spreaders) against the rating on its own tag, what each one carries, the weakest piece, and whether it is a critical lift',
+  CraneSignals: 'crane hand signals: the standard signals for mobile cranes (hoist, lower, swing, stop, emergency stop, dog everything, boom up and down, telescoping, travel, crawler tracks, trolley) shown on a moving figure, then a test and a quick read against the clock',
   Knots: 'knots for tag lines and hand lines (bowline, running bowline, clove hitch, rolling hitch, figure eight, figure-eight loop, quick-release knot, slip knot (a sliding loop), round turn and two half hitches, timber hitch, timber hitch and half hitch (killick hitch), sheet bend, double sheet bend, square knot, cat\'s paw, trucker\'s hitch): each one shown tied step by step, tied on screen by finger, tied from memory with the line hidden and a buzz when off it, checked before use by spotting the faults hands tie, a knot test, Mystery knot (the job given, pick the knot and tie it from memory), and the Knot Certified run: every knot from memory back to back',
 };
 
