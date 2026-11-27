@@ -5,6 +5,7 @@ import { laidFault, laidSet, pairFrame } from '../components/knots/laid';
 import { HOLD, PULL_DRAG, TRACE, callsFor, missesFor, move, nearest, pulled, starsFor } from '../calc/knots/trace';
 import { SAFETY, faultRound, makeTest, seeded } from '../calc/knots/quiz';
 import { emptyKnots, parseKnots, recordCert, recordCheck, recordMystery, recordTest, recordTie, serialiseKnots } from '../state/knotProgress';
+import { ART_W, artTexts, certificateArt, estWidth, turnedBox, wrap } from '../components/knots/certArt';
 import { ROUNDS, mysteryBeats, mysteryRounds, mysteryTotals, verdictOf, whyNot, type MysteryResult } from '../calc/knots/mystery';
 import { CERTIFIED_UP_TO, FINE_PRINT, QUITE_UP_TO, TIERS, beats, certOrder, certTotals, clock, tierOf, type CertKnot } from '../calc/knots/cert';
 
@@ -511,5 +512,49 @@ describe('Mystery knot', () => {
     const old = JSON.parse(serialiseKnots(b));
     delete old.mystery;
     expect(parseKnots(JSON.stringify(old))).toMatchObject({ mystery: { best: null, last: null, runs: 0 }, dropped: 0 });
+  });
+});
+
+describe('the certificate as a picture', () => {
+  const run = (slips: number, skipped = 0): CertKnot[] => KNOTS.map((k, i) => ({ id: k.id, ms: 21_000, slips: i === 0 ? slips : 0, wrong: 0, skipped: i < skipped }));
+  const cases = [
+    ['grand', run(0)],
+    ['certified', run(2)],
+    ['quite', run(7)],
+    ['yet', run(0, 9)],
+  ] as const;
+  test.each(cases)('%s: the stamp, the title and the fine print, every line inside the card', (tier, r) => {
+    const art = certificateArt(certTotals(r), Date.UTC(2026, 10, 27));
+    const texts = artTexts(art);
+    const all = texts.map((t) => t.text).join(' ');
+    expect(all).toContain(TIERS[tier].stamp);
+    expect(all).toContain(TIERS[tier].title);
+    if (TIERS[tier].struck) expect(texts.some((t) => t.text === TIERS[tier].struck && t.strike)).toBe(true);
+    // The fine print, every word of it, and where it was tied.
+    for (const w of FINE_PRINT.split(' ')) expect(all).toContain(w);
+    expect(all).toContain('TIED IN PIPEFIT PRO');
+    // Portrait, about the shape a chat shows whole.
+    expect(art.w).toBe(ART_W);
+    expect(art.h).toBeGreaterThan(1200);
+    expect(art.h).toBeLessThan(1700);
+    // The stamp, turned, clears the title above it and the line below it.
+    const stamp = art.prims.find((p) => p.k === 'group');
+    if (!stamp || stamp.k !== 'group') throw new Error('no stamp');
+    const box = turnedBox(stamp);
+    const title = texts.filter((t) => t.face === 'serif');
+    const below = texts.find((t) => t.face === 'serifItalic' && t.y > box.bottom - 200 && t.text !== 'the hands holding this phone');
+    expect(box.top).toBeGreaterThan(Math.max(...title.map((t) => t.y + t.size * 0.3)));
+    expect(below!.y - below!.size).toBeGreaterThan(box.bottom);
+    for (const t of texts) {
+      const w = estWidth(t.text, t.size, t.face, t.spacing);
+      const left = t.anchor === 'middle' ? t.x - w / 2 : t.anchor === 'end' ? t.x - w : t.x;
+      expect([t.text, left >= 60, left + w <= ART_W - 60, t.y > 60, t.y < art.h - 60]).toEqual([t.text, true, true, true, true]);
+    }
+  });
+  test('lines wrap to the width given, words kept whole', () => {
+    const lines = wrap(FINE_PRINT, 27, 'sansRegular', 840);
+    expect(lines.length).toBeGreaterThan(1);
+    expect(lines.join(' ')).toBe(FINE_PRINT);
+    for (const l of lines) expect(estWidth(l, 27, 'sansRegular')).toBeLessThanOrEqual(840);
   });
 });

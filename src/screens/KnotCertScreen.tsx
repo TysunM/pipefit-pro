@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { Text, View, useWindowDimensions } from 'react-native';
+import React, { useMemo, useRef, useState } from 'react';
+import { Platform, Text, View, useWindowDimensions } from 'react-native';
+import type Svg from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
@@ -9,6 +10,9 @@ import { Banner } from '../components/FormFields';
 import { AccentButton, ControlRow, GhostButton } from '../components/Buttons';
 import { TieGame } from '../components/knots/TieGame';
 import { Certificate } from '../components/knots/Certificate';
+import { certificateArt } from '../components/knots/certArt';
+import { CertArtSvg, type Fonts } from '../components/knots/CertArtSvg';
+import { saveCertificate } from '../components/knots/saveCert';
 import { laidOf } from '../components/knots/laid';
 import { useTheme } from '../theme/ThemeProvider';
 import { useKnotBook } from '../state/knots';
@@ -39,9 +43,24 @@ export function KnotCertScreen({ navigation }: Props) {
   const [finishedAt, setFinishedAt] = useState(0);
   const size = Math.min(width - 2 * t.layout.screenPadding, 440);
   const best = book.value.cert.best;
+  // The certificate as a picture to save or send: drawn off screen on the phone, its PNG made from that.
+  const artRef = useRef<Svg>(null);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState<string | null>(null);
+  const fonts: Fonts = { sans: t.font.sans, sansRegular: t.font.sansRegular, serif: t.font.serif, serifItalic: t.font.serifItalic };
+  const art = useMemo(() => (phase === 'done' ? certificateArt(certTotals(run), finishedAt) : null), [phase, run, finishedAt]);
+  const save = async () => {
+    if (!art || saving) return;
+    setSaving(true);
+    setSaved(null);
+    const r = await saveCertificate(art, fonts, artRef.current);
+    setSaving(false);
+    setSaved(r.ok ? (r.how === 'downloaded' ? 'Saved as knot-certified.png.' : 'Shared.') : r.why);
+  };
 
   const start = () => {
     setOrder(certOrder(seeded(Date.now() % 1_000_000_007)));
+    setSaved(null);
     setRun([]);
     setAt(0);
     setRunId((n) => n + 1);
@@ -109,8 +128,17 @@ export function KnotCertScreen({ navigation }: Props) {
         <View style={{ paddingTop: t.space.lg }}>
           <Certificate totals={totals} at={finishedAt} width={size} />
         </View>
+        {art && Platform.OS !== 'web' ? (
+          <View pointerEvents="none" style={{ position: 'absolute', left: 0, top: 0, opacity: 0 }} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+            <CertArtSvg ref={artRef} art={art} fonts={fonts} width={270} />
+          </View>
+        ) : null}
         <ControlRow>
-          <AccentButton label="Run it again" icon="refresh" style={{ flex: 1 }} onPress={start} />
+          <AccentButton label={saving ? 'Making the picture…' : 'Save as image'} icon="image-outline" style={{ flex: 1 }} onPress={() => void save()} />
+        </ControlRow>
+        {saved ? <Text style={[t.type.caption, { color: c.textMuted, paddingHorizontal: t.layout.screenPadding, textAlign: 'center' }]}>{saved}</Text> : null}
+        <ControlRow>
+          <GhostButton label="Run it again" icon="refresh" style={{ flex: 1 }} onPress={start} />
           <GhostButton label="Back to knots" icon="arrow-back" style={{ flex: 1 }} onPress={() => navigation.goBack()} />
         </ControlRow>
         <SectionHeader title="Knot by knot" meta={clock(totals.ms)} />

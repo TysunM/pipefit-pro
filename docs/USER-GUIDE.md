@@ -761,6 +761,8 @@ Each job ends with what was wanted, and tapping a job opens its knot. The best s
 
 A miss is a time off the line; a wrong call counts as two. It's awarded to "the hands holding this phone", witnessed by one very tired rope, and its fine print says it certifies absolutely nothing. It's for you: nothing is sent anywhere. The best run and the last are kept on the phone, and the hub shows your best.
 
+**Save as image**, under the certificate, makes it a picture: a 1080-wide portrait PNG of the same certificate, rope frame and stamp, with "Tied in PipeFit Pro" at the foot. On the phone it opens the share sheet: save it to your photos, or send it to the crew's chat. In a browser it opens the share sheet where the browser has one, and otherwise downloads **knot-certified.png**. The picture is made on the phone; nothing is uploaded.
+
 **The knot test:** ten questions: which knot is this, which knot for this job, what comes next, is that safe, and which one is ready to take a load, picked from two drawings. Each answer says why. The missed ones link back to their knot (a missed fault opens its Check), and the best score is kept.
 
 ## 3D spool
