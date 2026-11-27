@@ -72,7 +72,13 @@ export function parseKnots(raw: string | null | undefined): KnotBook {
       return null;
     }
     const [ms, slips, wrong, misses, tied, skipped, of] = f as number[];
-    return { ms: ms!, slips: slips!, wrong: wrong!, misses: misses!, tied: tied!, skipped: skipped!, of: of!, at };
+    // Knots over the line allowance, kept since the run had sixteen knots: a run from before it never certifies anyway.
+    const over = isRec(r) && r.over !== undefined ? count(r.over) : 0;
+    if (over === null || over > tied!) {
+      dropped += 1;
+      return null;
+    }
+    return { ms: ms!, slips: slips!, wrong: wrong!, misses: misses!, tied: tied!, skipped: skipped!, of: of!, over, at };
   };
   const session = (r: unknown): MysteryRun | null => {
     if (r === null || r === undefined) return null;

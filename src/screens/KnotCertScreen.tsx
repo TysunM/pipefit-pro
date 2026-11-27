@@ -19,14 +19,15 @@ import { useKnotBook } from '../state/knots';
 import { recordCert } from '../state/knotProgress';
 import { KNOTS, knotById } from '../calc/knots/knots';
 import { seeded } from '../calc/knots/quiz';
-import { TITLE, beats, certOrder, certTotals, certified, clock, missedOf, shortOf, type CertKnot } from '../calc/knots/cert';
+import { OFF_LINE_ALLOWED, TITLE, beats, certOrder, certTotals, certified, clock, missedOf, shortOf, type CertKnot } from '../calc/knots/cert';
 import { ListRow } from './OrbitalScreen';
 
 // The Knot Certified run: every knot, from memory, back to back, in an order
 // shuffled each time. No line, no steps, no look at it, every over or under
-// called. The clock counts tying only. All of them without a miss and there's
-// a certificate that certifies absolutely nothing. One miss and the run is
-// finished anyway, then Knot this time: how many of them were missed, and run it again.
+// called. The clock counts tying only. All of them, no wrong call and no more
+// than three times off the line on any one knot, and there's a certificate that
+// certifies absolutely nothing. Past that and the run is finished anyway, then
+// Knot this time: how many of them were missed, and run it again.
 
 type Props = NativeStackScreenProps<RootStackParamList, 'KnotCert'>;
 type Phase = 'intro' | 'run' | 'done';
@@ -88,7 +89,7 @@ export function KnotCertScreen({ navigation }: Props) {
           <Ionicons name="ribbon" size={44} color={c.glow} />
           <Text style={[t.type.sectionTitle, { color: c.text, fontSize: 28, textAlign: 'center' }]}>Knot Certified</Text>
           <Text style={[t.type.body, { color: c.textMuted, textAlign: 'center' }]}>
-            {`All ${KNOTS.length} knots from memory, back to back, in a shuffled order, without a single miss. It certifies nothing.`}
+            {`All ${KNOTS.length} knots from memory, back to back, in a shuffled order. It certifies nothing.`}
           </Text>
         </View>
         <SectionHeader title="The rules" />
@@ -96,8 +97,8 @@ export function KnotCertScreen({ navigation }: Props) {
           {[
             'No line, no steps, no Show me. The phone buzzes when you are off the line.',
             'Every crossing: over or under, your call.',
-            `To get certified: all ${KNOTS.length}, never off the line, not one wrong call, none skipped.`,
-            'Miss once and that run is done for: finish it anyway, then run it again. As many runs as it takes.',
+            `To get certified: all ${KNOTS.length}, not one wrong call, none skipped, and no more than ${OFF_LINE_ALLOWED} times off the line on any one knot.`,
+            'Go past that on any knot and that run is done for: finish it anyway, then run it again. As many runs as it takes.',
             'The clock counts tying time only. Breathe between knots.',
           ].map((r) => (
             <View key={r} style={{ flexDirection: 'row', gap: t.space.sm }}>
@@ -182,7 +183,7 @@ export function KnotCertScreen({ navigation }: Props) {
   const knot = knotById(order[at]!)!;
   const doneHere = run.length > at;
   const soFar = run.reduce((a, r) => a + r.ms, 0);
-  const clean = run.every((r) => !r.skipped && !r.slips && !r.wrong);
+  const onTrack = run.every((r) => !r.skipped && !r.wrong && r.slips <= OFF_LINE_ALLOWED);
   return (
     <Screen>
       <View style={{ paddingHorizontal: t.layout.screenPadding, paddingTop: t.space.md, gap: t.space.sm }}>
@@ -194,7 +195,7 @@ export function KnotCertScreen({ navigation }: Props) {
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
           <Text style={[t.type.label, { color: c.textMuted, flex: 1 }]}>{`Knot ${at + 1} of ${order.length}`}</Text>
-          <Text style={[t.type.label, { color: clean ? c.textMuted : c.warnText }]}>{`Total ${clock(soFar)} · ${clean ? 'clean so far' : 'not clean this run'}`}</Text>
+          <Text style={[t.type.label, { color: onTrack ? c.textMuted : c.warnText }]}>{`Total ${clock(soFar)} · ${onTrack ? 'on track' : "won't certify this run"}`}</Text>
         </View>
         <Text style={[t.type.sectionTitle, { color: c.text, fontSize: 26 }]}>{knot.name}</Text>
         <Text style={[t.type.body, { color: c.textMuted }]}>{knot.use}</Text>
