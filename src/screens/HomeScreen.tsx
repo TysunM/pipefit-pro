@@ -8,7 +8,8 @@ import { GridLabel } from '../components/ToolTile';
 import { LiveTile } from '../components/LiveTile';
 import { ProjectCard } from '../components/ProjectCard';
 import { BackupNudge } from '../components/BackupNudge';
-import { TabBar } from '../components/TabBar';
+import { TAB_BAR_HEIGHT, TabBar } from '../components/TabBar';
+import { TabPage } from '../components/barHide';
 import { ReorderZone, type Hold } from '../components/Reorder';
 import { useTheme } from '../theme/ThemeProvider';
 import { useRecents } from '../state/recents';
@@ -51,7 +52,7 @@ export function HomeScreen({ navigation }: Props) {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: t.colors.bg }}>
+    <TabPage barHeight={TAB_BAR_HEIGHT}>
       <Screen tabbed>
         <ProjectCard onEdit={() => navigation.navigate('Settings')} />
         <BackupNudge />
@@ -80,6 +81,6 @@ export function HomeScreen({ navigation }: Props) {
         ) : null}
       </Screen>
       <TabBar active="home" />
-    </View>
+    </TabPage>
   );
 }

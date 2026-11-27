@@ -7,7 +7,8 @@ import { PROJECT_CARDS, group, type Group, type ToolRoute } from '../navigation/
 import { GroupSections } from './GroupScreen';
 import { Screen } from '../components/Screen';
 import { HintRow } from '../components/HintRow';
-import { TabBar } from '../components/TabBar';
+import { TAB_BAR_HEIGHT, TabBar } from '../components/TabBar';
+import { TabPage } from '../components/barHide';
 import { ReorderZone, type Hold } from '../components/Reorder';
 import { PROJECTS_ZONE } from '../state/layout';
 import { useZone } from '../state/layouts';
@@ -299,7 +300,7 @@ export function ProjectsScreen({ navigation, route }: Props) {
   });
 
   return (
-    <View style={{ flex: 1, backgroundColor: t.colors.bg }}>
+    <TabPage barHeight={TAB_BAR_HEIGHT}>
       <Screen tabbed>
         <View style={{ paddingHorizontal: t.layout.screenPadding, paddingTop: t.space.md }} accessibilityRole="header">
           <Text style={[t.type.sectionTitle, { color: t.colors.text }]}>
@@ -512,7 +513,7 @@ export function ProjectsScreen({ navigation, route }: Props) {
         )}
       </Screen>
       <TabBar active="projects" />
-    </View>
+    </TabPage>
   );
 }
 

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { Animated, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import Svg, { Defs, LinearGradient, Mask, RadialGradient, Rect, Stop } from 'react-native-svg';
 import { useIsFocused, useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -10,6 +10,7 @@ import { TABS_ZONE, scrollToShow } from '../state/layout';
 import { useZone } from '../state/layouts';
 import { ReorderZone } from './Reorder';
 import { ScrollHostContext, type ScrollHost } from './scrollHost';
+import { useBarHide } from './barHide';
 import { useSvgIds } from './metal';
 import { PLATE, Screw, corners, useBox } from './plates';
 
@@ -70,6 +71,17 @@ export function TabBar({ active }: { active: TabId }) {
   const { width: windowW } = useWindowDimensions();
   // Home sits under every tab's page with a bar of its own: only the page in view moves the shared scroll.
   const focused = useIsFocused();
+  // On a tab's page it lies over the foot of the page and slides off it while the page scrolls down (barHide.tsx).
+  const bar = useBarHide();
+  const slide = bar
+    ? {
+        position: 'absolute' as const,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        transform: [{ translateY: bar.shift.interpolate({ inputRange: [0, 1], outputRange: [0, bar.height + 4] }) }],
+      }
+    : null;
 
   // Every tab across if they fit at a good size; else a fixed width, scrolled.
   const n = items.length;
@@ -135,7 +147,7 @@ export function TabBar({ active }: { active: TabId }) {
   );
 
   return (
-    <View onLayout={onLayout} style={{ backgroundColor: t.colors.tabBarLo }}>
+    <Animated.View onLayout={onLayout} style={[{ backgroundColor: t.colors.tabBarLo }, slide]}>
       {box ? (
         <Svg width={box.w} height={box.h} style={StyleSheet.absoluteFill} pointerEvents="none">
           <Defs>
@@ -252,7 +264,7 @@ export function TabBar({ active }: { active: TabId }) {
           </Svg>
         ) : null}
       </View>
-    </View>
+    </Animated.View>
   );
 }
 

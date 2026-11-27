@@ -20,6 +20,7 @@ const DEFAULTS: Settings = {
   readAloud: 'tap',
   gloveMode: false,
   voice: true,
+  hideBar: true,
   shift: 'days',
   coach: 'on',
   heatUnit: 'auto',
@@ -172,5 +173,15 @@ describe("the crew's sulphur line", () => {
     expect(gap(5)).toBe(0.005);
     expect(gap('0.003')).toBe(0.005);
     expect(gap(undefined)).toBe(0.005);
+  });
+});
+
+describe('the tab bar while scrolling', () => {
+  test('hides by default; a phone that set it keeps it; anything else is the default', () => {
+    const { hideBar, ...before } = DEFAULTS;
+    void hideBar;
+    expect(readSettings(JSON.stringify(before), DEFAULTS).settings.hideBar).toBe(true);
+    expect(readSettings(JSON.stringify({ ...DEFAULTS, hideBar: false }), DEFAULTS).settings.hideBar).toBe(false);
+    expect(readSettings(JSON.stringify({ ...DEFAULTS, hideBar: 'no' }), DEFAULTS).settings.hideBar).toBe(true);
   });
 });
