@@ -7,7 +7,7 @@ import { SAFETY, faultRound, makeTest, seeded } from '../calc/knots/quiz';
 import { emptyKnots, parseKnots, recordCert, recordCheck, recordMystery, recordTest, recordTie, serialiseKnots } from '../state/knotProgress';
 import { ART_H, ART_W, artTexts, balanced, certificateArt, estWidth, turnedBox, wrap } from '../components/knots/certArt';
 import { ROUNDS, mysteryBeats, mysteryRounds, mysteryTotals, verdictOf, whyNot, type MysteryResult } from '../calc/knots/mystery';
-import { FINE_PRINT, STAMP, TITLE, beats, certOrder, certTotals, certified, clock, shortOf, type CertKnot } from '../calc/knots/cert';
+import { FINE_PRINT, STAMP, TITLE, beats, certOrder, certTotals, certified, clock, missedOf, shortOf, type CertKnot } from '../calc/knots/cert';
 
 describe('every knot draws and ties right', () => {
   test.each(KNOTS.map((k) => [k.name, k] as const))('%s: its crossings are the ones it says, its steps run the rope to its end', (_, k) => {
@@ -425,6 +425,15 @@ describe('Knot Certified', () => {
     expect(shortOf(t(3, 1, 0))).toBe('3 times off the line and 1 wrong call');
     expect(shortOf(t(2, 1, 1))).toBe('1 knot skipped, 2 times off the line and 1 wrong call');
     expect(shortOf(t(0, 0, 0))).toBe('');
+  });
+  test('and how many of them were missed: off the line, a wrong call or skipped, each knot once', () => {
+    const run = clean();
+    expect(missedOf(run)).toBe(0);
+    run[0] = { ...run[0]!, slips: 3, wrong: 2 };
+    run[2] = { ...run[2]!, wrong: 1 };
+    run[5] = { ...run[5]!, skipped: true };
+    expect(missedOf(run)).toBe(3);
+    expect(missedOf(clean().map((r) => ({ ...r, skipped: true })))).toBe(KNOTS.length);
   });
   test("it's a joke, and says so: the stamp reads KNOT, the fine print certifies nothing", () => {
     expect(STAMP).toBe('KNOT CERTIFIED');

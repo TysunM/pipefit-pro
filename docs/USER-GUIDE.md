@@ -752,7 +752,7 @@ Each job ends with what was wanted, and tapping a job opens its knot. The best s
 
 **Knot Certified:** the run, from the Knots hub (**Get Knot Certified**, or say "get knot certified"). Every knot from memory, back to back, in an order shuffled each run so it can't be learned by heart. No line, no steps, no Show me, no starting a knot over, and every over or under called. The clock counts tying time only.
 
-To get certified it has to be all of them clean: never off the line, not one wrong call, none skipped. Miss once and that run can't certify: the knot says so, the run shows **not clean this run**, and you finish it anyway. At the end it's **Knot this time.**, what kept it from you ("1 wrong call"), and **Run it again**. As many runs as it takes.
+To get certified it has to be all of them clean: never off the line, not one wrong call, none skipped. Miss once and that run can't certify: the knot says so, the run shows **not clean this run**, and you finish it anyway. At the end it's **Knot this time.**, how many of the 9 you missed ("2 of 9 missed"), what missed ("1 time off the line and 1 wrong call"), **Try tying them again**, and **Run it again**. As many runs as it takes.
 
 A clean run gets the one certificate: **Certified Master Of Rope**, in bold, in a rope frame with a rubber stamp, KNOT CERTIFIED ★★★. Under it, your time, the zero off the line and the zero wrong calls, the date, and fine print that says it certifies absolutely nothing. It's for you: nothing is sent anywhere. The best run and the last are kept on the phone, and the hub shows your best.
 

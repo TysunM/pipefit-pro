@@ -19,14 +19,14 @@ import { useKnotBook } from '../state/knots';
 import { recordCert } from '../state/knotProgress';
 import { KNOTS, knotById } from '../calc/knots/knots';
 import { seeded } from '../calc/knots/quiz';
-import { TITLE, beats, certOrder, certTotals, certified, clock, shortOf, type CertKnot } from '../calc/knots/cert';
+import { TITLE, beats, certOrder, certTotals, certified, clock, missedOf, shortOf, type CertKnot } from '../calc/knots/cert';
 import { ListRow } from './OrbitalScreen';
 
 // The Knot Certified run: every knot, from memory, back to back, in an order
 // shuffled each time. No line, no steps, no look at it, every over or under
 // called. The clock counts tying only. All of them without a miss and there's
 // a certificate that certifies absolutely nothing. One miss and the run is
-// finished anyway, then Knot this time: run it again.
+// finished anyway, then Knot this time: how many of them were missed, and run it again.
 
 type Props = NativeStackScreenProps<RootStackParamList, 'KnotCert'>;
 type Phase = 'intro' | 'run' | 'done';
@@ -151,7 +151,8 @@ export function KnotCertScreen({ navigation }: Props) {
             <View style={{ paddingHorizontal: t.layout.screenPadding, paddingTop: t.space.lg, gap: t.space.sm, alignItems: 'center' }}>
               <Ionicons name="refresh-circle-outline" size={44} color={c.textMuted} />
               <Text style={[t.type.sectionTitle, { color: c.text, fontSize: 26, textAlign: 'center' }]}>Knot this time.</Text>
-              <Text style={[t.type.body, { color: c.textMuted, textAlign: 'center' }]}>{`${shortOf(totals)}. Try again: all ${totals.of}, not one miss.`.replace(/^\. /, '')}</Text>
+              <Text style={[t.type.sectionTitle, { color: c.warnText, fontSize: 34, textAlign: 'center' }]}>{`${missedOf(run)} of ${totals.of} missed`}</Text>
+              <Text style={[t.type.body, { color: c.textMuted, textAlign: 'center' }]}>{`${shortOf(totals)}. Try tying them again.`.replace(/^\. /, '')}</Text>
             </View>
             <ControlRow>
               <AccentButton label="Run it again" icon="refresh" style={{ flex: 1 }} onPress={start} />
