@@ -699,7 +699,7 @@ Under 30° from horizontal, a sling is not used unless its maker or a qualified 
 
 ## Knots
 
-**The knots a fitter uses on tag lines and hand lines: watch each one tied, tie it on screen with a finger, tie it again from memory, check it for faults, take the test, then get Knot Certified.** PipeFit tab → **Rigging → Knots**, or say "knots".
+**The knots a fitter uses on tag lines and hand lines: watch each one tied, tie it on screen with a finger, tie it again from memory, check it for faults, take the test, pick the right knot for the job in Mystery knot, then get Knot Certified.** PipeFit tab → **Rigging → Knots**, or say "knots".
 
 > Knots are for tag lines, hand lines and light material on a hand line. Never knot a sling or a wire rope, and never use a knot for fall protection: a lift is rigged to its plan with rated gear.
 
@@ -738,6 +738,17 @@ Under 30° from horizontal, a sling is not used unless its maker or a qualified 
 | Square knot | Granny knot, not set, short ends |
 
 Every fault is drawn from the knot tied right, not drawn separately, so it can't be drawn wrong. The faults that change which way a crossing goes are proved with a knot invariant (the Jones polynomial): the figure eight is a true figure eight and its fault is no knot at all, and the square knot is a true square knot and its fault a true granny. The best round on each knot is kept, and the hub marks every knot with all its faults spotted as **Checked**.
+
+**Mystery knot:** from the Knots hub (**Mystery knot**, or say "mystery knot"). You get the job, never the knot: "Making a line fast to a beam clamp eye or a ring". Pick the knot for it from all of them, then tie it from memory, with the line hidden, a buzz off it, and every over or under called. A wrong pick buzzes and says what the knot you picked is for and which knot the job wants, and you tie the right one anyway. Five jobs, each a different knot. Right picks count first, then the tying:
+
+| Session | Verdict |
+|---|---|
+| Every pick right, tied clean | Mind reader |
+| Every pick right | Right knot, every time |
+| Up to two picks wrong | Mostly the right knot ("On site, mostly is how a tag line ends up on the ground") |
+| More | Wrong knot, right confidence |
+
+Each job ends with what was wanted, and tapping a job opens its knot. The best session and the last are kept on the phone, and the hub shows your best.
 
 **Knot Certified:** the run, from the Knots hub (**Get Knot Certified**, or say "get knot certified"). Every knot from memory, back to back, in an order shuffled each run so it can't be learned by heart. No line, no steps, no Show me, no starting a knot over, and every over or under called. The clock counts tying time only. Skip a knot if you must, but a skipped knot can't be certified. At the end, a certificate in a rope frame with a rubber stamp:
 

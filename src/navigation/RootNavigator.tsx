@@ -46,6 +46,7 @@ import { SlingAngleScreen } from '../screens/SlingAngleScreen';
 import { KnotScreen } from '../screens/KnotScreen';
 import { KnotTestScreen } from '../screens/KnotTestScreen';
 import { KnotCertScreen } from '../screens/KnotCertScreen';
+import { KnotMysteryScreen } from '../screens/KnotMysteryScreen';
 import { WeldabilityScreen } from '../screens/WeldabilityScreen';
 import { CalibrationScreen } from '../screens/CalibrationScreen';
 import { BackupScreen } from '../screens/BackupScreen';
@@ -156,6 +157,7 @@ export function RootNavigator() {
         <Stack.Screen name="Knot" component={KnotScreen} options={{ title: 'Knot' }} />
         <Stack.Screen name="KnotTest" component={KnotTestScreen} options={{ title: 'Knot test' }} />
         <Stack.Screen name="KnotCert" component={KnotCertScreen} options={{ title: 'Knot Certified' }} />
+        <Stack.Screen name="KnotMystery" component={KnotMysteryScreen} options={{ title: 'Mystery knot' }} />
         <Stack.Screen name="Weld" component={WeldScreen} options={{ title: 'Weld' }} />
         <Stack.Screen name="Calibration" component={CalibrationScreen} options={{ title: 'Calibration' }} />
         <Stack.Screen name="Backup" component={BackupScreen} options={{ title: 'Backup' }} />
