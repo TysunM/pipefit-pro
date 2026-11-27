@@ -51,6 +51,7 @@ export function readSettings(
   merged.gloveMode = typeof stored.gloveMode === 'boolean' ? stored.gloveMode : defaults.gloveMode;
   merged.voice = typeof stored.voice === 'boolean' ? stored.voice : defaults.voice;
   merged.hideBar = typeof stored.hideBar === 'boolean' ? stored.hideBar : defaults.hideBar;
+  merged.calcBarTucked = typeof stored.calcBarTucked === 'boolean' ? stored.calcBarTucked : defaults.calcBarTucked;
   merged.shift = stored.shift === 'days' || stored.shift === 'nights' ? stored.shift : defaults.shift;
   merged.coach = stored.coach === 'off' ? 'off' : defaults.coach;
   merged.heatUnit = stored.heatUnit === 'auto' || (HEAT_UNITS as readonly string[]).includes(String(stored.heatUnit)) ? (stored.heatUnit as Settings['heatUnit']) : defaults.heatUnit;

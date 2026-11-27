@@ -29,3 +29,21 @@ export function barAfterScroll(s: BarScroll, y: number, content: number, view: n
   else if (!down && turn - y > travel) hidden = false;
   return { hidden, last: y, turn, down };
 }
+
+// The Calculator's bar, tucked away by hand
+// -----------------------------------------
+// The Calculator doesn't scroll, so its bar is swiped down off the foot
+// instead, and the keys grow into the room. A handle stays to bring it back.
+
+/** How far the bar is pulled down, or how fast it is flicked, to tuck it. Less, and it springs back. */
+export const TUCK_PULL = 28;
+export const TUCK_FLICK = 0.6;
+/** The handle left at the foot when it is tucked: tall enough to find with a thumb. */
+export const HANDLE_HEIGHT = 20;
+
+/** A drag on the bar that is mostly down: the bar's, not a scroll along it or a tab's press. */
+export const pullsDown = (dx: number, dy: number) => dy > 8 && dy > 1.5 * Math.abs(dx);
+/** Let go of a pull: far or fast enough, it tucks. */
+export const tucksAt = (dy: number, vy: number) => dy > TUCK_PULL || vy > TUCK_FLICK;
+/** Let go on the handle: a tap, or a pull up, brings the bar back. */
+export const handleShows = (dx: number, dy: number) => (Math.abs(dx) < 10 && Math.abs(dy) < 10) || dy < -12;

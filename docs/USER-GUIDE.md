@@ -83,7 +83,7 @@ Hold any tab until it lifts, carry it along the bar, let go. Carry it to either 
 - reach the top or the end of the page;
 - come back to the page from a tool.
 
-A page too short to scroll much keeps it. The Calculator doesn't scroll, so its bar always stays. While you carry a tile down the page, the bar stays put. **Settings → Layout → Tab bar → Always there** keeps it on every page. With a screen reader on, it always stays.
+A page too short to scroll much keeps it. The Calculator doesn't scroll: pull its bar down to tuck it away instead (see Calculator). While you carry a tile down the page, the bar stays put. **Settings → Layout → Tab bar → Always there** keeps it on every page. With a screen reader on, it always stays.
 
 The tiles on Home, PipeFit, Weld, Rigging, Logs and Edu, and the cards down the Projects page, move the same way: hold one until it lifts and buzzes, carry it, let go. A tile moves anywhere in its own section (Layout & fit-up, Bends & offsets, Records…); a card anywhere down the page. Carry one to the top or foot of the screen and the page scrolls with it. A finger that drifts while holding is a scroll, not a hold: hold still.
 
@@ -1163,6 +1163,19 @@ answer: it means there is nothing being wasted to recover.
 
 Two calculators in one tab. The switch at the top picks **Trade** or **Standard**, and the tab opens on whichever you used last. Each keeps its own sum, so flipping across and back loses nothing. While this tab is open the mic sits at the end of that top row instead of floating over the keys.
 
+### Bigger keys: tuck the tab bar away
+
+The Calculator doesn't scroll, so its tab bar doesn't hide on its own the way it does on the other tabs.
+
+- **Tuck it away:** pull the bar down off the foot of the screen. The keys grow into the room.
+- **Bring it back:** a slim handle stays at the foot. Tap it, or pull it up.
+- **Short of a full pull:** the bar springs back.
+- **Swiping along the bar** still scrolls it, and **holding a tab** still carries it.
+
+The phone remembers which way you left it. You can also say "tuck the tab bar" and "show the tab bar", or set it in **Settings → Layout → Calculator's tab bar**.
+
+On a short phone the keys are fitted to what's left under the readout. When there isn't room for the small second-function words (ARCSIN, LB, CLEAR ALL…) to sit over each key, they move inside the top of the key, so the keys stay big enough to hit. On a phone too short even for that, or with the phone's text set very large, the keys scroll rather than running under the tab bar.
+
 ### Say the sum
 
 Tap the mic and say it the way you would say it to the man next to you. The sum is keyed into the calculator exactly as it would be typed, worked by the same keys, and the answer is shown on the display and read out.
@@ -2156,6 +2169,7 @@ Anything else it hears is shown and ignored, so a conversation nearby does not l
 | **Saw cut** | What the blade takes, default 1/8". Charged on every cut in the cut list. |
 | **Smart fill** | Whether a heat scan and the handbook search ask Jev, with signal |
 | **Tab bar** (Layout) | **Hides as you scroll** (the default) or **Always there**. See Make it yours. |
+| **Calculator's tab bar** (Layout) | **Shown** or **Tucked away** for bigger keys. See Calculator. |
 | **Updates** | What is running, and a manual check |
 
 Settings are stored on the phone only. Nothing leaves it.

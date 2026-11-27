@@ -334,6 +334,19 @@ export function SettingsScreen() {
         On a tab's page the bar slides away as you scroll down, for more of the page, and comes back as soon as you scroll up a little, reach the top or
         the end, or come back to the page. With a screen reader on it always stays.
       </Text>
+      <ChipRow
+        label="Calculator's tab bar"
+        options={[
+          { value: 'shown', label: 'Shown' },
+          { value: 'tucked', label: 'Tucked away' },
+        ]}
+        selected={settings.calcBarTucked ? 'tucked' : 'shown'}
+        onSelect={(v) => update({ calcBarTucked: v === 'tucked' })}
+      />
+      <Text style={[t.type.caption, { color: t.colors.textMuted, paddingHorizontal: t.layout.screenPadding, marginTop: -t.space.sm, marginBottom: t.space.lg }]}>
+        The Calculator doesn't scroll, so its bar is swiped down instead: pull it down and the keys grow into the room. A handle stays at the foot; tap it
+        or pull it up to bring the bar back. Or say "tuck the tab bar" and "show the tab bar".
+      </Text>
       <ControlRow>
         <GhostButton
           label="Put everything back where it shipped"

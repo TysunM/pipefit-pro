@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { Animated, PanResponder, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import Svg, { Defs, LinearGradient, Mask, RadialGradient, Rect, Stop } from 'react-native-svg';
 import { useIsFocused, useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -11,6 +11,9 @@ import { useZone } from '../state/layouts';
 import { ReorderZone } from './Reorder';
 import { ScrollHostContext, type ScrollHost } from './scrollHost';
 import { useBarHide } from './barHide';
+import { useSettings } from '../state/settings';
+import { HANDLE_HEIGHT, handleShows, pullsDown, tucksAt } from '../state/barHide';
+import { useVoiceTargets } from '../voice/useVoiceTargets';
 import { useSvgIds } from './metal';
 import { PLATE, Screw, corners, useBox } from './plates';
 
@@ -60,7 +63,7 @@ let carriedX = 0;
 
 const tabId = (x: Tab) => x.id;
 
-export function TabBar({ active }: { active: TabId }) {
+export function TabBar({ active, tucks = false }: { active: TabId; /** It can be swiped down off the foot, leaving a handle (the Calculator, which doesn't scroll). */ tucks?: boolean }) {
   const t = useTheme();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
@@ -83,6 +86,13 @@ export function TabBar({ active }: { active: TabId }) {
       }
     : null;
 
+  // The Calculator's bar can be pulled down off the foot for bigger keys,
+  // leaving a handle to bring it back (state/barHide.ts). Kept in the settings.
+  const { settings, update } = useSettings();
+  const tucked = tucks && settings.calcBarTucked;
+  const pull = useRef(new Animated.Value(0)).current;
+  const offFoot = TAB_BAR_HEIGHT + insets.bottom + 4;
+
   // Every tab across if they fit at a good size; else a fixed width, scrolled.
   const n = items.length;
   const view = Math.max(0, (box?.w ?? windowW) - 2 * EDGE);
@@ -95,6 +105,8 @@ export function TabBar({ active }: { active: TabId }) {
   const x = useRef(carriedX);
   const span = useRef({ left: 0, width: view });
   const [locked, setLocked] = useState(false);
+  const lockedRef = useRef(false);
+  lockedRef.current = locked;
   const [ends, setEnds] = useState({ left: false, right: false });
   const showEnds = useCallback(
     (at: number) => {
@@ -114,7 +126,7 @@ export function TabBar({ active }: { active: TabId }) {
     carriedX = to;
     scroller.current?.scrollTo({ x: to, animated: false });
     showEnds(to);
-  }, [focused, scrolls, activeAt, tabW, view, n, showEnds]);
+  }, [focused, tucked, scrolls, activeAt, tabW, view, n, showEnds]);
 
   // For a tab carried along the bar: held still under it, and scrolled at the ends.
   const host = useMemo<ScrollHost>(
@@ -137,6 +149,46 @@ export function TabBar({ active }: { active: TabId }) {
     [n, tabW, view]
   );
 
+  // Tucked: it runs off the foot, then the handle takes its place and the keys grow into the room.
+  const tuck = useCallback(() => {
+    Animated.timing(pull, { toValue: offFoot, duration: 150, useNativeDriver: false }).start(() => update({ calcBarTucked: true }));
+  }, [offFoot, pull, update]);
+  // Brought back, here or from Settings: it rises from below the foot.
+  const untuck = useCallback(() => {
+    pull.setValue(offFoot);
+    update({ calcBarTucked: false });
+  }, [offFoot, pull, update]);
+  useEffect(() => {
+    if (!tucked) Animated.timing(pull, { toValue: 0, duration: 180, useNativeDriver: false }).start();
+  }, [tucked, pull]);
+  // A pull mostly down on the bar follows the finger; far or fast enough, it tucks, else it springs back.
+  // Never while a tab is being carried along it.
+  const swipe = useMemo(
+    () =>
+      PanResponder.create({
+        onMoveShouldSetPanResponderCapture: (_e, g) => tucks && !lockedRef.current && pullsDown(g.dx, g.dy),
+        onPanResponderTerminationRequest: () => false,
+        onPanResponderMove: (_e, g) => pull.setValue(Math.max(0, g.dy)),
+        onPanResponderRelease: (_e, g) => (tucksAt(g.dy, g.vy) ? tuck() : Animated.spring(pull, { toValue: 0, bounciness: 4, useNativeDriver: false }).start()),
+        onPanResponderTerminate: () => Animated.spring(pull, { toValue: 0, useNativeDriver: false }).start(),
+      }),
+    [tucks, pull, tuck]
+  );
+  // The handle: a tap, or a pull up, brings it back.
+  const handle = useMemo(
+    () =>
+      PanResponder.create({
+        onStartShouldSetPanResponder: () => true,
+        onMoveShouldSetPanResponder: () => true,
+        onPanResponderRelease: (_e, g) => {
+          if (handleShows(g.dx, g.dy)) untuck();
+        },
+      }),
+    [untuck]
+  );
+  const said = tucked ? 'Show the tab bar' : 'Tuck the tab bar';
+  useVoiceTargets(tucks ? [{ kind: 'press', label: said, run: () => ((tucked ? untuck() : tuck()), said) }] : null);
+
   const go = useCallback(
     (tab: Tab) => {
       if (tab.id === active) return;
@@ -146,8 +198,23 @@ export function TabBar({ active }: { active: TabId }) {
     [active, navigation]
   );
 
+  if (tucked)
+    return (
+      <View
+        {...handle.panHandlers}
+        accessible
+        accessibilityRole="button"
+        accessibilityLabel="Show the tab bar"
+        accessibilityActions={[{ name: 'activate' }]}
+        onAccessibilityAction={untuck}
+        style={{ height: HANDLE_HEIGHT + insets.bottom, backgroundColor: t.colors.tabBarLo, borderTopWidth: 1, borderTopColor: p.seamDark, alignItems: 'center', paddingTop: 7 }}
+      >
+        <View style={{ width: 44, height: 5, borderRadius: 3, backgroundColor: t.colors.onTabBarFaint }} />
+      </View>
+    );
+
   return (
-    <Animated.View onLayout={onLayout} style={[{ backgroundColor: t.colors.tabBarLo }, slide]}>
+    <Animated.View onLayout={onLayout} {...(tucks ? swipe.panHandlers : null)} style={[{ backgroundColor: t.colors.tabBarLo }, slide, tucks ? { transform: [{ translateY: pull }] } : null]}>
       {box ? (
         <Svg width={box.w} height={box.h} style={StyleSheet.absoluteFill} pointerEvents="none">
           <Defs>

@@ -4,6 +4,9 @@ import * as Haptics from 'expo-haptics';
 import { useTheme } from '../../theme/ThemeProvider';
 import { KEYPAD, type Key, type KeyAction } from '../../calc/keys';
 import { Plate } from '../metal';
+import { COMPACT_GAP, KEY_HEIGHT, ROW_EXTRA } from './fit';
+
+export { KEY_HEIGHT, ROW_EXTRA };
 
 // Three tiers of key, the way a trade calculator has always been laid out:
 // copper for the pipe keys a fitter bought it for, slate for the maths, and
@@ -33,25 +36,23 @@ function inkFor(t: ReturnType<typeof useTheme>, skin: Skin): string {
   return skin.plate === 'copper' ? t.colors.onCopper : skin.plate === 'slate' ? t.colors.onSlate : t.colors.text;
 }
 
-/** Room a row needs besides its key: the shift hint over it and the gap under it. */
-export const ROW_EXTRA = 12 + 1 + 6;
-/** The key height the pad is drawn at when there is room for it. */
-export const KEY_HEIGHT = 54;
-
 export function Keypad({
   onPress,
   shift,
   keyHeight = KEY_HEIGHT,
+  compact = false,
 }: {
   onPress: (action: KeyAction, arg?: string) => void;
   shift: boolean;
   /** Shorter keys on a short screen, so the whole pad fits above the tab bar. */
   keyHeight?: number;
+  /** Short of room: each key's second function inside its top, not over it (fit.ts). */
+  compact?: boolean;
 }) {
   const t = useTheme();
 
   return (
-    <View style={styles.pad}>
+    <View style={[styles.pad, compact ? { gap: COMPACT_GAP } : null]}>
       {KEYPAD.map((row, r) => (
         <View key={r} style={[styles.row, { gap: t.space.xs }]}>
           {row.map((key, c) => {
@@ -65,16 +66,18 @@ export function Keypad({
 
             return (
               <View key={c} style={styles.cell}>
-                <Text
-                  numberOfLines={1}
-                  style={[
-                    t.type.labelSmall,
-                    styles.hint,
-                    { color: usesShift ? t.colors.accent : t.colors.textFaint },
-                  ]}
-                >
-                  {key.shiftLabel ?? ' '}
-                </Text>
+                {compact ? null : (
+                  <Text
+                    numberOfLines={1}
+                    style={[
+                      t.type.labelSmall,
+                      styles.hint,
+                      { color: usesShift ? t.colors.accent : t.colors.textFaint },
+                    ]}
+                  >
+                    {key.shiftLabel ?? ' '}
+                  </Text>
+                )}
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel={label.replace('\n', ' ')}
@@ -85,6 +88,12 @@ export function Keypad({
                   style={{ opacity: dimmed ? 0.4 : 1 }}
                 >
                   {({ pressed }) => {
+                    const inner =
+                      compact && key.shiftLabel ? (
+                        <Text numberOfLines={1} style={[t.type.labelSmall, styles.inner, { color: usesShift ? t.colors.accent : ink, opacity: usesShift ? 1 : 0.62 }]}>
+                          {key.shiftLabel}
+                        </Text>
+                      ) : null;
                     const face = (
                       <Text
                         numberOfLines={2}
@@ -97,6 +106,8 @@ export function Keypad({
                             color: ink,
                             fontSize: label.length > 6 ? 13.5 : label.includes('\n') ? 13.5 : 18,
                           },
+                          // Under the second function inside the key: a two-line word set tighter to clear it.
+                          inner ? (label.includes('\n') ? { marginTop: 10, fontSize: 11.5, lineHeight: 13 } : { marginTop: 7 }) : null,
                         ]}
                       >
                         {label}
@@ -104,6 +115,7 @@ export function Keypad({
                     );
                     return 'plate' in skin ? (
                       <Plate tone={skin.plate} sunk={pressed} radius={t.radius.md} style={[styles.key, { height: keyHeight }]}>
+                        {inner}
                         {face}
                       </Plate>
                     ) : (
@@ -120,6 +132,7 @@ export function Keypad({
                           },
                         ]}
                       >
+                        {inner}
                         {face}
                       </View>
                     );
@@ -139,6 +152,7 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row' },
   cell: { flex: 1 },
   hint: { textAlign: 'center', fontSize: 9.5, letterSpacing: 0.2, marginBottom: 1, height: 12 },
+  inner: { position: 'absolute', top: 2, left: 2, right: 2, textAlign: 'center', fontSize: 8.5, letterSpacing: 0.2, height: 11 },
   key: {
     alignItems: 'center',
     justifyContent: 'center',

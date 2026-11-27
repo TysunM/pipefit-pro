@@ -1,4 +1,4 @@
-import { BAR_START, BAR_TRAVEL, barAfterScroll, barShown, type BarScroll } from '../state/barHide';
+import { BAR_START, BAR_TRAVEL, TUCK_PULL, barAfterScroll, barShown, handleShows, pullsDown, tucksAt, type BarScroll } from '../state/barHide';
 
 // A page 2000 tall in a window 700 tall, scrolled through `ys` in turn.
 const run = (ys: number[], content = 2000, view = 700): BarScroll[] => {
@@ -48,5 +48,25 @@ describe('the tab bar while scrolling', () => {
     expect(s.hidden).toBe(false);
     s = barAfterScroll(s, 630, 2000, 700);
     expect(s.hidden).toBe(true);
+  });
+});
+
+describe("tucking the Calculator's bar away", () => {
+  test('a pull mostly down is the bar\'s; one along it, or a wobble, is not', () => {
+    expect(pullsDown(2, 14)).toBe(true);
+    expect(pullsDown(30, 14)).toBe(false);
+    expect(pullsDown(0, 5)).toBe(false);
+    expect(pullsDown(0, -20)).toBe(false);
+  });
+  test('pulled far enough, or flicked, it tucks; a short slow pull springs back', () => {
+    expect(tucksAt(TUCK_PULL + 1, 0)).toBe(true);
+    expect(tucksAt(10, 1.2)).toBe(true);
+    expect(tucksAt(15, 0.1)).toBe(false);
+  });
+  test('the handle: a tap or a pull up brings it back; a drag across does not', () => {
+    expect(handleShows(0, 0)).toBe(true);
+    expect(handleShows(3, -30)).toBe(true);
+    expect(handleShows(60, 2)).toBe(false);
+    expect(handleShows(0, 30)).toBe(false);
   });
 });

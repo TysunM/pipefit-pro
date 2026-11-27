@@ -2,10 +2,11 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useFocusEffect } from '@react-navigation/native';
 import { useVoiceMaybe } from '../voice/VoiceProvider';
 import { hideFloatingMic } from '../voice/micSpot';
-import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Screen } from '../components/Screen';
-import { KEY_HEIGHT, Keypad, ROW_EXTRA } from '../components/keypad/Keypad';
+import { Keypad } from '../components/keypad/Keypad';
+import { fitKeys } from '../components/keypad/fit';
 import { KEYPAD } from '../calc/keys';
 import { TabBar } from '../components/TabBar';
 import { useTheme } from '../theme/ThemeProvider';
@@ -144,7 +145,8 @@ export function CalculatorScreen() {
   // phone the keys get shorter rather than running under the tab bar.
   const short = useWindowDimensions().height < 760;
   const [room, setRoom] = useState<number | null>(null);
-  const keyHeight = room === null ? KEY_HEIGHT : Math.max(34, Math.min(KEY_HEIGHT, Math.floor(room / KEYPAD.length - ROW_EXTRA)));
+  // Short of room the second functions go inside the keys, and past that the pad scrolls (keypad/fit.ts).
+  const fit = fitKeys(room, KEYPAD.length);
 
   const handle = (action: KeyAction, arg?: string) => setState((s) => press(s, action, arg));
 
@@ -375,13 +377,19 @@ export function CalculatorScreen() {
         </View>
 
         <View style={{ flex: 1 }} onLayout={(e) => setRoom(e.nativeEvent.layout.height)}>
-          <Keypad onPress={handle} shift={state.shift} keyHeight={keyHeight} />
+          {fit.scrolls ? (
+            <ScrollView showsVerticalScrollIndicator>
+              <Keypad onPress={handle} shift={state.shift} keyHeight={fit.keyHeight} compact={fit.compact} />
+            </ScrollView>
+          ) : (
+            <Keypad onPress={handle} shift={state.shift} keyHeight={fit.keyHeight} compact={fit.compact} />
+          )}
         </View>
         </>
         )}
       </View>
     </Screen>
-    <TabBar active="calc" />
+    <TabBar active="calc" tucks />
     </View>
   );
 }
