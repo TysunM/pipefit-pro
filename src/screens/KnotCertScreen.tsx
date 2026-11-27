@@ -47,7 +47,7 @@ export function KnotCertScreen({ navigation }: Props) {
   const artRef = useRef<Svg>(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState<string | null>(null);
-  const fonts: Fonts = { sans: t.font.sans, sansRegular: t.font.sansRegular, serif: t.font.serif, serifItalic: t.font.serifItalic };
+  const fonts: Fonts = { sans: t.font.sans, sansRegular: t.font.sansRegular, serif: t.font.serif };
   const totals = useMemo(() => certTotals(run), [run]);
   const art = useMemo(() => (phase === 'done' && certified(totals) ? certificateArt(totals, finishedAt) : null), [phase, totals, finishedAt]);
   const save = async () => {

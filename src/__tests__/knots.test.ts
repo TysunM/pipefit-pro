@@ -531,7 +531,10 @@ describe('the certificate as a picture', () => {
     for (const w of FINE_PRINT.split(' ')) expect(all).toContain(w);
     // Kept simple: it opens on the title, nothing above it, no joke under the stamp.
     expect(texts[0]!.text).toBe(TITLE);
-    expect(all).not.toMatch(/CERTIFY THAT|hands holding|Sailors|Spiders|KNOT YET|KNOT QUITE|Journeyman/);
+    expect(all).not.toMatch(/CERTIFY THAT|hands holding|Sailors|Spiders|KNOT YET|KNOT QUITE|Journeyman|Witnessed|tired rope/);
+    // The date on its own, in the middle.
+    const date = texts.find((t) => /2026/.test(t.text));
+    expect([date?.anchor, date?.x]).toEqual(['middle', ART_W / 2]);
     expect(all).toContain('TIED IN PIPEFIT PRO');
     // 1080 by 1350: the 4:5 portrait a feed or a chat shows whole.
     expect(art.w).toBe(ART_W);

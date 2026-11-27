@@ -84,10 +84,7 @@ export function Certificate({ totals, at, width }: { totals: CertTotals; at: num
         {line('OFF THE LINE', String(totals.slips))}
         {line('WRONG CALLS', String(totals.wrong))}
       </View>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 }}>
-        <Text style={{ color: FADED, fontFamily: f.sansRegular, fontSize: 11.5 }}>{date}</Text>
-        <Text style={{ color: FADED, fontFamily: f.serifItalic, fontSize: 11.5, ...(t.fontsLoaded ? {} : { fontStyle: 'italic' as const }) }}>Witnessed by one very tired rope</Text>
-      </View>
+      <Text style={{ color: FADED, fontFamily: f.sansRegular, fontSize: 11.5, textAlign: 'center', marginTop: 4 }}>{date}</Text>
       <Text style={{ color: FADED, fontFamily: f.sansRegular, fontSize: 10.5, lineHeight: 14, textAlign: 'center', marginTop: 4 }}>{FINE_PRINT}</Text>
     </View>
   );

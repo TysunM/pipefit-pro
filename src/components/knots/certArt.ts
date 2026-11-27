@@ -9,7 +9,7 @@
 import { ROPE_INK } from '../../calc/knots/rope';
 import { FINE_PRINT, STAMP as STAMP_TEXT, TITLE, clock, type CertTotals } from '../../calc/knots/cert';
 
-export type Face = 'sans' | 'sansRegular' | 'serif' | 'serifItalic';
+export type Face = 'sans' | 'sansRegular' | 'serif';
 export type Prim =
   | { k: 'rect'; x: number; y: number; w: number; h: number; rx: number; fill?: string; stroke?: string; sw?: number; dash?: number[] }
   | { k: 'circle'; cx: number; cy: number; r: number; fill?: string; stroke?: string; sw?: number; dash?: number[] }
@@ -75,7 +75,7 @@ const STAMP = '#b3261e';
 const ROPE = ROPE_INK.a;
 
 /** How wide a face sets, as a share of its size per character: on the generous side, so no line runs over. */
-const WIDTH: Record<Face, number> = { sans: 0.56, sansRegular: 0.52, serif: 0.5, serifItalic: 0.47 };
+const WIDTH: Record<Face, number> = { sans: 0.56, sansRegular: 0.52, serif: 0.5 };
 export const estWidth = (text: string, size: number, face: Face, spacing = 0) => [...text].reduce((a, ch) => a + (ch === ' ' ? 0.3 : /[A-Z]/.test(ch) ? 1.2 : 1) * WIDTH[face] * size, 0) + spacing * Math.max(0, text.length - 1);
 
 /** A title too wide for one line, split into two of even length: never a lone word left on the second. */
@@ -161,8 +161,7 @@ export function certificateArt(totals: CertTotals, at: number): Art {
 
   y += 62;
   const date = new Date(at).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
-  prims.push({ k: 'text', x: PAD, y, text: date, size: 31, face: 'sansRegular', color: FADED, anchor: 'start' });
-  prims.push({ k: 'text', x: ART_W - PAD, y, text: 'Witnessed by one very tired rope', size: 31, face: 'serifItalic', color: FADED, anchor: 'end' });
+  prims.push({ k: 'text', x: cx, y, text: date, size: 31, face: 'sansRegular', color: FADED, anchor: 'middle' });
 
   y += 26;
   lines(FINE_PRINT, 27, 'sansRegular', FADED, 1.4);
