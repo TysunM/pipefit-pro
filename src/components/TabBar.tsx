@@ -63,7 +63,7 @@ let carriedX = 0;
 
 const tabId = (x: Tab) => x.id;
 
-export function TabBar({ active, tucks = false }: { active: TabId; /** It can be swiped down off the foot, leaving a handle (the Calculator, which doesn't scroll). */ tucks?: boolean }) {
+export function TabBar({ active }: { active: TabId }) {
   const t = useTheme();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
@@ -76,22 +76,25 @@ export function TabBar({ active, tucks = false }: { active: TabId; /** It can be
   const focused = useIsFocused();
   // On a tab's page it lies over the foot of the page and slides off it while the page scrolls down (barHide.tsx).
   const bar = useBarHide();
-  const slide = bar
-    ? {
-        position: 'absolute' as const,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        transform: [{ translateY: bar.shift.interpolate({ inputRange: [0, 1], outputRange: [0, bar.height + 4] }) }],
-      }
-    : null;
+  const lie = bar ? { position: 'absolute' as const, left: 0, right: 0, bottom: 0 } : null;
 
-  // The Calculator's bar can be pulled down off the foot for bigger keys,
-  // leaving a handle to bring it back (state/barHide.ts). Kept in the settings.
+  // On any tab the bar can be pulled down off the foot, leaving a handle to
+  // bring it back (state/barHide.ts); with Settings → Layout → Tab bar set to
+  // hide on every tab, it tucks itself each time a tab opens. Voice gets you
+  // anywhere, so for some the bar is only for tapping. Kept in the settings.
   const { settings, update } = useSettings();
-  const tucked = tucks && settings.calcBarTucked;
+  const tucked = settings.barTucked;
+  const tuckedRef = useRef(tucked);
+  tuckedRef.current = tucked;
   const pull = useRef(new Animated.Value(0)).current;
   const offFoot = TAB_BAR_HEIGHT + insets.bottom + 4;
+  // Where it stands: slid off by the page's scroll, plus pulled down by a finger.
+  const shiftY = bar?.shift;
+  const barH = bar?.height ?? 0;
+  const lift = useMemo(
+    () => ({ transform: [{ translateY: shiftY ? Animated.add(shiftY.interpolate({ inputRange: [0, 1], outputRange: [0, barH + 4] }), pull) : pull }] }),
+    [shiftY, barH, pull]
+  );
 
   // Every tab across if they fit at a good size; else a fixed width, scrolled.
   const n = items.length;
@@ -149,15 +152,23 @@ export function TabBar({ active, tucks = false }: { active: TabId; /** It can be
     [n, tabW, view]
   );
 
-  // Tucked: it runs off the foot, then the handle takes its place and the keys grow into the room.
+  // Tucked: it runs off the foot, then the handle takes its place and the page (the Calculator's keys) gets the room.
   const tuck = useCallback(() => {
-    Animated.timing(pull, { toValue: offFoot, duration: 150, useNativeDriver: false }).start(() => update({ calcBarTucked: true }));
+    Animated.timing(pull, { toValue: offFoot, duration: 150, useNativeDriver: false }).start(() => update({ barTucked: true }));
   }, [offFoot, pull, update]);
   // Brought back, here or from Settings: it rises from below the foot.
   const untuck = useCallback(() => {
     pull.setValue(offFoot);
-    update({ calcBarTucked: false });
+    update({ barTucked: false });
   }, [offFoot, pull, update]);
+  // Set to hide on every tab: arriving on a tab, or back on it from a tool, it is tucked away.
+  useEffect(() => {
+    if (focused && settings.barMode === 'auto' && !tuckedRef.current) {
+      pull.setValue(offFoot);
+      update({ barTucked: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focused, settings.barMode]);
   useEffect(() => {
     if (!tucked) Animated.timing(pull, { toValue: 0, duration: 180, useNativeDriver: false }).start();
   }, [tucked, pull]);
@@ -166,13 +177,13 @@ export function TabBar({ active, tucks = false }: { active: TabId; /** It can be
   const swipe = useMemo(
     () =>
       PanResponder.create({
-        onMoveShouldSetPanResponderCapture: (_e, g) => tucks && !lockedRef.current && pullsDown(g.dx, g.dy),
+        onMoveShouldSetPanResponderCapture: (_e, g) => !lockedRef.current && pullsDown(g.dx, g.dy),
         onPanResponderTerminationRequest: () => false,
         onPanResponderMove: (_e, g) => pull.setValue(Math.max(0, g.dy)),
         onPanResponderRelease: (_e, g) => (tucksAt(g.dy, g.vy) ? tuck() : Animated.spring(pull, { toValue: 0, bounciness: 4, useNativeDriver: false }).start()),
         onPanResponderTerminate: () => Animated.spring(pull, { toValue: 0, useNativeDriver: false }).start(),
       }),
-    [tucks, pull, tuck]
+    [pull, tuck]
   );
   // The handle: a tap, or a pull up, brings it back.
   const handle = useMemo(
@@ -186,16 +197,24 @@ export function TabBar({ active, tucks = false }: { active: TabId; /** It can be
       }),
     [untuck]
   );
-  const said = tucked ? 'Show the tab bar' : 'Tuck the tab bar';
-  useVoiceTargets(tucks ? [{ kind: 'press', label: said, run: () => ((tucked ? untuck() : tuck()), said) }] : null);
+  useVoiceTargets(
+    tucked
+      ? [{ kind: 'press', label: 'Show the tab bar', run: () => (untuck(), 'Show the tab bar') }]
+      : [
+          { kind: 'press', label: 'Tuck the tab bar', run: () => (tuck(), 'Tuck the tab bar') },
+          { kind: 'press', label: 'Hide the tab bar', run: () => (tuck(), 'Hide the tab bar') },
+        ]
+  );
 
   const go = useCallback(
     (tab: Tab) => {
       if (tab.id === active) return;
       const routes: TabRoute[] = [{ name: 'Home' }, ...(tab.route ? [tab.route] : [])];
+      // Set to hide on every tab: the tab opens with the bar already tucked away.
+      if (settings.barMode === 'auto') update({ barTucked: true });
       navigation.reset({ index: routes.length - 1, routes: routes as never });
     },
-    [active, navigation]
+    [active, navigation, settings.barMode, update]
   );
 
   if (tucked)
@@ -207,14 +226,14 @@ export function TabBar({ active, tucks = false }: { active: TabId; /** It can be
         accessibilityLabel="Show the tab bar"
         accessibilityActions={[{ name: 'activate' }]}
         onAccessibilityAction={untuck}
-        style={{ height: HANDLE_HEIGHT + insets.bottom, backgroundColor: t.colors.tabBarLo, borderTopWidth: 1, borderTopColor: p.seamDark, alignItems: 'center', paddingTop: 7 }}
+        style={[{ height: HANDLE_HEIGHT + insets.bottom, backgroundColor: t.colors.tabBarLo, borderTopWidth: 1, borderTopColor: p.seamDark, alignItems: 'center', paddingTop: 7 }, lie]}
       >
         <View style={{ width: 44, height: 5, borderRadius: 3, backgroundColor: t.colors.onTabBarFaint }} />
       </View>
     );
 
   return (
-    <Animated.View onLayout={onLayout} {...(tucks ? swipe.panHandlers : null)} style={[{ backgroundColor: t.colors.tabBarLo }, slide, tucks ? { transform: [{ translateY: pull }] } : null]}>
+    <Animated.View onLayout={onLayout} {...swipe.panHandlers} style={[{ backgroundColor: t.colors.tabBarLo }, lie, lift]}>
       {box ? (
         <Svg width={box.w} height={box.h} style={StyleSheet.absoluteFill} pointerEvents="none">
           <Defs>

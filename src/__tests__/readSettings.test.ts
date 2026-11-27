@@ -20,8 +20,8 @@ const DEFAULTS: Settings = {
   readAloud: 'tap',
   gloveMode: false,
   voice: true,
-  hideBar: true,
-  calcBarTucked: false,
+  barMode: 'scroll',
+  barTucked: false,
   shift: 'days',
   coach: 'on',
   heatUnit: 'auto',
@@ -177,22 +177,27 @@ describe("the crew's sulphur line", () => {
   });
 });
 
-describe('the tab bar while scrolling', () => {
-  test('hides by default; a phone that set it keeps it; anything else is the default', () => {
-    const { hideBar, ...before } = DEFAULTS;
-    void hideBar;
-    expect(readSettings(JSON.stringify(before), DEFAULTS).settings.hideBar).toBe(true);
-    expect(readSettings(JSON.stringify({ ...DEFAULTS, hideBar: false }), DEFAULTS).settings.hideBar).toBe(false);
-    expect(readSettings(JSON.stringify({ ...DEFAULTS, hideBar: 'no' }), DEFAULTS).settings.hideBar).toBe(true);
+describe('the tab bar', () => {
+  test('hides as you scroll by default; each mode a phone set is kept; anything else is the default', () => {
+    const { barMode, barTucked, ...before } = DEFAULTS;
+    void barMode;
+    void barTucked;
+    expect(readSettings(JSON.stringify(before), DEFAULTS).settings.barMode).toBe('scroll');
+    for (const m of ['scroll', 'auto', 'stay'] as const) expect(readSettings(JSON.stringify({ ...DEFAULTS, barMode: m }), DEFAULTS).settings.barMode).toBe(m);
+    expect(readSettings(JSON.stringify({ ...DEFAULTS, barMode: 'sometimes' }), DEFAULTS).settings.barMode).toBe('scroll');
+    expect(readSettings(JSON.stringify(before), DEFAULTS).settings.barTucked).toBe(false);
+    expect(readSettings(JSON.stringify({ ...DEFAULTS, barTucked: true }), DEFAULTS).settings.barTucked).toBe(true);
+    expect(readSettings(JSON.stringify({ ...DEFAULTS, barTucked: 1 }), DEFAULTS).settings.barTucked).toBe(false);
   });
-});
 
-describe("the Calculator's tab bar tucked away", () => {
-  test('shown by default; tucked is kept; anything else is the default', () => {
-    const { calcBarTucked, ...before } = DEFAULTS;
-    void calcBarTucked;
-    expect(readSettings(JSON.stringify(before), DEFAULTS).settings.calcBarTucked).toBe(false);
-    expect(readSettings(JSON.stringify({ ...DEFAULTS, calcBarTucked: true }), DEFAULTS).settings.calcBarTucked).toBe(true);
-    expect(readSettings(JSON.stringify({ ...DEFAULTS, calcBarTucked: 1 }), DEFAULTS).settings.calcBarTucked).toBe(false);
+  test('the first switches carry over: kept on screen stays; a tucked Calculator bar is a tucked bar; the old keys go', () => {
+    const { barMode, barTucked, ...before } = DEFAULTS;
+    void barMode;
+    void barTucked;
+    const kept = readSettings(JSON.stringify({ ...before, hideBar: false, calcBarTucked: true }), DEFAULTS).settings;
+    expect(kept.barMode).toBe('stay');
+    expect(kept.barTucked).toBe(true);
+    expect('hideBar' in kept || 'calcBarTucked' in kept).toBe(false);
+    expect(readSettings(JSON.stringify({ ...before, hideBar: true }), DEFAULTS).settings.barMode).toBe('scroll');
   });
 });

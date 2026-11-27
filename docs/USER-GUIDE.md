@@ -78,12 +78,23 @@ The seven tabs along the foot ship as **Home, Calculator, PipeFit, Weld, Rigging
 
 Hold any tab until it lifts, carry it along the bar, let go. Carry it to either end and the bar scrolls with it. It stays there on every screen.
 
-**The bar gets out of the way.** On a tab's page (Home, PipeFit, Weld, Rigging, Projects and the Logs, Edu), scroll down and the bar slides off the foot of the screen, giving you that much more of the page. It comes back as soon as you:
-- scroll up a little;
-- reach the top or the end of the page;
-- come back to the page from a tool.
+**Tuck the bar away, on any tab.** Pull the bar down off the foot of the screen and it tucks away, leaving a slim handle. Tap the handle, or pull it up, to bring the bar back.
+- A pull short of the way springs back.
+- Swiping along the bar still scrolls it, and holding a tab still carries it.
+- It stays tucked from tab to tab, and after the app restarts, until you bring it back.
+- You can also say "hide the tab bar" (or "tuck the tab bar") and "show the tab bar".
 
-A page too short to scroll much keeps it. The Calculator doesn't scroll: pull its bar down to tuck it away instead (see Calculator). While you carry a tile down the page, the bar stays put. **Settings → Layout → Tab bar → Always there** keeps it on every page. With a screen reader on, it always stays.
+The bar is only one way to get around: voice opens any tab or tool. Say "rigging", "weld tab" or "calculator", or the tool's name. If you get around by voice, keep the bar tucked away.
+
+**How the bar hides on its own** is up to you, in **Settings → Layout → Tab bar**:
+
+| Setting | What the bar does |
+|---|---|
+| **Hides as you scroll** (the default) | On a tab's page, it slides off the foot as you scroll down. It comes back as you scroll up a little, at the top or the end of the page, or back on the page from a tool. A page too short to scroll much keeps it, and while you carry a tile down the page it stays put. With a screen reader on, it doesn't slide. |
+| **Hides on every tab** | It tucks itself away each time a tab opens, back from a tool, or when the app starts. Pull the handle up when you want to tap to another tab. The tab you tap opens with the bar tucked again. |
+| **Only when I tuck it** | It stays put until you pull it down yourself. |
+
+**Right now** in the same place tucks the bar away or brings it back.
 
 The tiles on Home, PipeFit, Weld, Rigging, Logs and Edu, and the cards down the Projects page, move the same way: hold one until it lifts and buzzes, carry it, let go. A tile moves anywhere in its own section (Layout & fit-up, Bends & offsets, Records…); a card anywhere down the page. Carry one to the top or foot of the screen and the page scrolls with it. A finger that drifts while holding is a scroll, not a hold: hold still.
 
@@ -1165,14 +1176,7 @@ Two calculators in one tab. The switch at the top picks **Trade** or **Standard*
 
 ### Bigger keys: tuck the tab bar away
 
-The Calculator doesn't scroll, so its tab bar doesn't hide on its own the way it does on the other tabs.
-
-- **Tuck it away:** pull the bar down off the foot of the screen. The keys grow into the room.
-- **Bring it back:** a slim handle stays at the foot. Tap it, or pull it up.
-- **Short of a full pull:** the bar springs back.
-- **Swiping along the bar** still scrolls it, and **holding a tab** still carries it.
-
-The phone remembers which way you left it. You can also say "tuck the tab bar" and "show the tab bar", or set it in **Settings → Layout → Calculator's tab bar**.
+The Calculator doesn't scroll, so its tab bar doesn't slide away as you scroll. Pull it down to tuck it away, as on any tab (see Make it yours), and the keys grow into the room. Tap the handle at the foot, or pull it up, to bring it back. With **Settings → Layout → Tab bar → Hides on every tab**, the Calculator opens with it already tucked away.
 
 On a short phone the keys are fitted to what's left under the readout. When there isn't room for the small second-function words (ARCSIN, LB, CLEAR ALL…) to sit over each key, they move inside the top of the key, so the keys stay big enough to hit. On a phone too short even for that, or with the phone's text set very large, the keys scroll rather than running under the tab bar.
 
@@ -2168,8 +2172,7 @@ Anything else it hears is shown and ignored, so a conversation nearby does not l
 | **Stock length** | The length you buy. The cut list packs onto it, and the offset and cut-length screens check against it. |
 | **Saw cut** | What the blade takes, default 1/8". Charged on every cut in the cut list. |
 | **Smart fill** | Whether a heat scan and the handbook search ask Jev, with signal |
-| **Tab bar** (Layout) | **Hides as you scroll** (the default) or **Always there**. See Make it yours. |
-| **Calculator's tab bar** (Layout) | **Shown** or **Tucked away** for bigger keys. See Calculator. |
+| **Tab bar** (Layout) | **Hides as you scroll** (the default), **Hides on every tab**, or **Only when I tuck it**; and **Right now**, shown or tucked away. See Make it yours. |
 | **Updates** | What is running, and a manual check |
 
 Settings are stored on the phone only. Nothing leaves it.

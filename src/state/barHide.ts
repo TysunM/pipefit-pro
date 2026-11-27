@@ -30,10 +30,11 @@ export function barAfterScroll(s: BarScroll, y: number, content: number, view: n
   return { hidden, last: y, turn, down };
 }
 
-// The Calculator's bar, tucked away by hand
-// -----------------------------------------
-// The Calculator doesn't scroll, so its bar is swiped down off the foot
-// instead, and the keys grow into the room. A handle stays to bring it back.
+// The bar, tucked away by hand
+// ----------------------------
+// On any tab the bar can be pulled down off the foot (on the Calculator,
+// which doesn't scroll, the keys grow into the room). A handle stays to bring
+// it back. Set to hide on every tab, it tucks itself as each tab opens.
 
 /** How far the bar is pulled down, or how fast it is flicked, to tuck it. Less, and it springs back. */
 export const TUCK_PULL = 28;

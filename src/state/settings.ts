@@ -16,6 +16,8 @@ export type LengthReadout = 'inches' | 'feetInches';
 
 export type ReadAloud = 'off' | 'tap' | 'auto';
 
+export type BarMode = 'scroll' | 'auto' | 'stay';
+
 export type Settings = {
   themePreference: ThemePreference;
   unitSystem: UnitSystem;
@@ -78,15 +80,18 @@ export type Settings = {
    */
   voice: boolean;
   /**
-   * On a tab's page, the bar along the foot slides away as the page scrolls
-   * down and comes back as it scrolls up (state/barHide.ts). Off keeps it.
+   * The tab bar along the foot (state/barHide.ts). 'scroll': it slides away
+   * as a tab's page scrolls down and back as it scrolls up. 'auto': it tucks
+   * itself away each time a tab opens, until it is pulled up to change tabs;
+   * for a phone run by voice, where the bar is only there for tapping.
+   * 'stay': it moves only when it is tucked by hand.
    */
-  hideBar: boolean;
+  barMode: BarMode;
   /**
-   * The Calculator's tab bar tucked away for bigger keys: swiped down off the
-   * foot, a handle left to bring it back. Kept until it is brought back.
+   * The tab bar tucked away: pulled down off the foot on any tab, a handle
+   * left to bring it back. Kept until it is brought back.
    */
-  calcBarTucked: boolean;
+  barTucked: boolean;
   /**
    * Days or nights: where "today" turns over. On nights the work from noon to
    * noon is one day, dated by the night it started — the Projects Today view
@@ -139,8 +144,8 @@ export const DEFAULT_SETTINGS: Settings = {
   readAloud: 'tap',
   gloveMode: false,
   voice: true,
-  hideBar: true,
-  calcBarTucked: false,
+  barMode: 'scroll',
+  barTucked: false,
   shift: 'days',
   coach: 'on',
   heatUnit: 'auto',
