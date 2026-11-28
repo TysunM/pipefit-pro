@@ -82,7 +82,7 @@ Hold any tab until it lifts, carry it along the bar, let go. Carry it to either 
 - A pull short of the way springs back.
 - Swiping along the bar still scrolls it, and holding a tab still carries it.
 - It stays tucked from tab to tab, and after the app restarts, until you bring it back.
-- You can also say "hide the tab bar" (or "tuck the tab bar") and "show the tab bar".
+- You can also say "hide the tab bar" (or "tuck the tab bar") and "show the tab bar", on any screen.
 
 The bar is only one way to get around: voice opens any tab or tool. Say "rigging", "weld tab" or "calculator", or the tool's name. If you get around by voice, keep the bar tucked away.
 
@@ -95,6 +95,13 @@ The bar is only one way to get around: voice opens any tab or tool. Say "rigging
 | **Only when I tuck it** | It stays put until you pull it down yourself. |
 
 **Right now** in the same place tucks the bar away or brings it back.
+
+**Or say it, on any screen:**
+- "auto-hide the tab bar": hides on every tab.
+- "hide the tab bar as I scroll": hides as you scroll.
+- "stop hiding the tab bar" or "turn off auto-hide": only when you tuck it, and the bar comes back.
+
+Each is said back with an **Undo**.
 
 The tiles on Home, PipeFit, Weld, Rigging, Logs and Edu, and the cards down the Projects page, move the same way: hold one until it lifts and buzzes, carry it, let go. A tile moves anywhere in its own section (Layout & fit-up, Bends & offsets, Records…); a card anywhere down the page. Carry one to the top or foot of the screen and the page scrolls with it. A finger that drifts while holding is a scroll, not a hold: hold still.
 
@@ -2084,6 +2091,7 @@ Whatever you can see, you can say. Every button, chip, switch and box tells the 
 |---|---|
 | "Bolt up", "hydro", "heat book", "shift report" | That tool opens. Works with no signal. |
 | "Home", "projects", "PipeFit", "weld", "rigging", "logs", "calculator", "edu" | That tab opens; "logs" opens the Logs tab on the Projects page. |
+| "Auto-hide the tab bar", "hide the tab bar as I scroll", "stop hiding the tab bar", "turn off auto-hide", "hide the tab bar", "show the tab bar" | How the tab bar along the foot hides, or it tucked away and brought back, from any screen, with an Undo. Something said has to name the bar ("tab bar", "tabs", "bottom bar"), so "10 bar to psi" stays a conversion; "auto-hide" alone is the bar's. |
 | "Rolling offset, rise 12, roll 8 and a half, run 30", "rolling offset rise 12 roll 8 at 45" | Rolling offset opens with the figures in. "3 foot 6", "12 and 3/8" and "350 millimetres" are understood, and a plain figure after "at" is the angle. Said on the Calculator, it is worked there instead (see Calculator → Say the sum). |
 | "Simple offset, 14 and a half at 22 and a half degrees" | Any bend or offset tool opens filled in — see the table below. |
 | "Rise 12", "leg b 3 foot 6" (with the tool open) | Fills that field on the screen you are on. |
