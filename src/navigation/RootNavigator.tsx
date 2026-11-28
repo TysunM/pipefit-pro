@@ -118,9 +118,10 @@ export function RootNavigator() {
           header: ({ options, back }) => (
             <AppHeader
               title={typeof options.title === 'string' ? options.title : route.name}
-              // A tab is a place, reached from the tab bar, so it has no back.
+              // A tab is a place, reached from the tab bar, so it has no back. Every tab has
+              // your projects at its top left instead, there whether the tab bar is or not.
               onBack={back && !TAB_ROUTES.has(route.name) ? () => navigation.goBack() : undefined}
-              onProfile={route.name === 'Home' ? () => navigation.reset({ index: 1, routes: [{ name: 'Home' }, { name: 'Projects' }] }) : undefined}
+              onProfile={route.name === 'Home' || TAB_ROUTES.has(route.name) ? () => navigation.reset({ index: 1, routes: [{ name: 'Home' }, { name: 'Projects' }] }) : undefined}
               onSettings={route.name === 'Settings' ? undefined : () => navigation.navigate('Settings')}
             />
           ),

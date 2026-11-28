@@ -84,6 +84,8 @@ Hold any tab until it lifts, carry it along the bar, let go. Carry it to either 
 - It stays tucked from tab to tab, and after the app restarts, until you bring it back.
 - You can also say "hide the tab bar" (or "tuck the tab bar") and "show the tab bar", on any screen.
 
+**Your projects** is always the person at the top left of every tab, tucked bar or not. A tool has its back arrow there instead.
+
 The bar is only one way to get around: voice opens any tab or tool. Say "rigging", "weld tab" or "calculator", or the tool's name. If you get around by voice, keep the bar tucked away.
 
 **How the bar hides on its own** is up to you, in **Settings → Layout → Tab bar**:
