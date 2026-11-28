@@ -1,4 +1,4 @@
-import { barSettings, readBar } from '../voice/barWords';
+import { barPatch, readBar } from '../voice/barWords';
 import { localIntent } from '../voice/intent';
 
 const act = (said: string) => {
@@ -37,14 +37,11 @@ describe('the tab bar by voice', () => {
     expect(readBar(['tab', 'bar'])).toBeNull();
   });
 
-  test('what each sets, and says', () => {
-    const cur = { barMode: 'scroll' as const, barTucked: false };
-    expect(barSettings('auto', cur).patch).toEqual({ barMode: 'auto', barTucked: true });
-    expect(barSettings('scroll', { barMode: 'auto', barTucked: true }).patch).toEqual({ barMode: 'scroll', barTucked: false });
-    expect(barSettings('stay', cur).patch).toEqual({ barMode: 'stay', barTucked: false });
-    expect(barSettings('hide', cur).patch).toEqual({ barTucked: true });
-    expect(barSettings('hide', { ...cur, barTucked: true }).reply).toMatch(/already/);
-    expect(barSettings('show', { barMode: 'auto', barTucked: true }).reply).toMatch(/next tab/);
-    expect(barSettings('show', cur).reply).toMatch(/already/);
+  test('what each sets', () => {
+    expect(barPatch('auto')).toEqual({ barMode: 'auto', barTucked: true });
+    expect(barPatch('scroll')).toEqual({ barMode: 'scroll', barTucked: false });
+    expect(barPatch('stay')).toEqual({ barMode: 'stay', barTucked: false });
+    expect(barPatch('hide')).toEqual({ barTucked: true });
+    expect(barPatch('show')).toEqual({ barTucked: false });
   });
 });

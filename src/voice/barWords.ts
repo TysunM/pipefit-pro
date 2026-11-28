@@ -8,7 +8,7 @@
 // "auto-hide", which is only ever the bar's) and hold
 // nothing else but the words below, so "10 bar to psi" is never the bar. Pure.
 
-import type { BarMode, Settings } from '../state/settings';
+import type { Settings } from '../state/settings';
 
 export type BarAct = 'auto' | 'scroll' | 'stay' | 'hide' | 'show';
 
@@ -53,22 +53,18 @@ export function readBar(ws: readonly string[]): BarAct | null {
   return null;
 }
 
-/** What a tab bar command sets, and what is said back. */
-export function barSettings(act: BarAct, cur: Pick<Settings, 'barMode' | 'barTucked'>): { patch: Partial<Settings>; reply: string } {
-  const mode = (barMode: BarMode, barTucked: boolean, reply: string) => ({ patch: { barMode, barTucked }, reply });
+/** What a tab bar command sets. A mode said brings the bar back, except auto-hide, which tucks it now. */
+export function barPatch(act: BarAct): Partial<Settings> {
   switch (act) {
     case 'auto':
-      return mode('auto', true, 'The tab bar hides on every tab now. Pull the handle up, or say “show the tab bar”, to tap to another tab.');
+      return { barMode: 'auto', barTucked: true };
     case 'scroll':
-      return mode('scroll', false, 'The tab bar hides as you scroll now, and comes back as you scroll up.');
+      return { barMode: 'scroll', barTucked: false };
     case 'stay':
-      return mode('stay', false, 'The tab bar stays put now. Pull it down, or say “hide the tab bar”, to tuck it away.');
+      return { barMode: 'stay', barTucked: false };
     case 'hide':
-      return { patch: { barTucked: true }, reply: cur.barTucked ? 'The tab bar is already tucked away.' : 'Tab bar tucked away. Say “show the tab bar” to bring it back.' };
+      return { barTucked: true };
     case 'show':
-      return {
-        patch: { barTucked: false },
-        reply: cur.barMode === 'auto' ? 'Tab bar’s back. It tucks itself away again as the next tab opens.' : cur.barTucked ? 'Tab bar’s back.' : 'The tab bar is already showing.',
-      };
+      return { barTucked: false };
   }
 }
