@@ -389,7 +389,7 @@ export function CalculatorScreen() {
         )}
       </View>
     </Screen>
-    <TabBar active="calc" tucks />
+    <TabBar active="calc" />
     </View>
   );
 }

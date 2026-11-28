@@ -4,7 +4,7 @@ import { useIsFocused } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/ThemeProvider';
 import { useSettings } from '../state/settings';
-import { BAR_START, barAfterScroll, barShown } from '../state/barHide';
+import { BAR_START, HANDLE_HEIGHT, barAfterScroll, barShown } from '../state/barHide';
 
 // A tab's page and its bar, talking. The page (Screen.tsx) says where it is
 // scrolled to; the bar (TabBar.tsx) slides off the foot of the screen and back
@@ -12,9 +12,10 @@ import { BAR_START, barAfterScroll, barShown } from '../state/barHide';
 // rather than under it, so nothing above it moves as it goes: the page is
 // padded at the foot to scroll clear of it.
 //
-// It stays put with Settings → Layout set to keep it, or with a screen reader
-// on, where a bar that comes and goes is a bar you cannot find. With Reduce
-// Motion on it goes and comes without sliding.
+// It slides only with Settings → Layout → Tab bar set to hide as you scroll,
+// and not with a screen reader on, where a bar that comes and goes is a bar
+// you cannot find. With Reduce Motion on it goes and comes without sliding.
+// Tucked away by hand (TabBar.tsx), only its handle lies over the page.
 
 export type BarHide = {
   /** 0 shown, 1 hidden. */
@@ -63,14 +64,17 @@ export function TabPage({ children, barHeight }: { children: React.ReactNode; /*
     };
   }, []);
 
-  const on = settings.hideBar && !reader;
-  const height = barHeight + insets.bottom;
+  // Tucked away (TabBar.tsx), only the handle lies over the page, and the scroll moves nothing.
+  const tucked = settings.barTucked;
+  const on = settings.barMode === 'scroll' && !tucked && !reader;
+  const height = (tucked ? HANDLE_HEIGHT : barHeight) + insets.bottom;
   const shift = useRef(new Animated.Value(0)).current;
   const state = useRef(BAR_START);
   const held = useRef(false);
   const move = useCallback(
     (hidden: boolean) => {
-      Animated.timing(shift, { toValue: hidden ? 1 : 0, duration: still ? 0 : 180, easing: Easing.out(Easing.quad), useNativeDriver: Platform.OS !== 'web' }).start();
+      // Driven from JS, as the bar's pull is (TabBar.tsx): the two are added on the one transform.
+      Animated.timing(shift, { toValue: hidden ? 1 : 0, duration: still ? 0 : 180, easing: Easing.out(Easing.quad), useNativeDriver: false }).start();
     },
     [shift, still]
   );

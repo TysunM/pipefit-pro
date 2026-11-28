@@ -324,29 +324,32 @@ export function SettingsScreen() {
       <ChipRow
         label="Tab bar"
         options={[
-          { value: 'hide', label: 'Hides as you scroll' },
-          { value: 'keep', label: 'Always there' },
+          { value: 'scroll', label: 'Hides as you scroll' },
+          { value: 'auto', label: 'Hides on every tab' },
+          { value: 'stay', label: 'Only when I tuck it' },
         ]}
-        selected={settings.hideBar ? 'hide' : 'keep'}
-        onSelect={(v) => update({ hideBar: v === 'hide' })}
+        selected={settings.barMode}
+        onSelect={(v) => update({ barMode: v, ...(v === 'auto' ? { barTucked: true } : null) })}
       />
-      <Text style={[t.type.caption, { color: t.colors.textMuted, paddingHorizontal: t.layout.screenPadding, marginTop: -t.space.sm, marginBottom: t.space.lg }]}>
-        On a tab's page the bar slides away as you scroll down, for more of the page, and comes back as soon as you scroll up a little, reach the top or
-        the end, or come back to the page. With a screen reader on it always stays.
+      <Text style={[t.type.caption, { color: t.colors.textMuted, paddingHorizontal: t.layout.screenPadding, marginTop: -t.space.sm, marginBottom: t.space.md }]}>
+        {settings.barMode === 'scroll'
+          ? 'The bar slides away as you scroll down a page and comes back as you scroll up, at the top or the end, or back on the page.'
+          : settings.barMode === 'auto'
+            ? 'The bar tucks itself away every time a tab opens. Pull the handle up when you want to tap to another tab; voice gets you anywhere without it.'
+            : 'The bar stays put until you tuck it away yourself.'}{' '}
+        On any tab, pull the bar down to tuck it away; tap the handle at the foot, or pull it up, to bring it back. Or say "hide the tab bar" and "show
+        the tab bar".
       </Text>
       <ChipRow
-        label="Calculator's tab bar"
+        label="Right now"
         options={[
           { value: 'shown', label: 'Shown' },
           { value: 'tucked', label: 'Tucked away' },
         ]}
-        selected={settings.calcBarTucked ? 'tucked' : 'shown'}
-        onSelect={(v) => update({ calcBarTucked: v === 'tucked' })}
+        selected={settings.barTucked ? 'tucked' : 'shown'}
+        onSelect={(v) => update({ barTucked: v === 'tucked' })}
       />
-      <Text style={[t.type.caption, { color: t.colors.textMuted, paddingHorizontal: t.layout.screenPadding, marginTop: -t.space.sm, marginBottom: t.space.lg }]}>
-        The Calculator doesn't scroll, so its bar is swiped down instead: pull it down and the keys grow into the room. A handle stays at the foot; tap it
-        or pull it up to bring the bar back. Or say "tuck the tab bar" and "show the tab bar".
-      </Text>
+      <View style={{ height: t.space.md }} />
       <ControlRow>
         <GhostButton
           label="Put everything back where it shipped"

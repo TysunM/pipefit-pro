@@ -50,8 +50,12 @@ export function readSettings(
   merged.readAloud = stored.readAloud === 'off' || stored.readAloud === 'tap' || stored.readAloud === 'auto' ? stored.readAloud : defaults.readAloud;
   merged.gloveMode = typeof stored.gloveMode === 'boolean' ? stored.gloveMode : defaults.gloveMode;
   merged.voice = typeof stored.voice === 'boolean' ? stored.voice : defaults.voice;
-  merged.hideBar = typeof stored.hideBar === 'boolean' ? stored.hideBar : defaults.hideBar;
-  merged.calcBarTucked = typeof stored.calcBarTucked === 'boolean' ? stored.calcBarTucked : defaults.calcBarTucked;
+  // The tab bar: 'hideBar' and the Calculator's own 'calcBarTucked' came first, and carry over.
+  const was = stored as { hideBar?: unknown; calcBarTucked?: unknown };
+  merged.barMode = stored.barMode === 'scroll' || stored.barMode === 'auto' || stored.barMode === 'stay' ? stored.barMode : was.hideBar === false ? 'stay' : defaults.barMode;
+  merged.barTucked = typeof stored.barTucked === 'boolean' ? stored.barTucked : typeof was.calcBarTucked === 'boolean' ? was.calcBarTucked : defaults.barTucked;
+  delete (merged as { hideBar?: unknown }).hideBar;
+  delete (merged as { calcBarTucked?: unknown }).calcBarTucked;
   merged.shift = stored.shift === 'days' || stored.shift === 'nights' ? stored.shift : defaults.shift;
   merged.coach = stored.coach === 'off' ? 'off' : defaults.coach;
   merged.heatUnit = stored.heatUnit === 'auto' || (HEAT_UNITS as readonly string[]).includes(String(stored.heatUnit)) ? (stored.heatUnit as Settings['heatUnit']) : defaults.heatUnit;
