@@ -40,6 +40,7 @@ import { usePreTasks } from '../state/pretasks';
 import { testName } from '../state/pressureLog';
 import { applyPretask, applyShift, applyTest } from './apply';
 import { VOCAB, VoiceCommand, bestLocal, isToolName, localIntent, othersOf, routeWords } from './intent';
+import { barSettings } from './barWords';
 import { alignToWords, alignTranscripts, learn, learnedMap, setLearnedWords } from './learned';
 import { useLearnedWords } from '../state/learnedWords';
 import { MATERIALS } from '../calc/materials';
@@ -220,6 +221,19 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
           if (nav.isReady() && nav.canGoBack()) nav.goBack();
           setSheet(null);
           return;
+        case 'bar': {
+          // How the tab bar hides, or it tucked away and back, from any screen; with an Undo.
+          const { settings: cur, update: put } = latest.current;
+          const before = { barMode: cur.barMode, barTucked: cur.barTucked };
+          const next = barSettings(cmd.act, before);
+          put(next.patch);
+          return finish(heard, next.reply, {
+            undo: () => {
+              put(before);
+              setSheet({ phase: 'done', heard, reply: 'The tab bar is back as it was.', tone: 'warn' });
+            },
+          });
+        }
         case 'bolt': {
           const h = bolts.current;
           if (!h) return finish(heard, 'Open the bolt-up first.', { tone: 'warn' });

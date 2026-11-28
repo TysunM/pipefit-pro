@@ -18,6 +18,7 @@ import type { ToolRoute } from '../navigation/groups';
 import { MATERIALS } from '../calc/materials';
 import { NUMBER_WORDS, hasPhrase, lengthAt, numberAt, tokens } from './words';
 import { SPEC_WORDS, readSpecs, type SpecCommand } from './specs';
+import { BAR_WORDS, readBar, type BarAct } from './barWords';
 import { Figure, FigureRoute, FigureSpec, Figures, TOOL_FIGURES, figureNames, isFigureRoute, plausible, primaryFigure } from './toolFigures';
 import { snapPhrases, snapWords, splitGlued } from './hear';
 import { applyLearned } from './learned';
@@ -35,6 +36,8 @@ export type VoiceCommand =
   /** The job's pipe: "half inch stainless 40S", "6 inch P22 schedule 80". */
   | ({ kind: 'specs' } & SpecCommand)
   | { kind: 'back' }
+  /** The tab bar: how it hides, or tucked away and brought back (barWords.ts). */
+  | { kind: 'bar'; act: BarAct }
   | { kind: 'cancel' };
 
 /**
@@ -150,6 +153,7 @@ export const VOCAB: ReadonlySet<string> = new Set([
   ...SPEC_WORDS,
   ...splitWords(MATERIALS.flatMap((m) => m.words)),
   'degree', 'degrees', 'of', 'is', 'at', 'to', 'equals', 'about', 'back', 'done', 'undo', 'repeat',
+  ...BAR_WORDS,
 ]);
 
 /** Every phrase the app can take by voice, for hearing a run of words as the phrase it nearly is (hear.ts). */
@@ -250,6 +254,9 @@ function intentOf(text: string, screen: string | null, lenient: boolean): VoiceC
     return { kind: 'addCut' };
 
   if (ws.length <= 3 && sayingOnly(ws, [['back'], ['go', 'back']])) return { kind: 'back' };
+
+  const bar = readBar(ws);
+  if (bar) return { kind: 'bar', act: bar };
 
   const specs = readSpecs(ws.join(' '));
   if (specs) return { kind: 'specs', ...specs };
