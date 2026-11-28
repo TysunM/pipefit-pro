@@ -101,7 +101,7 @@ The bar is only one way to get around: voice opens any tab or tool. Say "rigging
 - "hide the tab bar as I scroll": hides as you scroll.
 - "stop hiding the tab bar" or "turn off auto-hide": only when you tuck it, and the bar comes back.
 
-Each is said back with an **Undo**.
+It just happens: the voice panel goes and nothing is said back.
 
 The tiles on Home, PipeFit, Weld, Rigging, Logs and Edu, and the cards down the Projects page, move the same way: hold one until it lifts and buzzes, carry it, let go. A tile moves anywhere in its own section (Layout & fit-up, Bends & offsets, Records…); a card anywhere down the page. Carry one to the top or foot of the screen and the page scrolls with it. A finger that drifts while holding is a scroll, not a hold: hold still.
 
@@ -2083,7 +2083,9 @@ Whatever you can see, you can say. Every button, chip, switch and box tells the 
 | "One more 2 inch weld", "one fewer 6 inch weld" | The weld count steppers on the shift report. |
 | "What can I say?" | Reads out what this screen answers to. |
 
-"Tap", "press", "please" and "button" round a command are ignored. A sheet open over a page wins a tie: "cancel" presses the sheet's Cancel, not the page's. A button is pressed quietly; a box or a chip is said back, so a mishearing is caught. Works with no signal, at no cost.
+"Tap", "press", "please" and "button" round a command are ignored. A sheet open over a page wins a tie: "cancel" presses the sheet's Cancel, not the page's. It just happens: a button is pressed, a box filled or a chip picked, and the voice panel goes. Nothing is said back, because you can see it on the screen. Works with no signal, at no cost.
+
+**Doing versus answering.** Anything you can see happen is done without a word: a tab or tool opening, figures filling in, a button pressed, the tab bar hiding. The panel closes by itself. The voice only speaks when it's answering you: a sum, a conversion, an elbow's takeout, what you can say on a screen. Something written to a record you can't see from where you are (a pressure test reading, the shift report, the job's pipe) is still confirmed, with an **Undo**. When it couldn't make sense of what you said, the panel stays up to show what it heard.
 
 ### What you can say
 
@@ -2091,7 +2093,7 @@ Whatever you can see, you can say. Every button, chip, switch and box tells the 
 |---|---|
 | "Bolt up", "hydro", "heat book", "shift report" | That tool opens. Works with no signal. |
 | "Home", "projects", "PipeFit", "weld", "rigging", "logs", "calculator", "edu" | That tab opens; "logs" opens the Logs tab on the Projects page. |
-| "Auto-hide the tab bar", "hide the tab bar as I scroll", "stop hiding the tab bar", "turn off auto-hide", "hide the tab bar", "show the tab bar" | How the tab bar along the foot hides, or it tucked away and brought back, from any screen, with an Undo. Something said has to name the bar ("tab bar", "tabs", "bottom bar"), so "10 bar to psi" stays a conversion; "auto-hide" alone is the bar's. |
+| "Auto-hide the tab bar", "hide the tab bar as I scroll", "stop hiding the tab bar", "turn off auto-hide", "hide the tab bar", "show the tab bar" | How the tab bar along the foot hides, or it tucked away and brought back, from any screen. It just happens; nothing is said back. Something said has to name the bar ("tab bar", "tabs", "bottom bar"), so "10 bar to psi" stays a conversion; "auto-hide" alone is the bar's. |
 | "Rolling offset, rise 12, roll 8 and a half, run 30", "rolling offset rise 12 roll 8 at 45" | Rolling offset opens with the figures in. "3 foot 6", "12 and 3/8" and "350 millimetres" are understood, and a plain figure after "at" is the angle. Said on the Calculator, it is worked there instead (see Calculator → Say the sum). |
 | "Simple offset, 14 and a half at 22 and a half degrees" | Any bend or offset tool opens filled in — see the table below. |
 | "Rise 12", "leg b 3 foot 6" (with the tool open) | Fills that field on the screen you are on. |
@@ -2116,7 +2118,7 @@ The app never writes a record from a cloud answer it has not checked against the
 
 **Misheard words are taken for what they nearly are.** The phone's recogniser knows everyday speech, not the trade, so it writes "12 volt" for 12 bolt, "bold cup" for bolt up, "hydra" for hydro, "rice 12, role 8" for rise 12, roll 8. The app hears those the way a fitter would: a word it does not know is taken as the nearest one it does, nearer still when it belongs to the tool just named, and every guess the recogniser offered is tried before anything goes to Claude. A command one word short of making sense is done anyway, and the panel says what it did not catch. A word near nothing the app knows is left as said, and that sentence goes to Claude as said, so nothing is quietly made up.
 
-**It learns this phone.** A recogniser is consistent in its mistakes. When one of its other guesses, or Claude, makes sense of a word the top transcript got wrong, the pair is kept on the phone: say it the same way again and it is heard as meant at once, with no signal. A learned word only ever fires on the exact word it was learned from, never on a word the app knows. Settings → In the field → Voice shows what has been learned, with a button to forget it; the list goes into the backup. You can teach it yourself: under the answer, **Not that?** lists the recogniser's other guesses at what you said; tap the right one and the app does it and learns the word. And when nothing could make sense of what you said and you open the tool by hand within half a minute, the words that should have opened it are learned. The recogniser is also told the figure names, the materials and walls, and the camera and saw words, so it writes them right more often in the first place.
+**It learns this phone.** A recogniser is consistent in its mistakes. When one of its other guesses, or Claude, makes sense of a word the top transcript got wrong, the pair is kept on the phone: say it the same way again and it is heard as meant at once, with no signal. A learned word only ever fires on the exact word it was learned from, never on a word the app knows. Settings → In the field → Voice shows what has been learned, with a button to forget it; the list goes into the backup. You can teach it yourself: when it didn't understand you, **Not that?** lists the recogniser's other guesses at what you said; tap the right one and the app does it and learns the word. When it did understand you, they aren't shown. And when nothing could make sense of what you said and you open the tool by hand within half a minute, the words that should have opened it are learned. The recogniser is also told the figure names, the materials and walls, and the camera and saw words, so it writes them right more often in the first place.
 
 ### Figures by voice
 

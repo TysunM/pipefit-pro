@@ -40,7 +40,7 @@ import { usePreTasks } from '../state/pretasks';
 import { testName } from '../state/pressureLog';
 import { applyPretask, applyShift, applyTest } from './apply';
 import { VOCAB, VoiceCommand, bestLocal, isToolName, localIntent, othersOf, routeWords } from './intent';
-import { barSettings } from './barWords';
+import { barPatch } from './barWords';
 import { alignToWords, alignTranscripts, learn, learnedMap, setLearnedWords } from './learned';
 import { useLearnedWords } from '../state/learnedWords';
 import { MATERIALS } from '../calc/materials';
@@ -186,9 +186,13 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
   const lastMiss = useRef<{ heard: string; route: string | null; at: number } | null>(null);
 
   const finish = useCallback((heard: string, reply: string, extra: Partial<VoiceSheet> = {}) => {
-    setSheet({ phase: 'done', heard, reply, tone: extra.tone ?? 'ok', ...(others.current.length ? { others: others.current } : {}), ...extra });
+    const tone = extra.tone ?? 'ok';
+    // The recogniser's other guesses only when it went wrong: something that worked needs no second guess.
+    setSheet({ phase: 'done', heard, reply, tone, ...(tone === 'warn' && others.current.length ? { others: others.current } : {}), ...extra });
     if (reply) say(reply);
   }, []);
+  /** Done, and to be seen on the screen: nothing said back, nothing left open. */
+  const quietly = useCallback(() => setSheet(null), []);
 
   /** Set the job's pipe, said back, with an Undo that puts the old specs back. */
   const setSpecs = useCallback(
@@ -221,19 +225,10 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
           if (nav.isReady() && nav.canGoBack()) nav.goBack();
           setSheet(null);
           return;
-        case 'bar': {
-          // How the tab bar hides, or it tucked away and back, from any screen; with an Undo.
-          const { settings: cur, update: put } = latest.current;
-          const before = { barMode: cur.barMode, barTucked: cur.barTucked };
-          const next = barSettings(cmd.act, before);
-          put(next.patch);
-          return finish(heard, next.reply, {
-            undo: () => {
-              put(before);
-              setSheet({ phase: 'done', heard, reply: 'The tab bar is back as it was.', tone: 'warn' });
-            },
-          });
-        }
+        case 'bar':
+          // How the tab bar hides, or it tucked away and back, from any screen: done, and the panel goes.
+          latest.current.update(barPatch(cmd.act));
+          return quietly();
         case 'bolt': {
           const h = bolts.current;
           if (!h) return finish(heard, 'Open the bolt-up first.', { tone: 'warn' });
@@ -256,22 +251,22 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
         case 'open': {
           const refused = openWith(cmd.route, cmd.figures);
           if (refused) return finish(heard, refused, { tone: 'warn' });
-          // Opening a screen is answer enough; figures are shown, not said.
-          // A word the app could not place is shown too, so a mishearing is
+          // Opening a screen, its figures filled in, is answer enough: the panel goes.
+          // Only a word the app could not place is shown, so a mishearing is
           // seen for what it was rather than silently dropped.
+          if (!cmd.ignored?.length) return quietly();
           const said = cmd.figures ? figuresSaid(cmd.route, cmd.figures) : '';
-          const missed = cmd.ignored?.length ? ` Didn't catch “${cmd.ignored.join(' ')}”.` : '';
           return setSheet({
             phase: 'done',
             heard,
-            reply: `${said ? `${titleOf(cmd.route)}: ${said}` : titleOf(cmd.route)}${missed ? `.${missed}` : ''}`,
-            tone: missed ? 'warn' : 'ok',
+            reply: `${said ? `${titleOf(cmd.route)}: ${said}` : titleOf(cmd.route)}. Didn't catch “${cmd.ignored.join(' ')}”.`,
+            tone: 'warn',
             ...(others.current.length ? { others: others.current } : {}),
           });
         }
       }
     },
-    [finish, setSpecs],
+    [finish, quietly, setSpecs],
   );
 
   /** Do what an answer says, whether the phone worked it out (records.ts) or the cloud did: said back, with an Undo. */
@@ -283,7 +278,10 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
         case 'open':
           // Claude read it as this tool: a word the app did not know, near the tool's names, was a mishearing of one.
           teach(alignToWords(heard, routeWords(a.route), VOCAB));
-          return finish(heard, openWith(a.route, a.figures) ?? (a.say || titleOf(a.route)));
+          {
+            const refused = openWith(a.route, a.figures);
+            return refused ? finish(heard, refused, { tone: 'warn' }) : quietly();
+          }
         case 'answer':
           if (a.table && nav.isReady()) nav.navigate('ReferenceTable', { id: a.table });
           return finish(heard, a.say);
@@ -337,7 +335,7 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
           return finish(heard, a.say, { tone: 'warn' });
       }
     },
-    [finish, setSpecs, teach],
+    [finish, quietly, setSpecs, teach],
   );
 
   /**
@@ -361,7 +359,7 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
   const answerScreen = useCallback(
     (heard: string, own: ScreenReply) => {
       if (typeof own === 'string') return finish(heard, own);
-      setSheet({ phase: 'done', heard, reply: own.reply, tone: own.tone ?? 'ok', ...(others.current.length ? { others: others.current } : {}) });
+      setSheet({ phase: 'done', heard, reply: own.reply, tone: own.tone ?? 'ok', ...(own.tone === 'warn' && others.current.length ? { others: others.current } : {}) });
       if (own.say) say(own.say);
     },
     [finish],
@@ -411,13 +409,10 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
         }
         said.push(reply);
       }
-      // A button pressed is its own answer, shown and not said; a figure or a choice is said back, to catch a mishearing.
-      if (items.length === 1 && items[0]!.target.kind === 'press') {
-        return setSheet({ phase: 'done', heard, reply: said[0] ?? '', tone: 'ok', ...(others.current.length ? { others: others.current } : {}) });
-      }
-      return finish(heard, said.join(' '));
+      // A button pressed, a choice picked, a figure filled in: there on the screen to be seen. Nothing said back, and the panel goes.
+      return quietly();
     },
-    [finish],
+    [finish, quietly],
   );
 
   // What was heard is tried the way a person would hear it: the screen's own
