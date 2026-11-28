@@ -2085,7 +2085,7 @@ Whatever you can see, you can say. Every button, chip, switch and box tells the 
 
 "Tap", "press", "please" and "button" round a command are ignored. A sheet open over a page wins a tie: "cancel" presses the sheet's Cancel, not the page's. It just happens: a button is pressed, a box filled or a chip picked, and the voice panel goes. Nothing is said back, because you can see it on the screen. Works with no signal, at no cost.
 
-**Doing versus answering.** Anything you can see happen is done without a word: a tab or tool opening, figures filling in, a button pressed, the tab bar hiding. The panel closes by itself. The voice only speaks when it's answering you: a sum, a conversion, an elbow's takeout, what you can say on a screen. Something written to a record you can't see from where you are (a pressure test reading, the shift report, the job's pipe) is still confirmed, with an **Undo**. When it couldn't make sense of what you said, the panel stays up to show what it heard.
+**Doing versus answering.** Anything you can see happen is done without a word: a tab or tool opening, figures filling in, a button pressed, the tab bar hiding. The panel closes by itself. The voice only speaks when it's answering you: a sum, a conversion, an elbow's takeout, what you can say on a screen. Something written to a record (a pressure test reading, the shift report, the pre-task plan, the job's pipe) goes in just as quietly. Say **"undo"** (or "undo that", "take that back", "scratch that") within five minutes and the last one comes back off. The job's pipe is only shown when the app had to change what you said, a wall that size doesn't come in for one. When it couldn't make sense of what you said, the panel stays up to show what it heard.
 
 ### What you can say
 
@@ -2093,6 +2093,7 @@ Whatever you can see, you can say. Every button, chip, switch and box tells the 
 |---|---|
 | "Bolt up", "hydro", "heat book", "shift report" | That tool opens. Works with no signal. |
 | "Home", "projects", "PipeFit", "weld", "rigging", "logs", "calculator", "edu" | That tab opens; "logs" opens the Logs tab on the Projects page. |
+| "Undo", "undo that", "take that back", "scratch that" | Takes the last thing voice wrote back off (a record, the job's pipe), within five minutes, quietly. On the bolt-up, "undo" is the last bolt. |
 | "Auto-hide the tab bar", "hide the tab bar as I scroll", "stop hiding the tab bar", "turn off auto-hide", "hide the tab bar", "show the tab bar" | How the tab bar along the foot hides, or it tucked away and brought back, from any screen. It just happens; nothing is said back. Something said has to name the bar ("tab bar", "tabs", "bottom bar"), so "10 bar to psi" stays a conversion; "auto-hide" alone is the bar's. |
 | "Rolling offset, rise 12, roll 8 and a half, run 30", "rolling offset rise 12 roll 8 at 45" | Rolling offset opens with the figures in. "3 foot 6", "12 and 3/8" and "350 millimetres" are understood, and a plain figure after "at" is the angle. Said on the Calculator, it is worked there instead (see Calculator → Say the sum). |
 | "Simple offset, 14 and a half at 22 and a half degrees" | Any bend or offset tool opens filled in — see the table below. |
@@ -2102,7 +2103,7 @@ Whatever you can see, you can say. Every button, chip, switch and box tells the 
 | "Start the hold at 225", "reading 224 psi", "end the hold at 224", "test passed", "test failed, leak at flange 3" | Written on the pressure test on screen, or the job's latest open test. |
 | "Hazards hot work and lifting", "toolbox talk ladders", "task is tie-in at rack 3", "crew is John and Luis" | Written on today's pre-task plan. Hazards are heard by any name a crew uses: "rigging", "heights", "LOTO", "trench". |
 | "What's the takeout on a 45?", "look up the U-bolts" | The handbook opens at the table that holds it, with its page. |
-| "Half inch stainless 40S", "6 inch chrome moly P22 schedule 80 long radius", "4 inch PVC" | Sets the job's pipe: size, material, wall, elbow radius — any of them. Said back with an Undo. A calculator already open follows it straight away (Cut Length also moves to the new material's joints) and shows an amber "Pipe changed to …" bar with a buzz, so it is seen as well as heard; changed from Settings, the bar shows when you go back to the calculator. A saved spool keeps its own pipe. |
+| "Half inch stainless 40S", "6 inch chrome moly P22 schedule 80 long radius", "4 inch PVC" | Sets the job's pipe: size, material, wall, elbow radius — any of them, quietly; "undo" puts it back. A calculator already open follows it straight away (Cut Length also moves to the new material's joints) and shows an amber "Pipe changed to …" bar with a buzz, so it is seen; changed from Settings, the bar shows when you go back to the calculator. A saved spool keeps its own pipe. |
 | "What's 12 and a half plus 3 foot 2", "convert 3 feet to millimetres" | The Calculator opens and works it (see Calculator → Say the sum). |
 | "Takeout on a 6 inch 45", "cut a 6 inch 90 to 30 degrees" | Answered where you are, from the handbook and the bend radius (see Calculator → Elbows). |
 | "Back", "cancel" | Goes back a screen, or closes the panel. |
@@ -2142,7 +2143,7 @@ A value is matched to the name next to it: "4 inch depth, 30 to obstruction" and
 
 ### Nothing is written without you hearing it
 
-Anything that goes into a record is **said back and left on screen with an Undo** for 15 seconds. Listen for the number. A loud shop will get one wrong sooner or later; Undo puts the record back exactly as it was. **Report** or **Test** on the panel opens what was written.
+Anything that goes into a record goes in **quietly**: nothing said back, the panel gone. A loud shop will mishear a number sooner or later, so look at the record when it matters. Say **"undo"** within five minutes and the last thing voice wrote comes back off, exactly as it was. Nothing written, and it says "Nothing to undo".
 
 The cloud answers handbook questions only from the handbook. If the book does not cover it, it says so rather than guess.
 

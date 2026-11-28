@@ -38,6 +38,8 @@ export type VoiceCommand =
   | { kind: 'back' }
   /** The tab bar: how it hides, or tucked away and brought back (barWords.ts). */
   | { kind: 'bar'; act: BarAct }
+  /** Take back the last thing voice wrote: a record, the job's pipe. */
+  | { kind: 'undo' }
   | { kind: 'cancel' };
 
 /**
@@ -108,6 +110,8 @@ const BOLT: Record<'done' | 'undo' | 'repeat', readonly string[][]> = {
 };
 
 const CANCEL = [['cancel'], ['never', 'mind'], ['nevermind'], ['stop'], ['forget', 'it'], ['nothing'], ['quit']];
+/** Taking back the last thing voice wrote. On the bolt-up, "undo" is the last bolt instead. */
+const UNDO = [['undo'], ['undo', 'that'], ['take', 'that', 'back'], ['take', 'it', 'back'], ['scratch', 'that']];
 
 /** Words of `ws`, minus the span [at, at+len). */
 const without = (ws: readonly string[], at: number, len: number) => [...ws.slice(0, at), ...ws.slice(at + len)];
@@ -146,6 +150,7 @@ export const VOCAB: ReadonlySet<string> = new Set([
   ...FILLER,
   ...Object.values(BOLT).flat().flat(),
   ...CANCEL.flat(),
+  ...UNDO.flat(),
   ...READ_VERBS,
   ...READ_THINGS,
   ...ADD_CUT,
@@ -252,6 +257,9 @@ function intentOf(text: string, screen: string | null, lenient: boolean): VoiceC
   // On Cut Length, a 3D spool or an iso's cuts, "add it", "add to the cut list", "save that cut": what is on screen goes on the list.
   if ((screen === 'CutLength' || screen === 'SpoolBuilder' || screen === 'IsoCuts') && ws.length <= 8 && (ws.includes('add') || ws.includes('save')) && ws.every((w) => ADD_CUT.has(w) || FILLER.has(w)))
     return { kind: 'addCut' };
+
+  // Before "back": "take it back" is the record, not the screen.
+  if (screen !== 'FlangeBoltUp' && ws.length <= 4 && sayingOnly(ws, UNDO)) return { kind: 'undo' };
 
   if (ws.length <= 3 && sayingOnly(ws, [['back'], ['go', 'back']])) return { kind: 'back' };
 
