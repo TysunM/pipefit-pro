@@ -37,7 +37,6 @@ import { usePressureTests } from '../state/pressureTests';
 import { useSettings } from '../state/settings';
 import { useShifts } from '../state/shifts';
 import { usePreTasks } from '../state/pretasks';
-import { testName } from '../state/pressureLog';
 import { applyPretask, applyShift, applyTest } from './apply';
 import { VOCAB, VoiceCommand, bestLocal, isToolName, localIntent, othersOf, routeWords } from './intent';
 import { barPatch } from './barWords';
@@ -60,6 +59,9 @@ export type CutAdder = () => { said: string; ok: boolean };
 export type ScreenReply = string | { reply: string; say: string; tone?: 'ok' | 'warn' };
 /** A screen's own words, tried first while it is in front: what to say back, or null when they are not its. */
 export type ScreenVoice = (heard: string) => ScreenReply | null;
+
+/** How long "undo" can still take back the last thing voice wrote. */
+const UNDO_MS = 5 * 60_000;
 
 export type VoiceSheet = {
   phase: 'listening' | 'thinking' | 'done';
@@ -194,22 +196,35 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
   /** Done, and to be seen on the screen: nothing said back, nothing left open. */
   const quietly = useCallback(() => setSheet(null), []);
 
-  /** Set the job's pipe, said back, with an Undo that puts the old specs back. */
+  /**
+   * The last thing voice wrote (a record, the job's pipe), to take back by
+   * saying "undo" within a few minutes. Writing it is done as quietly as
+   * anything else: nothing said back, the panel gone.
+   */
+  const lastUndo = useRef<{ run: () => void; at: number } | null>(null);
+  const recorded = useCallback((undo: () => void) => {
+    lastUndo.current = { run: undo, at: Date.now() };
+    setSheet(null);
+  }, []);
+
+  /** Set the job's pipe, quietly; "undo" puts the old specs back. Shown only where it had to change what was said. */
   const setSpecs = useCallback(
     (heard: string, cmd: SpecCommand) => {
       const { settings: cur, update: put } = latest.current;
       const before = { material: cur.material, defaultNps: cur.defaultNps, wall: cur.wall, defaultKind: cur.defaultKind, defaultSchedule: cur.defaultSchedule };
       const { patch, said, moved } = specPatch(cur, cmd);
       put(patch);
+      if (!moved.length) return recorded(() => put(before));
+      lastUndo.current = { run: () => put(before), at: Date.now() };
       finish(heard, `Specs: ${said}`, {
-        tone: moved.length ? 'warn' : 'ok',
+        tone: 'warn',
         undo: () => {
           put(before);
           setSheet({ phase: 'done', heard, reply: 'Specs put back.', tone: 'warn' });
         },
       });
     },
-    [finish],
+    [finish, recorded],
   );
 
   /** What the phone can do on its own. */
@@ -225,6 +240,14 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
           if (nav.isReady() && nav.canGoBack()) nav.goBack();
           setSheet(null);
           return;
+        case 'undo': {
+          // The last thing voice wrote, taken back: as quietly as it went in.
+          const u = lastUndo.current;
+          lastUndo.current = null;
+          if (!u || Date.now() - u.at > UNDO_MS) return finish(heard, 'Nothing to undo.', { tone: 'warn' });
+          u.run();
+          return quietly();
+        }
         case 'bar':
           // How the tab bar hides, or it tucked away and back, from any screen: done, and the panel goes.
           latest.current.update(barPatch(cmd.act));
@@ -239,14 +262,13 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
           if (!LIBRARY_FAMILY[cur.material])
             return finish(heard, 'Box labels are read for PVC, CPVC and cast iron no-hub. Set the job pipe first, like "2 inch PVC".', { tone: 'warn' });
           if (nav.isReady()) nav.navigate('FittingLibrary', { line: `${cur.material}:${cur.wall}`, read: Date.now() });
-          setSheet(null);
-          return say('Camera up.');
+          return quietly();
         }
         case 'addCut': {
           const h = cutAdder.current;
           if (!h) return finish(heard, 'Open Cut Length or a 3D spool first.', { tone: 'warn' });
           const r = h();
-          return finish(heard, r.said, { tone: r.ok ? 'ok' : 'warn', open: r.ok ? { label: 'Cut list', go: () => nav.isReady() && nav.navigate('CutList') } : undefined });
+          return r.ok ? quietly() : finish(heard, r.said, { tone: 'warn' });
         }
         case 'open': {
           const refused = openWith(cmd.route, cmd.figures);
@@ -269,7 +291,7 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
     [finish, quietly, setSpecs],
   );
 
-  /** Do what an answer says, whether the phone worked it out (records.ts) or the cloud did: said back, with an Undo. */
+  /** Do what an answer says, whether the phone worked it out (records.ts) or the cloud did. A record goes in quietly; "undo" takes it back. */
   const applyAnswer = useCallback(
     (heard: string, a: VoiceAnswer) => {
       const { shifts: s, tests: p, project } = latest.current;
@@ -289,26 +311,14 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
           const before = s.log;
           const out = applyShift(before, a, project, now, latest.current.settings.shift);
           s.apply(() => out.log);
-          return finish(heard, a.say, {
-            undo: () => {
-              s.apply(() => before);
-              setSheet({ phase: 'done', heard, reply: 'Taken back off the shift report.', tone: 'warn' });
-            },
-            open: { label: 'Report', go: () => nav.isReady() && nav.navigate('ShiftReport') },
-          });
+          return recorded(() => s.apply(() => before));
         }
         case 'pretask': {
           const store = latest.current.plans;
           const before = store.log;
           const out = applyPretask(before, a, project, now, latest.current.settings.shift);
           store.apply(() => out.log);
-          return finish(heard, a.say, {
-            undo: () => {
-              store.apply(() => before);
-              setSheet({ phase: 'done', heard, reply: 'Taken back off the pre-task plan.', tone: 'warn' });
-            },
-            open: { label: 'Plan', go: () => nav.isReady() && nav.navigate('PreTask') },
-          });
+          return recorded(() => store.apply(() => before));
         }
         case 'test': {
           const before = p.log;
@@ -317,16 +327,7 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
           const out = applyTest(before, a, onScreen, project, now);
           if ('error' in out) return finish(heard, out.error, { tone: 'warn' });
           p.apply(() => out.log);
-          return finish(heard, a.say || `Recorded on ${testName(out.test)}.`, {
-            undo: () => {
-              p.apply(() => before);
-              setSheet({ phase: 'done', heard, reply: `Taken back off ${testName(out.test)}.`, tone: 'warn' });
-            },
-            open:
-              onScreen === out.test.id
-                ? undefined
-                : { label: 'Test', go: () => nav.isReady() && nav.navigate('PressureTest', { testId: out.test.id }) },
-          });
+          return recorded(() => p.apply(() => before));
         }
         case 'specs':
           teach(alignToWords(heard, [...MATERIALS.flatMap((m) => m.words), ...SPEC_WORDS], VOCAB));
@@ -335,7 +336,7 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
           return finish(heard, a.say, { tone: 'warn' });
       }
     },
-    [finish, quietly, setSpecs, teach],
+    [finish, quietly, recorded, setSpecs, teach],
   );
 
   /**
